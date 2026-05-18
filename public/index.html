@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>采购管理</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--pri:#4f46e5;--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#94a3b8;--border:#e2e8f0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px}
+.header{background:var(--pri);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.header h1{font-size:18px;font-weight:600}
+.header .stats{font-size:13px;opacity:.9}
+.container{max-width:600px;margin:0 auto;padding:12px}
+.card{background:var(--card);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative}
+.card .name{font-size:15px;font-weight:600;margin-bottom:4px}
+.card .meta{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.card .meta span{display:flex;align-items:center;gap:3px}
+.card .price{font-size:17px;font-weight:700;color:var(--pri);margin-top:6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-待买{background:#fef3c7;color:#92400e}
+.badge-已买{background:#dcfce7;color:#166534}
+.badge-已到{background:#dbeafe;color:#1e40af}
+.badge-已退{background:#fee2e2;color:#991b1b}
+.card .note{font-size:12px;color:var(--muted);margin-top:4px;font-style:italic}
+.card .actions{position:absolute;top:14px;right:14px;display:flex;gap:6px}
+.card .actions button{background:none;border:none;font-size:16px;cursor:pointer;padding:2px;border-radius:4px}
+.card .actions button:hover{background:var(--border)}
+.fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--pri);color:#fff;border:none;font-size:28px;box-shadow:0 4px 12px rgba(79,70,229,.4);cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h2{font-size:17px;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:var(--muted)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--pri)}
+.form-group textarea{resize:vertical;min-height:60px}
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-secondary{background:var(--border);color:var(--text)}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+.filter-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}
+.filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;white-space:nowrap}
+.filter-btn.active{background:var(--pri);color:#fff;border-color:var(--pri)}
+.export-btn{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:200;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>🛒 采购管理</h1>
+    <div class="stats" id="stats">加载中...</div>
+  </div>
+  <button class="export-btn" onclick="exportData()">导出</button>
+</div>
+<div class="container">
+  <div class="filter-bar" id="filters"></div>
+  <div id="list"><div class="loading">⏳ 加载中...</div></div>
+</div>
+<button class="fab" onclick="openModal()">+</button>
+<div class="modal-overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2 id="modalTitle">新增采购</h2>
+    <input type="hidden" id="editId">
+    <div class="form-group"><label>商品名称 *</label><input id="fName" placeholder="如：夏天裤子"></div>
+    <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
+    <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
+    <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
+    <div class="form-group"><label>状态</label><select id="fStatus"><option>待买</option><option>已买</option><option>已到</option><option>已退</option></select></div>
+    <div class="form-group"><label>日期</label><input id="fDate" type="date"></div>
+    <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="save()">保存</button>
+    </div>
+  </div>
+</div>
+<script>
+const API='/api/items';
+let items=[], currentFilter='全部';
+
+async function api(method,body,id){
+  let url=API; const opts={method,headers:{'Content-Type':'application/json'}};
+  if(method==='DELETE')url+='?id='+id;
+  else if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts); return r.json();
+}
+
+async function loadItems(){
+  try{items=await api('GET');render();}
+  catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">❌</div>加载失败，请刷新重试</div>';}
+}
+
+function render(){
+  const filtered=currentFilter==='全部'?items:items.filter(i=>i['状态']===currentFilter);
+  const sorted=[...filtered].sort((a,b)=>(b.created_at||0)-(a.created_at||0));
+  const total=items.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0);
+  document.getElementById('stats').textContent=`${items.length} 件商品 · 合计 ¥${total.toFixed(2)}`;
+  const statuses=['全部','待买','已买','已到','已退'];
+  document.getElementById('filters').innerHTML=statuses.map(s=>{
+    const c=s===currentFilter?'active':'';
+    const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;
+    return `<button class="filter-btn ${c}" onclick="setFilter('${s}')">${s} (${n})</button>`;
+  }).join('');
+  if(!sorted.length){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return;}
+  document.getElementById('list').innerHTML=sorted.map(i=>{
+    const d=i['日期'];
+    let dateStr='';
+    if(d){try{dateStr=new Date(d).toISOString().slice(0,10)}catch(e){dateStr=String(d)}}
+    const qty=i['数量']||1;
+    const price=i['单价']||0;
+    const status=i['状态']||'待买';
+    return `<div class="card">
+      <div class="actions">
+        <button onclick="editItem('${i.id}')" title="编辑">✏️</button>
+        <button onclick="delItem('${i.id}')" title="删除">🗑️</button>
+      </div>
+      <div class="name">${esc(i['商品名称']||'')}</div>
+      <div class="meta">
+        <span>🏪 ${esc(i['平台']||'')}</span>
+        <span class="badge badge-${status}">${status}</span>
+        ${dateStr?`<span>📅 ${dateStr}</span>`:''}
+        ${qty>1?`<span>×${qty}</span>`:''}
+      </div>
+      ${price?`<div class="price">¥${(price*qty).toFixed(2)}${qty>1?` (¥${price}×${qty})`:''}</div>`:''}
+      ${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function setFilter(s){currentFilter=s;render();}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2000);}
+
+function openModal(){
+  document.getElementById('editId').value='';
+  document.getElementById('modalTitle').textContent='新增采购';
+  ['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('fPlatform').value='拼多多';
+  document.getElementById('fStatus').value='待买';
+  document.getElementById('fQty').value='1';
+  document.getElementById('overlay').classList.add('active');
+}
+
+function editItem(id){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  document.getElementById('editId').value=id;
+  document.getElementById('modalTitle').textContent='编辑采购';
+  document.getElementById('fName').value=i['商品名称']||'';
+  document.getElementById('fPlatform').value=i['平台']||'拼多多';
+  document.getElementById('fPrice').value=i['单价']||'';
+  document.getElementById('fQty').value=i['数量']||1;
+  document.getElementById('fStatus').value=i['状态']||'待买';
+  const d=i['日期'];
+  document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';
+  document.getElementById('fNote').value=i['备注']||'';
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeModal(){document.getElementById('overlay').classList.remove('active');}
+
+async function save(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){alert('请输入商品名称');return;}
+  const data={
+    name,
+    platform:document.getElementById('fPlatform').value,
+    price:parseFloat(document.getElementById('fPrice').value)||0,
+    qty:parseInt(document.getElementById('fQty').value)||1,
+    status:document.getElementById('fStatus').value,
+    date:document.getElementById('fDate').value||null,
+    note:document.getElementById('fNote').value.trim()||null,
+  };
+  const editId=document.getElementById('editId').value;
+  if(editId){await api('PUT',{id:editId,...data});toast('已更新');}
+  else{await api('POST',data);toast('已添加');}
+  closeModal();await loadItems();
+}
+
+async function delItem(id){
+  if(!confirm('确定删除？'))return;
+  await api('DELETE',null,id);toast('已删除');await loadItems();
+}
+
+function exportData(){
+  const text=items.map(i=>`${i['商品名称']||''}\t${i['平台']||''}\t¥${i['单价']||0}\t×${i['数量']||1}\t${i['状态']||''}\t${i['备注']||''}`).join('\n');
+  const b=new Blob(['商品\t平台\t单价\t数量\t状态\t备注\n'+text],{type:'text/tab-separated-values;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`采购_${new Date().toISOString().slice(0,10)}.tsv`;a.click();
+}
+
+loadItems();
+</script>
+</body>
+</html>
