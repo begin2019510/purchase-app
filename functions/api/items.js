@@ -1,12 +1,12 @@
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
-async function getToken() {
+async function getToken(env) {
   const res = await fetch(`${FEISHU_BASE}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      app_id: process.env.FEISHU_APP_ID,
-      app_secret: process.env.FEISHU_APP_SECRET,
+      app_id: env.FEISHU_APP_ID,
+      app_secret: env.FEISHU_APP_SECRET,
     }),
   });
   const data = await res.json();
@@ -14,8 +14,8 @@ async function getToken() {
   return data.tenant_access_token;
 }
 
-async function feishuFetch(method, path, body) {
-  const token = await getToken();
+async function feishuFetch(method, path, body, env) {
+  const token = await getToken(env);
   const opts = {
     method,
     headers: {
@@ -28,29 +28,37 @@ async function feishuFetch(method, path, body) {
   return res.json();
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const APP = env.FEISHU_BITABLE_APP;
+  const TABLE = env.FEISHU_BITABLE_TABLE;
 
-  const APP = process.env.FEISHU_BITABLE_APP;
-  const TABLE = process.env.FEISHU_BITABLE_TABLE;
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
   try {
-    if (req.method === 'GET') {
-      const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`);
-      if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
+    if (request.method === 'GET') {
+      const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env);
+      if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const items = (data.data?.items || []).map(r => ({
         id: r.record_id,
         ...r.fields,
       }));
-      return res.json(items);
+      return new Response(JSON.stringify(items), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (req.method === 'POST') {
-      const { name, platform, price, qty, status, date, note } = req.body;
-      if (!name) return res.status(400).json({ error: 'name required' });
+    if (request.method === 'POST') {
+      const body = await request.json();
+      const { name, platform, price, qty, status, date, note } = body;
+      if (!name) return new Response(JSON.stringify({ error: 'name required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const fields = {
         '商品名称': name,
         '平台': platform || '拼多多',
@@ -60,14 +68,15 @@ export default async function handler(req, res) {
         '备注': note || '',
       };
       if (date) fields['日期'] = new Date(date).getTime();
-      const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields });
-      if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
-      return res.json({ id: data.data?.record?.record_id });
+      const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
+      if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ id: data.data?.record?.record_id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (req.method === 'PUT') {
-      const { id, ...rest } = req.body;
-      if (!id) return res.status(400).json({ error: 'id required' });
+    if (request.method === 'PUT') {
+      const body = await request.json();
+      const { id, ...rest } = body;
+      if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const fields = {};
       if (rest.name !== undefined) fields['商品名称'] = rest.name;
       if (rest.platform !== undefined) fields['平台'] = rest.platform;
@@ -76,21 +85,21 @@ export default async function handler(req, res) {
       if (rest.status !== undefined) fields['状态'] = rest.status;
       if (rest.note !== undefined) fields['备注'] = rest.note;
       if (rest.date !== undefined) fields['日期'] = rest.date ? new Date(rest.date).getTime() : null;
-      const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields });
-      if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
-      return res.json({ ok: true });
+      const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
+      if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (req.method === 'DELETE') {
-      const { id } = req.query;
-      if (!id) return res.status(400).json({ error: 'id required' });
-      const data = await feishuFetch('DELETE', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`);
-      if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
-      return res.json({ ok: true });
+    if (request.method === 'DELETE') {
+      const id = url.searchParams.get('id');
+      if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const data = await feishuFetch('DELETE', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, null, env);
+      if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    res.status(405).end();
+    return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   } catch (e) {
-    res.status(500).json({ error: e.message, stack: e.stack });
+    return new Response(JSON.stringify({ error: e.message, stack: e.stack }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 }
