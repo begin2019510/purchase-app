@@ -52,14 +52,14 @@ export default async function handler(req, res) {
       const { name, platform, price, qty, status, date, note } = req.body;
       if (!name) return res.status(400).json({ error: 'name required' });
       const fields = {
-        '鍟嗗搧鍚嶇О': name,
-        '骞冲彴': platform || '鎷煎澶?,
-        '鍗曚环': price || 0,
-        '鏁伴噺': qty || 1,
-        '鐘舵€?: status || '寰呬拱',
-        '澶囨敞': note || '',
+        '商品名称': name,
+        '平台': platform || '拼多多',
+        '单价': price || 0,
+        '数量': qty || 1,
+        '状态': status || '待买',
+        '备注': note || '',
       };
-      if (date) fields['鏃ユ湡'] = new Date(date).getTime();
+      if (date) fields['日期'] = new Date(date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields });
       if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
       return res.json({ id: data.data?.record?.record_id });
@@ -69,13 +69,13 @@ export default async function handler(req, res) {
       const { id, ...rest } = req.body;
       if (!id) return res.status(400).json({ error: 'id required' });
       const fields = {};
-      if (rest.name !== undefined) fields['鍟嗗搧鍚嶇О'] = rest.name;
-      if (rest.platform !== undefined) fields['骞冲彴'] = rest.platform;
-      if (rest.price !== undefined) fields['鍗曚环'] = rest.price;
-      if (rest.qty !== undefined) fields['鏁伴噺'] = rest.qty;
-      if (rest.status !== undefined) fields['鐘舵€?] = rest.status;
-      if (rest.note !== undefined) fields['澶囨敞'] = rest.note;
-      if (rest.date !== undefined) fields['鏃ユ湡'] = rest.date ? new Date(rest.date).getTime() : null;
+      if (rest.name !== undefined) fields['商品名称'] = rest.name;
+      if (rest.platform !== undefined) fields['平台'] = rest.platform;
+      if (rest.price !== undefined) fields['单价'] = rest.price;
+      if (rest.qty !== undefined) fields['数量'] = rest.qty;
+      if (rest.status !== undefined) fields['状态'] = rest.status;
+      if (rest.note !== undefined) fields['备注'] = rest.note;
+      if (rest.date !== undefined) fields['日期'] = rest.date ? new Date(rest.date).getTime() : null;
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields });
       if (data.code !== 0) return res.status(500).json({ error: 'Feishu API error', detail: data });
       return res.json({ ok: true });
