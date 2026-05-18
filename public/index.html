@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>采购管理</title>
+<title>閲囪喘绠＄悊</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4f46e5">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,10 +22,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .card .meta span{display:flex;align-items:center;gap:3px}
 .card .price{font-size:17px;font-weight:700;color:var(--pri);margin-top:6px}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.badge-待买{background:#fef3c7;color:#92400e}
-.badge-已买{background:#dcfce7;color:#166534}
-.badge-已到{background:#dbeafe;color:#1e40af}
-.badge-已退{background:#fee2e2;color:#991b1b}
+.badge-寰呬拱{background:#fef3c7;color:#92400e}
+.badge-宸蹭拱{background:#dcfce7;color:#166534}
+.badge-宸插埌{background:#dbeafe;color:#1e40af}
+.badge-宸查€€{background:#fee2e2;color:#991b1b}
 .card .note{font-size:12px;color:var(--muted);margin-top:4px;font-style:italic}
 .card .actions{position:absolute;top:14px;right:14px;display:flex;gap:6px}
 .card .actions button{background:none;border:none;font-size:16px;cursor:pointer;padding:2px;border-radius:4px}
@@ -60,36 +60,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 <div class="header">
   <div>
-    <h1>🛒 采购管理</h1>
-    <div class="stats" id="stats">加载中...</div>
+    <h1>馃洅 閲囪喘绠＄悊</h1>
+    <div class="stats" id="stats">鍔犺浇涓?..</div>
   </div>
-  <button class="export-btn" onclick="exportData()">导出</button>
+  <button class="export-btn" onclick="exportData()">瀵煎嚭</button>
 </div>
 <div class="container">
   <div class="filter-bar" id="filters"></div>
-  <div id="list"><div class="loading">⏳ 加载中...</div></div>
+  <div id="list"><div class="loading">鈴?鍔犺浇涓?..</div></div>
 </div>
 <button class="fab" onclick="openModal()">+</button>
 <div class="modal-overlay" id="overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <h2 id="modalTitle">新增采购</h2>
+    <h2 id="modalTitle">鏂板閲囪喘</h2>
     <input type="hidden" id="editId">
-    <div class="form-group"><label>商品名称 *</label><input id="fName" placeholder="如：夏天裤子"></div>
-    <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
-    <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
-    <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
-    <div class="form-group"><label>状态</label><select id="fStatus"><option>待买</option><option>已买</option><option>已到</option><option>已退</option></select></div>
-    <div class="form-group"><label>日期</label><input id="fDate" type="date"></div>
-    <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
+    <div class="form-group"><label>鍟嗗搧鍚嶇О *</label><input id="fName" placeholder="濡傦細澶忓ぉ瑁ゅ瓙"></div>
+    <div class="form-group"><label>骞冲彴</label><select id="fPlatform"><option>鎷煎澶?/option><option>娣樺疂</option><option>浜笢</option><option>鎶栭煶</option><option>鍏朵粬</option></select></div>
+    <div class="form-group"><label>鍗曚环锛堝厓锛?/label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
+    <div class="form-group"><label>鏁伴噺</label><input id="fQty" type="number" value="1" min="1"></div>
+    <div class="form-group"><label>鐘舵€?/label><select id="fStatus"><option>寰呬拱</option><option>宸蹭拱</option><option>宸插埌</option><option>宸查€€</option></select></div>
+    <div class="form-group"><label>鏃ユ湡</label><input id="fDate" type="date"></div>
+    <div class="form-group"><label>澶囨敞</label><textarea id="fNote" placeholder="鍙€?></textarea></div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" onclick="save()">保存</button>
+      <button class="btn btn-secondary" onclick="closeModal()">鍙栨秷</button>
+      <button class="btn btn-primary" onclick="save()">淇濆瓨</button>
     </div>
   </div>
 </div>
 <script>
 const API='/api/items';
-let items=[], currentFilter='全部';
+let items=[], currentFilter='鍏ㄩ儴';
 
 async function api(method,body,id){
   let url=API; const opts={method,headers:{'Content-Type':'application/json'}};
@@ -100,42 +100,42 @@ async function api(method,body,id){
 
 async function loadItems(){
   try{items=await api('GET');render();}
-  catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">❌</div>加载失败，请刷新重试</div>';}
+  catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">鉂?/div>鍔犺浇澶辫触锛岃鍒锋柊閲嶈瘯</div>';}
 }
 
 function render(){
-  const filtered=currentFilter==='全部'?items:items.filter(i=>i['状态']===currentFilter);
+  const filtered=currentFilter==='鍏ㄩ儴'?items:items.filter(i=>i['鐘舵€?]===currentFilter);
   const sorted=[...filtered].sort((a,b)=>(b.created_at||0)-(a.created_at||0));
-  const total=items.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0);
-  document.getElementById('stats').textContent=`${items.length} 件商品 · 合计 ¥${total.toFixed(2)}`;
-  const statuses=['全部','待买','已买','已到','已退'];
+  const total=items.reduce((s,i)=>s+(i['鍗曚环']||0)*(i['鏁伴噺']||1),0);
+  document.getElementById('stats').textContent=`${items.length} 浠跺晢鍝?路 鍚堣 楼${total.toFixed(2)}`;
+  const statuses=['鍏ㄩ儴','寰呬拱','宸蹭拱','宸插埌','宸查€€'];
   document.getElementById('filters').innerHTML=statuses.map(s=>{
     const c=s===currentFilter?'active':'';
-    const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;
+    const n=s==='鍏ㄩ儴'?items.length:items.filter(i=>i['鐘舵€?]===s).length;
     return `<button class="filter-btn ${c}" onclick="setFilter('${s}')">${s} (${n})</button>`;
   }).join('');
-  if(!sorted.length){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return;}
+  if(!sorted.length){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">馃摝</div>鏆傛棤閲囪喘璁板綍<br>鐐瑰彸涓嬭 + 娣诲姞</div>';return;}
   document.getElementById('list').innerHTML=sorted.map(i=>{
-    const d=i['日期'];
+    const d=i['鏃ユ湡'];
     let dateStr='';
     if(d){try{dateStr=new Date(d).toISOString().slice(0,10)}catch(e){dateStr=String(d)}}
-    const qty=i['数量']||1;
-    const price=i['单价']||0;
-    const status=i['状态']||'待买';
+    const qty=i['鏁伴噺']||1;
+    const price=i['鍗曚环']||0;
+    const status=i['鐘舵€?]||'寰呬拱';
     return `<div class="card">
       <div class="actions">
-        <button onclick="editItem('${i.id}')" title="编辑">✏️</button>
-        <button onclick="delItem('${i.id}')" title="删除">🗑️</button>
+        <button onclick="editItem('${i.id}')" title="缂栬緫">鉁忥笍</button>
+        <button onclick="delItem('${i.id}')" title="鍒犻櫎">馃棏锔?/button>
       </div>
-      <div class="name">${esc(i['商品名称']||'')}</div>
+      <div class="name">${esc(i['鍟嗗搧鍚嶇О']||'')}</div>
       <div class="meta">
-        <span>🏪 ${esc(i['平台']||'')}</span>
+        <span>馃彧 ${esc(i['骞冲彴']||'')}</span>
         <span class="badge badge-${status}">${status}</span>
-        ${dateStr?`<span>📅 ${dateStr}</span>`:''}
-        ${qty>1?`<span>×${qty}</span>`:''}
+        ${dateStr?`<span>馃搮 ${dateStr}</span>`:''}
+        ${qty>1?`<span>脳${qty}</span>`:''}
       </div>
-      ${price?`<div class="price">¥${(price*qty).toFixed(2)}${qty>1?` (¥${price}×${qty})`:''}</div>`:''}
-      ${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}
+      ${price?`<div class="price">楼${(price*qty).toFixed(2)}${qty>1?` (楼${price}脳${qty})`:''}</div>`:''}
+      ${i['澶囨敞']?`<div class="note">馃挰 ${esc(i['澶囨敞'])}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -146,10 +146,10 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.te
 
 function openModal(){
   document.getElementById('editId').value='';
-  document.getElementById('modalTitle').textContent='新增采购';
+  document.getElementById('modalTitle').textContent='鏂板閲囪喘';
   ['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');
-  document.getElementById('fPlatform').value='拼多多';
-  document.getElementById('fStatus').value='待买';
+  document.getElementById('fPlatform').value='鎷煎澶?;
+  document.getElementById('fStatus').value='寰呬拱';
   document.getElementById('fQty').value='1';
   document.getElementById('overlay').classList.add('active');
 }
@@ -157,15 +157,15 @@ function openModal(){
 function editItem(id){
   const i=items.find(x=>x.id===id);if(!i)return;
   document.getElementById('editId').value=id;
-  document.getElementById('modalTitle').textContent='编辑采购';
-  document.getElementById('fName').value=i['商品名称']||'';
-  document.getElementById('fPlatform').value=i['平台']||'拼多多';
-  document.getElementById('fPrice').value=i['单价']||'';
-  document.getElementById('fQty').value=i['数量']||1;
-  document.getElementById('fStatus').value=i['状态']||'待买';
-  const d=i['日期'];
+  document.getElementById('modalTitle').textContent='缂栬緫閲囪喘';
+  document.getElementById('fName').value=i['鍟嗗搧鍚嶇О']||'';
+  document.getElementById('fPlatform').value=i['骞冲彴']||'鎷煎澶?;
+  document.getElementById('fPrice').value=i['鍗曚环']||'';
+  document.getElementById('fQty').value=i['鏁伴噺']||1;
+  document.getElementById('fStatus').value=i['鐘舵€?]||'寰呬拱';
+  const d=i['鏃ユ湡'];
   document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';
-  document.getElementById('fNote').value=i['备注']||'';
+  document.getElementById('fNote').value=i['澶囨敞']||'';
   document.getElementById('overlay').classList.add('active');
 }
 
@@ -173,7 +173,7 @@ function closeModal(){document.getElementById('overlay').classList.remove('activ
 
 async function save(){
   const name=document.getElementById('fName').value.trim();
-  if(!name){alert('请输入商品名称');return;}
+  if(!name){alert('璇疯緭鍏ュ晢鍝佸悕绉?);return;}
   const data={
     name,
     platform:document.getElementById('fPlatform').value,
@@ -184,21 +184,21 @@ async function save(){
     note:document.getElementById('fNote').value.trim()||null,
   };
   const editId=document.getElementById('editId').value;
-  if(editId){await api('PUT',{id:editId,...data});toast('已更新');}
-  else{await api('POST',data);toast('已添加');}
+  if(editId){await api('PUT',{id:editId,...data});toast('宸叉洿鏂?);}
+  else{await api('POST',data);toast('宸叉坊鍔?);}
   closeModal();await loadItems();
 }
 
 async function delItem(id){
-  if(!confirm('确定删除？'))return;
-  await api('DELETE',null,id);toast('已删除');await loadItems();
+  if(!confirm('纭畾鍒犻櫎锛?))return;
+  await api('DELETE',null,id);toast('宸插垹闄?);await loadItems();
 }
 
 function exportData(){
-  const text=items.map(i=>`${i['商品名称']||''}\t${i['平台']||''}\t¥${i['单价']||0}\t×${i['数量']||1}\t${i['状态']||''}\t${i['备注']||''}`).join('\n');
-  const b=new Blob(['商品\t平台\t单价\t数量\t状态\t备注\n'+text],{type:'text/tab-separated-values;charset=utf-8'});
+  const text=items.map(i=>`${i['鍟嗗搧鍚嶇О']||''}\t${i['骞冲彴']||''}\t楼${i['鍗曚环']||0}\t脳${i['鏁伴噺']||1}\t${i['鐘舵€?]||''}\t${i['澶囨敞']||''}`).join('\n');
+  const b=new Blob(['鍟嗗搧\t骞冲彴\t鍗曚环\t鏁伴噺\t鐘舵€乗t澶囨敞\n'+text],{type:'text/tab-separated-values;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download=`采购_${new Date().toISOString().slice(0,10)}.tsv`;a.click();
+  a.download=`閲囪喘_${new Date().toISOString().slice(0,10)}.tsv`;a.click();
 }
 
 loadItems();
