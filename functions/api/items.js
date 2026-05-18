@@ -57,17 +57,16 @@ export async function onRequest(context) {
 
     if (request.method === 'POST') {
       const body = await request.json();
-      const { name, platform, price, qty, status, date, note } = body;
-      if (!name) return new Response(JSON.stringify({ error: 'name required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!body.name) return new Response(JSON.stringify({ error: 'name required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const fields = {
-        '商品名称': name,
-        '平台': platform || '拼多多',
-        '单价': price || 0,
-        '数量': qty || 1,
-        '状态': status || '待买',
-        '备注': note || '',
+        '商品名称': body.name,
+        '平台': body.platform || '拼多多',
+        '单价': body.price || 0,
+        '数量': body.qty || 1,
+        '状态': body.status || '待买',
+        '备注': body.note || '',
       };
-      if (date) fields['日期'] = new Date(date).getTime();
+      if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
       if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({ id: data.data?.record?.record_id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -75,17 +74,16 @@ export async function onRequest(context) {
 
     if (request.method === 'PUT') {
       const body = await request.json();
-      const { id, ...rest } = body;
-      if (!id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (!body.id) return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       const fields = {};
-      if (rest.name !== undefined) fields['商品名称'] = rest.name;
-      if (rest.platform !== undefined) fields['平台'] = rest.platform;
-      if (rest.price !== undefined) fields['单价'] = rest.price;
-      if (rest.qty !== undefined) fields['数量'] = rest.qty;
-      if (rest.status !== undefined) fields['状态'] = rest.status;
-      if (rest.note !== undefined) fields['备注'] = rest.note;
-      if (rest.date !== undefined) fields['日期'] = rest.date ? new Date(rest.date).getTime() : null;
-      const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
+      if (body.name !== undefined) fields['商品名称'] = body.name;
+      if (body.platform !== undefined) fields['平台'] = body.platform;
+      if (body.price !== undefined) fields['单价'] = body.price;
+      if (body.qty !== undefined) fields['数量'] = body.qty;
+      if (body.status !== undefined) fields['状态'] = body.status;
+      if (body.note !== undefined) fields['备注'] = body.note;
+      if (body.date !== undefined) fields['日期'] = body.date ? new Date(body.date).getTime() : null;
+      const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return new Response(JSON.stringify({ error: 'Feishu API error', detail: data }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
