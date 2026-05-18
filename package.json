@@ -1,5 +1,12 @@
 {
   "name": "purchase-tracker",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.92.0"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
+  }
 }
