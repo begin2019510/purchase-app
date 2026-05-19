@@ -479,7 +479,7 @@ function donutChart(entries, size) {
     paths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" opacity="0.85"/>`;
   });
   const inner = size * 0.32;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto">${paths}<circle cx="${cx}" cy="${cy}" r="${inner}" fill="white"/><text x="${cx}" y="cy" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto">${paths}<circle cx="${cx}" cy="${cy}" r="${inner}" fill="white"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text></svg>`;
 }
 function miniCards(items) {
   return `<div class="mini-grid">${items.map(([icon, label, val, color]) => 

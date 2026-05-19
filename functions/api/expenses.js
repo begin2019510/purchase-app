@@ -55,9 +55,14 @@ export async function onRequest(context) {
       if (d.data && d.data.items) {
         d.data.items.forEach(rec => {
           const f = rec.fields;
+          // 飞书 DateTime 字段返回 timestamp（毫秒）
+          let dateStr = null;
+          if (f['日期']) {
+            try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {}
+          }
           records.push({
             id: rec.record_id,
-            '日期': f['日期'] || null,
+            '日期': dateStr,
             '类型': f['类型'] || '支出',
             '分类': f['分类'] || '其他',
             '金额': f['金额'] || 0,
