@@ -14,7 +14,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
 
 /* ===== Header ===== */
-.header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50}
+.header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50;text-shadow:0 1px 3px rgba(0,0,0,.15)}
 .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .header h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
 .header-actions{display:flex;gap:6px}
@@ -22,12 +22,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .header-actions button:active{transform:scale(.95);background:rgba(255,255,255,.3)}
 .stats-row{display:flex;gap:16px}
 .stats-row .stat{display:flex;flex-direction:column}
-.stats-row .stat-val{font-size:20px;font-weight:800}
-.stats-row .stat-lbl{font-size:11px;opacity:.7;margin-top:1px}
+.stats-row .stat-val{font-size:20px;font-weight:800;color:#fff}
+.stats-row .stat-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:1px}
 
 /* ===== Tabs ===== */
 .tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:68px;z-index:40;padding:0 4px}
-.tab{flex:1;padding:12px 0;text-align:center;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:.15s}
+.tab{flex:1;padding:12px 0;text-align:center;font-size:14px;font-weight:700;color:#475569;cursor:pointer;border-bottom:2.5px solid transparent;transition:.15s}
 .tab.active{color:var(--pri);border-bottom-color:var(--pri)}
 
 /* ===== Search ===== */
