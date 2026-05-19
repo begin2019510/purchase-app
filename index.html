@@ -151,6 +151,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .mini-card .mini-icon{font-size:20px;margin-bottom:4px}
 .mini-card .mini-val{font-size:18px;font-weight:800}
 .mini-card .mini-lbl{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
+.donut-wrap{display:flex;justify-content:center;padding:8px 0}
+.donut-seg{opacity:0;animation:donutIn .7s ease-out forwards}
+@keyframes donutIn{to{opacity:.92}}
+.donut-seg:nth-child(2){animation-delay:.1s}
+.donut-seg:nth-child(3){animation-delay:.2s}
+.donut-seg:nth-child(4){animation-delay:.3s}
+.donut-seg:nth-child(5){animation-delay:.4s}
+.donut-legend{flex:1;min-width:160px}
+.dl-item{display:flex;align-items:center;gap:6px;padding:5px 0;font-size:12px}
+.dl-dot{width:10px;height:10px;border-radius:5px;flex-shrink:0}
+.dl-label{min-width:44px;font-weight:600;color:var(--text)}
+.dl-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.dl-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.dl-val{min-width:48px;text-align:right;font-weight:700;color:var(--text)}
+.dl-pct{min-width:36px;text-align:right;font-size:11px;color:var(--muted)}
+.empty-chart{text-align:center;padding:20px;color:var(--muted);font-size:13px}
 .chart-row{display:flex;align-items:center;padding:6px 0;gap:8px}
 .chart-label{font-size:12px;font-weight:600;min-width:42px;text-align:right}
 .chart-bar-bg{flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden}
@@ -457,29 +473,36 @@ function barChart(entries, maxVal, colorFn) {
     return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
   }).join('');
 }
-function donutChart(entries, size) {
-  if (!entries.length) return '<div style="text-align:center;color:var(--muted);padding:20px">暂无数据</div>';
+function donutChart(entries, size, label) {
+  if (!entries.length) return '<div class="empty-chart">暂无数据</div>';
   const total = entries.reduce((s, e) => s + e[1], 0);
-  let cum = 0;
-  const r = size / 2 - 10;
   const cx = size / 2, cy = size / 2;
-  let paths = '';
-  entries.forEach(([label, val]) => {
-    if (val <= 0) return;
-    const pct = val / total;
-    const startAngle = cum * 2 * Math.PI - Math.PI / 2;
-    cum += pct;
-    const endAngle = cum * 2 * Math.PI - Math.PI / 2;
-    const largeArc = pct > 0.5 ? 1 : 0;
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
-    const color = CAT_COLORS[label] || '#94a3b8';
-    paths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" opacity="0.85"/>`;
+  const t = Math.max(size * 0.14, 14);
+  const r = (size - t) / 2;
+  const C = 2 * Math.PI * r;
+  let segs = '', cum = 0;
+  entries.forEach(([l, v]) => {
+    if (v <= 0) return;
+    const pct = v / total;
+    const L = pct * C;
+    const color = CAT_COLORS[l] || '#94a3b8';
+    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${t}"
+      stroke-dasharray="${L} ${C - L}" stroke-dashoffset="${-cum}"
+      transform="rotate(-90 ${cx} ${cy})" class="donut-seg"/>`;
+    cum += L;
   });
-  const inner = size * 0.32;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto">${paths}<circle cx="${cx}" cy="${cy}" r="${inner}" fill="white"/><text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text></svg>`;
+  return `<div class="donut-wrap"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${t}"/>
+    ${segs}
+    <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'总计'}</text>
+  </svg></div>`;
+}
+function donutLegend(entries, total) {
+  return `<div class="donut-legend">${entries.map(([l, v]) => {
+    const pct = total ? (v / total * 100).toFixed(1) : 0;
+    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
+  }).join('')}</div>`;
 }
 function miniCards(items) {
   return `<div class="mini-grid">${items.map(([icon, label, val, color]) => 
@@ -556,7 +579,9 @@ function renderStats() {
     ['📝', '笔数', monthExpenses.length + '笔', '']
   ]);
   if (eCatEntries.length) {
-    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📂 支出分类</div>${barChart(eCatEntries, null, l => CAT_COLORS[l] || '#94a3b8')}</div>`;
+    html += `<div class="stat-card"><h3>💰 记账分类</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
+      ${donutChart(eCatEntries, 180, '支出')}${donutLegend(eCatEntries, totalOut)}
+    </div></div>`;
   }
   html += '</div>';
   // --- 采购明细 ---
