@@ -24,26 +24,29 @@ export async function onRequest(context) {
     return json({ error: 'FEISHU_BOT_WEBHOOK 未配置，请在 Cloudflare 环境变量中添加' }, 500, headers);
   }
 
+  // 根据 UTC 时间推算北京时间，选文案
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const bjHour = (now.getUTCHours() + 8) % 24;
 
-  // 防止同一天重复发送（用 KV 记录，没有 KV 也跳过）
-  let lastSent = null;
-  if (env.PUSH_KV) {
-    try { lastSent = await env.PUSH_KV.get('last_daily_sent'); } catch {}
-  }
-  if (lastSent === today) {
-    return json({ ok: true, message: '今天已发送过提醒' }, 200, headers);
+  let messages;
+  if (bjHour >= 11 && bjHour < 14) {
+    // 中午 12 点
+    messages = [
+      '🌤️ 中午了！上午买了什么？记一笔吧',
+      '🥢 午饭时间到，顺便记一下今天的开销',
+      '⏰ 中午提醒：别忘了记账哦',
+    ];
+  } else if (bjHour >= 17 && bjHour < 20) {
+    // 下午 6 点
+    messages = [
+      '🌆 下班时间到！今天花了多少钱，记一下吧',
+      '📝 今日消费总结：打开采购管家记录一下',
+      '💰 一天过去了，别忘了记账哦',
+    ];
+  } else {
+    messages = ['⏰ 该记账了！记得记录今天的开销'];
   }
 
-  // 随机一条提醒文案
-  const messages = [
-    '今天又花了多少钱？记一笔吧 💰',
-    '⏰ 该记账了！打开采购管家记录今天的开销',
-    '记得记账哦，不然月底对不上账了 📝',
-    '📦 采购管家提醒：今天别忘了记账～',
-    '积少成多，每天记账好习惯 ✨',
-  ];
   const msg = messages[Math.floor(Math.random() * messages.length)];
 
   // 通过飞书机器人发送
@@ -72,14 +75,8 @@ export async function onRequest(context) {
 
   const result = await res.json();
 
-  // 记录已发送
-  if (env.PUSH_KV) {
-    try { await env.PUSH_KV.put('last_daily_sent', today, { expirationTtl: 86400 * 3 }); } catch {}
-  }
-
   return json({
     ok: true,
     sent: (result.code === 0 || result.StatusCode === 0) ? 1 : 0,
-    date: today,
   }, 200, headers);
 }
