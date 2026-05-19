@@ -1,5 +1,5 @@
 // Service Worker - 离线缓存 + 推送通知
-const CACHE = 'purchase-cache-v1';
+const CACHE = 'purchase-cache-v2';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -11,7 +11,6 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(clients.claim());
-  // 清理旧缓存
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(k => k !== CACHE).map(k => caches.delete(k))
@@ -20,29 +19,66 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // API 请求不缓存
   if (e.request.url.includes('/api/')) return;
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
 });
 
-// 推送通知
+// ===== 推送通知 =====
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
-  const title = data.title || '个人管家';
+  let data = {};
+  if (e.data) {
+    try { data = e.data.json(); } catch { data = { body: e.data.text() }; }
+  }
+
+  const title = data.title || '📦 采购管家';
   const options = {
-    body: data.body || '记得记账哦 💰',
+    body: data.body || '该记账了 💰',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    vibrate: [200, 100, 200],
-    tag: 'reminder',
+    vibrate: [200, 100, 200, 100, 200],
+    tag: data.tag || 'reminder',
     requireInteraction: true,
+    data: { url: data.url || '/' },
+    actions: [
+      { action: 'open', title: '📝 去记账' },
+      { action: 'dismiss', title: '知道了' },
+    ],
   };
+
   e.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(clients.openWindow('/'));
+  const url = e.notification.data?.url || '/';
+
+  if (e.action === 'dismiss') return;
+
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // 如果已打开则聚焦
+      for (const client of clientList) {
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // 否则打开新窗口
+      return clients.openWindow(url);
+    })
+  );
+});
+
+// ===== 后台同步（预留） =====
+self.addEventListener('sync', e => {
+  if (e.tag === 'daily-reminder') {
+    e.waitUntil(
+      self.registration.showNotification('📦 采购管家', {
+        body: '该记账了 💰',
+        icon: '/icon-192.png',
+        tag: 'daily-reminder',
+      })
+    );
+  }
 });

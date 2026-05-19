@@ -334,35 +334,66 @@ document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='E
 // ===== Service Worker =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
 let pushSubscribed = localStorage.getItem('push_enabled') === '1';
+const PUSH_API = API.replace('/items','/push');
 
-// ===== 飞书推送通知 =====
-async function sendNotify(title, msg) {
-  try {
-    await fetch(API.replace('/items','/notify'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': getPin() },
-      body: JSON.stringify({ title, message: msg })
-    });
-  } catch(e) { console.warn('通知发送失败', e); }
+// ===== Web Push 订阅管理 =====
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const b64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
 }
 
 async function togglePush(){
   if(pushSubscribed){
+    // 取消订阅
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if(sub) {
+        await fetch(PUSH_API + '/subscribe', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': getPin() },
+          body: JSON.stringify({ endpoint: sub.endpoint })
+        });
+        await sub.unsubscribe();
+      }
+    } catch(e) { console.warn(e); }
     pushSubscribed = false;
     localStorage.setItem('push_enabled','0');
     document.getElementById('pushBtn').textContent = '🔔 开启推送';
     toast('推送已关闭');
     return;
   }
+
   try {
+    // 申请通知权限
     const perm = await Notification.requestPermission();
     if(perm !== 'granted') { alert('请在浏览器设置中允许通知'); return; }
-    // 注册服务端推送
-    await fetch(API.replace('/items','/notify'), {
+
+    // 获取 VAPID 公钥
+    const vapidRes = await fetch(PUSH_API + '/vapid');
+    const { publicKey } = await vapidRes.json();
+    if(!publicKey) throw new Error('无法获取 VAPID 密钥');
+
+    // 注册 Service Worker 并订阅
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    // 发送订阅到服务端
+    const res = await fetch(PUSH_API + '/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': getPin() },
-      body: JSON.stringify({ title: '📦 推送已开启', message: '采购管家通知已启用 ✅' })
+      body: JSON.stringify({ subscription: { endpoint: sub.endpoint, keys: sub.toJSON().keys } })
     });
+    const result = await res.json();
+    if(!result.ok) throw new Error('服务端订阅失败');
+
     pushSubscribed = true;
     localStorage.setItem('push_enabled','1');
     document.getElementById('pushBtn').textContent = '🔕 关闭推送';
@@ -680,20 +711,20 @@ function switchTab(t){
 // ===== 采购操作 =====
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);if(pushSubscribed)sendNotify('📋 批量更新',`**${ids.length} 件商品** → ${status}`);selectedIds.clear();toggleBatch();await loadAll()}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);if(pushSubscribed)sendNotify('🗑️ 批量删除',`已删除 **${ok} 件**商品`);selectedIds.clear();toggleBatch();await loadAll()}
+async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);selectedIds.clear();toggleBatch();await loadAll()}
+async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);selectedIds.clear();toggleBatch();await loadAll()}
 function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待买';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待买';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){await api('PUT',{id:editId,...data});toast('已更新');if(pushSubscribed)sendNotify('✏️ 采购已更新',`**${name}** · ${data.platform} · ¥${data.price}`)}else{await api('POST',data);toast('已添加');if(pushSubscribed)sendNotify('📦 新增采购',`**${name}** · ${data.platform} · ¥${data.price} × ${data.qty}`)}closeModal();await loadAll()}
-async function delItem(id){if(!confirm('确定删除？'))return;const item=items.find(x=>x.id===id);await api('DELETE',null,id);toast('已删除');if(pushSubscribed&&item)sendNotify('🗑️ 已删除',`**${item['商品名称']||''}**`);await loadAll()}
+async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){await api('PUT',{id:editId,...data});toast('已更新')}else{await api('POST',data);toast('已添加')}closeModal();await loadAll()}
+async function delItem(id){if(!confirm('确定删除？'))return;await api('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== 记账操作 =====
 function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{d=new Date(e['日期']).toISOString().slice(0,10)}catch{}}document.getElementById('eDate').value=d;}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);}document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){const lines=['日期\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{let ds='';if(e['日期']){try{ds=new Date(e['日期']).toISOString().slice(0,10)}catch{}}lines.push((ds||'')+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};const eid=document.getElementById('eEditId').value;if(eid){await expenseApi('PUT',{id:eid,...data});toast('已更新');if(pushSubscribed)sendNotify('✏️ 记账已更新',`**¥${amount}** · ${data.category}`)}else{await expenseApi('POST',data);toast('已记录');if(pushSubscribed)sendNotify('💰 新记录账',`**¥${amount}** · ${data.type} · ${data.category}`)}closeExpenseModal();await loadAll()}
-async function delExpense(id){if(!confirm('确定删除？'))return;const e=expenses.find(x=>x.id===id);await expenseApi('DELETE',null,id);toast('已删除');if(pushSubscribed&&e)sendNotify('🗑️ 记账已删除',`**¥${e['金额']||''}** · ${e['分类']||''}`);await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};const eid=document.getElementById('eEditId').value;if(eid){await expenseApi('PUT',{id:eid,...data});toast('已更新')}else{await expenseApi('POST',data);toast('已记录')}closeExpenseModal();await loadAll()}
+async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== 预算 =====
 function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
