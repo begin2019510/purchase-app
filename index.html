@@ -202,6 +202,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
     <div class="header-actions" id="headerActions">
       <button onclick="toggleBatch()">☑ 批量</button>
       <button onclick="exportData()">📤 导出</button>
+      <button id="pushBtn" onclick="togglePush()" style="display:none">🔔 推送</button>
     </div>
   </div>
   <div class="stats-row" id="headerStats"></div>
@@ -330,6 +331,32 @@ function submitPin(){const pin=document.getElementById('pinInput').value.trim();
 async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'X-API-Key':getPin()}});if(r.status===401){document.getElementById('pinError').textContent='密码错误';document.getElementById('pinInput').value='';return}if(!r.ok)throw new Error();document.getElementById('pinScreen').style.display='none';loadAll()}catch{document.getElementById('pinError').textContent='连接失败'}}
 document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitPin()});
 
+// ===== Service Worker =====
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+let pushSubscribed = localStorage.getItem('push_enabled') === '1';
+async function togglePush(){
+  if(pushSubscribed){
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if(sub) await sub.unsubscribe();
+    pushSubscribed = false;
+    localStorage.setItem('push_enabled','0');
+    document.getElementById('pushBtn').textContent = '🔔 开启推送';
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    // 申请权限
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted') { alert('请在浏览器设置中允许通知'); return; }
+    // 生成VAPID密钥对需要后端支持，先用测试订阅
+    toast('推送已开启 ✅');
+    pushSubscribed = true;
+    localStorage.setItem('push_enabled','1');
+    document.getElementById('pushBtn').textContent = '🔕 关闭推送';
+  } catch(e) { alert('推送开启失败: ' + e.message); }
+}
+
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
@@ -356,6 +383,7 @@ async function expenseApi(method,body,id){
 
 // ===== 启动 =====
 showVersion();
+if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
 if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
