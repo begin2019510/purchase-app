@@ -160,19 +160,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 </div>
+
+<!-- PIN 锁屏 -->
+<div id="pinScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:999;display:none;align-items:center;justify-content:center">
+  <div style="text-align:center;padding:20px;width:100%;max-width:320px">
+    <div style="font-size:48px;margin-bottom:16px">🔒</div>
+    <h2 style="font-size:18px;margin-bottom:6px">采购管理</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px">请输入访问密码</p>
+    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="输入 PIN" style="width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;font-size:20px;text-align:center;letter-spacing:8px;outline:none" onfocus="this.style.borderColor='var(--pri)'" onblur="this.style.borderColor='var(--border)'">
+    <p id="pinError" style="color:var(--red);font-size:12px;margin-top:8px;height:16px"></p>
+    <button onclick="submitPin()" style="width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer">进入</button>
+  </div>
+</div>
 <script>
 const API='/api/items';
 let items=[],currentStatusFilter='全部',currentCatFilter='全部',batchMode=false,selectedIds=new Set(),currentTab='list';
+
+// ===== PIN =====
+function getPin(){return localStorage.getItem('purchase_pin')||''}
+function setPin(p){localStorage.setItem('purchase_pin',p)}
+function submitPin(){const pin=document.getElementById('pinInput').value.trim();if(!pin){document.getElementById('pinError').textContent='请输入密码';return}setPin(pin);verifyAndLoad()}
+async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'X-API-Key':getPin()}});if(r.status===401){document.getElementById('pinError').textContent='密码错误';document.getElementById('pinInput').value='';return}if(!r.ok)throw new Error();document.getElementById('pinScreen').style.display='none';loadItems()}catch{document.getElementById('pinError').textContent='连接失败'}}
+document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitPin()});
+
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
-async function api(method,body,id){let url=API;const opts={method,headers:{'Content-Type':'application/json'}};if(method==='DELETE')url+='?id='+id;else if(body)opts.body=JSON.stringify(body);const r=await fetch(url,opts);return r.json()}
-async function loadItems(){try{items=await api('GET');render()}catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">❌</div>加载失败</div>'}}
+
+// ===== API（带 PIN） =====
+async function api(method,body,id){
+  let url=API;
+  const opts={method,headers:{'Content-Type':'application/json','X-API-Key':getPin()}};
+  if(method==='DELETE')url+='?id='+id;
+  else if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(r.status===401){document.getElementById('pinScreen').style.display='flex';document.getElementById('pinError').textContent='会话过期，请重新输入密码';return{error:'unauthorized'}}
+  return r.json();
+}
+
+// ===== 启动 =====
+if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}
 function getMonth(d){if(!d)return null;try{return new Date(d).toISOString().slice(0,7)}catch{return null}}
 function getThisMonth(){return new Date().toISOString().slice(0,7)}
 function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
+async function loadItems(){try{const r=await api('GET');if(r&&r.error)return;if(Array.isArray(r))items=r;render()}catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">❌</div>加载失败</div>'}}
 function render(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   let f=items;
