@@ -65,7 +65,7 @@ export async function onRequest(context) {
             '日期': dateStr,
             '类型': f['类型'] || '支出',
             '分类': f['分类'] || '其他',
-            '金额': f['金额'] || 0,
+            '金额': Number(f['金额']) || 0,
             '备注': f['备注'] || '',
           });
         });
