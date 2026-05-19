@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .chip.active{background:var(--pri);color:#fff;border-color:var(--pri)}
 .container{max-width:600px;margin:0 auto;padding:8px 12px}
 .section-title{font-size:13px;font-weight:700;color:var(--muted);padding:10px 4px 6px;display:flex;justify-content:space-between;align-items:center}
-.card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative;transition:all .15s}
+.card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative;transition:all .15s;padding-right:60px}
 .card.selected{background:var(--pri-light);border:1px solid var(--pri)}
 .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .card .name{font-size:14px;font-weight:600;flex:1}
@@ -48,8 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .badge-已退{background:#fee2e2;color:#991b1b}
 .cat-badge{background:var(--pri-light);color:var(--pri);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
 .card .note{font-size:11px;color:var(--muted);margin-top:4px}
-.card .actions{position:absolute;top:12px;right:12px;display:flex;gap:4px}
-.card .actions button{background:none;border:none;font-size:14px;cursor:pointer;padding:2px;border-radius:4px;opacity:.5}
+.card .actions{position:absolute;top:8px;right:8px;display:flex;gap:2px;z-index:1}
+.card .actions button{background:none;border:none;font-size:15px;cursor:pointer;padding:4px;border-radius:4px;opacity:.6}
 .card .actions button:hover{opacity:1;background:var(--border)}
 .card .checkbox{position:absolute;top:12px;left:12px;width:18px;height:18px;border-radius:4px;border:2px solid var(--border);background:#fff;cursor:pointer;display:none;align-items:center;justify-content:center}
 .batch-mode .card .checkbox{display:flex}
