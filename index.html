@@ -144,6 +144,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .cat-餐饮{background:#fef3c7}.cat-交通{background:#dbeafe}.cat-购物{background:#fce7f3}
 .cat-娱乐{background:#ede9fe}.cat-居住{background:#dcfce7}.cat-医疗{background:#fee2e2}
 .cat-教育{background:#e0e7ff}.cat-其他{background:#f1f5f9}
+
+/* ===== Charts ===== */
+.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mini-card{background:var(--bg);border-radius:12px;padding:14px 12px;text-align:center}
+.mini-card .mini-icon{font-size:20px;margin-bottom:4px}
+.mini-card .mini-val{font-size:18px;font-weight:800}
+.mini-card .mini-lbl{font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
+.chart-row{display:flex;align-items:center;padding:6px 0;gap:8px}
+.chart-label{font-size:12px;font-weight:600;min-width:42px;text-align:right}
+.chart-bar-bg{flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:6px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.chart-val{font-size:12px;font-weight:700;min-width:52px;text-align:right}
 </style>
 </head>
 <body>
@@ -183,7 +195,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 <div id="tab-stats" style="display:none"><div class="container stats-page" id="statsContent"></div></div>
 
 <!-- FAB -->
-<button class="fab" id="fabBtn" onclick="openModal()">+</button>
+<button class="fab" id="fabBtn">+</button>
 
 <!-- Batch Bar -->
 <div class="batch-bar" id="batchBar">
@@ -435,16 +447,130 @@ function renderExpense(){
 }
 
 // ===== 统计渲染 =====
-function renderStats(){
-  const thisMonth=getThisMonth();const budget=getBudget(thisMonth);const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);const monthTotal=totalCost(monthItems);const total=totalCost(items);
-  const catMap={};monthItems.forEach(i=>{const c=i['分类']||'其他';catMap[c]=(catMap[c]||0)+(i['单价']||0)*(i['数量']||1)});const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);const maxCat=catEntries.length?catEntries[0][1]:1;const catColors={'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8'};
-  const platMap={};monthItems.forEach(i=>{const p=i['平台']||'其他';platMap[p]=(platMap[p]||0)+(i['单价']||0)*(i['数量']||1)});const platEntries=Object.entries(platMap).sort((a,b)=>b[1]-a[1]);
-  const statusMap={};items.forEach(i=>{const s=i['状态']||'待买';statusMap[s]=(statusMap[s]||0)+1});
-  let html=`<div class="stat-card"><h3>🛒 本月采购</h3><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:28px;font-weight:800;color:var(--pri)">¥${monthTotal.toFixed(0)}</div><div style="font-size:12px;color:var(--muted)">${budget?`预算 ¥${budget}`:'未设置预算'}</div></div><button onclick="openBudgetModal()" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:pointer">${budget?'修改':'设置预算'}</button></div>${budget?`<div class="budget-bar"><div class="budget-fill" style="width:${Math.min(monthTotal/budget*100,100)}%;background:${monthTotal>budget?'var(--red)':monthTotal>budget*0.8?'var(--orange)':'var(--green)'}"></div></div><div class="budget-label"><span>${(monthTotal/budget*100).toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget-monthTotal,0).toFixed(0)}</span></div>`:''}</div>`;
-  if(catEntries.length){html+=`<div class="stat-card"><h3>📂 采购分类</h3>`;catEntries.forEach(([cat,val])=>{const pct=(val/maxCat*100).toFixed(0);const color=catColors[cat]||'#94a3b8';html+=`<div class="cat-row"><span style="min-width:48px">${cat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div></div><span style="min-width:60px;text-align:right;font-weight:700">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
-  if(platEntries.length){html+=`<div class="stat-card"><h3>🏪 采购平台</h3>`;platEntries.forEach(([plat,val])=>{html+=`<div class="cat-row"><span style="min-width:48px">${plat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${(val/platEntries[0][1]*100)}%;background:var(--pri)"></div></div><span style="min-width:60px;text-align:right;font-weight:700">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
-  html+=`<div class="stat-card"><h3>📈 总览</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div>总采购 <strong>${items.length}</strong></div><div>总花费 <strong>¥${total.toFixed(0)}</strong></div><div>待买 <strong>${statusMap['待买']||0}</strong></div><div>已买 <strong>${statusMap['已买']||0}</strong></div><div>已到 <strong>${statusMap['已到']||0}</strong></div><div>已退 <strong>${statusMap['已退']||0}</strong></div></div></div>`;
-  document.getElementById('statsContent').innerHTML=html;
+const CAT_COLORS = {'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8','餐饮':'#ef4444','购物':'#ec4899','娱乐':'#8b5cf6','居住':'#10b981','医疗':'#f59e0b','教育':'#3b82f6'};
+function barChart(entries, maxVal, colorFn) {
+  if (!entries.length) return '';
+  const max = maxVal || Math.max(...entries.map(e => e[1]));
+  return entries.map(([label, val]) => {
+    const pct = max > 0 ? (val / max * 100) : 0;
+    const color = colorFn ? colorFn(label) : 'var(--pri)';
+    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
+  }).join('');
+}
+function donutChart(entries, size) {
+  if (!entries.length) return '<div style="text-align:center;color:var(--muted);padding:20px">暂无数据</div>';
+  const total = entries.reduce((s, e) => s + e[1], 0);
+  let cum = 0;
+  const r = size / 2 - 10;
+  const cx = size / 2, cy = size / 2;
+  let paths = '';
+  entries.forEach(([label, val]) => {
+    if (val <= 0) return;
+    const pct = val / total;
+    const startAngle = cum * 2 * Math.PI - Math.PI / 2;
+    cum += pct;
+    const endAngle = cum * 2 * Math.PI - Math.PI / 2;
+    const largeArc = pct > 0.5 ? 1 : 0;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const color = CAT_COLORS[label] || '#94a3b8';
+    paths += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${color}" opacity="0.85"/>`;
+  });
+  const inner = size * 0.32;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto">${paths}<circle cx="${cx}" cy="${cy}" r="${inner}" fill="white"/><text x="${cx}" y="cy" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text></svg>`;
+}
+function miniCards(items) {
+  return `<div class="mini-grid">${items.map(([icon, label, val, color]) => 
+    `<div class="mini-card"><div class="mini-icon">${icon}</div><div class="mini-val" style="color:${color||'var(--text)'}">${val}</div><div class="mini-lbl">${label}</div></div>`
+  ).join('')}</div>`;
+}
+function renderStats() {
+  const thisMonth = getThisMonth();
+  const budget = getBudget(thisMonth);
+  // ===== 采购数据 =====
+  const monthItems = items.filter(i => getMonth(i['日期']) === thisMonth);
+  const monthTotal = monthItems.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
+  const totalAll = items.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
+  const pCatMap = {};
+  monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
+  const pPlatMap = {};
+  monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
+  const statusMap = {};
+  items.forEach(i => { const s = i['状态'] || '待买'; statusMap[s] = (statusMap[s] || 0) + 1; });
+  // ===== 记账数据 =====
+  const monthExpenses = expenses.filter(e => {
+    if (!e['日期']) return false;
+    try { return new Date(e['日期']).toISOString().slice(0, 7) === thisMonth } catch { return false }
+  });
+  const totalOut = monthExpenses.filter(e => e['类型'] === '支出').reduce((s, e) => s + (e['金额'] || 0), 0);
+  const totalIn = monthExpenses.filter(e => e['类型'] === '收入').reduce((s, e) => s + (e['金额'] || 0), 0);
+  const eCatMap = {};
+  monthExpenses.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + (e['金额'] || 0); });
+  const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
+  // ===== 总览 =====
+  let html = '';
+  // --- 总览卡片 ---
+  html += `<div class="stat-card" style="background:var(--pri-g);color:#fff;border:none">
+    <h3 style="color:#fff">📊 本月总览</h3>
+    ${miniCards([
+      ['🛒', '采购', '¥' + monthTotal.toFixed(0), '#fff'],
+      ['💸', '支出', '¥' + totalOut.toFixed(0), '#fca5a5'],
+      ['💰', '收入', '¥' + totalIn.toFixed(0), '#86efac'],
+      ['📈', '结余', '¥' + (totalIn - totalOut - monthTotal).toFixed(0), '#fde68a']
+    ])}
+  </div>`;
+  // --- 采购统计 ---
+  html += `<div class="stat-card"><h3>🛒 采购统计</h3>`;
+  html += miniCards([
+    ['📦', '本月', monthItems.length + '件', ''],
+    ['💵', '本月花费', '¥' + monthTotal.toFixed(0), 'var(--pri)'],
+    ['📊', '总花费', '¥' + totalAll.toFixed(0), 'var(--muted)'],
+    ['⏳', '待买', (statusMap['待买'] || 0) + '件', 'var(--orange)']
+  ]);
+  if (budget) {
+    const pct = Math.min(monthTotal / budget * 100, 100);
+    const color = monthTotal > budget ? 'var(--red)' : monthTotal > budget * 0.8 ? 'var(--orange)' : 'var(--green)';
+    html += `<div style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px"><span>💰 预算</span><span>¥${monthTotal.toFixed(0)} / ¥${budget}</span></div>
+      <div class="budget-bar"><div class="budget-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="budget-label"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
+    </div>`;
+  }
+  if (pCatEntries.length) {
+    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📂 分类</div>${barChart(pCatEntries, null, l => CAT_COLORS[l] || '#94a3b8')}</div>`;
+  }
+  if (pPlatEntries.length) {
+    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🏪 平台</div>${barChart(pPlatEntries, null, () => 'var(--pri)')}</div>`;
+  }
+  html += '</div>';
+  // --- 记账统计 ---
+  html += `<div class="stat-card"><h3>💰 记账统计</h3>`;
+  html += miniCards([
+    ['💸', '本月支出', '¥' + totalOut.toFixed(0), 'var(--red)'],
+    ['💰', '本月收入', '¥' + totalIn.toFixed(0), 'var(--green)'],
+    ['📊', '净收支', '¥' + (totalIn - totalOut).toFixed(0), totalIn - totalOut >= 0 ? 'var(--green)' : 'var(--red)'],
+    ['📝', '笔数', monthExpenses.length + '笔', '']
+  ]);
+  if (eCatEntries.length) {
+    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📂 支出分类</div>${barChart(eCatEntries, null, l => CAT_COLORS[l] || '#94a3b8')}</div>`;
+  }
+  html += '</div>';
+  // --- 采购明细 ---
+  if (items.length) {
+    html += `<div class="stat-card"><h3>📈 采购明细</h3><div style="font-size:12px;color:var(--muted);margin-bottom:10px">各状态占比</div>`;
+    const totalItems = items.length;
+    Object.entries(statusMap).forEach(([s, n]) => {
+      const pct = (n / totalItems * 100).toFixed(0);
+      const cls = 'badge-' + s;
+      html += `<div class="cat-row"><span class="badge ${cls}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${s === '待买' ? 'var(--orange)' : s === '已买' ? 'var(--green)' : s === '已到' ? 'var(--blue)' : 'var(--red)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
+    });
+    html += '</div>';
+  }
+  document.getElementById('statsContent').innerHTML = html;
 }
 
 // ===== Tab 切换 =====
