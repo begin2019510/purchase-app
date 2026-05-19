@@ -1,7 +1,6 @@
-// GET/POST /api/push/trigger - 触发每日提醒推送
-// 调用此接口会向所有订阅者发送每日提醒
-// 可被外部 cron 服务调用（如 cron-job.org）
-// 需要环境变量: CRON_SECRET（调用密钥）
+// GET/POST /api/push/trigger - 触发每日记账提醒
+// 通过飞书机器人 webhook 发送推送（国内可用）
+// 需要环境变量: CRON_SECRET（调用密钥）, FEISHU_BOT_WEBHOOK
 
 import { json, corsHeaders } from '../../_utils.js';
 
@@ -13,104 +12,74 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers });
   }
 
-  // 验证 cron 密钥（防止被别人调用）
+  // 验证 cron 密钥
   const authHeader = request.headers.get('Authorization');
   const url = new URL(request.url);
   const token = url.searchParams.get('token') || (authHeader ? authHeader.replace('Bearer ', '') : '');
-
   if (env.CRON_SECRET && token !== env.CRON_SECRET) {
     return json({ error: '未授权' }, 401, headers);
   }
 
-  const now = new Date();
+  if (!env.FEISHU_BOT_WEBHOOK) {
+    return json({ error: 'FEISHU_BOT_WEBHOOK 未配置，请在 Cloudflare 环境变量中添加' }, 500, headers);
+  }
 
-  // 可选：限制只在特定时间段发送（防止重复）
-  // 从 KV 读取上次发送日期
-  const lastSent = await env.PUSH_KV.get('last_daily_sent');
+  const now = new Date();
   const today = now.toISOString().slice(0, 10);
+
+  // 防止同一天重复发送（用 KV 记录，没有 KV 也跳过）
+  let lastSent = null;
+  if (env.PUSH_KV) {
+    try { lastSent = await env.PUSH_KV.get('last_daily_sent'); } catch {}
+  }
   if (lastSent === today) {
     return json({ ok: true, message: '今天已发送过提醒' }, 200, headers);
   }
 
-  // 获取所有推送订阅
-  const list = await env.PUSH_KV.list({ prefix: 'sub:' });
-  if (!list.keys || list.keys.length === 0) {
-    return json({ ok: true, sent: 0, message: '无订阅者' }, 200, headers);
-  }
+  // 随机一条提醒文案
+  const messages = [
+    '今天又花了多少钱？记一笔吧 💰',
+    '⏰ 该记账了！打开采购管家记录今天的开销',
+    '记得记账哦，不然月底对不上账了 📝',
+    '📦 采购管家提醒：今天别忘了记账～',
+    '积少成多，每天记账好习惯 ✨',
+  ];
+  const msg = messages[Math.floor(Math.random() * messages.length)];
 
-  let sent = 0;
-  let expired = 0;
-  const toDelete = [];
-
-  for (const key of list.keys) {
-    const record = await env.PUSH_KV.get(key.name, { type: 'json' });
-    if (!record?.subscription?.keys) {
-      toDelete.push(key.name);
-      continue;
-    }
-
-    // 构建推送 payload
-    const payloads = [
-      {
-        title: '📦 该记账了',
-        body: '今天买了什么？花了几块钱？记一下吧 💰',
-        tag: 'daily-reminder',
-        url: '/',
-      },
-      {
-        title: '💰 采购管家提醒',
-        body: '别忘了记账哦，积少成多 ✨',
-        tag: 'daily-reminder',
-        url: '/',
-      },
-      {
-        title: '📝 今日消费记录',
-        body: '打开采购管家，记录今天的开销',
-        tag: 'daily-reminder',
-        url: '/',
-      },
-    ];
-
-    const payload = payloads[Math.floor(Math.random() * payloads.length)];
-
-    try {
-      // 调用 send 接口发送
-      const sendRes = await fetch(`${new URL(request.url).origin}/api/push/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Call': 'true',
+  // 通过飞书机器人发送
+  const feishuPayload = {
+    msg_type: 'interactive',
+    card: {
+      header: { title: { tag: 'plain_text', content: '📦 该记账了' }, template: 'purple' },
+      elements: [
+        { tag: 'markdown', content: msg },
+        {
+          tag: 'action',
+          actions: [{
+            tag: 'button', text: { tag: 'plain_text', content: '📝 去记账' },
+            type: 'primary', url: 'https://121212121.top',
+          }],
         },
-        body: JSON.stringify({
-          endpoint: record.subscription.endpoint,
-          keys: record.subscription.keys,
-          payload: JSON.stringify(payload),
-        }),
-      });
+      ],
+    },
+  };
 
-      const result = await sendRes.json();
-      if (result.expired) {
-        toDelete.push(key.name);
-        expired++;
-      } else if (result.ok) {
-        sent++;
-      }
-    } catch (e) {
-      console.error('Push send error:', e);
-    }
-  }
+  const res = await fetch(env.FEISHU_BOT_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(feishuPayload),
+  });
 
-  // 清理过期订阅
-  for (const k of toDelete) await env.PUSH_KV.delete(k);
+  const result = await res.json();
 
   // 记录已发送
-  await env.PUSH_KV.put('last_daily_sent', today, { expirationTtl: 86400 * 2 });
+  if (env.PUSH_KV) {
+    try { await env.PUSH_KV.put('last_daily_sent', today, { expirationTtl: 86400 * 3 }); } catch {}
+  }
 
   return json({
     ok: true,
-    sent,
-    expired,
-    total: list.keys.length,
+    sent: (result.code === 0 || result.StatusCode === 0) ? 1 : 0,
     date: today,
   }, 200, headers);
 }

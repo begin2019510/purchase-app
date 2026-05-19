@@ -2,62 +2,45 @@
 
 ## 手机访问
 
-采购管理工具是 PWA（渐进式 Web App），手机直接访问即可：
-
 1. 手机浏览器打开 **http://121212121.top**
-2. **iPhone Safari**：点底部「分享」→「添加到主屏幕」
-3. **Android Chrome**：点菜单→「添加到主屏幕」或「安装应用」
-4. 添加后就像一个 App 一样使用
+2. **iPhone Safari**：底部「分享」→「添加到主屏幕」
+3. **Android Chrome**：菜单 →「添加到主屏幕」
+4. 添加后像一个 App 一样用
 
 ## 每日推送提醒
 
-推送使用 **Web Push** 标准协议（不是飞书机器人），锁屏就能看到通知。
+推送使用**飞书自定义机器人**，依赖飞书 App 的推送通道（国内可用）。
 
-### 开启推送
+### 配置方法
 
-1. 手机打开采购管家
-2. 点击右上角 **🔔 开启推送**
-3. 浏览器弹出权限请求 → 点「允许」
-4. 完成！每天会收到一条记账提醒
+#### 1. 获取飞书机器人 webhook 地址
 
-### 设置定时提醒（需配置一次）
+1. 打开飞书 → 进入一个群聊（或新建一个单人群）
+2. 点群设置 → **群机器人** → **添加机器人**
+3. 选 **自定义机器人**，起个名字（如「采购管家」）
+4. 复制 **Webhook 地址**（格式：`https://open.feishu.cn/open-apis/bot/v2/hook/xxx`）
 
-推送需要一个外部定时器来触发。使用免费的 [cron-job.org](https://cron-job.org)：
+#### 2. 配置 Cloudflare 环境变量
 
-1. 注册 cron-job.org（免费）
-2. 创建一个新任务
-3. **Schedule**：选 "Daily"（每天）
-4. **URL**：填入
-   ```
-   https://你的域名/api/push/trigger?token=你的密钥
-   ```
-5. **Request method**：GET
-6. 保存并激活
+1. https://dash.cloudflare.com → Pages → purchase-app → Settings → **Environment variables**
+2. 添加两个变量：
 
-### 自定义提醒时间
+| 变量名 | 值 |
+|--------|-----|
+| `CRON_SECRET` | `daily-reminder-2026` |
+| `FEISHU_BOT_WEBHOOK` | 上面复制的飞书 Webhook 地址 |
 
-在 cron-job.org 中设置执行时间即可，比如：
-- 每天 20:00 → "20:00 UTC+8" → cron 设为 `0 12 * * *`（UTC）
-- 每天 12:00 → cron 设为 `0 4 * * *`（UTC）
+3. 保存，等待重新部署
 
-### 环境变量配置
+#### 3. 配置 GitHub 密钥
 
-在 Cloudflare Pages 项目中设置：
+https://github.com/begin2019510/purchase-app/settings/secrets/actions
 
-| 变量名 | 说明 | 示例 |
-|--------|------|------|
-| `CRON_SECRET` | 定时任务调用密钥（防别人乱调） | `my-secret-key-123` |
+点 **New repository secret**：
+- Name: `CRON_SECRET`
+- Value: `daily-reminder-2026`
+- 保存
 
-## 推送通知样式
+### 配置完成后
 
-推送内容每天随机显示以下样式之一：
-
-- 📦 **该记账了** — 今天买了什么？花了几块钱？记一下吧 💰
-- 💰 **采购管家提醒** — 别忘了记账哦，积少成多 ✨
-- 📝 **今日消费记录** — 打开采购管家，记录今天的开销
-
-点击通知会直接打开采购管家。
-
-## 关闭推送
-
-在应用内点击 **🔕 关闭推送** 即可。
+每天 **北京时间 20:00**，你的飞书会收到一条记账提醒，点击按钮直接打开采购管家。
