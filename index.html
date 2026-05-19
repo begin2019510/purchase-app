@@ -558,7 +558,7 @@ function renderStats() {
   html += `<div class="stat-card" style="background:var(--pri-g);color:#fff;border:none">
     <h3 style="color:#fff">📊 本月总览</h3>
     ${miniCards([
-      ['🛒', '采购', '¥' + monthTotal.toFixed(0), '#fff'],
+      ['🛒', '采购', '¥' + monthTotal.toFixed(0), 'var(--pri)'],
       ['💸', '支出', '¥' + totalOut.toFixed(0), '#fca5a5'],
       ['💰', '收入', '¥' + totalIn.toFixed(0), '#86efac'],
       ['📈', '结余', '¥' + (totalIn - totalOut - monthTotal).toFixed(0), '#fde68a']
