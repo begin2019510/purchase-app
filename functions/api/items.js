@@ -45,10 +45,7 @@ function json(data, status = 200, corsHeaders) {
 // ===== PIN 认证 =====
 function verifyPin(request, env) {
   const pin = request.headers.get('X-API-Key');
-  const expected = env.API_KEY;
-  // Debug: 暂时返回详细信息
-  if (pin === '__debug__') return { pin, expected, match: pin === expected, pinLen: pin?.length, expectedLen: expected?.length };
-  if (!pin || pin !== expected) return false;
+  if (!pin || pin !== env.API_KEY) return false;
   return true;
 }
 
@@ -78,9 +75,7 @@ export async function onRequest(context) {
   }
 
   // PIN 校验（所有请求都要）
-  const pinResult = verifyPin(request, env);
-  if (pinResult && typeof pinResult === 'object') return json(pinResult, 200, corsHeaders);
-  if (!pinResult) {
+  if (!verifyPin(request, env)) {
     return json({ error: '未授权：PIN 错误或缺失' }, 401, corsHeaders);
   }
 
