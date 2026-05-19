@@ -1,0 +1,15 @@
+name: 每日记账提醒
+
+on:
+  schedule:
+    # 每天 UTC 12:00 = 北京时间 20:00
+    - cron: '0 12 * * *'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 触发推送提醒
+        run: |
+          curl -s "https://121212121.top/api/push/trigger?token=${{ secrets.CRON_SECRET }}"
