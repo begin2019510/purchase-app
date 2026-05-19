@@ -17,6 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 .header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50;text-shadow:0 1px 3px rgba(0,0,0,.15)}
 .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .header h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
+.header-version{font-size:9px;background:rgba(255,255,255,.15);padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:700;letter-spacing:.3px;vertical-align:middle}
 .header-actions{display:flex;gap:6px}
 .header-actions button{background:rgba(255,255,255,.18);backdrop-filter:blur(4px);border:none;color:#fff;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
 .header-actions button:active{transform:scale(.95);background:rgba(255,255,255,.3)}
@@ -197,7 +198,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家</h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.1</span></h1>
     <div class="header-actions" id="headerActions">
       <button onclick="toggleBatch()">☑ 批量</button>
       <button onclick="exportData()">📤 导出</button>
@@ -312,6 +313,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 </div>
 
 <script>
+const APP_VERSION='2.1.0';
+function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const API='/api/items';
 const EXPENSE_API='/api/expenses';
 let items=[], expenses=[];
@@ -351,6 +354,7 @@ async function expenseApi(method,body,id){
 }
 
 // ===== 启动 =====
+showVersion();
 if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
