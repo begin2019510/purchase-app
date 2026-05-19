@@ -3,121 +3,189 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>采购管理</title>
+<title>个人管家</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4f46e5">
+<meta name="theme-color" content="#6366f1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--pri:#4f46e5;--pri-light:#e0e7ff;--bg:#f1f5f9;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--green:#16a34a;--red:#dc2626;--orange:#ea580c;--blue:#2563eb}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:90px}
-.header{background:var(--pri);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:50}
-.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.header h1{font-size:17px;font-weight:700}
+:root{--pri:#6366f1;--pri-dark:#4f46e5;--pri-light:#eef2ff;--pri-g:linear-gradient(135deg,#6366f1,#8b5cf6);--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--pink:#ec4899;--radius:14px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+
+/* ===== Header ===== */
+.header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.header h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
 .header-actions{display:flex;gap:6px}
-.header-actions button{background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer}
-.header-actions button:hover{background:rgba(255,255,255,.25)}
-.stats-row{display:flex;gap:12px;font-size:12px;opacity:.9}
+.header-actions button{background:rgba(255,255,255,.18);backdrop-filter:blur(4px);border:none;color:#fff;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.header-actions button:active{transform:scale(.95);background:rgba(255,255,255,.3)}
+.stats-row{display:flex;gap:16px}
 .stats-row .stat{display:flex;flex-direction:column}
-.stats-row .stat-val{font-size:16px;font-weight:700}
-.stats-row .stat-lbl{font-size:11px;opacity:.7}
-.tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:40}
-.tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.stats-row .stat-val{font-size:20px;font-weight:800}
+.stats-row .stat-lbl{font-size:11px;opacity:.7;margin-top:1px}
+
+/* ===== Tabs ===== */
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:68px;z-index:40;padding:0 4px}
+.tab{flex:1;padding:12px 0;text-align:center;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:.15s}
 .tab.active{color:var(--pri);border-bottom-color:var(--pri)}
+
+/* ===== Search ===== */
 .search-bar{padding:10px 14px;background:#fff}
-.search-input{width:100%;padding:9px 12px 9px 34px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 10px center no-repeat}
-.search-input:focus{border-color:var(--pri)}
+.search-input{width:100%;padding:10px 14px 10px 38px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;outline:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;transition:.2s}
+.search-input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+
+/* ===== Chips ===== */
 .chips{display:flex;gap:6px;padding:6px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .chips::-webkit-scrollbar{display:none}
-.chip{padding:5px 12px;border-radius:16px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0}
-.chip.active{background:var(--pri);color:#fff;border-color:var(--pri)}
-.container{max-width:600px;margin:0 auto;padding:8px 12px}
-.section-title{font-size:13px;font-weight:700;color:var(--muted);padding:10px 4px 6px;display:flex;justify-content:space-between;align-items:center}
-.card{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative;transition:all .15s;padding-right:60px}
-.card.selected{background:var(--pri-light);border:1px solid var(--pri)}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
+.chip.active{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 8px rgba(99,102,241,.3)}
+.chip:active{transform:scale(.95)}
+
+/* ===== Container ===== */
+.container{max-width:600px;margin:0 auto;padding:8px 14px}
+.section-title{font-size:13px;font-weight:700;color:var(--muted);padding:12px 4px 6px;display:flex;justify-content:space-between;align-items:center}
+
+/* ===== Cards ===== */
+.card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);position:relative;transition:.15s;padding-right:64px;border:1.5px solid transparent}
+.card:active{transform:scale(.985)}
+.card.selected{background:var(--pri-light);border-color:var(--pri)}
 .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.card .name{font-size:14px;font-weight:600;flex:1}
-.card .price{font-size:16px;font-weight:700;color:var(--pri);white-space:nowrap}
-.card .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px}
+.card .name{font-size:15px;font-weight:700;flex:1;line-height:1.3}
+.card .price{font-size:17px;font-weight:800;color:var(--pri);white-space:nowrap}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .card .meta span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
-.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.badge{display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;letter-spacing:.2px}
 .badge-待买{background:#fef3c7;color:#92400e}
 .badge-已买{background:#dcfce7;color:#166534}
 .badge-已到{background:#dbeafe;color:#1e40af}
 .badge-已退{background:#fee2e2;color:#991b1b}
-.cat-badge{background:var(--pri-light);color:var(--pri);padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600}
+.cat-badge{background:var(--pri-light);color:var(--pri);padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700}
 .card .note{font-size:11px;color:var(--muted);margin-top:4px}
-.card .actions{position:absolute;top:8px;right:8px;display:flex;gap:2px;z-index:1}
-.card .actions button{background:none;border:none;font-size:15px;cursor:pointer;padding:4px;border-radius:4px;opacity:.6}
+.card .actions{position:absolute;top:10px;right:10px;display:flex;gap:2px;z-index:1}
+.card .actions button{background:none;border:none;font-size:15px;cursor:pointer;padding:4px;border-radius:6px;opacity:.5;transition:.15s}
 .card .actions button:hover{opacity:1;background:var(--border)}
-.card .checkbox{position:absolute;top:12px;left:12px;width:18px;height:18px;border-radius:4px;border:2px solid var(--border);background:#fff;cursor:pointer;display:none;align-items:center;justify-content:center}
+.card .checkbox{position:absolute;top:14px;left:14px;width:20px;height:20px;border-radius:6px;border:2px solid var(--border);background:#fff;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:11px;font-weight:700}
 .batch-mode .card .checkbox{display:flex}
 .batch-mode .card .checkbox.checked{background:var(--pri);border-color:var(--pri);color:#fff}
 .batch-mode .card .actions{display:none}
-.fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--pri);color:#fff;border:none;font-size:28px;box-shadow:0 4px 12px rgba(79,70,229,.4);cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center}
-.batch-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 16px;display:none;align-items:center;gap:10px;z-index:60}
+
+/* ===== FAB ===== */
+.fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:24px;width:58px;height:58px;border-radius:16px;background:var(--pri-g);color:#fff;border:none;font-size:28px;box-shadow:0 4px 16px rgba(99,102,241,.45);cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center;transition:.2s}
+.fab:active{transform:scale(.9)}
+
+/* ===== Batch Bar ===== */
+.batch-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 16px;display:none;align-items:center;gap:10px;z-index:60;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
 .batch-bar.show{display:flex}
-.batch-bar .batch-info{flex:1;font-size:13px;font-weight:600}
-.batch-bar select{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px}
-.batch-bar .batch-btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.batch-bar .batch-info{flex:1;font-size:13px;font-weight:700}
+.batch-bar select{padding:7px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;background:#fff}
+.batch-bar .batch-btn{padding:9px 18px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.batch-bar .batch-btn:active{transform:scale(.95)}
 .batch-btn-primary{background:var(--pri);color:#fff}
 .batch-btn-danger{background:var(--red);color:#fff}
 .batch-btn-cancel{background:var(--border);color:var(--text)}
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-end;justify-content:center}
+
+/* ===== Modal ===== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center}
 .modal-overlay.active{display:flex}
-.modal{background:var(--card);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .2s ease}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal h2{font-size:16px;margin-bottom:14px;text-align:center}
-.form-group{margin-bottom:12px}
-.form-group label{display:block;font-size:12px;font-weight:600;margin-bottom:3px;color:var(--muted)}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
-.form-group input:focus,.form-group select:focus{border-color:var(--pri)}
-.form-group textarea{resize:vertical;min-height:50px}
+.modal h2{font-size:18px;font-weight:800;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--muted);letter-spacing:.3px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;outline:none;background:#fff;transition:.2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.form-group textarea{resize:vertical;min-height:60px}
 .form-row{display:flex;gap:10px}
 .form-row .form-group{flex:1}
-.btn-row{display:flex;gap:10px;margin-top:14px}
-.btn{flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
-.btn-primary{background:var(--pri);color:#fff}
+.btn-row{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--pri-g);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.3)}
 .btn-secondary{background:var(--border);color:var(--text)}
-.stats-page{padding:12px}
-.stat-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.stat-card h3{font-size:14px;font-weight:700;margin-bottom:10px}
-.budget-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0}
-.budget-fill{height:100%;border-radius:4px;transition:width .3s}
-.budget-label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
-.cat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+
+/* ===== Stats Page ===== */
+.stats-page{padding:12px 0}
+.stat-card{background:#fff;border-radius:var(--radius);padding:18px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.stat-card h3{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.budget-bar{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin:10px 0}
+.budget-fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.budget-label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;font-weight:600}
+.cat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
 .cat-row:last-child{border:none}
-.cat-bar{flex:1;margin:0 12px;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
-.cat-bar-fill{height:100%;border-radius:3px}
-.empty{text-align:center;padding:50px 20px;color:var(--muted)}
-.empty .icon{font-size:40px;margin-bottom:10px}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;animation:fadeIn .3s}
+.cat-bar{flex:1;margin:0 12px;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:48px;margin-bottom:12px}
+.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;animation:fadeIn .3s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
 @keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ===== 记账模块 ===== */
+.expense-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.expense-card{background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);text-align:center;border:1px solid var(--border)}
+.expense-card .amount{font-size:24px;font-weight:800;margin:4px 0}
+.expense-card .label{font-size:11px;color:var(--muted);font-weight:600}
+.expense-card.income .amount{color:var(--green)}
+.expense-card.expense .amount{color:var(--red)}
+.expense-day{background:#fff;border-radius:var(--radius);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border)}
+.expense-day-header{padding:12px 16px;background:var(--bg);display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;border-bottom:1px solid var(--border)}
+.expense-day-total{font-size:12px;color:var(--muted)}
+.expense-item{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.expense-item:last-child{border:none}
+.expense-item .info{flex:1}
+.expense-item .cat{font-size:14px;font-weight:700}
+.expense-item .note{font-size:11px;color:var(--muted);margin-top:2px}
+.expense-item .amount{font-size:16px;font-weight:800;white-space:nowrap}
+.expense-item .amount.out{color:var(--red)}
+.expense-item .amount.in{color:var(--green)}
+.expense-item .del-btn{background:none;border:none;font-size:14px;cursor:pointer;opacity:.4;margin-left:8px;padding:4px}
+.expense-item .del-btn:hover{opacity:1}
+.cat-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-right:10px}
+.cat-餐饮{background:#fef3c7}.cat-交通{background:#dbeafe}.cat-购物{background:#fce7f3}
+.cat-娱乐{background:#ede9fe}.cat-居住{background:#dcfce7}.cat-医疗{background:#fee2e2}
+.cat-教育{background:#e0e7ff}.cat-其他{background:#f1f5f9}
 </style>
 </head>
 <body>
+
+<!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1>🛒 采购管理</h1>
-    <div class="header-actions">
+    <h1 id="headerTitle">🏠 个人管家</h1>
+    <div class="header-actions" id="headerActions">
       <button onclick="toggleBatch()">☑ 批量</button>
       <button onclick="exportData()">📤 导出</button>
     </div>
   </div>
   <div class="stats-row" id="headerStats"></div>
 </div>
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('list')">📋 列表</div>
+
+<!-- Tabs -->
+<div class="tabs" id="mainTabs">
+  <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
+  <div class="tab" onclick="switchTab('expense')">💰 记账</div>
   <div class="tab" onclick="switchTab('stats')">📊 统计</div>
 </div>
-<div id="tab-list">
+
+<!-- 采购 Tab -->
+<div id="tab-purchase">
   <div class="search-bar"><input class="search-input" id="searchInput" placeholder="搜索商品名称或备注..." oninput="render()"></div>
   <div class="chips" id="statusChips"></div>
   <div class="container" id="list"></div>
 </div>
+
+<!-- 记账 Tab -->
+<div id="tab-expense" style="display:none">
+  <div class="container" id="expenseContent"></div>
+</div>
+
+<!-- 统计 Tab -->
 <div id="tab-stats" style="display:none"><div class="container stats-page" id="statsContent"></div></div>
-<button class="fab" onclick="openModal()">+</button>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn" onclick="openModal()">+</button>
+
+<!-- Batch Bar -->
 <div class="batch-bar" id="batchBar">
   <span class="batch-info" id="batchInfo">已选 0 项</span>
   <select id="batchStatus"><option value="待买">待买</option><option value="已买">已买</option><option value="已到">已到</option><option value="已退">已退</option></select>
@@ -125,6 +193,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
   <button class="batch-btn batch-btn-danger" onclick="batchDelete()">删除</button>
   <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">取消</button>
 </div>
+
+<!-- 采购 Modal -->
 <div class="modal-overlay" id="overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <h2 id="modalTitle">新增采购</h2>
@@ -149,6 +219,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 </div>
+
+<!-- 记账 Modal -->
+<div class="modal-overlay" id="expenseOverlay" onclick="if(event.target===this)closeExpenseModal()">
+  <div class="modal">
+    <h2>💰 记一笔</h2>
+    <div class="form-row">
+      <div class="form-group"><label>类型</label><select id="eType"><option value="支出">支出</option><option value="收入">收入</option></select></div>
+      <div class="form-group"><label>金额 *</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
+      <div class="form-group"><label>日期</label><input id="eDate" type="date"></div>
+    </div>
+    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveExpense()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
     <h2>💰 月度预算</h2>
@@ -162,62 +254,108 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 </div>
 
 <!-- PIN 锁屏 -->
-<div id="pinScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:999;display:none;align-items:center;justify-content:center">
+<div id="pinScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center">
   <div style="text-align:center;padding:20px;width:100%;max-width:320px">
-    <div style="font-size:48px;margin-bottom:16px">🔒</div>
-    <h2 style="font-size:18px;margin-bottom:6px">采购管理</h2>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:24px">请输入访问密码</p>
-    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="输入 PIN" style="width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;font-size:20px;text-align:center;letter-spacing:8px;outline:none" onfocus="this.style.borderColor='var(--pri)'" onblur="this.style.borderColor='var(--border)'">
-    <p id="pinError" style="color:var(--red);font-size:12px;margin-top:8px;height:16px"></p>
-    <button onclick="submitPin()" style="width:100%;padding:14px;background:var(--pri);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer">进入</button>
+    <div style="font-size:56px;margin-bottom:16px">🔐</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:28px">请输入访问密码</p>
+    <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="• • • •" style="width:100%;padding:16px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:24px;text-align:center;letter-spacing:12px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)" onfocus="this.style.borderColor='rgba(255,255,255,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.3)'">
+    <p id="pinError" style="color:#fca5a5;font-size:12px;margin-top:10px;height:16px"></p>
+    <button onclick="submitPin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:14px;cursor:pointer;transition:.2s">进入</button>
   </div>
 </div>
+
 <script>
 const API='/api/items';
-let items=[],currentStatusFilter='全部',currentCatFilter='全部',batchMode=false,selectedIds=new Set(),currentTab='list';
+const EXPENSE_API='/api/expenses';
+let items=[], expenses=[];
+let currentStatusFilter='全部',currentCatFilter='全部';
+let batchMode=false,selectedIds=new Set();
+let currentTab='purchase';
 
 // ===== PIN =====
 function getPin(){return localStorage.getItem('purchase_pin')||''}
 function setPin(p){localStorage.setItem('purchase_pin',p)}
 function submitPin(){const pin=document.getElementById('pinInput').value.trim();if(!pin){document.getElementById('pinError').textContent='请输入密码';return}setPin(pin);verifyAndLoad()}
-async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'X-API-Key':getPin()}});if(r.status===401){document.getElementById('pinError').textContent='密码错误';document.getElementById('pinInput').value='';return}if(!r.ok)throw new Error();document.getElementById('pinScreen').style.display='none';loadItems()}catch{document.getElementById('pinError').textContent='连接失败'}}
+async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'X-API-Key':getPin()}});if(r.status===401){document.getElementById('pinError').textContent='密码错误';document.getElementById('pinInput').value='';return}if(!r.ok)throw new Error();document.getElementById('pinScreen').style.display='none';loadAll()}catch{document.getElementById('pinError').textContent='连接失败'}}
 document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitPin()});
 
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
 
-// ===== API（带 PIN） =====
+// ===== API =====
 async function api(method,body,id){
   let url=API;
   const opts={method,headers:{'Content-Type':'application/json','X-API-Key':getPin()}};
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
-  if(r.status===401){document.getElementById('pinScreen').style.display='flex';document.getElementById('pinError').textContent='会话过期，请重新输入密码';return{error:'unauthorized'}}
+  if(r.status===401){document.getElementById('pinScreen').style.display='flex';document.getElementById('pinError').textContent='会话过期';return{error:'unauthorized'}}
+  return r.json();
+}
+async function expenseApi(method,body,id){
+  let url=EXPENSE_API;
+  const opts={method,headers:{'Content-Type':'application/json','X-API-Key':getPin()}};
+  if(method==='DELETE')url+='?id='+id;
+  else if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(r.status===401)return{error:'unauthorized'};
   return r.json();
 }
 
 // ===== 启动 =====
 if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{return new Date(d).toISOString().slice(0,7)}catch{return null}}
 function getThisMonth(){return new Date().toISOString().slice(0,7)}
 function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
-async function loadItems(){try{const r=await api('GET');if(r&&r.error)return;if(Array.isArray(r))items=r;render()}catch(e){document.getElementById('list').innerHTML='<div class="empty"><div class="icon">❌</div>加载失败</div>'}}
+
+async function loadAll(){
+  try{
+    const [r, e] = await Promise.all([
+      api('GET'),
+      expenseApi('GET')
+    ]);
+    if(r && !r.error && Array.isArray(r)) items = r;
+    if(e && !e.error && Array.isArray(e)) expenses = e;
+  }catch{}
+  render();
+}
+
+// ===== 采购渲染 =====
 function render(){
+  if(currentTab==='purchase') renderPurchase();
+  else if(currentTab==='expense') renderExpense();
+  else if(currentTab==='stats') renderStats();
+  updateHeader();
+}
+function updateHeader(){
+  const total=totalCost(items);
+  const thisMonth=getThisMonth();
+  const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
+  const monthTotal=totalCost(monthItems);
+  const expThisMonth=expenses.filter(e=>{
+    if(!e['日期'])return false;
+    try{return new Date(e['日期']).toISOString().slice(0,7)===thisMonth}catch{return false}
+  });
+  const expTotal=expThisMonth.filter(e=>e['类型']==='支出').reduce((s,e)=>s+(e['金额']||0),0);
+  const incTotal=expThisMonth.filter(e=>e['类型']==='收入').reduce((s,e)=>s+(e['金额']||0),0);
+  document.getElementById('headerStats').innerHTML=`
+    <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">采购</span></div>
+    <div class="stat"><span class="stat-val">¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月采购</span></div>
+    <div class="stat"><span class="stat-val" style="color:#fca5a5">¥${expTotal.toFixed(0)}</span><span class="stat-lbl">本月支出</span></div>
+    <div class="stat"><span class="stat-val" style="color:#86efac">¥${incTotal.toFixed(0)}</span><span class="stat-lbl">本月收入</span></div>
+  `;
+}
+function renderPurchase(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   let f=items;
   if(q)f=f.filter(i=>(i['商品名称']||'').toLowerCase().includes(q)||(i['备注']||'').toLowerCase().includes(q));
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
-  const total=totalCost(items);
-  const thisMonth=getThisMonth();
-  const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
-  const monthTotal=totalCost(monthItems);
-  document.getElementById('headerStats').innerHTML=`<div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">总商品</span></div><div class="stat"><span class="stat-val">¥${total.toFixed(0)}</span><span class="stat-lbl">总花费</span></div><div class="stat"><span class="stat-val">¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月</span></div>`;
   const statuses=['全部','待买','已买','已到','已退'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" onclick="currentCatFilter='${c}';render()">${c}</div>`}).join('');
@@ -234,32 +372,126 @@ function render(){
   }
   listEl.innerHTML=html;
 }
+
+// ===== 记账渲染 =====
+const CAT_ICONS={'餐饮':'🍜','交通':'🚗','购物':'🛍️','娱乐':'🎮','居住':'🏠','医疗':'🏥','教育':'📚','其他':'📌'};
+function renderExpense(){
+  const thisMonth=getThisMonth();
+  const monthExpenses=expenses.filter(e=>{
+    if(!e['日期'])return false;
+    try{return new Date(e['日期']).toISOString().slice(0,7)===thisMonth}catch{return false}
+  }).sort((a,b)=>(b['日期']||0)-(a['日期']||0));
+  const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+(e['金额']||0),0);
+  const totalIn=monthExpenses.filter(e=>e['类型']==='收入').reduce((s,e)=>s+(e['金额']||0),0);
+  const budget=getBudget(thisMonth);
+  // 分类统计
+  const catMap={};
+  monthExpenses.filter(e=>e['类型']==='支出').forEach(e=>{
+    const c=e['分类']||'其他';
+    catMap[c]=(catMap[c]||0)+(e['金额']||0);
+  });
+  const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  const maxCat=catEntries.length?catEntries[0][1]:1;
+
+  let html=`<div class="expense-summary">
+    <div class="expense-card expense"><div class="label">本月支出</div><div class="amount">¥${totalOut.toFixed(2)}</div></div>
+    <div class="expense-card income"><div class="label">本月收入</div><div class="amount">¥${totalIn.toFixed(2)}</div></div>
+  </div>`;
+
+  if(budget){
+    const used=totalOut;
+    const pct=Math.min(used/budget*100,100);
+    const color=used>budget?'var(--red)':used>budget*0.8?'var(--orange)':'var(--green)';
+    html+=`<div class="stat-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13px;font-weight:700">💰 预算</span><span style="font-size:12px;color:var(--muted)">¥${used.toFixed(0)} / ¥${budget}</span></div><div class="budget-bar"><div class="budget-fill" style="width:${pct}%;background:${color}"></div></div><div class="budget-label"><span>${(pct).toFixed(0)}%</span><span>剩余 ¥${Math.max(budget-used,0).toFixed(0)}</span></div></div>`;
+  }
+
+  if(catEntries.length){
+    html+=`<div class="stat-card"><h3>📂 支出分类</h3>`;
+    catEntries.forEach(([cat,val])=>{
+      html+=`<div class="cat-row"><span style="min-width:60px;display:flex;align-items:center;gap:4px">${CAT_ICONS[cat]||'📌'} ${cat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${(val/maxCat*100)}%;background:var(--pri)"></div></div><span style="min-width:60px;text-align:right;font-weight:700">¥${val.toFixed(0)}</span></div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // 按日分组
+  const dayGroups={};
+  monthExpenses.forEach(e=>{
+    let day='未知日期';
+    if(e['日期']){try{day=new Date(e['日期']).toISOString().slice(0,10)}catch{}}
+    if(!dayGroups[day])dayGroups[day]=[];
+    dayGroups[day].push(e);
+  });
+  for(const[day,list]of Object.entries(dayGroups)){
+    const dayTotal=list.filter(e=>e['类型']==='支出').reduce((s,e)=>s+(e['金额']||0),0);
+    html+=`<div class="expense-day"><div class="expense-day-header"><span>${day}</span><span class="expense-day-total">支出 ¥${dayTotal.toFixed(2)}</span></div>`;
+    list.forEach(e=>{
+      const isOut=e['类型']==='支出';
+      html+=`<div class="expense-item"><div class="cat-icon cat-${e['分类']||'其他'}">${CAT_ICONS[e['分类']||'其他']||'📌'}</div><div class="info"><div class="cat">${esc(e['分类']||'其他')}</div>${e['备注']?`<div class="note">${esc(e['备注'])}</div>`:''}</div><span class="amount ${isOut?'out':'in'}">${isOut?'-':'+'}¥${(e['金额']||0).toFixed(2)}</span><button class="del-btn" onclick="delExpense('${e.id}')">🗑️</button></div>`;
+    });
+    html+=`</div>`;
+  }
+  if(!monthExpenses.length) html+=`<div class="empty"><div class="icon">💰</div>本月暂无记账<br>点右下角 + 记一笔</div>`;
+  document.getElementById('expenseContent').innerHTML=html;
+}
+
+// ===== 统计渲染 =====
 function renderStats(){
   const thisMonth=getThisMonth();const budget=getBudget(thisMonth);const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);const monthTotal=totalCost(monthItems);const total=totalCost(items);
-  const catMap={};monthItems.forEach(i=>{const c=i['分类']||'其他';catMap[c]=(catMap[c]||0)+(i['单价']||0)*(i['数量']||1)});const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);const maxCat=catEntries.length?catEntries[0][1]:1;const catColors={'日用':'#4f46e5','服饰':'#7c3aed','饮食':'#16a34a','电子':'#2563eb','交通':'#ea580c','其他':'#94a3b8'};
+  const catMap={};monthItems.forEach(i=>{const c=i['分类']||'其他';catMap[c]=(catMap[c]||0)+(i['单价']||0)*(i['数量']||1)});const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);const maxCat=catEntries.length?catEntries[0][1]:1;const catColors={'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8'};
   const platMap={};monthItems.forEach(i=>{const p=i['平台']||'其他';platMap[p]=(platMap[p]||0)+(i['单价']||0)*(i['数量']||1)});const platEntries=Object.entries(platMap).sort((a,b)=>b[1]-a[1]);
   const statusMap={};items.forEach(i=>{const s=i['状态']||'待买';statusMap[s]=(statusMap[s]||0)+1});
-  let html=`<div class="stat-card"><h3>💰 本月预算</h3><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:24px;font-weight:700;color:var(--pri)">¥${monthTotal.toFixed(0)}</div><div style="font-size:12px;color:var(--muted)">${budget?`预算 ¥${budget}`:'未设置预算'}</div></div><button onclick="openBudgetModal()" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12px;cursor:pointer">${budget?'修改':'设置预算'}</button></div>${budget?`<div class="budget-bar"><div class="budget-fill" style="width:${Math.min(monthTotal/budget*100,100)}%;background:${monthTotal>budget?'var(--red)':monthTotal>budget*0.8?'var(--orange)':'var(--green)'}"></div></div><div class="budget-label"><span>${(monthTotal/budget*100).toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget-monthTotal,0).toFixed(0)}</span></div>`:''}</div>`;
-  if(catEntries.length){html+=`<div class="stat-card"><h3>📂 本月分类</h3>`;catEntries.forEach(([cat,val])=>{const pct=(val/maxCat*100).toFixed(0);const color=catColors[cat]||'#94a3b8';html+=`<div class="cat-row"><span style="min-width:48px">${cat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div></div><span style="min-width:60px;text-align:right;font-weight:600">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
-  if(platEntries.length){html+=`<div class="stat-card"><h3>🏪 本月平台</h3>`;platEntries.forEach(([plat,val])=>{html+=`<div class="cat-row"><span style="min-width:48px">${plat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${(val/platEntries[0][1]*100)}%;background:var(--pri)"></div></div><span style="min-width:60px;text-align:right;font-weight:600">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
-  html+=`<div class="stat-card"><h3>📈 总览</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div>总商品 <strong>${items.length}</strong></div><div>总花费 <strong>¥${total.toFixed(0)}</strong></div><div>待买 <strong>${statusMap['待买']||0}</strong></div><div>已买 <strong>${statusMap['已买']||0}</strong></div><div>已到 <strong>${statusMap['已到']||0}</strong></div><div>已退 <strong>${statusMap['已退']||0}</strong></div></div></div>`;
+  let html=`<div class="stat-card"><h3>🛒 本月采购</h3><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:28px;font-weight:800;color:var(--pri)">¥${monthTotal.toFixed(0)}</div><div style="font-size:12px;color:var(--muted)">${budget?`预算 ¥${budget}`:'未设置预算'}</div></div><button onclick="openBudgetModal()" style="padding:7px 16px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:pointer">${budget?'修改':'设置预算'}</button></div>${budget?`<div class="budget-bar"><div class="budget-fill" style="width:${Math.min(monthTotal/budget*100,100)}%;background:${monthTotal>budget?'var(--red)':monthTotal>budget*0.8?'var(--orange)':'var(--green)'}"></div></div><div class="budget-label"><span>${(monthTotal/budget*100).toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget-monthTotal,0).toFixed(0)}</span></div>`:''}</div>`;
+  if(catEntries.length){html+=`<div class="stat-card"><h3>📂 采购分类</h3>`;catEntries.forEach(([cat,val])=>{const pct=(val/maxCat*100).toFixed(0);const color=catColors[cat]||'#94a3b8';html+=`<div class="cat-row"><span style="min-width:48px">${cat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${color}"></div></div><span style="min-width:60px;text-align:right;font-weight:700">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
+  if(platEntries.length){html+=`<div class="stat-card"><h3>🏪 采购平台</h3>`;platEntries.forEach(([plat,val])=>{html+=`<div class="cat-row"><span style="min-width:48px">${plat}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${(val/platEntries[0][1]*100)}%;background:var(--pri)"></div></div><span style="min-width:60px;text-align:right;font-weight:700">¥${val.toFixed(0)}</span></div>`});html+='</div>'}
+  html+=`<div class="stat-card"><h3>📈 总览</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px"><div>总采购 <strong>${items.length}</strong></div><div>总花费 <strong>¥${total.toFixed(0)}</strong></div><div>待买 <strong>${statusMap['待买']||0}</strong></div><div>已买 <strong>${statusMap['已买']||0}</strong></div><div>已到 <strong>${statusMap['已到']||0}</strong></div><div>已退 <strong>${statusMap['已退']||0}</strong></div></div></div>`;
   document.getElementById('statsContent').innerHTML=html;
 }
-function switchTab(t){currentTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelector(`.tab:nth-child(${t==='list'?1:2})`).classList.add('active');document.getElementById('tab-list').style.display=t==='list'?'':'none';document.getElementById('tab-stats').style.display=t==='stats'?'':'none';document.querySelector('.fab').style.display=t==='list'?'':'none';if(t==='stats')renderStats()}
+
+// ===== Tab 切换 =====
+function switchTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelector(`.tab:nth-child(${t==='purchase'?1:t==='expense'?2:3})`).classList.add('active');
+  document.getElementById('tab-purchase').style.display=t==='purchase'?'':'none';
+  document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
+  document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
+  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
+  document.getElementById('headerActions').style.display=t==='purchase'?'':'none';
+  render();
+}
+
+// ===== 采购操作 =====
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);selectedIds.clear();toggleBatch();await loadItems()}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);selectedIds.clear();toggleBatch();await loadItems()}
+async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);selectedIds.clear();toggleBatch();await loadAll()}
+async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);selectedIds.clear();toggleBatch();await loadAll()}
 function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待买';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待买';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){await api('PUT',{id:editId,...data});toast('已更新')}else{await api('POST',data);toast('已添加')}closeModal();await loadItems()}
-async function delItem(id){if(!confirm('确定删除？'))return;await api('DELETE',null,id);toast('已删除');await loadItems()}
+async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){await api('PUT',{id:editId,...data});toast('已更新')}else{await api('POST',data);toast('已添加')}closeModal();await loadAll()}
+async function delItem(id){if(!confirm('确定删除？'))return;await api('DELETE',null,id);toast('已删除');await loadAll()}
+
+// ===== 记账操作 =====
+function openExpenseModal(){document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);document.getElementById('expenseOverlay').classList.add('active')}
+function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};await expenseApi('POST',data);toast('已记录');closeExpenseModal();await loadAll()}
+async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
+
+// ===== 预算 =====
 function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
 function closeBudgetModal(){document.getElementById('budgetOverlay').classList.remove('active')}
-function saveBudget(){const month=document.getElementById('budgetMonth').value;const val=parseFloat(document.getElementById('budgetInput').value)||0;if(!month)return alert('请选择月份');const b=getBudgets();b[month]=val;setBudgets(b);toast(`已设置 ${month} 预算 ¥${val}`);closeBudgetModal();if(currentTab==='stats')renderStats()}
+function saveBudget(){const month=document.getElementById('budgetMonth').value;const val=parseFloat(document.getElementById('budgetInput').value)||0;if(!month)return alert('请选择月份');const b=getBudgets();b[month]=val;setBudgets(b);toast(`已设置 ${month} 预算 ¥${val}`);closeBudgetModal();render()}
+
+// ===== FAB 点击 =====
+document.getElementById('fabBtn').addEventListener('click',()=>{
+  if(currentTab==='purchase') openModal();
+  else if(currentTab==='expense') openExpenseModal();
+});
+
+// ===== 导出 =====
 function exportData(){const lines=['商品\t平台\t分类\t单价\t数量\t总价\t状态\t日期\t备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}lines.push(`${i['商品名称']||''}\t${i['平台']||''}\t${i['分类']||''}\t¥${price}\t${qty}\t¥${(price*qty).toFixed(2)}\t${i['状态']||''}\t${ds}\t${i['备注']||''}`)});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`采购_${getThisMonth()}.tsv`;a.click()}
-loadItems();
+
+loadAll();
 </script>
 </body>
 </html>
