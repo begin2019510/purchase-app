@@ -219,6 +219,33 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 .chart-bar-bg{flex:1;height:12px;background:var(--border);border-radius:6px;overflow:hidden}
 .chart-bar-fill{height:100%;border-radius:6px;transition:width .5s cubic-bezier(.4,0,.2,1)}
 .chart-val{font-size:12px;font-weight:700;min-width:52px;text-align:right}
+
+/* ===== Stepper (审批流程) ===== */
+.stepper{padding:8px 0}
+.step-item{display:flex;align-items:flex-start;gap:12px;position:relative}
+.step-dot-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px}
+.step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;transition:.3s}
+.step-line{width:2px;height:24px;flex-shrink:0;border-radius:1px}
+.step-info{flex:1;padding:4px 0 20px}
+.step-name{font-size:14px;font-weight:700;margin-bottom:2px}
+.step-time{font-size:12px;color:var(--muted)}
+.step-done .step-dot{background:var(--green);color:#fff}
+.step-done .step-line{background:var(--green)}
+.step-active .step-dot{background:var(--blue);color:#fff;animation:stepPulse 2s ease-in-out infinite;box-shadow:0 0 0 6px rgba(59,130,246,.18)}
+.step-active .step-line{background:var(--border);border:1px dashed var(--muted)}
+.step-pending .step-dot{background:transparent;border:2.5px solid var(--border);color:var(--muted)}
+.step-pending .step-line{background:var(--border);border:1px dashed var(--muted)}
+.step-pending .step-name{color:var(--muted)}
+.step-pending .step-time{color:var(--border)}
+@keyframes stepPulse{0%,100%{box-shadow:0 0 0 4px rgba(59,130,246,.18)}50%{box-shadow:0 0 0 10px rgba(59,130,246,.08)}}
+.detail-header{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.detail-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.detail-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.detail-meta span{font-size:12px;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:8px}
+.detail-price{font-size:24px;font-weight:800;color:var(--pri);margin:6px 0}
+.detail-section-title{font-size:14px;font-weight:700;margin:16px 0 10px;display:flex;align-items:center;gap:6px}
+.detail-action-btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;color:#fff;margin-top:10px}
+.detail-action-btn:active{transform:scale(.97)}
 </style>
 </head>
 <body>
@@ -342,6 +369,13 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
   </div>
 </div>
 
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal" style="max-height:90vh;padding:20px 16px">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
 <!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
@@ -368,7 +402,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.4.0';
+const APP_VERSION='2.4.1';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 let currentImageData='';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
@@ -489,10 +523,9 @@ function renderPurchase(){
     const mt=totalCost(list);const dm=month==='未设置日期'?month:month.replace('-','年')+'月';
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
     const statusColors={'待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444'};
-    const nextStatus={'待审批':'已审批','已审批':'已下单','已下单':'已到'};
-    const actionLabels={'待审批':'👉 去审批','已审批':'🛒 去下单','已下单':'📦 确认收货'};
-    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';let actionHtml='';if(nextStatus[status]){actionHtml=`<div style="margin-top:8px"><button style="background:${bc};color:#fff;font-size:11px;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-weight:600" onclick="event.stopPropagation();showApprovalModal('${i.id}')">${actionLabels[status]}</button></div>`}const tsParts=[];if(i['创建时间'])tsParts.push(`创建 ${i['创建时间']}`);if(i['审批时间'])tsParts.push(`审批 ${i['审批时间']}`);if(i['下单时间'])tsParts.push(`下单 ${i['下单时间']}`);if(i['到货时间'])tsParts.push(`到货 ${i['到货时间']}`);const tsHtml=tsParts.length?`<div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5;opacity:.7">${tsParts.map(t=>`<span>${t}</span>`).join(' · ')}</div>`:'';
-    html+=`<div class="card ${ck?'selected':''}" style="border-left:4px solid ${bc}" onclick="${batchMode?`toggleSelect('${i.id}')`:''}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}${actionHtml}</div>`});
+    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
+    let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
+    html+=`<div class="card ${ck?'selected':''}" style="border-left:4px solid ${bc}" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div>`});
   }
   listEl.innerHTML=html;
 }
@@ -775,6 +808,89 @@ document.getElementById('fabBtn').addEventListener('click',()=>{
 
 // ===== 导出 =====
 function exportData(){const lines=['商品\t平台\t分类\t单价\t数量\t总价\t状态\t日期\t备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}lines.push(`${i['商品名称']||''}\t${i['平台']||''}\t${i['分类']||''}\t¥${price}\t${qty}\t¥${(price*qty).toFixed(2)}\t${i['状态']||''}\t${ds}\t${i['备注']||''}`)});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`采购_${getThisMonth()}.tsv`;a.click()}
+
+// ===== 详情弹窗 =====
+const STEPPER_STEPS=['待审批','已审批','已下单','已到','已退'];
+const STEPPER_ICONS={'待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️'};
+const STEP_TIME_FIELDS={'待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间'};
+const STEP_BTN_CONFIG={
+  '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
+  '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'},
+  '已下单':{color:'#8b5cf6',label:'📦 确认收货',next:'已到'}
+};
+function openDetailModal(id){
+  const item=items.find(x=>x.id===id);
+  if(!item)return;
+  const qty=item['数量']||1;
+  const price=item['单价']||0;
+  const total=price*qty;
+  const status=item['状态']||'待审批';
+  const statusIdx=STEPPER_STEPS.indexOf(status);
+  let ds='';
+  if(item['日期']){try{ds=new Date(item['日期']).toISOString().slice(0,10)}catch{}}
+
+  let html=`<div class="detail-header">
+    <div class="detail-title">${esc(item['商品名称']||'')}</div>
+    <div class="detail-price">¥${price.toFixed(2)}${qty>1?` × ${qty} = ¥${total.toFixed(2)}`:''}</div>
+    <div class="detail-meta">
+      <span>🏪 ${esc(item['平台']||'')}</span>
+      <span class="badge badge-${status}">${status}</span>
+      <span class="cat-badge">${item['分类']||'其他'}</span>
+      ${ds?`<span>📅 ${ds}</span>`:''}
+    </div>
+    ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">💬 ${esc(item['备注'])}</div>`:''}
+  </div>`;
+
+  html+=`<div class="detail-section-title">📋 审批流程</div><div class="stepper">`;
+  STEPPER_STEPS.forEach((step,idx)=>{
+    let stepClass='step-pending';
+    let dotContent='⚪';
+    let timeText='—';
+    if(idx<statusIdx){
+      stepClass='step-done';
+      dotContent='✓';
+      const tf=STEP_TIME_FIELDS[step];
+      if(tf&&item[tf])timeText=item[tf];
+      else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
+    }else if(idx===statusIdx){
+      stepClass='step-active';
+      dotContent=STEPPER_ICONS[step]||'🔵';
+      const tf=STEP_TIME_FIELDS[step];
+      if(tf&&item[tf])timeText=item[tf];
+      else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
+      else timeText='进行中...';
+    }
+    const isLast=idx===STEPPER_STEPS.length-1;
+    html+=`<div class="step-item ${stepClass}">
+      <div class="step-dot-wrap">
+        <div class="step-dot">${dotContent}</div>
+        ${!isLast?`<div class="step-line"></div>`:''}
+      </div>
+      <div class="step-info">
+        <div class="step-name">${step}</div>
+        <div class="step-time">${timeText}</div>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+
+  const btnCfg=STEP_BTN_CONFIG[status];
+  if(btnCfg){
+    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:${btnCfg.color}" onclick="doDetailAction('${id}','${btnCfg.next}')">${btnCfg.label}</button></div>`;
+  }
+
+  document.getElementById('detailContent').innerHTML=html;
+  document.getElementById('detailOverlay').classList.add('active');
+}
+function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
+function doDetailAction(id,nextStatus){
+  if(!confirm('确认执行此操作？'))return;
+  api('PATCH',{ids:[id],status:nextStatus}).then(()=>{
+    toast(`已更新为"${nextStatus}"`);
+    closeDetailModal();
+    loadAll();
+  });
+}
 
 loadAll();
 </script>
