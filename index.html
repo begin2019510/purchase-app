@@ -766,8 +766,8 @@ function showApprovalModal(id){
   const status=item['状态']||'待审批';
   const next=NEXT_STATUS[status];
   if(!next)return;
-  const qty=item['数量']||1;
-  const price=item['单价']||0;
+  const qty=Number(item['数量'])||1;
+  const price=Number(item['单价'])||0;
   const total=price*qty;
   document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'确认操作';
   document.getElementById('approvalContent').innerHTML=`
@@ -821,8 +821,8 @@ const STEP_BTN_CONFIG={
 function openDetailModal(id){
   const item=items.find(x=>x.id===id);
   if(!item)return;
-  const qty=item['数量']||1;
-  const price=item['单价']||0;
+  const qty=Number(item['数量'])||1;
+  const price=Number(item['单价'])||0;
   const total=price*qty;
   const status=item['状态']||'待审批';
   const statusIdx=STEPPER_STEPS.indexOf(status);
