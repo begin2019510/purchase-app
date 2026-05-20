@@ -94,9 +94,30 @@ export async function onRequest(context) {
 
   try {
     if (request.method === 'GET') {
+      // Cache: return cached data instantly, refresh in background
+      const cacheKey = new Request(url.toString(), request);
+      const cache = caches.default;
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        // Return cached + refresh in background
+        const freshPromise = feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env)
+          .then(data => {
+            if (data.code === 0) {
+              const items = (data.data?.items || []).map(recordToItem);
+              const resp = new Response(JSON.stringify(items), { headers: { 'Content-Type': 'application/json' } });
+              context.waitUntil(cache.put(cacheKey, resp.clone()));
+            }
+          }).catch(() => {});
+        context.waitUntil(freshPromise);
+        return cached;
+      }
+      // No cache: fetch fresh
       const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500, corsHeaders);
       const items = (data.data?.items || []).map(recordToItem);
+      // Cache for 60s
+      const resp = new Response(JSON.stringify(items), { headers: { 'Content-Type': 'application/json' } });
+      context.waitUntil(cache.put(cacheKey, resp.clone()));
       return json(items, 200, corsHeaders);
     }
 

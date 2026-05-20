@@ -45,34 +45,50 @@ export async function onRequest(context) {
   const method = request.method;
 
   if (method === 'GET') {
-    // 读取所有记账记录
-    const records = [];
-    let pageToken = '';
-    do {
-      const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=100${pageToken ? '&page_token=' + pageToken : ''}`;
-      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-      const d = await r.json();
-      if (d.data && d.data.items) {
-        d.data.items.forEach(rec => {
-          const f = rec.fields;
-          // 飞书 DateTime 字段返回 timestamp（毫秒）
-          let dateStr = null;
-          if (f['日期']) {
-            try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {}
-          }
-          records.push({
-            id: rec.record_id,
-            '日期': dateStr,
-            '类型': f['类型'] || '支出',
-            '分类': f['分类'] || '其他',
-            '金额': Number(f['金额']) || 0,
-            '备注': f['备注'] || '',
-            '图片': f['图片'] || '',
+    // Cache for expenses
+    const cacheKey = new Request(request.url, request);
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    const fetchFresh = async () => {
+      const records = [];
+      let pageToken = '';
+      do {
+        const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=100${pageToken ? '&page_token=' + pageToken : ''}`;
+        const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+        const d = await r.json();
+        if (d.data && d.data.items) {
+          d.data.items.forEach(rec => {
+            const f = rec.fields;
+            let dateStr = null;
+            if (f['日期']) {
+              try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {}
+            }
+            records.push({
+              id: rec.record_id,
+              '日期': dateStr,
+              '类型': f['类型'] || '支出',
+              '分类': f['分类'] || '其他',
+              '金额': Number(f['金额']) || 0,
+              '备注': f['备注'] || '',
+              '图片': f['图片'] || '',
+            });
           });
-        });
-      }
-      pageToken = d.data?.page_token || '';
-    } while (pageToken);
+        }
+        pageToken = d.data?.page_token || '';
+      } while (pageToken);
+      return records;
+    };
+    if (cached) {
+      const freshPromise = fetchFresh().then(records => {
+        const resp = new Response(JSON.stringify(records), { headers: { 'Content-Type': 'application/json' } });
+        context.waitUntil(cache.put(cacheKey, resp.clone()));
+      }).catch(() => {});
+      context.waitUntil(freshPromise);
+      return cached;
+    }
+    const records = await fetchFresh();
+    const resp = new Response(JSON.stringify(records), { headers: { 'Content-Type': 'application/json' } });
+    context.waitUntil(cache.put(cacheKey, resp.clone()));
     return json(records, 200, corsHeaders);
   }
 
