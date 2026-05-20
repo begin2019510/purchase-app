@@ -49,6 +49,11 @@ function verifyPin(request, env) {
   return true;
 }
 
+function nowBjStr() {
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  return d.toISOString().slice(0, 16).replace('T', ' ');
+}
+
 function recordToItem(r) {
   const f = r.fields;
   return {
@@ -57,10 +62,14 @@ function recordToItem(r) {
     '平台': f['平台'] || '',
     '单价': f['单价'] || 0,
     '数量': f['数量'] || 1,
-    '状态': f['状态'] || '待买',
+    '状态': f['状态'] || '待审批',
     '分类': f['分类'] || '其他',
     '日期': f['日期'] || null,
     '备注': f['备注'] || '',
+    '创建时间': f['创建时间'] || '',
+    '审批时间': f['审批时间'] || '',
+    '下单时间': f['下单时间'] || '',
+    '到货时间': f['到货时间'] || '',
   };
 }
 
@@ -98,9 +107,10 @@ export async function onRequest(context) {
         '平台': body.platform || '拼多多',
         '单价': body.price || 0,
         '数量': body.qty || 1,
-        '状态': body.status || '待买',
+        '状态': body.status || '待审批',
         '分类': body.category || '其他',
         '备注': body.note || '',
+        '创建时间': nowBjStr(),
       };
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
@@ -128,11 +138,13 @@ export async function onRequest(context) {
     if (request.method === 'PATCH') {
       const body = await request.json();
       if (!body.ids || !body.ids.length || !body.status) return json({ error: 'ids and status required' }, 400, corsHeaders);
+      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间' };
+      const timeField = statusTimeMap[body.status];
       const results = [];
       for (const id of body.ids) {
-        const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, {
-          fields: { '状态': body.status }
-        }, env);
+        const fields = { '状态': body.status };
+        if (timeField) fields[timeField] = nowBjStr();
+        const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
       }
       return json({ results, updated: results.filter(r => r.ok).length }, 200, corsHeaders);
