@@ -896,27 +896,39 @@ function openDetailModal(id){
   // 操作按钮
   if(status==='待审批'||status==='已审批'){
     const btnCfg=STEP_BTN_CONFIG[status];
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:${btnCfg.color}" onclick="doDetailAction('${id}','${btnCfg.next}')">${btnCfg.label}</button></div>`;
+    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:${btnCfg.color}" onclick="doDetailModalAction('${id}','${btnCfg.next}')">${btnCfg.label}</button></div>`;
   }else if(status==='已下单'){
     html+=`<div style="margin-top:16px;display:flex;gap:10px">
-      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailAction('${id}','已到')">📦 确认收货</button>
-      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailAction('${id}','已退')">↩️ 退货归档</button>
+      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">📦 确认收货</button>
+      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货归档</button>
     </div>`;
   }else if(status==='已到'||status==='已退'){
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailAction('${id}','已归档')">🗄️ 确认归档</button></div>`;
+    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button></div>`;
   }
 
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('active');
 }
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
-function doDetailAction(id,nextStatus){
+function doDetailModalAction(id,nextStatus){
   if(!confirm('确认执行此操作？'))return;
-  api('PATCH',{ids:[id],status:nextStatus}).then(()=>{
+  // Optimistic update: update local state immediately
+  const item=items.find(x=>x.id===id);
+  if(item){
+    item['状态']=nextStatus;
+    const now=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,16).replace('T',' ');
+    if(nextStatus==='已审批')item['审批时间']=now;
+    else if(nextStatus==='已下单')item['下单时间']=now;
+    else if(nextStatus==='已到'||nextStatus==='已退')item['到货时间']=now;
+    else if(nextStatus==='已归档')item['归档时间']=now;
     toast(`已更新为"${nextStatus}"`);
     closeDetailModal();
-    loadAll();
-  });
+    render();
+  }
+  // Fire PATCH in background, don't block UI
+  api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
+    if(r&&r.error){toast('同步失败，请刷新');loadAll();}
+  }).catch(()=>{toast('网络错误，请刷新');loadAll();});
 }
 
 loadAll();
