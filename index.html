@@ -611,6 +611,8 @@ function renderStats() {
     if (!e['日期']) return false;
     try { return new Date(e['日期']).toISOString().slice(0, 7) === thisMonth } catch { return false }
   });
+  // 统计不受搜索过滤，直接用月度全量数据
+  const searched = monthExpenses;
   const totalOut = searched.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
   const totalIn = searched.filter(e => e['类型'] === '收入').reduce((s, e) => s + Number(e['金额'] || 0), 0);
   const eCatMap = {};
