@@ -810,13 +810,12 @@ document.getElementById('fabBtn').addEventListener('click',()=>{
 function exportData(){const lines=['商品\t平台\t分类\t单价\t数量\t总价\t状态\t日期\t备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}lines.push(`${i['商品名称']||''}\t${i['平台']||''}\t${i['分类']||''}\t¥${price}\t${qty}\t¥${(price*qty).toFixed(2)}\t${i['状态']||''}\t${ds}\t${i['备注']||''}`)});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`采购_${getThisMonth()}.tsv`;a.click()}
 
 // ===== 详情弹窗 =====
-const STEPPER_STEPS=['待审批','已审批','已下单','已到','已退'];
+const STEPPER_STEPS=['待审批','已审批','已下单','已到'];
 const STEPPER_ICONS={'待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️'};
-const STEP_TIME_FIELDS={'待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间'};
+const STEP_TIME_FIELDS={'待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间'};
 const STEP_BTN_CONFIG={
   '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
-  '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'},
-  '已下单':{color:'#8b5cf6',label:'📦 确认收货',next:'已到'}
+  '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
 };
 function openDetailModal(id){
   const item=items.find(x=>x.id===id);
@@ -826,6 +825,7 @@ function openDetailModal(id){
   const total=price*qty;
   const status=item['状态']||'待审批';
   const statusIdx=STEPPER_STEPS.indexOf(status);
+  const isTerminal=status==='已到'||status==='已退';
   let ds='';
   if(item['日期']){try{ds=new Date(item['日期']).toISOString().slice(0,10)}catch{}}
 
@@ -846,13 +846,14 @@ function openDetailModal(id){
     let stepClass='step-pending';
     let dotContent='⚪';
     let timeText='—';
-    if(idx<statusIdx){
+    if(idx<statusIdx||(isTerminal&&idx<STEPPER_STEPS.length)){
       stepClass='step-done';
       dotContent='✓';
       const tf=STEP_TIME_FIELDS[step];
       if(tf&&item[tf])timeText=item[tf];
       else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
-    }else if(idx===statusIdx){
+    }
+    if(idx===statusIdx&&!isTerminal){
       stepClass='step-active';
       dotContent=STEPPER_ICONS[step]||'🔵';
       const tf=STEP_TIME_FIELDS[step];
@@ -860,6 +861,7 @@ function openDetailModal(id){
       else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
       else timeText='进行中...';
     }
+    // 已到是主路径最后一步
     const isLast=idx===STEPPER_STEPS.length-1;
     html+=`<div class="step-item ${stepClass}">
       <div class="step-dot-wrap">
@@ -872,11 +874,32 @@ function openDetailModal(id){
       </div>
     </div>`;
   });
+  // 已退作为分支显示在最后
+  if(status==='已退'){
+    html+=`<div class="step-item step-active">
+      <div class="step-dot-wrap">
+        <div class="step-dot">↩️</div>
+      </div>
+      <div class="step-info">
+        <div class="step-name">已退（归档）</div>
+        <div class="step-time">${item['到货时间']||'—'}</div>
+      </div>
+    </div>`;
+  }
   html+='</div>';
 
-  const btnCfg=STEP_BTN_CONFIG[status];
-  if(btnCfg){
+  // 操作按钮
+  if(status==='待审批'||status==='已审批'){
+    const btnCfg=STEP_BTN_CONFIG[status];
     html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:${btnCfg.color}" onclick="doDetailAction('${id}','${btnCfg.next}')">${btnCfg.label}</button></div>`;
+  }else if(status==='已下单'){
+    // 两个按钮：确认收货 / 退货归档
+    html+=`<div style="margin-top:16px;display:flex;gap:10px">
+      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailAction('${id}','已到')">📦 确认收货</button>
+      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailAction('${id}','已退')">↩️ 退货归档</button>
+    </div>`;
+  }
+  // 已到/已退是终态，不显示按钮
   }
 
   document.getElementById('detailContent').innerHTML=html;
