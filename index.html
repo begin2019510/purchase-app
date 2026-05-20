@@ -842,74 +842,55 @@ function openDetailModal(id){
     ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">💬 ${esc(item['备注'])}</div>`:''}
   </div>`;
 
-  // Stepper: main path 待审批→已审批→已下单, then branch 已到/已退, then 已归档
-  const isTerminal=status==='已归档';
-  const isBranch=status==='已到'||status==='已退'||status==='已归档';
-  let branchLabel='';
-  if(status==='已退') branchLabel='已退';
-  else if(isBranch) branchLabel='已到';
+  // Stepper: always show full flow 待审批→已审批→已下单→已到/已退→已归档
+  const branchLabel = status==='已退' ? '已退' : '已到';
+  const mainSteps = ['待审批','已审批','已下单'];
+  const branchDone = status==='已到' || status==='已退';
+  const archiveDone = status==='已归档';
+
+  // Build full step list
+  const allSteps = [];
+  mainSteps.forEach(s => {
+    const isDone = status==='已到'||status==='已退'||status==='已归档' || mainSteps.indexOf(s) < mainSteps.indexOf(status);
+    const isCur = s===status;
+    allSteps.push({ key:s, done:isDone, active:isCur });
+  });
+  // Branch step
+  allSteps.push({ key:branchLabel, done:branchDone, active:status===branchLabel });
+  // Archive step
+  allSteps.push({ key:'已归档', done:archiveDone, active:status==='已归档' });
 
   html+=`<div class="detail-section-title">📋 审批流程</div><div class="stepper">`;
-  STEPPER_STEPS.forEach((step,idx)=>{
-    let stepClass='step-pending';
-    let dotContent='⚪';
-    let timeText='—';
-    if(isBranch||isTerminal){
-      stepClass='step-done';
-      dotContent='✓';
-      const tf=STEP_TIME_FIELDS[step];
-      if(tf&&item[tf])timeText=item[tf];
-      else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
-    } else if(idx<STEPPER_STEPS.indexOf(status)){
-      stepClass='step-done';
-      dotContent='✓';
-      const tf=STEP_TIME_FIELDS[step];
-      if(tf&&item[tf])timeText=item[tf];
-      else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
-    } else if(step===status){
-      stepClass='step-active';
-      dotContent=STEPPER_ICONS[step]||'🔵';
-      const tf=STEP_TIME_FIELDS[step];
-      if(tf&&item[tf])timeText=item[tf];
-      else if(step==='待审批'&&item['创建时间'])timeText=item['创建时间'];
-      else timeText='进行中...';
+  allSteps.forEach((s, idx) => {
+    const isLast = idx === allSteps.length - 1;
+    let stepClass = 'step-pending';
+    let dotContent = '⚪';
+    let timeText = '—';
+    if (s.done) {
+      stepClass = 'step-done';
+      dotContent = '✓';
+      const tf = STEP_TIME_FIELDS[s.key];
+      if (tf && item[tf]) timeText = item[tf];
+      else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
+    } else if (s.active) {
+      stepClass = 'step-active';
+      dotContent = STEPPER_ICONS[s.key] || '🔵';
+      const tf = STEP_TIME_FIELDS[s.key];
+      if (tf && item[tf]) timeText = item[tf];
+      else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
+      else timeText = '进行中...';
     }
-    const isLastMain=idx===STEPPER_STEPS.length-1;
     html+=`<div class="step-item ${stepClass}">
       <div class="step-dot-wrap">
         <div class="step-dot">${dotContent}</div>
-        ${!isLastMain?`<div class="step-line"></div>`:''}
+        ${!isLast?'<div class="step-line"></div>':''}
       </div>
       <div class="step-info">
-        <div class="step-name">${step}</div>
+        <div class="step-name">${s.key}</div>
         <div class="step-time">${timeText}</div>
       </div>
     </div>`;
   });
-  if(isBranch){
-    const branchIcon=branchLabel==='已到'?'📦':'↩️';
-    const branchTime=item['到货时间']||'—';
-    html+=`<div class="step-item ${isTerminal?'step-done':'step-active'}">
-      <div class="step-dot-wrap">
-        <div class="step-dot">${isTerminal?'✓':branchIcon}</div>
-        <div class="step-line"></div>
-      </div>
-      <div class="step-info">
-        <div class="step-name">${branchLabel}</div>
-        <div class="step-time">${branchTime}</div>
-      </div>
-    </div>`;
-    const archiveDone=isTerminal;
-    html+=`<div class="step-item ${archiveDone?'step-done':'step-pending'}">
-      <div class="step-dot-wrap">
-        <div class="step-dot">${archiveDone?'✓':'⚪'}</div>
-      </div>
-      <div class="step-info">
-        <div class="step-name">已归档</div>
-        <div class="step-time">${archiveDone?(item['归档时间']||'—'):'—'}</div>
-      </div>
-    </div>`;
-  }
   html+='</div>';
 
   // 操作按钮
