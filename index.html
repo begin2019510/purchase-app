@@ -24,9 +24,10 @@ body.dark .ex-budget{background:var(--bg)}
 body.dark .ex-total-card{background:var(--card)}
 body.dark .form-group input,body.dark .form-group select,body.dark .form-group textarea{background:var(--card);color:var(--text)}
 body.dark .toast{background:#334155}
-body.dark .badge-待买{background:rgba(254,243,199,.15);color:#fbbf24}
-body.dark .badge-已买{background:rgba(220,252,231,.15);color:#4ade80}
-body.dark .badge-已到{background:rgba(219,234,254,.15);color:#60a5fa}
+body.dark .badge-待审批{background:rgba(254,243,199,.15);color:#fbbf24}
+body.dark .badge-已审批{background:rgba(219,234,254,.15);color:#60a5fa}
+body.dark .badge-已下单{background:rgba(237,233,254,.15);color:#a78bfa}
+body.dark .badge-已到{background:rgba(220,252,231,.15);color:#4ade80}
 body.dark .badge-已退{background:rgba(254,226,226,.15);color:#f87171}
 body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 .img-upload-area{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:14px}
@@ -83,9 +84,10 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 .card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .card .meta span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px}
 .badge{display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;letter-spacing:.2px}
-.badge-待买{background:#fef3c7;color:#92400e}
-.badge-已买{background:#dcfce7;color:#166534}
-.badge-已到{background:#dbeafe;color:#1e40af}
+.badge-待审批{background:#fef3c7;color:#92400e}
+.badge-已审批{background:#dbeafe;color:#1e40af}
+.badge-已下单{background:#ede9fe;color:#5b21b6}
+.badge-已到{background:#dcfce7;color:#166534}
 .badge-已退{background:#fee2e2;color:#991b1b}
 .cat-badge{background:var(--pri-light);color:var(--pri);padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700}
 .card .note{font-size:11px;color:var(--muted);margin-top:4px}
@@ -265,7 +267,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <!-- Batch Bar -->
 <div class="batch-bar" id="batchBar">
   <span class="batch-info" id="batchInfo">已选 0 项</span>
-  <select id="batchStatus"><option value="待买">待买</option><option value="已买">已买</option><option value="已到">已到</option><option value="已退">已退</option></select>
+  <select id="batchStatus"><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已下单">已下单</option><option value="已到">已到</option><option value="已退">已退</option></select>
   <button class="batch-btn batch-btn-primary" onclick="batchUpdate()">改状态</button>
   <button class="batch-btn batch-btn-danger" onclick="batchDelete()">删除</button>
   <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">取消</button>
@@ -286,7 +288,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
       <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>状态</label><select id="fStatus"><option>待买</option><option>已买</option><option>已到</option><option>已退</option></select></div>
+      <div class="form-group"><label>状态</label><select id="fStatus"><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option></select></div>
       <div class="form-group"><label>日期</label><input id="fDate" type="date"></div>
     </div>
     <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
@@ -328,6 +330,18 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 
 <div class="img-fullscreen" id="imgFullscreen" onclick="this.classList.remove('active')"><img id="imgFullscreenImg"></div>
 
+<!-- 审批确认 Modal -->
+<div class="modal-overlay" id="approvalOverlay" onclick="if(event.target===this)closeApprovalModal()">
+  <div class="modal">
+    <h2 id="approvalTitle">确认操作</h2>
+    <div id="approvalContent" style="text-align:center;padding:10px 0"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeApprovalModal()">取消</button>
+      <button class="btn btn-primary" id="approvalConfirmBtn">确认</button>
+    </div>
+  </div>
+</div>
+
 <!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
@@ -354,7 +368,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.3.0';
+const APP_VERSION='2.4.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 let currentImageData='';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
@@ -463,7 +477,7 @@ function renderPurchase(){
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
-  const statuses=['全部','待买','已买','已到','已退'];
+  const statuses=['全部','待审批','已审批','已下单','已到','已退'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" onclick="currentCatFilter='${c}';render()">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
@@ -474,8 +488,11 @@ function renderPurchase(){
   for(const[month,list]of Object.entries(groups)){
     const mt=totalCost(list);const dm=month==='未设置日期'?month:month.replace('-','年')+'月';
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
-    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待买';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);
-    html+=`<div class="card ${ck?'selected':''}" onclick="${batchMode?`toggleSelect('${i.id}')`:''}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}</div>`});
+    const statusColors={'待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444'};
+    const nextStatus={'待审批':'已审批','已审批':'已下单','已下单':'已到'};
+    const actionLabels={'待审批':'✅审批通过','已审批':'🛒下单','已下单':'📦确认到货'};
+    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';let actionHtml='';if(nextStatus[status]){actionHtml=`<div style="margin-top:8px"><button style="background:${bc};color:#fff;font-size:11px;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-weight:600" onclick="event.stopPropagation();showApprovalModal('${i.id}')">${actionLabels[status]}</button></div>`}
+    html+=`<div class="card ${ck?'selected':''}" style="border-left:4px solid ${bc}" onclick="${batchMode?`toggleSelect('${i.id}')`:''}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${actionHtml}</div>`});
   }
   listEl.innerHTML=html;
 }
@@ -605,7 +622,7 @@ function renderStats() {
   monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
   const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const statusMap = {};
-  items.forEach(i => { const s = i['状态'] || '待买'; statusMap[s] = (statusMap[s] || 0) + 1; });
+  items.forEach(i => { const s = i['状态'] || '待审批'; statusMap[s] = (statusMap[s] || 0) + 1; });
   // ===== 记账数据 =====
   const monthExpenses = expenses.filter(e => {
     if (!e['日期']) return false;
@@ -636,7 +653,7 @@ function renderStats() {
     ['📦', '本月', monthItems.length + '件', ''],
     ['💵', '本月花费', '¥' + monthTotal.toFixed(0), 'var(--pri)'],
     ['📊', '总花费', '¥' + totalAll.toFixed(0), 'var(--muted)'],
-    ['⏳', '待买', (statusMap['待买'] || 0) + '件', 'var(--orange)']
+    ['⏳', '待审批', (statusMap['待审批'] || 0) + '件', 'var(--orange)']
   ]);
   if (budget) {
     const pct = Math.min(monthTotal / budget * 100, 100);
@@ -675,7 +692,7 @@ function renderStats() {
     Object.entries(statusMap).forEach(([s, n]) => {
       const pct = (n / totalItems * 100).toFixed(0);
       const cls = 'badge-' + s;
-      html += `<div class="cat-row"><span class="badge ${cls}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${s === '待买' ? 'var(--orange)' : s === '已买' ? 'var(--green)' : s === '已到' ? 'var(--blue)' : 'var(--red)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
+      html += `<div class="cat-row"><span class="badge ${cls}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${s === '待审批' ? 'var(--orange)' : s === '已审批' ? 'var(--blue)' : s === '已下单' ? '#8b5cf6' : s === '已到' ? 'var(--green)' : 'var(--red)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
     });
     html += '</div>';
   }
@@ -700,11 +717,43 @@ function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElem
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
 async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);selectedIds.clear();toggleBatch();await loadAll()}
 async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);selectedIds.clear();toggleBatch();await loadAll()}
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待买';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
-function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待买';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待审批';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
+function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
 async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){await api('PUT',{id:editId,...data});toast('已更新')}else{await api('POST',data);toast('已添加')}closeModal();await loadAll()}
 async function delItem(id){if(!confirm('确定删除？'))return;await api('DELETE',null,id);toast('已删除');await loadAll()}
+
+// ===== 审批流操作 =====
+const NEXT_STATUS={'待审批':'已审批','已审批':'已下单','已下单':'已到'};
+const APPROVAL_TITLES={'待审批':'✅ 审批确认','已审批':'🛒 确认下单','已下单':'📦 确认到货'};
+const APPROVAL_TEXTS={'待审批':'确认审批通过？','已审批':'确认下单？','已下单':'确认到货？'};
+function showApprovalModal(id){
+  const item=items.find(x=>x.id===id);
+  if(!item)return;
+  const status=item['状态']||'待审批';
+  const next=NEXT_STATUS[status];
+  if(!next)return;
+  const qty=item['数量']||1;
+  const price=item['单价']||0;
+  const total=price*qty;
+  document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'确认操作';
+  document.getElementById('approvalContent').innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${esc(item['商品名称']||'')}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">单价 ¥${price.toFixed(2)} × ${qty}</div>
+    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">总价 ¥${total.toFixed(2)}</div>
+    <div style="font-size:14px;font-weight:600;color:var(--orange)">${APPROVAL_TEXTS[status]}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">${status} → ${next}</div>
+  `;
+  const btn=document.getElementById('approvalConfirmBtn');
+  btn.onclick=async function(){
+    await api('PATCH',{ids:[id],status:next});
+    toast(`已更新为“${next}”`);
+    closeApprovalModal();
+    await loadAll();
+  };
+  document.getElementById('approvalOverlay').classList.add('active');
+}
+function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
 // ===== 记账操作 =====
 function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{d=new Date(e['日期']).toISOString().slice(0,10)}catch{}}document.getElementById('eDate').value=d;if(e['图片']){currentImageData=e['图片'];preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
