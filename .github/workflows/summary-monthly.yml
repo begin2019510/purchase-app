@@ -1,0 +1,15 @@
+name: 月度汇总
+
+on:
+  schedule:
+    # 每月1号 北京时间 12:00 = UTC 4:00
+    - cron: '0 4 1 * *'
+  workflow_dispatch:
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 发送月度汇总
+        run: |
+          curl -s "https://121212121.top/api/push/summary?type=monthly&token=${{ secrets.CRON_SECRET }}"

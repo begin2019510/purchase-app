@@ -1,0 +1,15 @@
+name: 归档提醒
+
+on:
+  schedule:
+    # 北京时间 10:00 = UTC 2:00
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查3天未归档
+        run: |
+          curl -s "https://121212121.top/api/push/archive-check?token=${{ secrets.CRON_SECRET }}"

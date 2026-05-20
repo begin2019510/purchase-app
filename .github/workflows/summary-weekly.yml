@@ -1,0 +1,15 @@
+name: 周度汇总
+
+on:
+  schedule:
+    # 每周日 北京时间 12:00 = UTC 4:00
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 发送周度汇总
+        run: |
+          curl -s "https://121212121.top/api/push/summary?type=weekly&token=${{ secrets.CRON_SECRET }}"
