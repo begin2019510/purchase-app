@@ -12,6 +12,32 @@
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--pri:#6366f1;--pri-dark:#4f46e5;--pri-light:#eef2ff;--pri-g:linear-gradient(135deg,#6366f1,#8b5cf6);--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--pink:#ec4899;--radius:14px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+@media(prefers-color-scheme:dark){:root:not(.light){--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}}
+body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}
+body.dark .tabs,body.dark .search-bar,body.dark .batch-bar,body.dark .modal{background:var(--card)}
+body.dark .search-input,body.dark .chip{background:var(--card);color:var(--text)}
+body.dark .ex-section{background:var(--card)}
+body.dark .ex-entry{background:var(--bg)}
+body.dark .stat-card{background:var(--card)}
+body.dark .mini-card{background:var(--bg)}
+body.dark .ex-budget{background:var(--bg)}
+body.dark .ex-total-card{background:var(--card)}
+body.dark .form-group input,body.dark .form-group select,body.dark .form-group textarea{background:var(--card);color:var(--text)}
+body.dark .toast{background:#334155}
+body.dark .badge-待买{background:rgba(254,243,199,.15);color:#fbbf24}
+body.dark .badge-已买{background:rgba(220,252,231,.15);color:#4ade80}
+body.dark .badge-已到{background:rgba(219,234,254,.15);color:#60a5fa}
+body.dark .badge-已退{background:rgba(254,226,226,.15);color:#f87171}
+body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
+.img-upload-area{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:14px}
+.img-upload-area:hover{border-color:var(--pri)}
+.img-upload-area .upload-icon{font-size:28px;margin-bottom:4px}
+.img-upload-area .upload-text{font-size:12px;color:var(--muted)}
+.img-preview{max-width:100%;max-height:120px;border-radius:8px;margin-top:8px;object-fit:cover}
+.ex-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;cursor:pointer;flex-shrink:0;border:1px solid var(--border)}
+.img-fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:center;justify-content:center;cursor:pointer}
+.img-fullscreen.active{display:flex}
+.img-fullscreen img{max-width:95vw;max-height:95vh;border-radius:8px}
 
 /* ===== Header ===== */
 .header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50;text-shadow:0 1px 3px rgba(0,0,0,.15)}
@@ -198,7 +224,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.2</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.3</span></h1>
+    <div class="header-actions">
+      <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
+    </div>
     <div class="header-actions" id="headerActions">
       <button onclick="toggleBatch()">☑ 批量</button>
       <button onclick="exportData()">📤 导出</button>
@@ -282,12 +311,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
       <div class="form-group"><label>日期</label><input id="eDate" type="date"></div>
     </div>
     <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选"></div>
+    <div class="form-group"><label>图片</label>
+      <div class="img-upload-area" onclick="document.getElementById('eImageInput').click()">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">点击拍照或选择图片</div>
+        <img id="eImagePreview" class="img-preview" style="display:none">
+      </div>
+      <input type="file" id="eImageInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
+    </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
       <button class="btn btn-primary" onclick="saveExpense()">保存</button>
     </div>
   </div>
 </div>
+
+<div class="img-fullscreen" id="imgFullscreen" onclick="this.classList.remove('active')"><img id="imgFullscreenImg"></div>
 
 <!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
@@ -315,8 +354,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 </div>
 
 <script>
-const APP_VERSION='2.2.0';
+const APP_VERSION='2.3.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
+let currentImageData='';
+function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
+(function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='☀️'}})();
+function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement('canvas');const MAX=800;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);const dataUrl=canvas.toDataURL('image/jpeg',0.7);currentImageData=dataUrl;const preview=document.getElementById('eImagePreview');preview.src=dataUrl;preview.style.display='block'};img.src=e.target.result};reader.readAsDataURL(file)}
+function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
 const API='/api/items';
 const EXPENSE_API='/api/expenses';
 let items=[], expenses=[];
@@ -490,7 +534,8 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
     list.forEach(e=>{
       const isOut=e['类型']==='支出';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
-      html+=`<div class="ex-entry" style="border-left:4px solid ${cc}"><div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+      const thumbHtml=e['图片']?`<img class="ex-thumb" src="${e['图片']}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div>`;
@@ -660,10 +705,10 @@ async function save(){const name=document.getElementById('fName').value.trim();i
 async function delItem(id){if(!confirm('确定删除？'))return;await api('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== 记账操作 =====
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{d=new Date(e['日期']).toISOString().slice(0,10)}catch{}}document.getElementById('eDate').value=d;}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);}document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{d=new Date(e['日期']).toISOString().slice(0,10)}catch{}}document.getElementById('eDate').value=d;if(e['图片']){currentImageData=e['图片'];preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){const lines=['日期\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{let ds='';if(e['日期']){try{ds=new Date(e['日期']).toISOString().slice(0,10)}catch{}}lines.push((ds||'')+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};const eid=document.getElementById('eEditId').value;if(eid){await expenseApi('PUT',{id:eid,...data});toast('已更新')}else{await expenseApi('POST',data);toast('已记录')}closeExpenseModal();await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData)data.image=currentImageData;const eid=document.getElementById('eEditId').value;if(eid){await expenseApi('PUT',{id:eid,...data});toast('已更新')}else{await expenseApi('POST',data);toast('已记录')}currentImageData='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== 预算 =====

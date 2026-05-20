@@ -67,6 +67,7 @@ export async function onRequest(context) {
             '分类': f['分类'] || '其他',
             '金额': Number(f['金额']) || 0,
             '备注': f['备注'] || '',
+            '图片': f['图片'] || '',
           });
         });
       }
@@ -85,6 +86,7 @@ export async function onRequest(context) {
       '金额': body.amount || 0,
       '备注': body.note || '',
     };
+    if (body.image && body.image.length <= 50000) fields['图片'] = body.image;
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -92,6 +94,25 @@ export async function onRequest(context) {
     });
     const d = await r.json();
     return json({ id: d.data?.record?.record_id, ok: true }, 201, corsHeaders);
+  }
+
+  if (method === 'PUT') {
+    const body = await request.json();
+    if (!body.id) return json({ error: '缺少 id' }, 400, corsHeaders);
+    const fields = {};
+    if (body.type !== undefined) fields['类型'] = body.type;
+    if (body.category !== undefined) fields['分类'] = body.category;
+    if (body.amount !== undefined) fields['金额'] = body.amount;
+    if (body.note !== undefined) fields['备注'] = body.note;
+    if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
+    if (body.image !== undefined) { if (body.image && body.image.length <= 50000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
+    const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    });
+    const d = await r.json();
+    return json({ ok: true }, 200, corsHeaders);
   }
 
   if (method === 'DELETE') {
