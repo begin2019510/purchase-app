@@ -899,8 +899,6 @@ function openDetailModal(id){
       <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailAction('${id}','已退')">↩️ 退货归档</button>
     </div>`;
   }
-  // 已到/已退是终态，不显示按钮
-  }
 
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('active');
