@@ -127,8 +127,12 @@ export async function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     const d = await r.json();
-    // Debug: 返回飞书完整响应，排查后去掉
-    return json({ ok: d.code === 0, feishu_code: d.code, feishu_msg: d.msg, sent_fields: fields, feishu_data: d.data }, 200, corsHeaders);
+    if (d.code !== 0) return json({ error: d.msg || '更新失败', detail: d }, 500, corsHeaders);
+    // 清除 GET 缓存，确保下次读取拿到最新数据
+    const cache = caches.default;
+    const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
+    context.waitUntil(cache.delete(cacheKey));
+    return json({ ok: true }, 200, corsHeaders);
   }
 
   if (method === 'DELETE') {
@@ -140,6 +144,10 @@ export async function onRequest(context) {
     });
     const dd = await dr.json();
     if (dd.code !== 0) return json({ error: dd.msg || '删除失败' }, 500, corsHeaders);
+    // 清除 GET 缓存
+    const cache = caches.default;
+    const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
+    context.waitUntil(cache.delete(cacheKey));
     return json({ ok: true }, 200, corsHeaders);
   }
 
