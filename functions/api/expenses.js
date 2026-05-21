@@ -16,14 +16,14 @@ export async function onRequest(context) {
     return true;
   }
   if (!verifyPin(request, env)) {
-    return json({ error: '未授�? }, 401, corsHeaders);
+    return json({ error: 'Unauthorized' }, 401, corsHeaders);
   }
 
   const APP = env.FEISHU_EXPENSE_APP;
   const TABLE = env.FEISHU_EXPENSE_TABLE;
-  if (!APP || !TABLE) return json({ error: '记账未配�? }, 500, corsHeaders);
+  if (!APP || !TABLE) return json({ error: 'Expense table not configured' }, 500, corsHeaders);
 
-  // 获取飞书 tenant_access_token
+  // Get Feishu tenant_access_token
   async function getToken() {
     const r = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
       method: 'POST',
@@ -34,7 +34,8 @@ export async function onRequest(context) {
     return d.tenant_access_token;
   }
 
-  // 日期转时间戳（北京时�?00:00:00�?  function dateToTs(dateStr) {
+  // Date string to timestamp (Beijing midnight 00:00:00)
+  function dateToTs(dateStr) {
     if (!dateStr) return Date.now();
     const d = new Date(dateStr + 'T00:00:00+08:00');
     return d.getTime();
@@ -92,7 +93,6 @@ export async function onRequest(context) {
   }
 
   if (method === 'POST') {
-    // 新增记账
     const body = await request.json();
     const fields = {
       '日期': dateToTs(body.date),
@@ -113,7 +113,7 @@ export async function onRequest(context) {
 
   if (method === 'PUT') {
     const body = await request.json();
-    if (!body.id) return json({ error: '缺少 id' }, 400, corsHeaders);
+    if (!body.id) return json({ error: 'Missing id' }, 400, corsHeaders);
     const fields = {};
     if (body.type !== undefined) fields['类型'] = body.type;
     if (body.category !== undefined) fields['分类'] = body.category;
@@ -127,8 +127,8 @@ export async function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     const d = await r.json();
-    if (d.code !== 0) return json({ error: d.msg || '更新失败', detail: d }, 500, corsHeaders);
-    // 清除 GET 缓存，确保下次读取拿到最新数据
+    if (d.code !== 0) return json({ error: d.msg || 'Update failed', detail: d }, 500, corsHeaders);
+    // Clear GET cache so next read gets fresh data
     const cache = caches.default;
     const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
     context.waitUntil(cache.delete(cacheKey));
@@ -138,18 +138,18 @@ export async function onRequest(context) {
   if (method === 'DELETE') {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
-    if (!id) return json({ error: '缺少 id' }, 400, corsHeaders);
+    if (!id) return json({ error: 'Missing id' }, 400, corsHeaders);
     const dr = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, {
       method: 'DELETE', headers: { Authorization: 'Bearer ' + token },
     });
     const dd = await dr.json();
-    if (dd.code !== 0) return json({ error: dd.msg || '删除失败' }, 500, corsHeaders);
-    // 清除 GET 缓存
+    if (dd.code !== 0) return json({ error: dd.msg || 'Delete failed' }, 500, corsHeaders);
+    // Clear GET cache
     const cache = caches.default;
     const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
     context.waitUntil(cache.delete(cacheKey));
     return json({ ok: true }, 200, corsHeaders);
   }
 
-  return json({ error: '方法不允�? }, 405, corsHeaders);
+  return json({ error: 'Method not allowed' }, 405, corsHeaders);
 }
