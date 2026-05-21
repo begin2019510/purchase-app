@@ -128,10 +128,6 @@ export async function onRequest(context) {
     });
     const d = await r.json();
     if (d.code !== 0) return json({ error: d.msg || 'Update failed', detail: d }, 500, corsHeaders);
-    // Clear GET cache so next read gets fresh data
-    const cache = caches.default;
-    const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
-    context.waitUntil(cache.delete(cacheKey));
     return json({ ok: true }, 200, corsHeaders);
   }
 
@@ -144,10 +140,6 @@ export async function onRequest(context) {
     });
     const dd = await dr.json();
     if (dd.code !== 0) return json({ error: dd.msg || 'Delete failed' }, 500, corsHeaders);
-    // Clear GET cache
-    const cache = caches.default;
-    const cacheKey = new Request(new URL(request.url).origin + '/api/expenses', request);
-    context.waitUntil(cache.delete(cacheKey));
     return json({ ok: true }, 200, corsHeaders);
   }
 
