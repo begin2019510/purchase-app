@@ -1,5 +1,5 @@
 // Service Worker - 离线缓存 + 推送通知
-const CACHE = 'purchase-cache-v12';
+const CACHE = 'purchase-cache-v13';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
