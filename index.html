@@ -262,7 +262,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.2</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.3</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -350,12 +350,19 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
     </div>
     <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选"></div>
     <div class="form-group"><label>图片</label>
-      <div class="img-upload-area" onclick="document.getElementById('eImageInput').click()">
-        <div class="upload-icon">📷</div>
-        <div class="upload-text">点击拍照或选择图片</div>
-        <img id="eImagePreview" class="img-preview" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eCameraInput').click()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">拍照</div>
+        </div>
+        <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eGalleryInput').click()">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text">相册</div>
+        </div>
       </div>
-      <input type="file" id="eImageInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+      <img id="eImagePreview" class="img-preview" style="display:none">
+      <input type="file" id="eCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
+      <input type="file" id="eGalleryInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
@@ -422,10 +429,11 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.5.2';
+const APP_VERSION='2.5.3';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
-  {v:'2.5.2',date:'2026-05-21',items:['图片存储升级：改用Cloudflare KV，告别32KB限制','支持从手机相册选择图片（移除capture强制相机）','图片压缩上限提升至800px/500KB','旧图片自动兼容，新图片存KV']},
+  {v:'2.5.3',date:'2026-05-21',items:['图片上传分为拍照+相册两个按钮','拍照用capture=environment，相册无限制','兼容所有手机浏览器']},
+  {v:'2.5.2',date:'2026-05-21',items:['图片存储升级：改用Cloudflare KV，告别32KB限制','图片压缩上限提升至800px/500KB','旧图片自动兼容，新图片存KV']},
   {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：🕐前缀+正常可见','点击版本号查看更新日志']},
   {v:'2.5.0',date:'2026-05-20',items:['归档功能：已到/已退3天后自动提醒归档','审批流完整流程：待审批→已审批→已下单→已到/已退→已归档','新增archive-check定时任务','Bitable新增归档时间字段']},
   {v:'2.4.2',date:'2026-05-20',items:['审批流分支结构修复：已到和已退是分支而非线性','详情弹窗改版：stepper流程展示+操作按钮','已到/已退终态显示归档按钮']},
@@ -822,7 +830,7 @@ function showApprovalModal(id){
 function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
 // ===== 记账操作 =====
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片key']){currentImageKey=e['图片key'];currentImageData='';preview.src='/api/images?key='+encodeURIComponent(e['图片key']);preview.style.display='block'}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片key']){currentImageKey=e['图片key'];currentImageData='';preview.src='/api/images?key='+encodeURIComponent(e['图片key']);preview.style.display='block'}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
