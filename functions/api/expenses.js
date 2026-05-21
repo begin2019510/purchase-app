@@ -127,8 +127,8 @@ export async function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     const d = await r.json();
-    if (d.code !== 0) return json({ error: d.msg || '更新失败', detail: d }, 500, corsHeaders);
-    return json({ ok: true }, 200, corsHeaders);
+    // Debug: 返回飞书完整响应，排查后去掉
+    return json({ ok: d.code === 0, feishu_code: d.code, feishu_msg: d.msg, sent_fields: fields, feishu_data: d.data }, 200, corsHeaders);
   }
 
   if (method === 'DELETE') {
