@@ -34,11 +34,11 @@ export async function onRequest(context) {
     return d.tenant_access_token;
   }
 
-  // Date string to timestamp (Beijing midnight 00:00:00)
+  // Date string or datetime-local to timestamp (Beijing time)
   function dateToTs(dateStr) {
     if (!dateStr) return Date.now();
-    const d = new Date(dateStr + 'T00:00:00+08:00');
-    return d.getTime();
+    if (dateStr.includes('T')) return new Date(dateStr + '+08:00').getTime();
+    return new Date(dateStr + 'T00:00:00+08:00').getTime();
   }
 
   const token = await getToken();
@@ -64,7 +64,8 @@ export async function onRequest(context) {
               try { 
                 const ts = f['日期'];
                 const d = new Date(typeof ts === 'number' ? ts + 8 * 3600 * 1000 : ts);
-                dateStr = d.toISOString().slice(0, 10); 
+                const pad = n => String(n).padStart(2, '0');
+                dateStr = d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + 'T' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
               } catch {}
             }
             records.push({

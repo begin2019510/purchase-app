@@ -255,7 +255,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.0</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.1</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -339,7 +339,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
     </div>
     <div class="form-row">
       <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
-      <div class="form-group"><label>日期</label><input id="eDate" type="date"></div>
+      <div class="form-group"><label>日期时间</label><input id="eDate" type="datetime-local"></div>
     </div>
     <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选"></div>
     <div class="form-group"><label>图片</label>
@@ -404,7 +404,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.5.0';
+const APP_VERSION='2.5.1';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 let currentImageData='';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
@@ -465,8 +465,8 @@ if('serviceWorker' in navigator) document.getElementById('pushBtn').style.displa
 if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
-function getMonth(d){if(!d)return null;try{return new Date(d).toISOString().slice(0,7)}catch{return null}}
-function getThisMonth(){return new Date().toISOString().slice(0,7)}
+function getMonth(d){if(!d)return null;try{return new Date(Date.parse(d)+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
+function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}
 function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
 
 async function loadAll(){
@@ -544,7 +544,7 @@ function renderExpense(){
   const thisMonth=getThisMonth();
   const monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
-    try{return new Date(e['日期']).toISOString().slice(0,7)===thisMonth}catch{return false}
+    try{return getMonth(e['日期'])===thisMonth}catch{return false}
   }).sort((a,b)=>(b['日期']||'')>(a['日期']||'')?1:-1);
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
 const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
@@ -575,7 +575,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
     html+=`<div class="ex-section"><div class="ex-section-title">📂 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
   }
   const dayGroups={};
-  searched.forEach(e=>{let day='未知日期';if(e['日期']){try{day=new Date(e['日期']).toISOString().slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
+  searched.forEach(e=>{let day='未知日期';if(e['日期']){try{day=e['日期'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
   html+=`<div class="ex-section"><div class="ex-section-title">📅 消费记录</div><div class="ex-timeline">`;
   if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">💰</div><div class="ex-empty-text">本月暂无记账</div><div class="ex-empty-hint">点右下角 + 记一笔</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
@@ -588,7 +588,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       const thumbHtml=e['图片']?`<img class="ex-thumb" src="${e['图片']}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div>`;
     });
@@ -661,7 +661,7 @@ function renderStats() {
   // ===== 记账数据 =====
   const monthExpenses = expenses.filter(e => {
     if (!e['日期']) return false;
-    try { return new Date(e['日期']).toISOString().slice(0, 7) === thisMonth } catch { return false }
+    try { return getMonth(e['日期']) === thisMonth } catch { return false }
   });
   // 统计不受搜索过滤，直接用月度全量数据
   const searched = monthExpenses;
@@ -791,9 +791,9 @@ function showApprovalModal(id){
 function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
 // ===== 记账操作 =====
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{d=new Date(e['日期']).toISOString().slice(0,10)}catch{}}document.getElementById('eDate').value=d;if(e['图片']){currentImageData=e['图片'];preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';document.getElementById('eDate').value=new Date().toISOString().slice(0,10);preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']){currentImageData=e['图片'];preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
-function exportExpenses(){const lines=['日期\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{let ds='';if(e['日期']){try{ds=new Date(e['日期']).toISOString().slice(0,10)}catch{}}lines.push((ds||'')+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
+function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData)data.image=currentImageData;const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
