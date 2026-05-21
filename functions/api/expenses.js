@@ -61,7 +61,11 @@ export async function onRequest(context) {
             const f = rec.fields;
             let dateStr = null;
             if (f['日期']) {
-              try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {}
+              try { 
+                const ts = f['日期'];
+                const d = new Date(typeof ts === 'number' ? ts + 8 * 3600 * 1000 : ts);
+                dateStr = d.toISOString().slice(0, 10); 
+              } catch {}
             }
             records.push({
               id: rec.record_id,
