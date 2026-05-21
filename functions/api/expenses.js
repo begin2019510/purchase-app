@@ -115,9 +115,9 @@ function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     let d = await r.json();
-    // Fallback: if body.image is available (base64), write it
-    if (d.code !== 0 && !body.imageKey && body.image) {
-      if (body.image.length <= 30000) fields['图片'] = body.image;
+    // Fallback: if kv: write failed and base64 image available, retry with base64
+    if (d.code !== 0 && body.image && body.image.length <= 30000) {
+      fields['图片'] = body.image;
       r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
