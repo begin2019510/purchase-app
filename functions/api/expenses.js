@@ -109,12 +109,23 @@ export async function onRequest(context) {
     };
     if (body.imageKey) fields['图片key'] = body.imageKey;
     else if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
-    const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
+    let r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields }),
     });
-    const d = await r.json();
+    let d = await r.json();
+    // Fallback: if 图片key field doesn't exist, retry without it
+    if (d.code !== 0 && d.msg && d.msg.includes('FieldNameNotFound') && fields['图片key'] !== undefined) {
+      delete fields['图片key'];
+      if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
+      r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      });
+      d = await r.json();
+    }
     return json({ id: d.data?.record?.record_id, ok: true }, 201, corsHeaders);
   }
 
@@ -129,12 +140,24 @@ export async function onRequest(context) {
     if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
     if (body.imageKey !== undefined) fields['图片key'] = body.imageKey;
     else if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
-    const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
+    let r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
       method: 'PUT',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields }),
     });
-    const d = await r.json();
+    let d = await r.json();
+    // Fallback: if 图片key field doesn't exist, retry without it
+    if (d.code !== 0 && d.msg && d.msg.includes('FieldNameNotFound') && fields['图片key'] !== undefined) {
+      delete fields['图片key'];
+      // Also try to save image as base64 in 图片 field if available
+      if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
+      r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }),
+      });
+      d = await r.json();
+    }
     if (d.code !== 0) return json({ error: d.msg || 'Update failed', detail: d }, 500, corsHeaders);
     return json({ ok: true }, 200, corsHeaders);
   }
