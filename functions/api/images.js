@@ -1,3 +1,4 @@
+// IMAGE_ARCH: 图存Cloudflare KV(IMAGE_STORE), Bitable只存kv:key引用
 export async function onRequest(context) {
   const { request, env } = context;
   const origin = request.headers.get('Origin') || '';
