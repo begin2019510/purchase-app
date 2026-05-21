@@ -76,6 +76,7 @@ export async function onRequest(context) {
               '金额': Number(f['金额']) || 0,
               '备注': f['备注'] || '',
               '图片': f['图片'] || '',
+              '图片key': f['图片key'] || '',
             });
           });
         }
@@ -106,7 +107,8 @@ export async function onRequest(context) {
       '金额': body.amount || 0,
       '备注': body.note || '',
     };
-    if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
+    if (body.imageKey) fields['图片key'] = body.imageKey;
+    else if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -125,7 +127,8 @@ export async function onRequest(context) {
     if (body.amount !== undefined) fields['金额'] = body.amount;
     if (body.note !== undefined) fields['备注'] = body.note;
     if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
-    if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
+    if (body.imageKey !== undefined) fields['图片key'] = body.imageKey;
+    else if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
       method: 'PUT',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },

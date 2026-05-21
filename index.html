@@ -262,7 +262,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.1</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.2</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -355,7 +355,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
         <div class="upload-text">点击拍照或选择图片</div>
         <img id="eImagePreview" class="img-preview" style="display:none">
       </div>
-      <input type="file" id="eImageInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
+      <input type="file" id="eImageInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
@@ -422,9 +422,10 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.5.1';
+const APP_VERSION='2.5.2';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.2',date:'2026-05-21',items:['图片存储升级：改用Cloudflare KV，告别32KB限制','支持从手机相册选择图片（移除capture强制相机）','图片压缩上限提升至800px/500KB','旧图片自动兼容，新图片存KV']},
   {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：🕐前缀+正常可见','点击版本号查看更新日志']},
   {v:'2.5.0',date:'2026-05-20',items:['归档功能：已到/已退3天后自动提醒归档','审批流完整流程：待审批→已审批→已下单→已到/已退→已归档','新增archive-check定时任务','Bitable新增归档时间字段']},
   {v:'2.4.2',date:'2026-05-20',items:['审批流分支结构修复：已到和已退是分支而非线性','详情弹窗改版：stepper流程展示+操作按钮','已到/已退终态显示归档按钮']},
@@ -435,10 +436,10 @@ const CHANGELOG=[
 function openChangelog(){const c=document.getElementById('changelogContent');let html='';CHANGELOG.forEach(r=>{html+=`<div class='changelog-ver'>v${r.v}<span class='changelog-date'>${r.date}</span></div><ul class='changelog-list'>`;r.items.forEach(i=>{html+=`<li>${i}</li>`});html+='</ul>'});c.innerHTML=html;document.getElementById('changelogOverlay').classList.add('active')}
 function closeChangelog(){document.getElementById('changelogOverlay').classList.remove('active')}
 document.getElementById('versionBadge').addEventListener('click',openChangelog);
-let currentImageData='';
+let currentImageData='';let currentImageKey='';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
 (function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='☀️'}})();
-function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement('canvas');const MAX=400;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);let q=0.5;let dataUrl=canvas.toDataURL('image/jpeg',q);while(dataUrl.length>28000&&q>0.1){q-=0.1;dataUrl=canvas.toDataURL('image/jpeg',q)}currentImageData=dataUrl;const preview=document.getElementById('eImagePreview');preview.src=dataUrl;preview.style.display='block';document.querySelector('.upload-text').textContent=`已压缩 (${'  '+(dataUrl.length/1024).toFixed(0)}KB)`};img.src=e.target.result};reader.readAsDataURL(file)}
+function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement('canvas');const MAX=800;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);let q=0.7;let dataUrl=canvas.toDataURL('image/jpeg',q);while(dataUrl.length>500000&&q>0.2){q-=0.1;dataUrl=canvas.toDataURL('image/jpeg',q)}currentImageData=dataUrl;currentImageKey='';const preview=document.getElementById('eImagePreview');preview.src=dataUrl;preview.style.display='block';document.querySelector('.upload-text').textContent=`已压缩 (${'  '+(dataUrl.length/1024).toFixed(0)}KB)`};img.src=e.target.result};reader.readAsDataURL(file)}
 function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
 const API='/api/items';
 const EXPENSE_API='/api/expenses';
@@ -615,7 +616,8 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
     list.forEach(e=>{
       const isOut=e['类型']==='支出';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
-      const thumbHtml=e['图片']?`<img class="ex-thumb" src="${e['图片']}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      const imgSrc=e['图片key']?'/api/images?key='+encodeURIComponent(e['图片key']):e['图片'];
+      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
@@ -820,10 +822,10 @@ function showApprovalModal(id){
 function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
 // ===== 记账操作 =====
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']){currentImageData=e['图片'];preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');const input=document.getElementById('eImageInput');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片key']){currentImageKey=e['图片key'];currentImageData='';preview.src='/api/images?key='+encodeURIComponent(e['图片key']);preview.style.display='block'}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';preview.src=e['图片'];preview.style.display='block'}else{preview.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.style.display='none'}input.value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData)data.image=currentImageData;const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';closeExpenseModal();await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== 预算 =====
