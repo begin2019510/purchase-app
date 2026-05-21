@@ -122,6 +122,13 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 .modal{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .modal h2{font-size:18px;font-weight:800;margin-bottom:16px;text-align:center}
+.changelog-ver{font-size:14px;font-weight:700;color:var(--pri);margin-top:14px;padding-bottom:4px;border-bottom:1.5px solid var(--border)}
+.changelog-ver:first-child{margin-top:0}
+.changelog-date{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400}
+.changelog-list{list-style:none;padding:0;margin:6px 0 0}
+.changelog-list li{font-size:13px;color:var(--text);padding:4px 0 4px 16px;position:relative;line-height:1.5}
+.changelog-list li::before{content:'';position:absolute;left:0;top:11px;width:6px;height:6px;border-radius:50%;background:var(--pri)}
+.header-version{cursor:pointer}
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:var(--muted);letter-spacing:.3px}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;outline:none;background:#fff;transition:.2s}
@@ -391,6 +398,17 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
   </div>
 </div>
 
+<!-- 更新日志 -->
+<div class="modal-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
+  <div class="modal">
+    <h2>📋 更新日志</h2>
+    <div id="changelogContent"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="closeChangelog()">关闭</button>
+    </div>
+  </div>
+</div>
+
 <!-- PIN 锁屏 -->
 <div id="pinScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center">
   <div style="text-align:center;padding:20px;width:100%;max-width:320px">
@@ -406,6 +424,17 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <script>
 const APP_VERSION='2.5.1';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
+const CHANGELOG=[
+  {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：🕐前缀+正常可见','点击版本号查看更新日志']},
+  {v:'2.5.0',date:'2026-05-20',items:['归档功能：已到/已退3天后自动提醒归档','审批流完整流程：待审批→已审批→已下单→已到/已退→已归档','新增archive-check定时任务','Bitable新增归档时间字段']},
+  {v:'2.4.2',date:'2026-05-20',items:['审批流分支结构修复：已到和已退是分支而非线性','详情弹窗改版：stepper流程展示+操作按钮','已到/已退终态显示归档按钮']},
+  {v:'2.4.1',date:'2026-05-20',items:['详情弹窗重做：飞书审批流风格','竖向stepper时间线','卡片只显示状态+最新时间']},
+  {v:'2.4.0',date:'2026-05-20',items:['采购审批流：5步状态管理','自动记录状态变更时间','暗色模式','记账图片附件支持','周度/月度汇总飞书推送']},
+  {v:'2.3.0',date:'2026-05-20',items:['暗色模式（跟随系统+手动切换）','记账图片附件（拍照+压缩+全屏预览）','周度/月度汇总飞书推送']},
+];
+function openChangelog(){const c=document.getElementById('changelogContent');let html='';CHANGELOG.forEach(r=>{html+=`<div class='changelog-ver'>v${r.v}<span class='changelog-date'>${r.date}</span></div><ul class='changelog-list'>`;r.items.forEach(i=>{html+=`<li>${i}</li>`});html+='</ul>'});c.innerHTML=html;document.getElementById('changelogOverlay').classList.add('active')}
+function closeChangelog(){document.getElementById('changelogOverlay').classList.remove('active')}
+document.getElementById('versionBadge').addEventListener('click',openChangelog);
 let currentImageData='';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
 (function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='☀️'}})();
