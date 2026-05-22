@@ -12,7 +12,10 @@ export async function onRequest(context) {
     return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
   }
   function verifyPin(req, env) {
-    const pin = req.headers.get('X-API-Key');
+    // GET: also accept key from query param (img src can't send headers)
+    const url = new URL(req.url);
+    const qKey = url.searchParams.get('pin');
+    const pin = req.headers.get('X-API-Key') || qKey;
     if (!pin || pin !== env.API_KEY) return false;
     return true;
   }
