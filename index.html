@@ -892,7 +892,7 @@ function openDetailModal(id){
   // Stepper: always show full flow 待审批→已审批→已下单→已到/已退→已归档
   const branchLabel = status==='已退' ? '已退' : '已到';
   const mainSteps = ['待审批','已审批','已下单'];
-  const branchDone = status==='已到' || status==='已退';
+  const branchDone = status==='已到' || status==='已退' || status==='已归档';
   const archiveDone = status==='已归档';
 
   // Build full step list
