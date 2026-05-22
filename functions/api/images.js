@@ -57,11 +57,10 @@ export async function onRequest(context) {
     const meta = await KV.getWithMetadata(key);
     const contentType = meta.metadata?.contentType || 'image/jpeg';
     
-    // Return as data URL for direct use in <img src>
-    return new Response(JSON.stringify({ dataUrl: `data:${contentType};base64,${base64}` }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    // Return data URL directly for <img src> usage
+    return new Response(`data:${contentType};base64,${base64}`,
+      { status: 200, headers: { 'Content-Type': 'text/plain', ...corsHeaders } }
+    );
   }
 
   // DELETE
