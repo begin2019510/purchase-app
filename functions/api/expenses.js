@@ -115,8 +115,8 @@ export async function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     let d = await r.json();
-    // Fallback: if kv: write failed and base64 image available, retry with base64
-    if (d.code !== 0 && body.image && body.image.length <= 30000) {
+    // Fallback: only if first POST truly failed AND base64 available
+    if (d.code !== 0 && !d.data?.record?.record_id && body.image && body.image.length <= 30000) {
       fields['图片'] = body.image;
       r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
         method: 'POST',
@@ -125,6 +125,8 @@ export async function onRequest(context) {
       });
       d = await r.json();
     }
+    // Invalidate GET cache after write
+    try { const ck = new Request(new URL(request.url).origin + '/api/expenses'); await caches.default.delete(ck); } catch {}
     return json({ id: d.data?.record?.record_id, ok: true }, 201, corsHeaders);
   }
 
@@ -146,6 +148,8 @@ export async function onRequest(context) {
     });
     let d = await r.json();
     if (d.code !== 0) return json({ error: d.msg || 'Update failed', detail: d }, 500, corsHeaders);
+    // Invalidate GET cache after write
+    try { const ck = new Request(new URL(request.url).origin + '/api/expenses'); await caches.default.delete(ck); } catch {}
     return json({ ok: true }, 200, corsHeaders);
   }
 
@@ -158,6 +162,8 @@ export async function onRequest(context) {
     });
     const dd = await dr.json();
     if (dd.code !== 0) return json({ error: dd.msg || 'Delete failed' }, 500, corsHeaders);
+    // Invalidate GET cache after write
+    try { const ck = new Request(new URL(request.url).origin + '/api/expenses'); await caches.default.delete(ck); } catch {}
     return json({ ok: true }, 200, corsHeaders);
   }
 
