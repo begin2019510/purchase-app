@@ -57,9 +57,10 @@ export async function onRequest(context) {
     const meta = await KV.getWithMetadata(key);
     const contentType = meta.metadata?.contentType || 'image/jpeg';
     
-    // Return data URL directly for <img src> usage
-    return new Response(`data:${contentType};base64,${base64}`,
-      { status: 200, headers: { 'Content-Type': 'text/plain', ...corsHeaders } }
+    // Return actual image binary so <img src> works directly
+    const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    return new Response(binary,
+      { status: 200, headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400', ...corsHeaders } }
     );
   }
 
