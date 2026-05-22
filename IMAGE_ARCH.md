@@ -60,3 +60,5 @@ Worker 从 KV 取 base64 → 解码为二进制 → 返回图片数据（Content
 2. **edit 工具不可靠**：修改含中文的 JS 文件时，edit 工具可能损坏编码，用 Python 脚本处理
 3. **Cloudflare KV 限制**：单个 value 最大 25MB（base64），足够存压缩后的图片
 4. **SW 缓存**：修改后如果页面不更新，可能是 Service Worker 缓存了旧版本，需要 Unregister SW 后刷新
+5. **POST/PUT/DELETE 后必须清除缓存**：expenses API 使用 Cache API 缓存 GET 数据，写操作后需 `caches.default.delete()` 避免返回旧数据
+6. **POST fallback 防重复**：只有当第一次 POST 真正失败（`!d.data?.record?.record_id`）时才重试，避免创建重复记录
