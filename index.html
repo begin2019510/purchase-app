@@ -530,8 +530,9 @@ function render(){
 function updateHeader(){
   const total=totalCost(items);
   const thisMonth=getThisMonth();
-  const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth&&i['状态']!=='已退');
-  const monthTotal=totalCost(monthItems);
+  const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
+  const returnedCost=monthItems.filter(i=>i['状态']==='已退').reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0);
+  const monthTotal=totalCost(monthItems)-returnedCost;
   const expThisMonth=expenses.filter(e=>{
     if(!e['日期'])return false;
     try{return new Date(e['日期']).toISOString().slice(0,7)===thisMonth}catch{return false}
@@ -690,9 +691,10 @@ function renderStats() {
   const thisMonth = getThisMonth();
   const budget = getBudget(thisMonth);
   // ===== 采购数据 =====
-  const monthItems = items.filter(i => getMonth(i['日期']) === thisMonth && i['状态'] !== '已退');
-  const monthTotal = monthItems.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
-  const totalAll = items.filter(i => i['状态'] !== '已退').reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
+  const monthItems = items.filter(i => getMonth(i['日期']) === thisMonth);
+  const monthReturned = monthItems.filter(i => i['状态'] === '已退');
+  const monthTotal = monthItems.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - monthReturned.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
+  const totalAll = items.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - items.filter(i => i['状态'] === '已退').reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
   const pCatMap = {};
   monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
   const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
