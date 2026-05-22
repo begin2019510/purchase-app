@@ -1,5 +1,5 @@
-export async // IMAGE_ARCH: kv:前缀+KV key存'图片'字段, 见index.html显示逻辑
-function onRequest(context) {
+// IMAGE_ARCH: kv:前缀+KV key存'图片'字段, 见index.html显示逻辑
+export async function onRequest(context) {
   const { request, env } = context;
   const origin = request.headers.get('Origin') || '';
   const corsHeaders = {
