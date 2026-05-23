@@ -35,6 +35,11 @@ body.dark .ex-view-toggle{background:var(--card);border-color:var(--border)}
 body.dark .cal-nav button{background:var(--card);border-color:var(--border)}
 body.dark .cal-day{background:var(--card)}
 body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
+body.dark .ai-bar{background:var(--card);border-color:var(--border)}
+body.dark .ai-input{background:var(--bg);color:var(--text)}
+body.dark .ai-result{background:var(--bg)}
+body.dark .ai-analysis{background:var(--card);border-color:var(--border)}
+body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);border-color:var(--border)}
 .img-upload-area{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:14px}
 .img-upload-area:hover{border-color:var(--pri)}
 .img-upload-area .upload-icon{font-size:28px;margin-bottom:4px}
@@ -212,6 +217,30 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .swipe-actions span{color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
 .swipe-card{position:relative;z-index:1;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);transition:transform .2s ease;-webkit-user-select:none;user-select:none;touch-action:pan-y}
 .swipe-card.swiping{transition:none}
+
+/* ===== AI 助手 ===== */
+.ai-bar{background:var(--card);border-radius:14px;padding:10px 12px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.ai-input-row{display:flex;gap:8px;align-items:center}
+.ai-input{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--bg);transition:.2s}
+.ai-input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.ai-send{width:38px;height:38px;border-radius:10px;border:none;background:var(--pri-g);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.ai-send:active{transform:scale(.9)}
+.ai-send:disabled{opacity:.4;cursor:not-allowed}
+.ai-result{margin-top:8px;padding:10px 12px;background:var(--bg);border-radius:10px;font-size:13px;line-height:1.6;animation:slideUp .2s ease}
+.ai-result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ai-result-tag{font-size:10px;font-weight:700;color:var(--pri);background:var(--pri-light);padding:2px 8px;border-radius:6px}
+.ai-confirm-btn{padding:6px 16px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}
+.ai-confirm-btn.primary{background:var(--pri);color:#fff}
+.ai-confirm-btn.secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.ai-analysis{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.ai-analysis h3{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-analysis-content{font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.ai-loading{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:var(--muted)}
+.ai-loading .dot{width:6px;height:6px;border-radius:50%;background:var(--pri);animation:dotPulse 1.2s infinite}
+.ai-loading .dot:nth-child(2){animation-delay:.2s}
+.ai-loading .dot:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .icon{font-size:48px;margin-bottom:12px}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;animation:fadeIn .3s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
@@ -357,7 +386,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.7</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.8</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -395,6 +424,13 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
       <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
       <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
     </div>
+    <div class="ai-bar" id="aiBar">
+      <div class="ai-input-row">
+        <input class="ai-input" id="aiInput" placeholder="说句话就能记账: 午饭35、打车28..." onkeydown="if(event.key==='Enter')sendAI()">
+        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">✨</button>
+      </div>
+      <div id="aiResult"></div>
+    </div>
   </div>
   <div class="ptr-wrapper">
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
@@ -407,7 +443,14 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 <div id="tab-stats" style="display:none">
   <div class="ptr-wrapper">
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
-    <div class="container stats-page" id="statsContent"></div>
+    <div class="container stats-page">
+      <div class="ai-analysis" id="aiAnalysis">
+        <h3>🤖 AI 财务分析</h3>
+        <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="width:100%">✨ 点击生成分析报告</button>
+        <div id="aiAnalysisResult"></div>
+      </div>
+      <div id="statsContent"></div>
+    </div>
   </div>
 </div>
 
@@ -544,9 +587,10 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 </div>
 
 <script>
-const APP_VERSION='2.5.7';
+const APP_VERSION='2.5.8';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.8',date:'2026-05-23',items:['AI自然语言记账：说句话自动解析金额/分类/时间','AI财务分析报告：消费异常/省钱建议/趋势洞察','AI代理后端：DeepSeek API + Cloudflare Pages Function']},
   {v:'2.5.7',date:'2026-05-23',items:['骨架屏加载动画，告别白屏等待','下拉刷新手势支持','卡片左滑删除、右滑改状态']},
   {v:'2.5.6',date:'2026-05-23',items:['统计页新增每日支出折线趋势图','每周支出柱状对比图','收入vs支出双线对比','支出分类排行柱状图']},
   {v:'2.5.5',date:'2026-05-23',items:['新增记账月历视图：日历网格展示每日收支','点击日期查看当天记账明细','支持月份切换导航','空日期可快捷记一笔','列表/日历视图自由切换']},
@@ -1453,6 +1497,99 @@ function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t
 async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&pin='+getPin(),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');await loadAll()}
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
+
+// ===== AI 助手 =====
+const AI_API='/api/ai';
+async function aiRequest(action,data){
+  const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({action,data})});
+  if(!r.ok)throw new Error('AI request failed: '+r.status);
+  return r.json();
+}
+
+// --- 自然语言记账 ---
+let pendingAI=null;
+async function sendAI(){
+  const input=document.getElementById('aiInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const btn=document.getElementById('aiSendBtn');
+  const resultEl=document.getElementById('aiResult');
+  btn.disabled=true;
+  btn.textContent='⏳';
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>解析中...</span></div>`;
+  try{
+    const now=new Date(Date.now()+8*3600*1000);
+    const currentDate=now.toISOString().slice(0,10);
+    const res=await aiRequest('parse',{text,currentDate});
+    if(res.ok&&res.data&&res.data.amount>0){
+      pendingAI=res.data;
+      const d=res.data;
+      resultEl.innerHTML=`<div class="ai-result">
+        <div class="ai-result-header"><span class="ai-result-tag">🤖 AI 解析</span><span style="font-size:10px;color:var(--muted)">置信度 ${((d.confidence||0)*100).toFixed(0)}%</span></div>
+        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> ¥${d.amount.toFixed(2)} · ${d.category}${d.note?' · '+d.note:''}</div>
+        <div style="display:flex;gap:6px">
+          <button class="ai-confirm-btn primary" onclick="confirmAI()">✓ 记一笔</button>
+          <button class="ai-confirm-btn secondary" onclick="editAI()">✏️ 修改</button>
+          <button class="ai-confirm-btn secondary" onclick="cancelAI()">✕ 取消</button>
+        </div>
+      </div>`;
+    }else{
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤔 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>`;
+    }
+  }catch(e){
+    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ ${e.message.includes('not configured')?'AI 未配置，请在 Cloudflare Pages 设置 DEEPSEEK_API_KEY':e.message}</div></div>`;
+  }
+  btn.disabled=false;
+  btn.textContent='✨';
+  input.value='';
+}
+
+function confirmAI(){
+  if(!pendingAI)return;
+  const d=pendingAI;
+  const now=new Date(Date.now()+8*3600*1000);
+  const pad=n=>String(n).padStart(2,'0');
+  const dateStr=d.date||(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes()));
+  openExpenseModal();
+  document.getElementById('eType').value=d.type||'支出';
+  document.getElementById('eAmount').value=d.amount||'';
+  document.getElementById('eCategory').value=d.category||'其他';
+  document.getElementById('eDate').value=dateStr;
+  document.getElementById('eNote').value=d.note||'';
+  document.getElementById('aiResult').innerHTML='';
+  pendingAI=null;
+}
+function editAI(){
+  if(!pendingAI)return;
+  document.getElementById('aiInput').value=`${pendingAI.type} ${pendingAI.amount} ${pendingAI.category} ${pendingAI.note||''}`;
+  document.getElementById('aiResult').innerHTML='';
+  pendingAI=null;
+}
+function cancelAI(){
+  document.getElementById('aiResult').innerHTML='';
+  pendingAI=null;
+}
+
+// --- AI 分析 ---
+async function runAIAnalysis(){
+  const resultEl=document.getElementById('aiAnalysisResult');
+  const btn=document.querySelector('#aiAnalysis .ai-confirm-btn');
+  btn.style.display='none';
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>分析中...</span></div>`;
+  try{
+    const thisMonth=getThisMonth();
+    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
+    const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
+    const res=await aiRequest('analyze',{expenses:monthExpenses,items:monthItems,month:thisMonth});
+    if(res.ok){
+      resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px;width:100%">🔄 重新分析</button>`;
+    }else{
+      resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px">重试</button>`;
+    }
+  }catch(e){
+    resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">⚠️ ${e.message.includes('not configured')?'AI 未配置，请设置 DEEPSEEK_API_KEY':e.message}</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px">重试</button>`;
+  }
+}
 
 // ===== 预算 =====
 function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
