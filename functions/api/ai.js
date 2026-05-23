@@ -75,9 +75,16 @@ async function handleParse(apiKey, data, corsHeaders) {
 当前日期: ${currentDate || new Date().toISOString().slice(0, 10)}
 
 输出严格JSON:
-{"type":"支出或收入","amount":数字,"category":"餐饮|交通|购物|娱乐|居住|医疗|教育|其他","date":"YYYY-MM-DDTHH:mm","note":"摘要","confidence":0-1}
+{"type":"支出或收入","amount":数字,"category":"餐饮|交通|购物|娱乐|居住|医疗|教育|其他","date":"YYYY-MM-DDTHH:mm","note":"润色后的备注","confidence":0-1}
 
-规则: 没提金额返回amount=0。"午饭"→餐饮,"打车"→交通。语气词去掉。`;
+note字段规则:
+- 将用户的原始描述润色为一句自然、完整的消费记录
+- 保留具体细节（地点、商品名、数量等）
+- 去掉语气词，补充量词和单位
+- 例: "午饭35" → "午餐 ¥35"; "打车去公司28" → "打车去公司 ¥28"; "买了杯瑞幸9.9" → "瑞幸咖啡 ¥9.9"
+- 如果用户描述已经很完整，适当润色即可
+
+其他规则: 没提金额返回amount=0。"午饭"→餐饮,"打车"→交通。`;
 
   const result = await callAI(apiKey, systemPrompt, text);
   const m = result.match(/\{[\s\S]*\}/);
