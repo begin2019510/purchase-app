@@ -210,8 +210,13 @@ async function handleRegister(body, env, KV, JWT_SECRET, cors) {
   }
 
   // 验证邀请码
-  const inviteCodesStr = env.INVITE_CODES || '';
+  const inviteCodesStr = (env.INVITE_CODES || '').replace(/\r|\n|\s/g, ' ').trim();
   const validCodes = inviteCodesStr.split(',').map(c => c.trim()).filter(Boolean);
+  // debug: 返回到错误信息里帮助排查
+  const codeMatch = validCodes.includes(inviteCode);
+  if (!codeMatch && validCodes.length === 0) {
+    return json({ error: '邀请码系统未配置（INVITE_CODES环境变量为空）' }, 400, cors);
+  }
   if (!validCodes.includes(inviteCode)) {
     return json({ error: '邀请码无效' }, 400, cors);
   }
