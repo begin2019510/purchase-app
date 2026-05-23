@@ -201,7 +201,7 @@ export async function onRequest(context) {
     } else if (action === 'create-invite') {
       return await handleCreateInvite(request, env, KV, cors);
     } else if (action === 'list-invites') {
-      return await handleListInvites(request, KV, cors);
+      return await handleListInvites(request, env, KV, cors);
     } else if (action === 'delete-user') {
       return await handleDeleteUser(request, env, KV, cors);
     } else if (action === 'debug-env') {
@@ -350,12 +350,12 @@ async function handleCreateInvite(request, env, KV, cors) {
 }
 
 // ===== 查看邀请码列表（仅管理员） =====
-async function handleListInvites(request, KV, cors) {
+async function handleListInvites(request, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
 
   const token = authHeader.replace('Bearer ', '');
-  const payload = await verifyJWT(token, process.env.JWT_SECRET);
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload || payload.username !== 'admin') {
     return json({ error: '仅管理员可查看' }, 403, cors);
   }
