@@ -1,26 +1,20 @@
 // AI 代理 - 深度备注解析 + 消费画像 + 智能分析
 // 环境变量: DEEPSEEK_API_KEY
 
-const AI_API_BASE = 'https://api.deepseek.com';
+import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
 
-function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
-}
+const AI_API_BASE = 'https://api.deepseek.com';
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const origin = request.headers.get('Origin') || '';
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': ['https://121212121.top', 'http://121212121.top'].includes(origin) ? origin : 'https://121212121.top',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,X-API-Key',
-  };
+  const corsHeaders = getCorsHeaders(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
-  const pin = request.headers.get('X-API-Key');
-  if (!pin || pin !== env.API_KEY) {
-    return json({ error: 'Unauthorized' }, 401, corsHeaders);
-  }
+  // 认证（JWT 或 旧 PIN）
+  const user = await authenticate(request, env);
+  if (!user.authenticated) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
+
+  const json = (data, status = 200) => jsonResponse(data, status, corsHeaders);
 
   const apiKey = env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
   if (!apiKey) {

@@ -1,0 +1,86 @@
+// 共享认证模块 - 被所有 API 函数引用
+export const CORS_ORIGINS = ['https://121212121.top', 'http://121212121.top'];
+
+export function getCorsHeaders(request) {
+  const origin = request.headers.get('Origin') || '';
+  const allowed = CORS_ORIGINS.includes(origin) ? origin : CORS_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS,PATCH',
+    'Access-Control-Allow-Headers': 'Content-Type,X-API-Key,Authorization',
+  };
+}
+
+export function jsonResponse(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+}
+
+// JWT 验证
+export async function verifyJWT(token, secret) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const key = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+    );
+    const sig = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(parts[0] + '.' + parts[1]));
+    if (!valid) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch { return null; }
+}
+
+// 从请求中提取用户上下文
+// 兼容两种认证方式：JWT token (Bearer) 和 旧 PIN (X-API-Key)
+export async function authenticate(request, env) {
+  // 优先尝试 JWT
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '');
+    const payload = await verifyJWT(token, env.JWT_SECRET);
+    if (payload) {
+      return {
+        authenticated: true,
+        username: payload.username,
+        bitable: payload.bitable, // { purchaseApp, purchaseTable, expenseApp, expenseTable }
+        isJWT: true,
+      };
+    }
+  }
+
+  // 回退到旧 PIN 认证
+  const pin = request.headers.get('X-API-Key');
+  if (pin && pin === env.API_KEY) {
+    return {
+      authenticated: true,
+      username: 'legacy',
+      bitable: {
+        purchaseApp: env.FEISHU_BITABLE_APP,
+        purchaseTable: env.FEISHU_BITABLE_TABLE,
+        expenseApp: env.FEISHU_EXPENSE_APP,
+        expenseTable: env.FEISHU_EXPENSE_TABLE,
+      },
+      isJWT: false,
+    };
+  }
+
+  return { authenticated: false };
+}
+
+// 获取 Feishu token
+export async function getFeishuToken(env) {
+  const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
+  });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error('Feishu auth failed');
+  return data.tenant_access_token;
+}
