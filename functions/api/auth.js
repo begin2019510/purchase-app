@@ -222,12 +222,21 @@ async function handleRegister(body, env, KV, JWT_SECRET, cors) {
     return json({ error: '用户名已存在' }, 400, cors);
   }
 
-  // 创建 Bitable 表
+  // 创建 Bitable 表（admin 用户使用原有共享表，不创建新表）
   let tables;
-  try {
-    tables = await createUserTables(env, username);
-  } catch (e) {
-    return json({ error: '创建数据表失败: ' + e.message }, 500, cors);
+  if (username === 'admin') {
+    tables = {
+      purchaseApp: env.FEISHU_BITABLE_APP,
+      purchaseTable: env.FEISHU_BITABLE_TABLE,
+      expenseApp: env.FEISHU_EXPENSE_APP,
+      expenseTable: env.FEISHU_EXPENSE_TABLE,
+    };
+  } else {
+    try {
+      tables = await createUserTables(env, username);
+    } catch (e) {
+      return json({ error: '创建数据表失败: ' + e.message }, 500, cors);
+    }
   }
 
   // 哈希密码
