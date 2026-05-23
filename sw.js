@@ -19,7 +19,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('/api/')) return;
+  // 跳过 API 请求和非 GET 请求
+  if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request).then(res => {
       if (res.ok) {

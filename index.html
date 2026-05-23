@@ -1537,7 +1537,7 @@ async function sendAI(){
       resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤔 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>`;
     }
   }catch(e){
-    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ ${e.message.includes('not configured')?'AI 未配置，请在 Cloudflare Pages 设置 DEEPSEEK_API_KEY':e.message}</div></div>`;
+    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ ${e.message||'未知错误'}</div></div>`;
   }
   btn.disabled=false;
   btn.textContent='✨';

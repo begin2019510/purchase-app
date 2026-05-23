@@ -67,13 +67,18 @@ async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 800) {
     }),
   });
 
+  const text = await res.text();
+
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`AI API error: ${res.status} - ${err}`);
+    throw new Error(`AI API ${res.status}: ${text.slice(0, 200)}`);
   }
 
-  const result = await res.json();
-  return result.choices?.[0]?.message?.content || '';
+  try {
+    const result = JSON.parse(text);
+    return result.choices?.[0]?.message?.content || '';
+  } catch {
+    throw new Error('AI response parse failed: ' + text.slice(0, 200));
+  }
 }
 
 // ===== 自然语言记账 =====
