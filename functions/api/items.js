@@ -143,6 +143,8 @@ export async function onRequest(context) {
       if (body.date !== undefined) fields['日期'] = body.date ? new Date(body.date).getTime() : null;
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
+      const cacheKey = new Request(url.toString(), request);
+      context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
 
@@ -158,6 +160,8 @@ export async function onRequest(context) {
         const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
       }
+      const patchCacheKey = new Request(url.toString(), request);
+      context.waitUntil(caches.default.delete(patchCacheKey));
       return json({ results, updated: results.filter(r => r.ok).length });
     }
 
