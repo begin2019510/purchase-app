@@ -31,6 +31,10 @@ body.dark .badge-已到{background:rgba(220,252,231,.15);color:#4ade80}
 body.dark .badge-已退{background:rgba(254,226,226,.15);color:#f87171}
 body.dark .badge-已归档{background:rgba(243,244,265,.15);color:#9ca3af}
 body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
+body.dark .ex-view-toggle{background:var(--card);border-color:var(--border)}
+body.dark .cal-nav button{background:var(--card);border-color:var(--border)}
+body.dark .cal-day{background:var(--card)}
+body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 .img-upload-area{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:14px}
 .img-upload-area:hover{border-color:var(--pri)}
 .img-upload-area .upload-icon{font-size:28px;margin-bottom:4px}
@@ -201,6 +205,41 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 .ex-empty-text{font-size:16px;font-weight:700;margin-bottom:4px}
 .ex-empty-hint{font-size:12px;color:var(--muted)}
 
+/* ===== 月历视图 ===== */
+.ex-view-toggle{display:flex;gap:0;background:var(--card);border-radius:10px;padding:3px;margin-bottom:10px;box-shadow:var(--shadow);border:1px solid var(--border)}
+.ex-view-btn{flex:1;padding:8px 0;text-align:center;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;transition:.2s;color:var(--muted);border:none;background:none}
+.ex-view-btn.active{background:var(--pri);color:#fff;box-shadow:0 2px 6px rgba(99,102,241,.3)}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cal-title{font-size:16px;font-weight:800}
+.cal-nav{display:flex;gap:6px}
+.cal-nav button{width:32px;height:32px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.cal-nav button:active{transform:scale(.9);background:var(--pri-light)}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}
+.cal-weekday{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:4px 0}
+.cal-weekday:first-child,.cal-weekday:last-child{color:var(--red)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;position:relative;background:var(--card);border:1.5px solid transparent}
+.cal-day:active{transform:scale(.92)}
+.cal-day.empty{background:transparent;cursor:default;border:none}
+.cal-day.empty:active{transform:none}
+.cal-day.today{border-color:var(--pri);box-shadow:0 0 0 2px rgba(99,102,241,.15)}
+.cal-day.selected{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 8px rgba(99,102,241,.35)}
+.cal-day.selected .cal-day-amt,.cal-day.selected .cal-day-count{color:rgba(255,255,255,.85)}
+.cal-day.other-month{opacity:.35}
+.cal-day-num{font-size:13px;font-weight:700;line-height:1}
+.cal-day-amt{font-size:8px;font-weight:700;color:var(--red);margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1}
+.cal-day-count{font-size:7px;color:var(--muted);line-height:1;margin-top:1px}
+.cal-day.has-data::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--pri);position:absolute;bottom:3px}
+.cal-day.selected.has-data::after{background:#fff}
+.cal-day-detail{background:var(--card);border-radius:14px;padding:16px;margin-top:10px;box-shadow:var(--shadow);border:1px solid var(--border);animation:slideUp .2s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.cal-detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.cal-detail-date{font-size:14px;font-weight:800}
+.cal-detail-total{font-size:14px;font-weight:800;color:var(--red)}
+.cal-detail-add{padding:6px 14px;border-radius:10px;background:var(--pri);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer}
+.cal-day-out{color:var(--red)}
+.cal-day-in{color:var(--green)}
+
 /* ===== Charts ===== */
 .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mini-card{background:var(--bg);border-radius:12px;padding:14px 12px;text-align:center}
@@ -262,7 +301,7 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.3</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.5</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -291,7 +330,14 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 
 <!-- 记账 Tab -->
 <div id="tab-expense" style="display:none">
-  <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div><div class="chips" id="expenseChips"></div><div class="container" id="expenseContent"></div>
+  <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
+  <div class="container">
+    <div class="ex-view-toggle">
+      <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
+      <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
+    </div>
+  </div>
+  <div class="chips" id="expenseChips"></div><div class="container" id="expenseContent"></div>
 </div>
 
 <!-- 统计 Tab -->
@@ -430,9 +476,11 @@ body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 </div>
 
 <script>
-const APP_VERSION='2.5.3';
+const APP_VERSION='2.5.5';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.5',date:'2026-05-23',items:['新增记账月历视图：日历网格展示每日收支','点击日期查看当天记账明细','支持月份切换导航','空日期可快捷记一笔','列表/日历视图自由切换']},
+  {v:'2.5.4',date:'2026-05-22',items:['图片API返回二进制数据+pin认证','采购统计getMonth时间戳修复','退货金额减法修复','审批流已到打钩修复','记账删图功能','Cron Worker部署']},
   {v:'2.5.3',date:'2026-05-21',items:['图片上传分为拍照+相册两个按钮','拍照用capture=environment，相册无限制','兼容所有手机浏览器']},
   {v:'2.5.2',date:'2026-05-21',items:['图片存储升级：改用Cloudflare KV，告别32KB限制','图片压缩上限提升至800px/500KB','旧图片自动兼容，新图片存KV']},
   {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：🕐前缀+正常可见','点击版本号查看更新日志']},
@@ -456,6 +504,9 @@ let items=[], expenses=[];
 let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
+let expenseViewMode='list'; // 'list' | 'calendar'
+let calYear, calMonth; // 0-indexed month
+let calSelectedDate=null; // 'YYYY-MM-DD'
 
 // ===== PIN =====
 function getPin(){return localStorage.getItem('purchase_pin')||''}
@@ -581,6 +632,7 @@ function formatDay(dayStr) {
   try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}月${(d.getDate()+'').padStart(2,'0')}日`, weekday: '周'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
 }
 function renderExpense(){
+  if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
   const thisMonth=getThisMonth();
   const monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
@@ -687,6 +739,155 @@ function miniCards(items) {
     `<div class="mini-card"><div class="mini-icon">${icon}</div><div class="mini-val" style="color:${color||'var(--text)'}">${val}</div><div class="mini-lbl">${label}</div></div>`
   ).join('')}</div>`;
 }
+
+// ===== 月历视图 =====
+function initCalMonth(){
+  const now=new Date(Date.now()+8*3600*1000);
+  calYear=now.getUTCFullYear(); calMonth=now.getUTCMonth();
+  calSelectedDate=null;
+}
+function switchExpenseView(mode){
+  expenseViewMode=mode;
+  document.getElementById('viewListBtn').classList.toggle('active',mode==='list');
+  document.getElementById('viewCalBtn').classList.toggle('active',mode==='calendar');
+  if(mode==='calendar'&&!calYear)initCalMonth();
+  if(mode==='list')calSelectedDate=null;
+  render();
+}
+function calNav(delta){
+  calMonth+=delta;
+  if(calMonth<0){calMonth=11;calYear--}
+  if(calMonth>11){calMonth=0;calYear++}
+  calSelectedDate=null;
+  renderExpense();
+}
+function selectCalDay(dateStr){
+  calSelectedDate=calSelectedDate===dateStr?null:dateStr;
+  renderExpense();
+}
+function addExpenseForDate(dateStr){
+  openExpenseModal();
+  // 预填日期
+  document.getElementById('eDate').value=dateStr+'T'+new Date(Date.now()+8*3600*1000).toISOString().slice(11,16);
+}
+function renderExpenseCalendar(){
+  const thisMonth=getThisMonth();
+  const monthExpenses=expenses.filter(e=>{
+    if(!e['日期'])return false;
+    try{return getMonth(e['日期'])===thisMonth}catch{return false}
+  });
+  const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
+  const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
+
+  // 按天聚合
+  const dayMap={};
+  searched.forEach(e=>{
+    if(!e['日期'])return;
+    try{
+      const ds=e['日期'].slice(0,10);
+      if(!dayMap[ds])dayMap[ds]={out:0,in:0,count:0,entries:[]};
+      const amt=Number(e['金额']||0);
+      if(e['类型']==='支出')dayMap[ds].out+=amt; else dayMap[ds].in+=amt;
+      dayMap[ds].count++;
+      dayMap[ds].entries.push(e);
+    }catch{}
+  });
+
+  // 月份统计
+  const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const totalIn=searched.filter(e=>e['类型']==='收入').reduce((s,e)=>s+Number(e['金额']||0),0);
+
+  // 日历网格
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date(Date.now()+8*3600*1000);
+  const todayStr=today.getUTCFullYear()+'-'+String(today.getUTCMonth()+1).padStart(2,'0')+'-'+String(today.getUTCDate()).padStart(2,'0');
+  const calMonthStr=calYear+'-'+String(calMonth+1).padStart(2,'0');
+
+  let html='';
+  // 顶部统计（精简）
+  html+=`<div class="ex-header">
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">本月收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
+  </div>`;
+
+  // 日历头部
+  const monthNames=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  html+=`<div class="ex-section"><div class="cal-header">
+    <div class="cal-nav"><button onclick="calNav(-1)">◀</button></div>
+    <div class="cal-title">${calYear}年 ${monthNames[calMonth]}</div>
+    <div class="cal-nav"><button onclick="calNav(1)">▶</button></div>
+  </div>`;
+
+  // 星期头
+  html+=`<div class="cal-weekdays">`;
+  ['日','一','二','三','四','五','六'].forEach(d=>{html+=`<div class="cal-weekday">${d}</div>`});
+  html+=`</div><div class="cal-grid">`;
+
+  // 空白格
+  for(let i=0;i<firstDay;i++) html+=`<div class="cal-day empty"></div>`;
+
+  // 日期格
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=calMonthStr+'-'+String(d).padStart(2,'0');
+    const isToday=ds===todayStr;
+    const isSelected=ds===calSelectedDate;
+    const dayData=dayMap[ds];
+    const hasData=!!dayData;
+    let classes='cal-day';
+    if(isToday)classes+=' today';
+    if(isSelected)classes+=' selected';
+    if(hasData)classes+=' has-data';
+    let amtHtml='';
+    if(dayData){
+      const net=dayData.in-dayData.out;
+      if(dayData.out>0)amtHtml+=`<div class="cal-day-amt">-¥${dayData.out.toFixed(0)}</div>`;
+      if(dayData.in>0)amtHtml+=`<div class="cal-day-amt cal-day-in">+¥${dayData.in.toFixed(0)}</div>`;
+    }
+    html+=`<div class="${classes}" onclick="selectCalDay('${ds}')">
+      <div class="cal-day-num">${d}</div>${amtHtml}${dayData?`<div class="cal-day-count">${dayData.count}笔</div>`:''}</div>`;
+  }
+  html+=`</div>`;
+
+  // 选中日明细
+  if(calSelectedDate && dayMap[calSelectedDate]){
+    const dd=dayMap[calSelectedDate];
+    const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
+    const dateLabel=(selDate.getMonth()+1)+'月'+selDate.getDate()+'日 周'+WEEKDAYS[selDate.getDay()];
+    html+=`<div class="cal-day-detail"><div class="cal-detail-header">
+      <div class="cal-detail-date">📅 ${dateLabel}</div>
+      <button class="cal-detail-add" onclick="addExpenseForDate('${calSelectedDate}')">+ 记一笔</button>
+    </div>`;
+    if(dd.out>0||dd.in>0){
+      html+=`<div style="display:flex;gap:12px;margin-bottom:8px;font-size:13px;font-weight:700">`;
+      if(dd.out>0)html+=`<span style="color:var(--red)">💸 支出 ¥${dd.out.toFixed(2)}</span>`;
+      if(dd.in>0)html+=`<span style="color:var(--green)">💰 收入 ¥${dd.in.toFixed(2)}</span>`;
+      html+=`</div>`;
+    }
+    dd.entries.forEach(e=>{
+      const isOut=e['类型']==='支出';
+      const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+      const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&pin='+getPin():e['图片'];
+      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div>`;
+    });
+    html+=`</div>`;
+  } else if(calSelectedDate){
+    // 选中了没有数据的天
+    const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
+    const dateLabel=(selDate.getMonth()+1)+'月'+selDate.getDate()+'日 周'+WEEKDAYS[selDate.getDay()];
+    html+=`<div class="cal-day-detail"><div class="cal-detail-header">
+      <div class="cal-detail-date">📅 ${dateLabel}</div>
+      <button class="cal-detail-add" onclick="addExpenseForDate('${calSelectedDate}')">+ 记一笔</button>
+    </div><div class="ex-empty" style="padding:20px"><div class="ex-empty-hint">当天暂无记账</div></div></div>`;
+  }
+
+  html+=`</div>`;
+  document.getElementById('expenseContent').innerHTML=html;
+}
 function renderStats() {
   const thisMonth = getThisMonth();
   const budget = getBudget(thisMonth);
@@ -789,6 +990,7 @@ function switchTab(t){
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
   document.getElementById('headerActions').style.display=t==='purchase'?'':'none';
+  if(t==='expense'&&!calYear)initCalMonth();
   render();
 }
 
