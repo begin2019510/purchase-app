@@ -53,6 +53,19 @@ export async function onRequest(context) {
     return jsonResponse({ error: '未授权：请登录' }, 401, corsHeaders);
   }
 
+  // 调试: 查看当前用户的认证和表信息
+  if (url.searchParams.get('debug') === 'auth') {
+    return jsonResponse({
+      authenticated: user.authenticated,
+      username: user.username,
+      isJWT: user.isJWT,
+      purchaseApp: user.bitable?.purchaseApp,
+      purchaseTable: user.bitable?.purchaseTable,
+      expenseApp: user.bitable?.expenseApp,
+      expenseTable: user.bitable?.expenseTable,
+    }, 200, corsHeaders);
+  }
+
   const APP = user.bitable.purchaseApp;
   const TABLE = user.bitable.purchaseTable;
 
