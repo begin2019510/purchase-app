@@ -386,7 +386,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.8</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.9</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -423,6 +423,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
     <div class="ex-view-toggle">
       <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
       <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
+      <button class="ex-view-btn" id="viewTagBtn" onclick="batchTagExpenses()" style="font-size:11px">🏷️ 标签</button>
     </div>
     <div class="ai-bar" id="aiBar">
       <div class="ai-input-row">
@@ -505,7 +506,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
       <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
       <div class="form-group"><label>日期时间</label><input id="eDate" type="datetime-local"></div>
     </div>
-    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选"></div>
+    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:4px;padding:6px 10px;background:var(--pri-light);border-radius:8px;font-size:12px"></div></div>
     <div class="form-group"><label>图片</label>
       <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
       <div id="imageSizeInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px;display:none"></div>
@@ -587,9 +588,10 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 </div>
 
 <script>
-const APP_VERSION='2.5.8';
+const APP_VERSION='2.5.9';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.9',date:'2026-05-23',items:['AI智能分类：备注输入时自动推荐分类+标签','AI批量标签提炼：一键分析本月备注生成标签','分类基于历史数据学习用户习惯']},
   {v:'2.5.8',date:'2026-05-23',items:['AI自然语言记账：说句话自动解析金额/分类/时间','AI财务分析报告：消费异常/省钱建议/趋势洞察','AI代理后端：DeepSeek API + Cloudflare Pages Function']},
   {v:'2.5.7',date:'2026-05-23',items:['骨架屏加载动画，告别白屏等待','下拉刷新手势支持','卡片左滑删除、右滑改状态']},
   {v:'2.5.6',date:'2026-05-23',items:['统计页新增每日支出折线趋势图','每周支出柱状对比图','收入vs支出双线对比','支出分类排行柱状图']},
@@ -1590,6 +1592,63 @@ async function runAIAnalysis(){
   }catch(e){
     resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">⚠️ ${e.message.includes('not configured')?'AI 未配置，请设置 DEEPSEEK_API_KEY':e.message}</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px">重试</button>`;
   }
+}
+
+// ===== 预算 =====
+let catDebounce=null;
+function onNoteInput(){
+  clearTimeout(catDebounce);
+  const note=document.getElementById('eNote').value.trim();
+  const suggestEl=document.getElementById('aiCatSuggest');
+  if(!note){suggestEl.style.display='none';return}
+  catDebounce=setTimeout(()=>suggestCategory(note),600);
+}
+async function suggestCategory(note){
+  const suggestEl=document.getElementById('aiCatSuggest');
+  try{
+    const res=await aiRequest('categorize',{note,existingExpenses:expenses});
+    if(res.ok&&res.data){
+      const d=res.data;
+      const tags=d.tags&&d.tags.length?d.tags.map(t=>`<span style="background:var(--card);padding:1px 6px;border-radius:4px;margin-left:4px;font-size:10px">${t}</span>`).join(''):'';
+      suggestEl.innerHTML=`🤖 建议: <b>${d.category}</b> ${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}%</span>`;
+      suggestEl.style.display='block';
+      suggestEl.style.cursor='pointer';
+      suggestEl.onclick=()=>{document.getElementById('eCategory').value=d.category};
+    }
+  }catch{suggestEl.style.display='none'}
+}
+
+// 批量标签提炼
+async function batchTagExpenses(){
+  const thisMonth=getThisMonth();
+  const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
+  if(!monthExpenses.length)return toast('本月无记账数据');
+  toast('AI 分析标签中...');
+  try{
+    const res=await aiRequest('tags',{expenses:monthExpenses});
+    if(res.ok&&res.data&&res.data.length){
+      const tagMap={};
+      res.data.forEach(r=>{if(r.tags&&r.tags.length)tagMap[r.idx]=r.tags});
+      // 显示结果
+      let html='<div style="font-size:13px;line-height:1.8">';
+      monthExpenses.forEach((e,i)=>{
+        const tags=tagMap[i+1];
+        if(tags&&tags.length){
+          html+=`<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">`;
+          html+=`<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e['备注']||'无备注')}</span>`;
+          html+=`<span style="flex-shrink:0">${tags.map(t=>`<span style="background:var(--pri-light);color:var(--pri);padding:1px 6px;border-radius:4px;font-size:10px;margin-left:2px">${t}</span>`).join('')}</span>`;
+          html+=`</div>`;
+        }
+      });
+      html+='</div>';
+      // 弹窗显示
+      const overlay=document.createElement('div');
+      overlay.className='modal-overlay active';
+      overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+      overlay.innerHTML=`<div class="modal"><h2>🏷️ AI 标签分析</h2><div style="max-height:60vh;overflow-y:auto">${html}</div><div class="btn-row" style="margin-top:16px"><button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">关闭</button></div></div>`;
+      document.body.appendChild(overlay);
+    }else toast('无法提取标签');
+  }catch(e){toast('标签分析失败: '+e.message)}
 }
 
 // ===== 预算 =====

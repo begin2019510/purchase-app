@@ -1,4 +1,4 @@
-// AI 代理 - 自然语言记账 & 消费分析
+// AI 代理 - 自然语言记账 & 消费分析 & 智能分类
 // 环境变量: DEEPSEEK_API_KEY (或 OPENAI_API_KEY 作为备选)
 
 const AI_API_BASE = 'https://api.deepseek.com';
@@ -34,16 +34,17 @@ export async function onRequest(context) {
     const { action, data } = body;
 
     if (action === 'parse') {
-      // 自然语言记账 → 结构化数据
       return await handleParse(apiKey, data, corsHeaders);
     } else if (action === 'analyze') {
-      // 消费分析
       return await handleAnalyze(apiKey, data, corsHeaders);
     } else if (action === 'chat') {
-      // 通用对话
       return await handleChat(apiKey, data, corsHeaders);
+    } else if (action === 'categorize') {
+      return await handleCategorize(apiKey, data, corsHeaders);
+    } else if (action === 'tags') {
+      return await handleTags(apiKey, data, corsHeaders);
     } else {
-      return json({ error: 'Unknown action. Use: parse, analyze, chat' }, 400, corsHeaders);
+      return json({ error: 'Unknown action. Use: parse, analyze, chat, categorize, tags' }, 400, corsHeaders);
     }
   } catch (e) {
     return json({ error: e.message || 'AI request failed' }, 500, corsHeaders);
@@ -108,7 +109,6 @@ async function handleParse(apiKey, data, corsHeaders) {
 - 如果是"收到工资""红包"等 → type=收入, category=其他`;
 
   const result = await callAI(apiKey, systemPrompt, text);
-  // 尝试提取JSON
   const jsonMatch = result.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try {
@@ -123,7 +123,6 @@ async function handleParse(apiKey, data, corsHeaders) {
 async function handleAnalyze(apiKey, data, corsHeaders) {
   const { expenses, items, month, question } = data;
 
-  // 构建上下文
   const expenseSummary = (expenses || []).map(e =>
     `${e['日期']?.slice(0,10) || '?'} | ${e['类型']} | ${e['分类']} | ¥${e['金额']} | ${e['备注'] || ''}`
   ).join('\n');
@@ -163,4 +162,86 @@ async function handleChat(apiKey, data, corsHeaders) {
 
   const result = await callAI(apiKey, systemPrompt, message, 400);
   return json({ ok: true, data: result }, 200, corsHeaders);
+}
+
+// ===== AI 自动分类（从备注推断分类+标签） =====
+async function handleCategorize(apiKey, data, corsHeaders) {
+  const { note, existingExpenses } = data;
+  if (!note) return json({ ok: true, data: { category: '其他', confidence: 0, tags: [] } }, 200, corsHeaders);
+
+  // 从历史数据学习用户的分类习惯
+  let historyHint = '';
+  if (existingExpenses && existingExpenses.length > 0) {
+    const recent = existingExpenses.slice(-50);
+    const noteCatMap = {};
+    recent.forEach(e => {
+      if (e['备注'] && e['分类']) {
+        const key = e['备注'].slice(0, 6);
+        noteCatMap[key] = e['分类'];
+      }
+    });
+    const examples = Object.entries(noteCatMap).slice(0, 15).map(([k, v]) => `「${k}」→ ${v}`).join('\n');
+    historyHint = `\n用户历史分类习惯:\n${examples}\n`;
+  }
+
+  const systemPrompt = `你是一个记账分类助手。根据用户的备注文字，判断最合适的分类。
+
+可选分类: 餐饮、交通、购物、娱乐、居住、医疗、教育、其他
+
+规则:
+- 根据备注中的关键词判断，不要猜测
+- 如果完全没有分类线索，返回"其他"，confidence=0.2
+- 输出严格JSON格式（不要markdown）:
+{"category": "分类名", "confidence": 0-1, "tags": ["标签1", "标签2"]}
+
+标签提取规则:
+- 从备注中提取有意义的关键词
+- 例: "坐车去公司" → tags: ["通勤", "打车"]
+- 例: "王者荣耀648" → tags: ["游戏", "充值"]
+- 例: "感冒药" → tags: ["药品", "感冒"]
+- 最多3个标签，标签用中文，2-4个字
+${historyHint}`;
+
+  const result = await callAI(apiKey, systemPrompt, note, 200);
+  const jsonMatch = result.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return json({ ok: true, data: parsed }, 200, corsHeaders);
+    } catch {}
+  }
+  return json({ ok: true, data: { category: '其他', confidence: 0.2, tags: [] } }, 200, corsHeaders);
+}
+
+// ===== AI 标签提炼（批量分析备注） =====
+async function handleTags(apiKey, data, corsHeaders) {
+  const { expenses } = data;
+  if (!expenses || !expenses.length) return json({ ok: true, data: [] }, 200, corsHeaders);
+
+  const noteList = expenses.map((e, i) => `${i+1}. ${e['备注'] || '(无备注)'} [${e['分类'] || '其他'}]`).join('\n');
+
+  const systemPrompt = `你是一个消费标签提炼助手。从用户的记账备注中提取关键标签。
+
+输入格式: 序号. 备注 [分类]
+
+输出严格JSON数组（不要markdown）:
+[{"idx": 1, "tags": ["标签1", "标签2"]}, ...]
+
+标签规则:
+- 从备注中提炼消费场景/用途/品牌等关键词
+- 例: "坐车去公司" → ["通勤"]
+- 例: "奶茶" → ["奶茶", "饮品"]
+- 例: "超市买菜" → ["超市", "买菜"]
+- 每条最多2个标签，没备注的返回空数组
+- 标签用中文，2-4个字`;
+
+  const result = await callAI(apiKey, systemPrompt, noteList, 800);
+  const jsonMatch = result.match(/\[[\s\S]*\]/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return json({ ok: true, data: parsed }, 200, corsHeaders);
+    } catch {}
+  }
+  return json({ ok: true, data: [] }, 200, corsHeaders);
 }
