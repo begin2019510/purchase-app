@@ -178,6 +178,40 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 .weekly-bar:hover{opacity:.85}
 .weekly-bar-label{font-size:9px;font-weight:700;color:var(--muted)}
 .weekly-bar-val{font-size:8px;font-weight:700;color:var(--text)}
+
+/* ===== 骨架屏 ===== */
+.skeleton{position:relative;overflow:hidden;background:var(--border);border-radius:8px}
+.skeleton::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)}
+.skel-card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow)}
+.skel-row{display:flex;gap:10px;align-items:center}
+.skel-avatar{width:36px;height:36px;border-radius:10px;flex-shrink:0}
+.skel-lines{flex:1;display:flex;flex-direction:column;gap:6px}
+.skel-line{height:12px;border-radius:6px}
+.skel-line.w60{width:60%}
+.skel-line.w40{width:40%}
+.skel-line.w80{width:80%}
+.skel-line.h8{height:8px}
+.skel-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.skel-stat{height:64px;border-radius:12px}
+
+/* ===== 下拉刷新 ===== */
+.ptr-wrapper{position:relative;overflow:hidden;min-height:60vh}
+.ptr-indicator{position:absolute;top:-50px;left:0;right:0;height:50px;display:flex;align-items:center;justify-content:center;transition:transform .2s;z-index:5}
+.ptr-indicator .ptr-spinner{width:24px;height:24px;border:2.5px solid var(--border);border-top-color:var(--pri);border-radius:50%;transition:transform .2s}
+.ptr-indicator .ptr-spinner.spinning{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ptr-indicator .ptr-text{font-size:11px;font-weight:600;color:var(--muted);margin-left:8px}
+
+/* ===== 卡片滑动 ===== */
+.swipe-container{position:relative;overflow:hidden;border-radius:var(--radius);margin-bottom:8px}
+.swipe-actions{position:absolute;top:0;bottom:0;display:flex;z-index:0}
+.swipe-actions-left{right:0;background:var(--red);align-items:center;padding:0 16px}
+.swipe-actions-right{left:0;background:var(--green);align-items:center;padding:0 16px}
+.swipe-actions span{color:#fff;font-size:12px;font-weight:700;white-space:nowrap}
+.swipe-card{position:relative;z-index:1;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);transition:transform .2s ease;-webkit-user-select:none;user-select:none;touch-action:pan-y}
+.swipe-card.swiping{transition:none}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .icon{font-size:48px;margin-bottom:12px}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;animation:fadeIn .3s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
@@ -323,7 +357,7 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.6</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.7</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -346,8 +380,11 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 <!-- 采购 Tab -->
 <div id="tab-purchase">
   <div class="search-bar"><input class="search-input" id="searchInput" placeholder="搜索商品名称或备注..." oninput="render()"></div>
-  <div class="chips" id="statusChips"></div>
-  <div class="container" id="list"></div>
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="chips" id="statusChips"></div>
+    <div class="container" id="list"></div>
+  </div>
 </div>
 
 <!-- 记账 Tab -->
@@ -359,11 +396,20 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
       <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
     </div>
   </div>
-  <div class="chips" id="expenseChips"></div><div class="container" id="expenseContent"></div>
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="chips" id="expenseChips"></div>
+    <div class="container" id="expenseContent"></div>
+  </div>
 </div>
 
 <!-- 统计 Tab -->
-<div id="tab-stats" style="display:none"><div class="container stats-page" id="statsContent"></div></div>
+<div id="tab-stats" style="display:none">
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="container stats-page" id="statsContent"></div>
+  </div>
+</div>
 
 <!-- FAB -->
 <button class="fab" id="fabBtn">+</button>
@@ -498,9 +544,10 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 </div>
 
 <script>
-const APP_VERSION='2.5.6';
+const APP_VERSION='2.5.7';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.7',date:'2026-05-23',items:['骨架屏加载动画，告别白屏等待','下拉刷新手势支持','卡片左滑删除、右滑改状态']},
   {v:'2.5.6',date:'2026-05-23',items:['统计页新增每日支出折线趋势图','每周支出柱状对比图','收入vs支出双线对比','支出分类排行柱状图']},
   {v:'2.5.5',date:'2026-05-23',items:['新增记账月历视图：日历网格展示每日收支','点击日期查看当天记账明细','支持月份切换导航','空日期可快捷记一笔','列表/日历视图自由切换']},
   {v:'2.5.4',date:'2026-05-22',items:['图片API返回二进制数据+pin认证','采购统计getMonth时间戳修复','退货金额减法修复','审批流已到打钩修复','记账删图功能','Cron Worker部署']},
@@ -582,7 +629,138 @@ function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.p
 function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}
 function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
 
+// ===== 骨架屏 =====
+function skelCards(n){
+  let h='';
+  for(let i=0;i<n;i++)
+    h+=`<div class="skel-card"><div class="skel-row"><div class="skeleton skel-avatar"></div><div class="skel-lines"><div class="skeleton skel-line w60"></div><div class="skeleton skel-line w40 h8"></div></div><div class="skeleton skel-line" style="width:60px;height:20px;border-radius:6px"></div></div></div>`;
+  return h;
+}
+function skelStats(){
+  return `<div class="skel-stat-grid"><div class="skeleton skel-stat"></div><div class="skeleton skel-stat"></div><div class="skeleton skel-stat"></div><div class="skeleton skel-stat"></div></div>`;
+}
+let isLoadingData=false;
+function showSkeleton(){
+  isLoadingData=true;
+  const el=document.getElementById(currentTab==='purchase'?'list':currentTab==='expense'?'expenseContent':'statsContent');
+  if(!el)return;
+  if(currentTab==='purchase') el.innerHTML=skelCards(5);
+  else if(currentTab==='expense') el.innerHTML=skelStats()+skelCards(4);
+  else el.innerHTML=skelStats()+skelCards(3);
+}
+
+// ===== 下拉刷新 =====
+let ptrStartY=0,ptrDist=0,isPulling=false,isRefreshing=false;
+function setupPullToRefresh(){
+  const wrapper=document.querySelector('.ptr-wrapper');
+  if(!wrapper)return;
+  const indicator=wrapper.querySelector('.ptr-indicator');
+  const spinner=indicator?.querySelector('.ptr-spinner');
+  const text=indicator?.querySelector('.ptr-text');
+  if(!indicator)return;
+  wrapper.addEventListener('touchstart',e=>{
+    if(window.scrollY>0||isRefreshing)return;
+    ptrStartY=e.touches[0].clientY;
+    isPulling=true;
+  },{passive:true});
+  wrapper.addEventListener('touchmove',e=>{
+    if(!isPulling)return;
+    ptrDist=Math.max(0,e.touches[0].clientY-ptrStartY);
+    if(ptrDist>10){
+      const pull=Math.min(ptrDist*0.5,60);
+      indicator.style.transform=`translateY(${pull}px)`;
+      if(spinner)spinner.style.transform=`rotate(${ptrDist*2}deg)`;
+      if(text)text.textContent=pull>50?'松手刷新':'下拉刷新';
+    }
+  },{passive:true});
+  wrapper.addEventListener('touchend',async()=>{
+    if(!isPulling)return;
+    isPulling=false;
+    if(ptrDist>50&&!isRefreshing){
+      isRefreshing=true;
+      if(spinner){spinner.classList.add('spinning');spinner.style.transform=''}
+      if(text)text.textContent='刷新中...';
+      indicator.style.transform='translateY(55px)';
+      showSkeleton();
+      await loadAll();
+      if(spinner)spinner.classList.remove('spinning');
+      if(text)text.textContent='已刷新';
+      setTimeout(()=>{indicator.style.transform='translateY(0)';isRefreshing=false},600);
+    }else{
+      indicator.style.transform='translateY(0)';
+    }
+    ptrDist=0;
+  });
+}
+
+// ===== 卡片滑动 =====
+let swipeEl=null,swipeStartX=0,swipeStartY=0,swipeDelta=0,isSwiping=false;
+function setupSwipe(){
+  document.addEventListener('touchstart',e=>{
+    const card=e.target.closest('.swipe-card')||e.target.closest('.card[data-type]');
+    if(!card)return;
+    // 不拦截按钮点击
+    if(e.target.closest('button')||e.target.closest('.card-checkbox'))return;
+    swipeEl=card;
+    swipeStartX=e.touches[0].clientX;
+    swipeStartY=e.touches[0].clientY;
+    isSwiping=false;
+    swipeDelta=0;
+    card.classList.add('swiping');
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!swipeEl)return;
+    const dx=e.touches[0].clientX-swipeStartX;
+    const dy=e.touches[0].clientY-swipeStartY;
+    // 判断方向，只在水平滑动时拦截
+    if(!isSwiping&&Math.abs(dy)>Math.abs(dx)){swipeEl.classList.remove('swiping');swipeEl=null;return}
+    isSwiping=true;
+    swipeDelta=Math.max(-120,Math.min(80,dx));
+    swipeEl.style.transform=`translateX(${swipeDelta}px)`;
+  },{passive:true});
+  document.addEventListener('touchend',async()=>{
+    if(!swipeEl)return;
+    swipeEl.classList.remove('swiping');
+    const card=swipeEl;
+    swipeEl=null;
+    if(!isSwiping){return}
+    isSwiping=false;
+    const id=card.dataset.id;
+    const type=card.dataset.type; // 'purchase' or 'expense'
+    if(swipeDelta<-80){
+      // 左滑 → 删除
+      card.style.transform='translateX(-100%)';
+      card.style.opacity='0';
+      card.style.transition='all .25s ease';
+      setTimeout(async()=>{
+        if(type==='expense') await delExpense(id);
+        else await delItem(id);
+      },250);
+    }else if(swipeDelta>60){
+      // 右滑 → 改状态(采购)
+      card.style.transform='translateX(0)';
+      if(type==='purchase'){
+        const item=items.find(x=>x.id===id);
+        if(item){
+          const status=item['状态']||'待审批';
+          const next=NEXT_STATUS[status];
+          if(next){
+            await api('PATCH',{ids:[id],status:next});
+            toast(`已更新为"${next}"`);
+            await loadAll();
+          }else{toast('已是终态')}
+        }
+      }else{
+        toast('右滑仅支持采购卡片');
+      }
+    }else{
+      card.style.transform='translateX(0)';
+    }
+  });
+}
+
 async function loadAll(){
+  showSkeleton();
   try{
     const [r, e] = await Promise.all([
       api('GET'),
@@ -591,6 +769,7 @@ async function loadAll(){
     if(r && !r.error && Array.isArray(r)) items = r;
     if(e && !e.error && Array.isArray(e)) expenses = e;
   }catch{}
+  isLoadingData=false;
   render();
 }
 
@@ -641,7 +820,7 @@ function renderPurchase(){
     const statusColors={'待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};
     list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
     let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
-    html+=`<div class="card ${ck?'selected':''}" style="border-left:4px solid ${bc}" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div>`});
+    html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:4px solid ${bc}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`});
   }
   listEl.innerHTML=html;
 }
@@ -706,10 +885,10 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&pin='+getPin():e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div>`;
+        <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div></div>`;
     });
     html+=`</div></div>`;
   }
@@ -1020,10 +1199,10 @@ function renderExpenseCalendar(){
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&pin='+getPin():e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="ex-entry" style="border-left:4px solid ${cc}">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div>`;
+        <button class="ex-entry-del" style="opacity:.25" onclick="openExpenseModal('${e.id}')" title="编辑">✏️</button><button class="ex-entry-del" onclick="delExpense('${e.id}')" title="删除">🗑️</button></div></div>`;
     });
     html+=`</div>`;
   } else if(calSelectedDate){
@@ -1410,6 +1589,8 @@ function doDetailModalAction(id,nextStatus){
 }
 
 loadAll();
+setupPullToRefresh();
+setupSwipe();
 </script>
 </body>
 </html>
