@@ -99,6 +99,9 @@ export async function onRequest(context) {
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
+      // 清除缓存，下次GET读最新数据
+      const cacheKey = new Request(url.toString(), request);
+      context.waitUntil(caches.default.delete(cacheKey));
       return json({ id: data.data?.record?.record_id });
     }
 
@@ -139,6 +142,9 @@ export async function onRequest(context) {
       if (!id) return json({ error: 'id required' }, 400);
       const data = await feishuFetch('DELETE', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
+      // 清除缓存
+      const cacheKey = new Request(url.toString(), request);
+      context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
 
