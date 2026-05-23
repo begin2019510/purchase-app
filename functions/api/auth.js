@@ -188,6 +188,18 @@ export async function onRequest(context) {
       return await handleVerify(request, KV, JWT_SECRET, cors);
     } else if (action === 'create-invite') {
       return await handleCreateInvite(request, env, KV, cors);
+    } else if (action === 'debug-env') {
+      // 临时调试：查看环境变量是否加载
+      const codes = env.INVITE_CODES || '';
+      return json({
+        ok: true,
+        INVITE_CODES_SET: !!codes,
+        INVITE_CODES_LENGTH: codes.length,
+        INVITE_CODES_PREVIEW: codes.slice(0, 3) + (codes.length > 3 ? '***' : ''),
+        INVITE_CODES_RAW_BYTES: Array.from(codes).map(c => c.charCodeAt(0)),
+        JWT_SECRET_SET: !!env.JWT_SECRET,
+        API_KEY_SET: !!env.API_KEY,
+      }, 200, cors);
     } else {
       return json({ error: 'Unknown action. Use: register, login, verify' }, 400, cors);
     }
