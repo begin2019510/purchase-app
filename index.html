@@ -18,6 +18,7 @@
     <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.9</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
+      <button id="adminBtn" onclick="openAdminPanel()" style="display:none">👑</button>
     </div>
     <div class="header-actions" id="headerActions">
       <button onclick="toggleBatch()">☑ 批量</button>
@@ -86,6 +87,39 @@
         </div>
       </div>
       <div id="statsContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员面板 -->
+<div id="adminPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
+  <div style="max-width:500px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:18px;font-weight:800">👑 管理面板</h2>
+      <button onclick="closeAdminPanel()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <!-- 创建邀请码 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">🎟️ 创建邀请码</h3>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="inviteCount" type="number" value="1" min="1" max="10" style="width:60px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
+        <span style="line-height:40px;font-size:13px;color:var(--muted)">个</span>
+        <button onclick="createInviteCodes()" style="flex:1;padding:10px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">生成</button>
+      </div>
+      <div id="newInviteCodes" style="font-size:12px;color:var(--green);word-break:break-all"></div>
+    </div>
+    <!-- 邀请码列表 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:14px;font-weight:700">📋 邀请码列表</h3>
+        <button onclick="loadInviteList()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
+      </div>
+      <div id="inviteList" style="font-size:12px;color:var(--muted)">加载中...</div>
+    </div>
+    <!-- 用户管理 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">👥 用户管理</h3>
+      <div id="userList" style="font-size:12px;color:var(--muted)">加载中...</div>
     </div>
   </div>
 </div>
@@ -280,7 +314,7 @@ async function doLoginAPI(username,password){
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
+    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
   }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
@@ -301,7 +335,42 @@ function showLogin(){document.getElementById('loginForm').style.display='';docum
 function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
-async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();document.getElementById('authScreen').style.display='none';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
+// ===== 管理员功能 =====
+function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList()}
+function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
+async function createInviteCodes(){
+  const count=parseInt(document.getElementById('inviteCount').value)||1;
+  const el=document.getElementById('newInviteCodes');
+  el.textContent='生成中...';
+  try{
+    const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
+    const d=await r.json();
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    else{el.textContent='❌ '+d.error}
+  }catch{el.textContent='❌ 网络错误'}
+}
+async function loadInviteList(){
+  const el=document.getElementById('inviteList');
+  try{
+    const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
+    const d=await r.json();
+    if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
+    el.innerHTML=d.codes.map(c=>{
+      const status=c.used?'<span style="color:var(--red)">已使用 '+c.usedAt+'</span>':'<span style="color:var(--green)">可用</span>';
+      return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
+    }).join('');
+  }catch{el.textContent='加载失败'}
+}
+async function deleteUser(username){
+  if(!confirm('确定删除用户 '+username+' ？\n（数据表会保留，仅删除账号）'))return;
+  try{
+    const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
+    const d=await r.json();
+    if(d.ok){alert(d.message);loadInviteList();}
+    else{alert(d.error)}
+  }catch{alert('网络错误')}
+}
+async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 
 // ===== Service Worker =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
