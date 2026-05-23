@@ -157,6 +157,27 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 .cat-row:last-child{border:none}
 .cat-bar{flex:1;margin:0 12px;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
 .cat-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+
+/* ===== 趋势图 ===== */
+.trend-chart{position:relative;margin-top:10px}
+.trend-svg{width:100%;overflow:visible}
+.trend-grid{stroke:var(--border);stroke-width:.5}
+.trend-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.trend-dot{r:3;stroke-width:1.5;cursor:pointer;transition:r .15s}
+.trend-dot:hover{r:5}
+.trend-label{font-size:9px;fill:var(--muted);text-anchor:middle;font-weight:600}
+.trend-val{font-size:8px;fill:var(--text);text-anchor:middle;font-weight:700}
+.trend-area{opacity:.12}
+.trend-tooltip{font-size:9px;fill:var(--text);text-anchor:middle;font-weight:700}
+.trend-summary{display:flex;gap:16px;margin-top:8px;justify-content:center}
+.trend-summary-item{font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:4px}
+.trend-summary-dot{width:8px;height:8px;border-radius:3px}
+.weekly-bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding:0 4px;margin-top:8px}
+.weekly-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.weekly-bar{width:100%;border-radius:4px 4px 0 0;transition:height .4s cubic-bezier(.4,0,.2,1);min-height:2px;cursor:pointer;position:relative}
+.weekly-bar:hover{opacity:.85}
+.weekly-bar-label{font-size:9px;font-weight:700;color:var(--muted)}
+.weekly-bar-val{font-size:8px;font-weight:700;color:var(--text)}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .icon{font-size:48px;margin-bottom:12px}
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;animation:fadeIn .3s;box-shadow:0 4px 12px rgba(0,0,0,.15)}
@@ -302,7 +323,7 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.5</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.6</span></h1>
     <div class="header-actions">
       <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
     </div>
@@ -477,9 +498,10 @@ body.dark .cal-day-detail{background:var(--card);border-color:var(--border)}
 </div>
 
 <script>
-const APP_VERSION='2.5.5';
+const APP_VERSION='2.5.6';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.5.6',date:'2026-05-23',items:['统计页新增每日支出折线趋势图','每周支出柱状对比图','收入vs支出双线对比','支出分类排行柱状图']},
   {v:'2.5.5',date:'2026-05-23',items:['新增记账月历视图：日历网格展示每日收支','点击日期查看当天记账明细','支持月份切换导航','空日期可快捷记一笔','列表/日历视图自由切换']},
   {v:'2.5.4',date:'2026-05-22',items:['图片API返回二进制数据+pin认证','采购统计getMonth时间戳修复','退货金额减法修复','审批流已到打钩修复','记账删图功能','Cron Worker部署']},
   {v:'2.5.3',date:'2026-05-21',items:['图片上传分为拍照+相册两个按钮','拍照用capture=environment，相册无限制','兼容所有手机浏览器']},
@@ -741,6 +763,134 @@ function miniCards(items) {
   ).join('')}</div>`;
 }
 
+// ===== SVG 趋势图 =====
+function lineChart(data, opts={}){
+  // data: [{label, value, color?}]
+  const W=opts.width||340, H=opts.height||140, pad={t:20,r:12,b:24,l:36};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  if(!data.length)return '<div class="empty-chart">暂无数据</div>';
+  const vals=data.map(d=>d.value);
+  const maxV=Math.max(...vals,1);
+  const minV=0;
+  const range=maxV-minV||1;
+  const stepX=data.length>1?cw/(data.length-1):cw;
+  const color=opts.color||'var(--pri)';
+  // 生成点坐标
+  const pts=data.map((d,i)=>({
+    x:pad.l+(data.length>1?i*stepX:cw/2),
+    y:pad.t+ch-(d.value-minV)/range*ch,
+    v:d.value, label:d.label, color:d.color||color
+  }));
+  // 折线path
+  const linePath=pts.map((p,i)=>(i===0?'M':'L')+p.x+','+p.y).join(' ');
+  // 面积path
+  const areaPath=linePath+` L${pts[pts.length-1].x},${pad.t+ch} L${pts[0].x},${pad.t+ch} Z`;
+  // 网格线
+  const gridLines=4;
+  let grid='';
+  for(let i=0;i<=gridLines;i++){
+    const y=pad.t+ch*i/gridLines;
+    const v=maxV-range*i/gridLines;
+    grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
+    grid+=`<text x="${pad.l-4}" y="${y+3}" class="trend-val" style="text-anchor:end;font-size:8px">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+  }
+  // X轴标签（每隔几个显示）
+  const labelStep=data.length<=7?1:data.length<=14?2:Math.ceil(data.length/7);
+  let xLabels='';
+  pts.forEach((p,i)=>{
+    if(i%labelStep===0||i===pts.length-1){
+      xLabels+=`<text x="${p.x}" y="${H-4}" class="trend-label">${p.label}</text>`;
+    }
+  });
+  // 圆点
+  let dots='';
+  pts.forEach(p=>{
+    if(p.v>0){
+      dots+=`<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--card)" stroke="${p.color}" stroke-width="2" class="trend-dot"/>`;
+    }
+  });
+  return `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
+    ${grid}
+    <path d="${areaPath}" fill="${color}" class="trend-area"/>
+    <path d="${linePath}" stroke="${color}" class="trend-line"/>
+    ${dots}${xLabels}
+  </svg></div>`;
+}
+
+function barChartV(data, opts={}){
+  // data: [{label, value, color?}]
+  const W=opts.width||340, H=opts.height||130, pad={t:16,r:8,b:28,l:8};
+  const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
+  if(!data.length)return '<div class="empty-chart">暂无数据</div>';
+  const maxV=Math.max(...data.map(d=>d.value),1);
+  const barW=Math.min(cw/data.length*0.6,36);
+  const gap=cw/data.length;
+  const color=opts.color||'var(--pri)';
+  // 网格
+  const gridLines=3;
+  let grid='';
+  for(let i=0;i<=gridLines;i++){
+    const y=pad.t+ch*i/gridLines;
+    const v=maxV-maxV*i/gridLines;
+    grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
+    grid+=`<text x="${pad.l}" y="${y-3}" class="trend-val" style="font-size:8px">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+  }
+  let bars='';
+  data.forEach((d,i)=>{
+    const x=pad.l+i*gap+(gap-barW)/2;
+    const bh=Math.max(d.value/maxV*ch,2);
+    const y=pad.t+ch-bh;
+    const c=d.color||color;
+    bars+=`<rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="3" fill="${c}" opacity="0.85">
+      <animate attributeName="height" from="0" to="${bh}" dur="0.5s" fill="freeze"/>
+      <animate attributeName="y" from="${pad.t+ch}" to="${y}" dur="0.5s" fill="freeze"/>
+    </rect>`;
+    bars+=`<text x="${x+barW/2}" y="${H-8}" class="trend-label">${d.label}</text>`;
+    if(d.value>0){
+      bars+=`<text x="${x+barW/2}" y="${y-4}" class="trend-tooltip">¥${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value.toFixed(0)}</text>`;
+    }
+  });
+  return `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
+    ${grid}${bars}
+  </svg></div>`;
+}
+
+function getMonthDailyData(expenses, monthStr, type='支出'){
+  // 按天聚合某月数据
+  const days=new Date(parseInt(monthStr.slice(0,4)),parseInt(monthStr.slice(5,7)),0).getDate();
+  const result=[];
+  for(let d=1;d<=days;d++){
+    const ds=monthStr+'-'+String(d).padStart(2,'0');
+    const dayTotal=expenses.filter(e=>{
+      if(!e['日期']||e['类型']!==type)return false;
+      try{return e['日期'].slice(0,10)===ds}catch{return false}
+    }).reduce((s,e)=>s+Number(e['金额']||0),0);
+    result.push({label:d+'',value:dayTotal});
+  }
+  return result;
+}
+
+function getWeekData(expenses, monthStr, type='支出'){
+  // 按周聚合某月数据
+  const days=new Date(parseInt(monthStr.slice(0,4)),parseInt(monthStr.slice(5,7)),0).getDate();
+  const weeks=[];
+  let weekStart=1;
+  while(weekStart<=days){
+    const weekEnd=Math.min(weekStart+6,days);
+    let total=0;
+    for(let d=weekStart;d<=weekEnd;d++){
+      const ds=monthStr+'-'+String(d).padStart(2,'0');
+      total+=expenses.filter(e=>{
+        if(!e['日期']||e['类型']!==type)return false;
+        try{return e['日期'].slice(0,10)===ds}catch{return false}
+      }).reduce((s,e)=>s+Number(e['金额']||0),0);
+    }
+    weeks.push({label:`${weekStart}-${weekEnd}`,value:total});
+    weekStart=weekEnd+1;
+  }
+  return weeks;
+}
+
 // ===== 月历视图 =====
 function initCalMonth(){
   const now=new Date(Date.now()+8*3600*1000);
@@ -977,6 +1127,84 @@ function renderStats() {
       html += `<div class="cat-row"><span class="badge ${cls}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${s === '待审批' ? 'var(--orange)' : s === '已审批' ? 'var(--blue)' : s === '已下单' ? '#8b5cf6' : s === '已到' ? 'var(--green)' : s === '已归档' ? '#6b7280' : 'var(--red)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
     });
     html += '</div>';
+  }
+  // --- 每日支出趋势 ---
+  const dailyData = getMonthDailyData(expenses, thisMonth, '支出');
+  if (dailyData.some(d => d.value > 0)) {
+    const dayMax = Math.max(...dailyData.map(d => d.value));
+    const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / dailyData.filter(d => d.value > 0).length || 0;
+    const dayActive = dailyData.filter(d => d.value > 0).length;
+    html += `<div class="stat-card"><h3>📉 每日支出趋势</h3>`;
+    html += `<div style="display:flex;gap:12px;margin-bottom:4px;font-size:11px;color:var(--muted)">`;
+    html += `<span>最高 <b style="color:var(--text)">¥${dayMax.toFixed(0)}</b></span>`;
+    html += `<span>日均 <b style="color:var(--text)">¥${dayAvg.toFixed(0)}</b></span>`;
+    html += `<span>记账 <b style="color:var(--text)">${dayActive}天</b></span>`;
+    html += `</div>`;
+    html += lineChart(dailyData, { color: '#ef4444', height: 130 });
+    html += `</div>`;
+  }
+  // --- 每周支出对比 ---
+  const weekData = getWeekData(expenses, thisMonth, '支出');
+  if (weekData.some(d => d.value > 0)) {
+    const weekMax = Math.max(...weekData.map(d => d.value));
+    html += `<div class="stat-card"><h3>📊 每周支出对比</h3>`;
+    html += barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 });
+    html += `</div>`;
+  }
+  // --- 收入vs支出趋势 ---
+  const outDaily = getMonthDailyData(expenses, thisMonth, '支出');
+  const inDaily = getMonthDailyData(expenses, thisMonth, '收入');
+  const hasIncome = inDaily.some(d => d.value > 0);
+  if (hasIncome) {
+    html += `<div class="stat-card"><h3>💹 收入 vs 支出</h3>`;
+    const W = 340, H = 140, pad = { t: 20, r: 12, b: 24, l: 36 };
+    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    const days = outDaily.length;
+    const allVals = [...outDaily.map(d => d.value), ...inDaily.map(d => d.value)];
+    const maxV = Math.max(...allVals, 1);
+    const stepX = days > 1 ? cw / (days - 1) : cw;
+    const mkPath = (data) => data.map((d, i) => {
+      const x = pad.l + (days > 1 ? i * stepX : cw / 2);
+      const y = pad.t + ch - d.value / maxV * ch;
+      return (i === 0 ? 'M' : 'L') + x + ',' + y;
+    }).join(' ');
+    const outPath = mkPath(outDaily);
+    const inPath = mkPath(inDaily);
+    // grid
+    let grid = '';
+    for (let i = 0; i <= 3; i++) {
+      const y = pad.t + ch * i / 3;
+      const v = maxV - maxV * i / 3;
+      grid += `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" class="trend-grid"/>`;
+      grid += `<text x="${pad.l - 4}" y="${y + 3}" class="trend-val" style="text-anchor:end;font-size:8px">¥${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}</text>`;
+    }
+    const labelStep = days <= 7 ? 1 : days <= 14 ? 2 : Math.ceil(days / 7);
+    let xLabels = '';
+    outDaily.forEach((d, i) => {
+      if (i % labelStep === 0 || i === outDaily.length - 1) {
+        const x = pad.l + (days > 1 ? i * stepX : cw / 2);
+        xLabels += `<text x="${x}" y="${H - 4}" class="trend-label">${d.label}</text>`;
+      }
+    });
+    html += `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
+      ${grid}
+      <path d="${inPath}" stroke="#10b981" class="trend-line"/>
+      <path d="${outPath}" stroke="#ef4444" class="trend-line"/>
+      ${xLabels}
+    </svg></div>`;
+    html += `<div class="trend-summary">
+      <div class="trend-summary-item"><span class="trend-summary-dot" style="background:#ef4444"></span>支出</div>
+      <div class="trend-summary-item"><span class="trend-summary-dot" style="background:#10b981"></span>收入</div>
+    </div>`;
+    html += `</div>`;
+  }
+  // --- 分类支出排行 ---
+  if (eCatEntries.length) {
+    const topCats = eCatEntries.slice(0, 6);
+    const catMax = topCats[0][1] || 1;
+    html += `<div class="stat-card"><h3>🏆 支出分类排行</h3>`;
+    html += barChartV(topCats.map(([l, v]) => ({ label: l, value: v, color: CAT_COLORS[l] || '#94a3b8' })), { height: 120 });
+    html += `</div>`;
   }
   document.getElementById('statsContent').innerHTML = html;
 }
