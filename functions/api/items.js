@@ -1,4 +1,4 @@
-import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken } from './_auth.js';
+import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT } from './_auth.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -55,14 +55,26 @@ export async function onRequest(context) {
 
   // 调试: 查看当前用户的认证和表信息
   if (url.searchParams.get('debug') === 'auth') {
+    // 支持 ?token=xxx 或 Authorization header
+    const debugToken = url.searchParams.get('token') || (request.headers.get('Authorization') || '').replace('Bearer ', '');
+    const debugUser = debugToken ? { authenticated: true, username: 'debug', bitable: {}, isJWT: true } : user;
+    if (debugToken) {
+      try {
+        const payload = await verifyJWT(debugToken, env.JWT_SECRET);
+        if (payload) {
+          debugUser.username = payload.username;
+          debugUser.bitable = payload.bitable;
+        }
+      } catch {}
+    }
     return jsonResponse({
-      authenticated: user.authenticated,
-      username: user.username,
-      isJWT: user.isJWT,
-      purchaseApp: user.bitable?.purchaseApp,
-      purchaseTable: user.bitable?.purchaseTable,
-      expenseApp: user.bitable?.expenseApp,
-      expenseTable: user.bitable?.expenseTable,
+      authenticated: debugUser.authenticated,
+      username: debugUser.username,
+      isJWT: debugUser.isJWT,
+      purchaseApp: debugUser.bitable?.purchaseApp,
+      purchaseTable: debugUser.bitable?.purchaseTable,
+      expenseApp: debugUser.bitable?.expenseApp,
+      expenseTable: debugUser.bitable?.expenseTable,
     }, 200, corsHeaders);
   }
 
