@@ -3,6 +3,10 @@
 
 const AI_API_BASE = 'https://api.deepseek.com';
 
+function json(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const origin = request.headers.get('Origin') || '';
@@ -12,9 +16,6 @@ export async function onRequest(context) {
     'Access-Control-Allow-Headers': 'Content-Type,X-API-Key',
   };
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
-  function json(data, status = 200, headers = {}) {
-    return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
-  }
 
   // 验证 PIN
   const pin = request.headers.get('X-API-Key');
