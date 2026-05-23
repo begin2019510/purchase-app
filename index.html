@@ -229,5 +229,13 @@
 <script src="expense.js"></script>
 <script src="stats.js"></script>
 <script src="ai.js"></script>
+<script>
+// Init after all scripts loaded
+showVersion();
+if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
+if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
+try{setupPullToRefresh()}catch(e){}
+try{setupSwipe()}catch(e){}
+</script>
 </body>
 </html>

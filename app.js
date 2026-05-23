@@ -52,27 +52,5 @@ async function setupPush(){
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
-showVersion();
-if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
-if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
-function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
-function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}
-function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
-function switchTab(t){
-  currentTab=t;
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelector(`.tab:nth-child(${t==='purchase'?1:t==='expense'?2:3})`).classList.add('active');
-  document.getElementById('tab-purchase').style.display=t==='purchase'?'':'none';
-  document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
-  document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
-  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
-  document.getElementById('headerActions').style.display=t==='purchase'?'':'none';
-  if(t==='expense'&&!calYear)initCalMonth();
-  render();
-}
-document.getElementById('fabBtn').addEventListener('click',()=>{
-  if(currentTab==='purchase') openModal();
-  else if(currentTab==='expense') openExpenseModal();
-});
+
+// Init moved to index.html bottom
