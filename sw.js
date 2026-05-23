@@ -1,6 +1,6 @@
 // Service Worker - 离线缓存 + 推送通知
-const CACHE = 'purchase-cache-v15';
-const ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/api.js', '/ui.js', '/purchase.js', '/expense.js', '/stats.js', '/ai.js', '/manifest.json'];
+const CACHE = 'purchase-cache-v16';
+const ASSETS = ['/', '/index.html', '/style.css', '/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
