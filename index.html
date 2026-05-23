@@ -87,6 +87,13 @@
         </div>
       </div>
       <div id="statsContent"></div>
+      <div style="margin-top:16px;padding:12px;background:var(--card);border-radius:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--muted)">🔍 账号调试</span>
+          <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查认证状态</button>
+        </div>
+        <div id="debugResultStats" style="font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -380,6 +387,15 @@ async function deleteUser(username){
 }
 async function debugMyAuth(){
   const el=document.getElementById('debugResult');
+  el.textContent='查询中...';
+  try{
+    const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
+    const d=await r.json();
+    el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
+  }catch(e){el.textContent='错误: '+e.message}
+}
+async function debugMyAuthStats(){
+  const el=document.getElementById('debugResultStats');
   el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
