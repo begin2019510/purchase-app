@@ -420,10 +420,12 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 <div id="tab-expense" style="display:none">
   <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
   <div class="container">
-    <div class="ex-view-toggle">
-      <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
-      <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
-      <button class="ex-view-btn" id="viewTagBtn" onclick="batchTagExpenses()" style="font-size:11px">🏷️ 标签</button>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div class="ex-view-toggle" style="flex:1;margin:0">
+        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
+        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
+      </div>
+      <button onclick="batchTagExpenses()" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:var(--shadow)">🏷️ AI标签</button>
     </div>
     <div class="ai-bar" id="aiBar">
       <div class="ai-input-row">
@@ -506,7 +508,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
       <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
       <div class="form-group"><label>日期时间</label><input id="eDate" type="datetime-local"></div>
     </div>
-    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:4px;padding:6px 10px;background:var(--pri-light);border-radius:8px;font-size:12px"></div></div>
+    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:6px;padding:8px 10px;background:var(--pri-light);border-radius:8px;font-size:12px;cursor:pointer;transition:.15s" onclick="applyAICat()"><span id="aiCatText"></span></div></div>
     <div class="form-group"><label>图片</label>
       <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
       <div id="imageSizeInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px;display:none"></div>
@@ -1595,27 +1597,34 @@ async function runAIAnalysis(){
 }
 
 // ===== 预算 =====
-let catDebounce=null;
+let catDebounce=null;let lastAICat=null;
 function onNoteInput(){
   clearTimeout(catDebounce);
   const note=document.getElementById('eNote').value.trim();
   const suggestEl=document.getElementById('aiCatSuggest');
-  if(!note){suggestEl.style.display='none';return}
+  if(!note){suggestEl.style.display='none';lastAICat=null;return}
   catDebounce=setTimeout(()=>suggestCategory(note),600);
 }
 async function suggestCategory(note){
   const suggestEl=document.getElementById('aiCatSuggest');
+  const textEl=document.getElementById('aiCatText');
   try{
     const res=await aiRequest('categorize',{note,existingExpenses:expenses});
     if(res.ok&&res.data){
       const d=res.data;
+      lastAICat=d;
       const tags=d.tags&&d.tags.length?d.tags.map(t=>`<span style="background:var(--card);padding:1px 6px;border-radius:4px;margin-left:4px;font-size:10px">${t}</span>`).join(''):'';
-      suggestEl.innerHTML=`🤖 建议: <b>${d.category}</b> ${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}%</span>`;
+      textEl.innerHTML=`🤖 建议: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% · 点击采纳</span>`;
       suggestEl.style.display='block';
-      suggestEl.style.cursor='pointer';
-      suggestEl.onclick=()=>{document.getElementById('eCategory').value=d.category};
     }
-  }catch{suggestEl.style.display='none'}
+  }catch{suggestEl.style.display='none';lastAICat=null}
+}
+function applyAICat(){
+  if(!lastAICat)return;
+  document.getElementById('eCategory').value=lastAICat.category;
+  toast(`已切换为「${lastAICat.category}」`);
+  document.getElementById('aiCatSuggest').style.display='none';
+  lastAICat=null;
 }
 
 // 批量标签提炼
