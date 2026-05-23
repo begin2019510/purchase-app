@@ -1502,8 +1502,9 @@ async function delExpense(id){if(!confirm('确定删除？'))return;await expens
 const AI_API='/api/ai';
 async function aiRequest(action,data){
   const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({action,data})});
-  if(!r.ok)throw new Error('AI request failed: '+r.status);
-  return r.json();
+  const res=await r.json().catch(()=>({error:'Response not JSON'}));
+  if(!r.ok||res.error)throw new Error(res.error||res.hint||'AI request failed: '+r.status);
+  return res;
 }
 
 // --- 自然语言记账 ---
