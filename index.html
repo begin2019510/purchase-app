@@ -274,9 +274,34 @@ let calSelectedDate=null; // 'YYYY-MM-DD'
 // ===== PIN =====
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
-function doLogin(){const pin=document.getElementById('pinInput').value.trim();if(!pin){document.getElementById('authError').textContent='请输入密码';return}setPin(pin);verifyAndLoad()}
-async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();document.getElementById('authScreen').style.display='none';loadAll()}catch{document.getElementById('authError').textContent='连接失败'}}
-document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
+async function doLoginAPI(username,password){
+  document.getElementById('authError').textContent='登录中...';
+  try{
+    const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const d=await r.json();
+    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
+    else{document.getElementById('authError').textContent=d.error||'登录失败'}
+  }catch(e){document.getElementById('authError').textContent='网络错误'}
+}
+async function doRegister(){
+  const username=document.getElementById('regUsername').value.trim();
+  const password=document.getElementById('regPassword').value;
+  const inviteCode=document.getElementById('regInviteCode').value.trim();
+  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
+  document.getElementById('regError').textContent='注册中...';
+  try{
+    const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
+    const d=await r.json();
+    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
+    else{document.getElementById('regError').textContent=d.error||'注册失败'}
+  }catch(e){document.getElementById('regError').textContent='网络错误'}
+}
+function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='请登录';document.getElementById('authError').textContent=''}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
+document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
+async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();document.getElementById('authScreen').style.display='none';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 
 // ===== Service Worker =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
@@ -1460,55 +1485,6 @@ function doDetailModalAction(id,nextStatus){
 loadAll();
 setupPullToRefresh();
 setupSwipe();
-
-// ===== 登录/注册 =====
-function showLogin(){
-  document.getElementById('loginForm').style.display='';
-  document.getElementById('registerForm').style.display='none';
-  document.getElementById('authSubtitle').textContent='请登录';
-  document.getElementById('authError').textContent='';
-}
-function showRegister(){
-  document.getElementById('loginForm').style.display='none';
-  document.getElementById('registerForm').style.display='';
-  document.getElementById('authSubtitle').textContent='邀请码注册';
-  document.getElementById('regError').textContent='';
-}
-async function doLogin(){
-  const username=document.getElementById('loginUsername').value.trim();
-  const password=document.getElementById('loginPassword').value;
-  if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}
-  document.getElementById('authError').textContent='登录中...';
-  try{
-    const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
-    const d=await r.json();
-    if(d.ok&&d.token){
-      setPin(d.token);
-      document.getElementById('authScreen').style.display='none';
-      loadAll();
-    }else{
-      document.getElementById('authError').textContent=d.error||'登录失败';
-    }
-  }catch(e){document.getElementById('authError').textContent='网络错误'}
-}
-async function doRegister(){
-  const username=document.getElementById('regUsername').value.trim();
-  const password=document.getElementById('regPassword').value;
-  const inviteCode=document.getElementById('regInviteCode').value.trim();
-  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
-  document.getElementById('regError').textContent='注册中...';
-  try{
-    const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
-    const d=await r.json();
-    if(d.ok&&d.token){
-      setPin(d.token);
-      document.getElementById('authScreen').style.display='none';
-      loadAll();
-    }else{
-      document.getElementById('regError').textContent=d.error||'注册失败';
-    }
-  }catch(e){document.getElementById('regError').textContent='网络错误'}
-}
 
 </script>
 </body>
