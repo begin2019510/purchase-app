@@ -420,13 +420,10 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 <div id="tab-expense" style="display:none">
   <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
   <div class="container">
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <div class="ex-view-toggle" style="flex:1;margin:0">
+      <div class="ex-view-toggle" style="margin:0">
         <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
         <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
       </div>
-      <button onclick="batchTagExpenses()" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;box-shadow:var(--shadow)">🏷️ AI标签</button>
-    </div>
     <div class="ai-bar" id="aiBar">
       <div class="ai-input-row">
         <input class="ai-input" id="aiInput" placeholder="说句话就能记账: 午饭35、打车28..." onkeydown="if(event.key==='Enter')sendAI()">
@@ -448,9 +445,16 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
     <div class="container stats-page">
       <div class="ai-analysis" id="aiAnalysis">
-        <h3>🤖 AI 财务分析</h3>
-        <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="width:100%">✨ 点击生成分析报告</button>
-        <div id="aiAnalysisResult"></div>
+        <h3>🤖 AI 助手</h3>
+        <div class="ai-input-row" style="margin-bottom:8px">
+          <input class="ai-input" id="statsAIInput" placeholder="问我任何问题: 这个月奶茶花了多少..." onkeydown="if(event.key==='Enter')queryAI()">
+          <button class="ai-send" onclick="queryAI()">💬</button>
+        </div>
+        <div id="statsAIResult"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">📊 财务分析</button>
+          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">🧠 消费画像</button>
+        </div>
       </div>
       <div id="statsContent"></div>
     </div>
@@ -1576,24 +1580,73 @@ function cancelAI(){
 }
 
 // --- AI 分析 ---
+// --- AI 自然语言查询 ---
+async function queryAI(){
+  const input=document.getElementById('statsAIInput');
+  const q=input.value.trim();
+  if(!q)return;
+  const resultEl=document.getElementById('statsAIResult');
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  input.value='';
+  try{
+    const thisMonth=getThisMonth();
+    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
+    const res=await aiRequest('query',{question:q,expenses:monthExpenses});
+    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤖 回答</span></div><div>${esc(res.data)}</div></div>`}
+    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
+  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
+}
+
+// --- 财务分析 ---
 async function runAIAnalysis(){
-  const resultEl=document.getElementById('aiAnalysisResult');
-  const btn=document.querySelector('#aiAnalysis .ai-confirm-btn');
-  btn.style.display='none';
+  const resultEl=document.getElementById('statsAIResult');
   resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>分析中...</span></div>`;
   try{
     const thisMonth=getThisMonth();
     const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
     const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
     const res=await aiRequest('analyze',{expenses:monthExpenses,items:monthItems,month:thisMonth});
-    if(res.ok){
-      resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px;width:100%">🔄 重新分析</button>`;
-    }else{
-      resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px">重试</button>`;
-    }
-  }catch(e){
-    resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">⚠️ ${e.message.includes('not configured')?'AI 未配置，请设置 DEEPSEEK_API_KEY':e.message}</div><button class="ai-confirm-btn secondary" onclick="runAIAnalysis()" style="margin-top:8px">重试</button>`;
-  }
+    if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
+    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
+  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
+}
+
+// --- 消费画像 ---
+async function runAIProfile(){
+  const resultEl=document.getElementById('statsAIResult');
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>深度分析中...</span></div>`;
+  try{
+    const thisMonth=getThisMonth();
+    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
+    const res=await aiRequest('profile',{expenses:monthExpenses});
+    if(res.ok&&res.data){
+      const d=res.data;
+      let html='';
+      // 总结
+      if(d.summary) html+=`<div style="margin-bottom:12px;padding:10px;background:var(--pri-light);border-radius:10px;font-size:13px;line-height:1.7">${esc(d.summary)}</div>`;
+      // 画像
+      if(d.profile){
+        const p=d.profile;
+        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">`;
+        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🍜 饮食风格</div>${esc(p.diningStyle)}</div>`;
+        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🎭 生活方式</div>${esc(p.lifestyle)}</div>`;
+        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">💡 消费模式</div>${esc(p.spendingPattern)}</div>`;
+        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🏆 主要开销</div>${p.topItems.map(i=>esc(i)).join('、')}</div>`;
+        html+=`</div>`;
+      }
+      // 习惯
+      if(d.habits&&d.habits.length){
+        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">📊 消费习惯</div>`;
+        d.habits.forEach(h=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${h.emoji||'📌'} ${esc(h.title)}</b><br>${esc(h.detail)}</div>`});
+      }
+      // 洞察
+      if(d.insights&&d.insights.length){
+        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">💡 深度洞察</div>`;
+        d.insights.forEach(i=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${i.emoji||'💡'} ${esc(i.title)}</b><br>${esc(i.detail)}</div>`});
+      }
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🧠 消费画像</span></div>${html}</div>`;
+    }else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">生成失败</div>`}
+  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
 
 // ===== 预算 =====
@@ -1627,38 +1680,7 @@ function applyAICat(){
   lastAICat=null;
 }
 
-// 批量标签提炼
-async function batchTagExpenses(){
-  const thisMonth=getThisMonth();
-  const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
-  if(!monthExpenses.length)return toast('本月无记账数据');
-  toast('AI 分析标签中...');
-  try{
-    const res=await aiRequest('tags',{expenses:monthExpenses});
-    if(res.ok&&res.data&&res.data.length){
-      const tagMap={};
-      res.data.forEach(r=>{if(r.tags&&r.tags.length)tagMap[r.idx]=r.tags});
-      // 显示结果
-      let html='<div style="font-size:13px;line-height:1.8">';
-      monthExpenses.forEach((e,i)=>{
-        const tags=tagMap[i+1];
-        if(tags&&tags.length){
-          html+=`<div style="display:flex;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">`;
-          html+=`<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e['备注']||'无备注')}</span>`;
-          html+=`<span style="flex-shrink:0">${tags.map(t=>`<span style="background:var(--pri-light);color:var(--pri);padding:1px 6px;border-radius:4px;font-size:10px;margin-left:2px">${t}</span>`).join('')}</span>`;
-          html+=`</div>`;
-        }
-      });
-      html+='</div>';
-      // 弹窗显示
-      const overlay=document.createElement('div');
-      overlay.className='modal-overlay active';
-      overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
-      overlay.innerHTML=`<div class="modal"><h2>🏷️ AI 标签分析</h2><div style="max-height:60vh;overflow-y:auto">${html}</div><div class="btn-row" style="margin-top:16px"><button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">关闭</button></div></div>`;
-      document.body.appendChild(overlay);
-    }else toast('无法提取标签');
-  }catch(e){toast('标签分析失败: '+e.message)}
-}
+
 
 // ===== 预算 =====
 function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
