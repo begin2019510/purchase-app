@@ -35,12 +35,12 @@ let expenseViewMode='list'; // 'list' | 'calendar'
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
 
-// ===== PIN =====
-function getPin(){return localStorage.getItem('purchase_pin')||''}
-function setPin(p){localStorage.setItem('purchase_pin',p)}
-function submitPin(){const pin=document.getElementById('pinInput').value.trim();if(!pin){document.getElementById('pinError').textContent='请输入密码';return}setPin(pin);verifyAndLoad()}
-async function verifyAndLoad(){try{const r=await fetch(API,{headers:{'X-API-Key':getPin()}});if(r.status===401){document.getElementById('pinError').textContent='密码错误';document.getElementById('pinInput').value='';return}if(!r.ok)throw new Error();document.getElementById('pinScreen').style.display='none';loadAll()}catch{document.getElementById('pinError').textContent='连接失败'}}
-document.getElementById('pinInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitPin()});
+// ===== Auth =====
+function getPin(){return localStorage.getItem('auth_token')||''}
+function setPin(p){localStorage.setItem('auth_token',p)}
+function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
+// verifyAndLoad defined in index.html inline script
+document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')submitPin()});
 
 // ===== Service Worker =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
@@ -59,16 +59,16 @@ function getBudget(m){return getBudgets()[m]||0}
 // ===== API =====
 async function api(method,body,id){
   let url=API;
-  const opts={method,headers:{'Content-Type':'application/json','X-API-Key':getPin()}};
+  const opts={method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()}};
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
-  if(r.status===401){document.getElementById('pinScreen').style.display='flex';document.getElementById('pinError').textContent='会话过期';return{error:'unauthorized'}}
+  if(r.status===401){document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
   return r.json();
 }
 async function expenseApi(method,body,id){
   let url=EXPENSE_API;
-  const opts={method,headers:{'Content-Type':'application/json','X-API-Key':getPin()}};
+  const opts={method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()}};
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
@@ -79,7 +79,7 @@ async function expenseApi(method,body,id){
 // ===== 启动 =====
 showVersion();
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
-if(getPin()){verifyAndLoad()}else{document.getElementById('pinScreen').style.display='flex'}
+if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex'}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
@@ -908,13 +908,13 @@ function closeExpenseModal(){document.getElementById('expenseOverlay').classList
 function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
 // 图片: kv:前缀=KV key存飞书图片字段; 无前缀=base64（回退）
 async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&pin='+getPin(),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');await loadAll()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== AI 助手 =====
 const AI_API='/api/ai';
 async function aiRequest(action,data){
-  const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':getPin()},body:JSON.stringify({action,data})});
+  const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action,data})});
   const res=await r.json().catch(()=>({error:'Response not JSON'}));
   if(!r.ok||res.error)throw new Error(res.error||res.hint||'AI request failed: '+r.status);
   return res;

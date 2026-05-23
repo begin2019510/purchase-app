@@ -1,25 +1,33 @@
 // IMAGE_ARCH: 图存Cloudflare KV(IMAGE_STORE), Bitable只存kv:key引用
+import { verifyJWT } from './_auth.js';
 export async function onRequest(context) {
   const { request, env } = context;
   const origin = request.headers.get('Origin') || '';
   const corsHeaders = {
     'Access-Control-Allow-Origin': ['https://121212121.top', 'http://121212121.top'].includes(origin) ? origin : 'https://121212121.top',
     'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,X-API-Key',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   };
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   function json(data, status = 200, headers = {}) {
     return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
   }
-  function verifyPin(req, env) {
-    // GET: also accept key from query param (img src can't send headers)
+  async function verifyAuth(req, env) {
+    // 1. JWT token
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const payload = await verifyJWT(token, env.JWT_SECRET);
+      if (payload) return true;
+    }
+    // 2. 旧 PIN (img src can't send headers, accept query param)
     const url = new URL(req.url);
     const qKey = url.searchParams.get('pin');
     const pin = req.headers.get('X-API-Key') || qKey;
-    if (!pin || pin !== env.API_KEY) return false;
-    return true;
+    if (pin && pin === env.API_KEY) return true;
+    return false;
   }
-  if (!verifyPin(request, env)) {
+  if (!(await verifyAuth(request, env))) {
     return json({ error: 'Unauthorized' }, 401, corsHeaders);
   }
 
