@@ -993,7 +993,9 @@ function switchTab(t){
   document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
-  document.getElementById('headerActions').style.display=t==='purchase'?'':'none';
+  document.getElementById('actionPurchase').style.display=t==='purchase'?'':'none';
+    document.getElementById('actionExpense').style.display=t==='expense'?'':'none';
+    document.getElementById('actionStats').style.display=t==='stats'?'':'none';
   if(t==='expense'&&!calYear)initCalMonth();
   render();
 }

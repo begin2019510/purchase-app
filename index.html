@@ -22,8 +22,9 @@
       <button onclick="logout()" title="退出登录" style="background:none;border:none;font-size:16px;cursor:pointer">🚪</button>
     </div>
     <div class="header-actions" id="headerActions">
-      <button onclick="toggleBatch()">☑ 批量</button>
-      <button onclick="exportData()">📤 导出</button>
+      <span id="actionPurchase"><button onclick="toggleBatch()">☑ 批量</button><button onclick="exportData()">📤 导出</button></span>
+      <span id="actionExpense" style="display:none"><button onclick="exportExpenses()">📤 导出</button></span>
+      <span id="actionStats" style="display:none"></span>
       <button id="pushBtn" onclick="setupPush()" style="display:none">🤖 配置推送</button>
     </div>
   </div>
