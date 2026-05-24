@@ -79,8 +79,7 @@ async function loadUserList(){
       const isAdmin=u.username==='admin';
       const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">\u7ba1\u7406\u5458</span>':'';
       const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">\u5220\u9664</button>';
-      const created=new Date(u.createdAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+created+' | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
+      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+u.createdAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC) | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
     }).join('');
   }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
 }
@@ -104,7 +103,7 @@ async function loadInviteList(){
     const d=await r.json();
     if(!d.ok||!d.codes.length){el.textContent='\u6682\u65e0\u52a8\u6001\u9080\u8bf7\u7801';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">\u5df2\u4f7f\u7528 '+(c.usedAt?new Date(c.usedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</span>':'<span style="color:var(--green)">\u53ef\u7528</span>';
+      const status=c.used?'<span style="color:var(--red)">\u5df2\u4f7f\u7528 '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">\u53ef\u7528</span>';
       return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
     }).join('');
   }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
