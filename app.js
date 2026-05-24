@@ -353,19 +353,19 @@ function updateHeader(){
   `;
 }
 function renderPurchase(){
-  console.log('[renderPurchase] items.length='+items.length);
   const q=document.getElementById('searchInput').value.toLowerCase();
   let f=items;
   if(q)f=f.filter(i=>(i['商品名称']||'').toLowerCase().includes(q)||(i['备注']||'').toLowerCase().includes(q));
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
+  console.log('[renderPurchase] q="'+q+'" statusFilter='+currentStatusFilter+' catFilter='+currentCatFilter+' filtered='+f.length+'/'+items.length);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
   const statuses=['全部','待审批','已审批','已下单','已到','已退','已归档'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" onclick="currentCatFilter='${c}';render()">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
+  if(!sorted.length){console.warn('[renderPurchase] EMPTY! q="'+q+'" status='+currentStatusFilter+' cat='+currentCatFilter);listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
   const groups={};sorted.forEach(i=>{const m=getMonth(i['日期'])||'未设置日期';if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
