@@ -113,7 +113,7 @@ async function deleteUser(username){
   try{
     const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
-    if(d.ok){alert(d.message);loadInviteList();}
+    if(d.ok){alert(d.message);loadInviteList();loadUserList();}
     else{alert(d.error)}
   }catch{alert('\u7f51\u7edc\u9519\u8bef')}
 }
