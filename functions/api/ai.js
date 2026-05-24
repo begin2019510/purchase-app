@@ -14,8 +14,6 @@ export async function onRequest(context) {
   const user = await authenticate(request, env);
   if (!user.authenticated) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
 
-  const json = (data, status = 200) => jsonResponse(data, status, corsHeaders);
-
   const apiKey = env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
   if (!apiKey) {
     return json({ error: 'AI API key not configured. Set DEEPSEEK_API_KEY in Cloudflare Pages.' }, 500, corsHeaders);
@@ -63,6 +61,7 @@ async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 800) {
 
 // ===== 自然语言记账 =====
 async function handleParse(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { text, currentDate } = data;
   const systemPrompt = `你是一个记账助手。用户用自然语言描述消费，解析成JSON。
 
@@ -88,6 +87,7 @@ note字段规则:
 
 // ===== AI 自动分类（从备注推断） =====
 async function handleCategorize(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { note, existingExpenses } = data;
   if (!note) return json({ ok: true, data: { category: '其他', confidence: 0, tags: [] } }, 200, corsHeaders);
 
@@ -112,6 +112,7 @@ async function handleCategorize(apiKey, data, corsHeaders) {
 
 // ===== 深度备注解析 → 消费画像 =====
 async function handleProfile(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { expenses } = data;
   if (!expenses || !expenses.length) return json({ ok: true, data: { summary: '暂无数据', habits: [], insights: [] } }, 200, corsHeaders);
 
@@ -167,6 +168,7 @@ ${lines}
 
 // ===== 自然语言查询 =====
 async function handleQuery(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { question, expenses } = data;
   if (!expenses || !expenses.length) return json({ ok: true, data: '暂无记账数据' }, 200, corsHeaders);
 
@@ -197,6 +199,7 @@ ${lines}
 
 // ===== 消费分析（统计页） =====
 async function handleAnalyze(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { expenses, items, month } = data;
 
   const expenseSummary = (expenses || []).map(e =>
