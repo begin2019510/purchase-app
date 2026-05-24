@@ -119,7 +119,7 @@ async function debugMyAuthStats(){
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
   }catch(e){el.textContent='\u9519\u8bef: '+e.message}
 }
-async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
+async function verifyAndLoad(){console.log('[verifyAndLoad] start');try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 function logout(){
   if(!confirm('\u786e\u8ba4\u9000\u51fa\u767b\u5f55\uff1f'))return;
   setPin('');
@@ -165,6 +165,7 @@ async function expenseApi(method,body,id){
 
 // ===== 启动 =====
 showVersion();
+console.log('[boot] getPin()='+!!getPin());
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
 if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex';loadAll()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -304,6 +305,7 @@ function setupSwipe(){
 }
 
 async function loadAll(){
+  console.log('[loadAll] start, currentTab='+currentTab);
   showSkeleton();
   try{
     const [r, e] = await Promise.all([
@@ -312,13 +314,15 @@ async function loadAll(){
     ]);
     if(r && !r.error && Array.isArray(r)) items = r;
     if(e && !e.error && Array.isArray(e)) expenses = e;
-  }catch{}
+  }catch(e){console.error('[loadAll] error:',e)}
   isLoadingData=false;
+  console.log('[loadAll] done, items='+items.length+' expenses='+expenses.length);
   render();
 }
 
 // ===== 采购渲染 =====
 function render(){
+  console.log('[render] currentTab='+currentTab+' items='+items.length+' expenses='+expenses.length);
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
@@ -344,6 +348,7 @@ function updateHeader(){
   `;
 }
 function renderPurchase(){
+  console.log('[renderPurchase] items.length='+items.length);
   const q=document.getElementById('searchInput').value.toLowerCase();
   let f=items;
   if(q)f=f.filter(i=>(i['商品名称']||'').toLowerCase().includes(q)||(i['备注']||'').toLowerCase().includes(q));
@@ -934,6 +939,7 @@ function renderStats() {
 
 // ===== Tab 切换 =====
 function switchTab(t){
+  console.log('[switchTab] '+currentTab+' → '+t+' items='+items.length);
   currentTab=t;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelector(`.tab:nth-child(${t==='purchase'?1:t==='expense'?2:3})`).classList.add('active');
