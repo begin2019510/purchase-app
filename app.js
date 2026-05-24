@@ -814,35 +814,24 @@ function renderExpenseCalendar(){
 function renderStats() {
   const thisMonth = getThisMonth();
   const budget = getBudget(thisMonth);
-  // ===== 采购数据 =====
+
+  // ===== 数据准备 =====
   const monthItems = items.filter(i => getMonth(i['日期']) === thisMonth);
   const monthReturned = monthItems.filter(i => i['状态'] === '已退');
   const monthTotal = monthItems.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - monthReturned.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
   const totalAll = items.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - items.filter(i => i['状态'] === '已退').reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
-  const pCatMap = {};
-  monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
-  const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
-  const pPlatMap = {};
-  monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
-  const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const statusMap = {};
   items.forEach(i => { const s = i['状态'] || '待审批'; statusMap[s] = (statusMap[s] || 0) + 1; });
-  // ===== 记账数据 =====
+
   const monthExpenses = expenses.filter(e => {
     if (!e['日期']) return false;
     try { return getMonth(e['日期']) === thisMonth } catch { return false }
   });
-  // 统计不受搜索过滤，直接用月度全量数据
-  const searched = monthExpenses;
-  const totalOut = searched.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
-  const totalIn = searched.filter(e => e['类型'] === '收入').reduce((s, e) => s + Number(e['金额'] || 0), 0);
-  const eCatMap = {};
-  searched.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['金额'] || 0); });
-  const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
+  const totalOut = monthExpenses.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
+  const totalIn = monthExpenses.filter(e => e['类型'] === '收入').reduce((s, e) => s + Number(e['金额'] || 0), 0);
+
   // ===== 总览 =====
-  let html = '';
-  // --- 总览卡片 ---
-  html += `<div class="stat-card" style="background:var(--pri-g);color:#fff;border:none">
+  let html = `<div class="stat-card" style="background:var(--pri-g);color:#fff;border:none">
     <h3 style="color:#fff">📊 本月总览</h3>
     ${miniCards([
       ['🛒', '采购', '¥' + monthTotal.toFixed(0), 'var(--pri)'],
@@ -851,8 +840,16 @@ function renderStats() {
       ['📈', '结余', '¥' + (totalIn - totalOut - monthTotal).toFixed(0), '#fde68a']
     ])}
   </div>`;
-  // --- 采购统计 ---
-  html += `<div class="stat-card"><h3>🛒 采购统计</h3>`;
+
+  // ===== Tab 切换 =====
+  html += `<div style="display:flex;gap:0;margin:0 0 12px;background:var(--card);border-radius:12px;overflow:hidden">
+    <div class="chip active" id="statsTabPurchase" onclick="switchStatsTab('purchase')" style="flex:1;text-align:center;border-radius:0;cursor:pointer">🛒 采购</div>
+    <div class="chip" id="statsTabExpense" onclick="switchStatsTab('expense')" style="flex:1;text-align:center;border-radius:0;cursor:pointer">💰 记账</div>
+  </div>`;
+
+  // ===== 采购统计 =====
+  html += `<div id="statsSectionPurchase">`;
+  html += `<div class="stat-card"><h3>🛒 采购概览</h3>`;
   html += miniCards([
     ['📦', '本月', monthItems.length + '件', ''],
     ['💵', '本月花费', '¥' + monthTotal.toFixed(0), 'var(--pri)'],
@@ -868,72 +865,83 @@ function renderStats() {
       <div class="budget-label"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
     </div>`;
   }
-  if (pCatEntries.length) {
-    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📂 分类</div>${barChart(pCatEntries, null, l => CAT_COLORS[l] || '#94a3b8')}</div>`;
-  }
-  if (pPlatEntries.length) {
-    html += `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🏪 平台</div>${barChart(pPlatEntries, null, () => 'var(--pri)')}</div>`;
-  }
   html += '</div>';
-  // --- 记账统计 ---
-  html += `<div class="stat-card"><h3>💰 记账统计</h3>`;
-  html += miniCards([
-    ['💸', '本月支出', '¥' + totalOut.toFixed(0), 'var(--red)'],
-    ['💰', '本月收入', '¥' + totalIn.toFixed(0), 'var(--green)'],
-    ['📊', '净收支', '¥' + (totalIn - totalOut).toFixed(0), totalIn - totalOut >= 0 ? 'var(--green)' : 'var(--red)'],
-    ['📝', '笔数', searched.length + '笔', '']
-  ]);
-  if (eCatEntries.length) {
-    html += `<div class="stat-card"><h3>💰 记账分类</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
-      ${donutChart(eCatEntries, 180, '支出')}${donutLegend(eCatEntries, totalOut)}
+
+  // 采购分类
+  const pCatMap = {};
+  monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
+  if (pCatEntries.length) {
+    html += `<div class="stat-card"><h3>📂 采购分类</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
+      ${donutChart(pCatEntries, 160, '采购')}${donutLegend(pCatEntries, monthTotal)}
     </div></div>`;
   }
-  html += '</div>';
-  // --- 采购分类饼图 ---
-  if (pCatEntries.length) {
-    html += `<div class="stat-card"><h3>📂 采购分类分布</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
-      ${donutChart(pCatEntries, 180, '采购')}${donutLegend(pCatEntries, monthTotal)}
-    </div></div>`;
-  }
-  // --- 采购平台分布 ---
+
+  // 采购平台
+  const pPlatMap = {};
+  monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   if (pPlatEntries.length) {
-    html += `<div class="stat-card"><h3>🏪 采购平台分布</h3>${barChartV(pPlatEntries.map(([l, v]) => ({ label: l, value: v, color: 'var(--pri)' })), { height: 120 })}</div>`;
+    html += `<div class="stat-card"><h3>🏪 采购平台</h3>${barChartV(pPlatEntries.map(([l, v]) => ({ label: l, value: v, color: 'var(--pri)' })), { height: 120 })}</div>`;
   }
-  // --- 近6个月采购趋势 ---
+
+  // 近6个月采购趋势
   (function(){
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(Date.now() + 8 * 3600 * 1000 - i * 30 * 24 * 3600 * 1000);
-      const ms = d.toISOString().slice(0, 7);
-      months.push(ms);
+      months.push(d.toISOString().slice(0, 7));
     }
     const trendData = months.map(m => {
       const mi = items.filter(x => getMonth(x['日期']) === m);
-      const total = mi.reduce((s, x) => s + (x['单价'] || 0) * (x['数量'] || 1), 0);
-      return { label: m.slice(5) + '月', value: total };
+      return { label: m.slice(5) + '月', value: mi.reduce((s, x) => s + (x['单价'] || 0) * (x['数量'] || 1), 0) };
     });
     if (trendData.some(d => d.value > 0)) {
       html += `<div class="stat-card"><h3>📈 近6个月采购趋势</h3>${lineChart(trendData, { color: 'var(--pri)', height: 140 })}</div>`;
     }
   })();
-  // --- 采购明细 ---
+
+  // 采购状态分布
   if (items.length) {
-    html += `<div class="stat-card"><h3>📈 采购明细</h3><div style="font-size:12px;color:var(--muted);margin-bottom:10px">各状态占比</div>`;
+    html += `<div class="stat-card"><h3>📋 采购状态</h3>`;
     const totalItems = items.length;
     Object.entries(statusMap).forEach(([s, n]) => {
       const pct = (n / totalItems * 100).toFixed(0);
-      const cls = 'badge-' + s;
-      html += `<div class="cat-row"><span class="badge ${cls}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${s === '待审批' ? 'var(--orange)' : s === '已审批' ? 'var(--blue)' : s === '已下单' ? '#8b5cf6' : s === '已到' ? 'var(--green)' : s === '已归档' ? '#6b7280' : 'var(--red)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
+      const colors = { '待审批': 'var(--orange)', '已审批': 'var(--blue)', '已下单': '#8b5cf6', '已到': 'var(--green)', '已退': 'var(--red)', '已归档': '#6b7280' };
+      html += `<div class="cat-row"><span class="badge badge-${s}" style="min-width:40px">${s}</span><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${colors[s] || 'var(--muted)'}"></div></div><span style="min-width:50px;text-align:right;font-weight:700">${n}件 (${pct}%)</span></div>`;
     });
     html += '</div>';
   }
-  // --- 每日支出趋势 ---
+  html += '</div>';
+
+  // ===== 记账统计 =====
+  html += `<div id="statsSectionExpense" style="display:none">`;
+  html += `<div class="stat-card"><h3>💰 记账概览</h3>`;
+  html += miniCards([
+    ['💸', '本月支出', '¥' + totalOut.toFixed(0), 'var(--red)'],
+    ['💰', '本月收入', '¥' + totalIn.toFixed(0), 'var(--green)'],
+    ['📊', '净收支', '¥' + (totalIn - totalOut).toFixed(0), totalIn - totalOut >= 0 ? 'var(--green)' : 'var(--red)'],
+    ['📝', '笔数', monthExpenses.length + '笔', '']
+  ]);
+  html += '</div>';
+
+  // 记账分类
+  const eCatMap = {};
+  monthExpenses.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['金额'] || 0); });
+  const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
+  if (eCatEntries.length) {
+    html += `<div class="stat-card"><h3>📂 支出分类</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
+      ${donutChart(eCatEntries, 160, '支出')}${donutLegend(eCatEntries, totalOut)}
+    </div></div>`;
+  }
+
+  // 每日支出趋势
   const dailyData = getMonthDailyData(expenses, thisMonth, '支出');
   if (dailyData.some(d => d.value > 0)) {
     const dayMax = Math.max(...dailyData.map(d => d.value));
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / dailyData.filter(d => d.value > 0).length || 0;
     const dayActive = dailyData.filter(d => d.value > 0).length;
-    html += `<div class="stat-card"><h3>📉 每日支出趋势</h3>`;
+    html += `<div class="stat-card"><h3>📉 每日支出</h3>`;
     html += `<div style="display:flex;gap:12px;margin-bottom:4px;font-size:11px;color:var(--muted)">`;
     html += `<span>最高 <b style="color:var(--text)">¥${dayMax.toFixed(0)}</b></span>`;
     html += `<span>日均 <b style="color:var(--text)">¥${dayAvg.toFixed(0)}</b></span>`;
@@ -942,34 +950,30 @@ function renderStats() {
     html += lineChart(dailyData, { color: '#ef4444', height: 130 });
     html += `</div>`;
   }
-  // --- 每周支出对比 ---
+
+  // 每周支出对比
   const weekData = getWeekData(expenses, thisMonth, '支出');
   if (weekData.some(d => d.value > 0)) {
-    const weekMax = Math.max(...weekData.map(d => d.value));
-    html += `<div class="stat-card"><h3>📊 每周支出对比</h3>`;
+    html += `<div class="stat-card"><h3>📊 每周支出</h3>`;
     html += barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 });
     html += `</div>`;
   }
-  // --- 收入vs支出趋势 ---
+
+  // 收入vs支出
   const outDaily = getMonthDailyData(expenses, thisMonth, '支出');
   const inDaily = getMonthDailyData(expenses, thisMonth, '收入');
-  const hasIncome = inDaily.some(d => d.value > 0);
-  if (hasIncome) {
+  if (inDaily.some(d => d.value > 0)) {
     html += `<div class="stat-card"><h3>💹 收入 vs 支出</h3>`;
     const W = 340, H = 140, pad = { t: 20, r: 12, b: 24, l: 36 };
     const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
     const days = outDaily.length;
-    const allVals = [...outDaily.map(d => d.value), ...inDaily.map(d => d.value)];
-    const maxV = Math.max(...allVals, 1);
+    const maxV = Math.max(...outDaily.map(d => d.value), ...inDaily.map(d => d.value), 1);
     const stepX = days > 1 ? cw / (days - 1) : cw;
     const mkPath = (data) => data.map((d, i) => {
       const x = pad.l + (days > 1 ? i * stepX : cw / 2);
       const y = pad.t + ch - d.value / maxV * ch;
       return (i === 0 ? 'M' : 'L') + x + ',' + y;
     }).join(' ');
-    const outPath = mkPath(outDaily);
-    const inPath = mkPath(inDaily);
-    // grid
     let grid = '';
     for (let i = 0; i <= 3; i++) {
       const y = pad.t + ch * i / 3;
@@ -981,31 +985,24 @@ function renderStats() {
     let xLabels = '';
     outDaily.forEach((d, i) => {
       if (i % labelStep === 0 || i === outDaily.length - 1) {
-        const x = pad.l + (days > 1 ? i * stepX : cw / 2);
-        xLabels += `<text x="${x}" y="${H - 4}" class="trend-label">${d.label}</text>`;
+        xLabels += `<text x="${pad.l + (days > 1 ? i * stepX : cw / 2)}" y="${H - 4}" class="trend-label">${d.label}</text>`;
       }
     });
     html += `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
-      ${grid}
-      <path d="${inPath}" stroke="#10b981" class="trend-line"/>
-      <path d="${outPath}" stroke="#ef4444" class="trend-line"/>
-      ${xLabels}
-    </svg></div>`;
-    html += `<div class="trend-summary">
-      <div class="trend-summary-item"><span class="trend-summary-dot" style="background:#ef4444"></span>支出</div>
-      <div class="trend-summary-item"><span class="trend-summary-dot" style="background:#10b981"></span>收入</div>
-    </div>`;
-    html += `</div>`;
+      ${grid}<path d="${mkPath(inDaily)}" stroke="#10b981" class="trend-line"/><path d="${mkPath(outDaily)}" stroke="#ef4444" class="trend-line"/>${xLabels}
+    </svg></div>
+    <div class="trend-summary"><div class="trend-summary-item"><span class="trend-summary-dot" style="background:#ef4444"></span>支出</div><div class="trend-summary-item"><span class="trend-summary-dot" style="background:#10b981"></span>收入</div></div></div>`;
   }
-  // --- 分类支出排行 ---
-  if (eCatEntries.length) {
-    const topCats = eCatEntries.slice(0, 6);
-    const catMax = topCats[0][1] || 1;
-    html += `<div class="stat-card"><h3>🏆 支出分类排行</h3>`;
-    html += barChartV(topCats.map(([l, v]) => ({ label: l, value: v, color: CAT_COLORS[l] || '#94a3b8' })), { height: 120 });
-    html += `</div>`;
-  }
+  html += '</div>';
+
   document.getElementById('statsContent').innerHTML = html;
+}
+
+function switchStatsTab(tab) {
+  document.getElementById('statsSectionPurchase').style.display = tab === 'purchase' ? '' : 'none';
+  document.getElementById('statsSectionExpense').style.display = tab === 'expense' ? '' : 'none';
+  document.getElementById('statsTabPurchase').className = tab === 'purchase' ? 'chip active' : 'chip';
+  document.getElementById('statsTabExpense').className = tab === 'expense' ? 'chip active' : 'chip';
 }
 
 // ===== Tab 切换 =====
