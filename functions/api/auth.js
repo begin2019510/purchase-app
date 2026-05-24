@@ -204,6 +204,8 @@ export async function onRequest(context) {
       return await handleListInvites(request, env, KV, cors);
     } else if (action === 'delete-user') {
       return await handleDeleteUser(request, env, KV, cors);
+    } else if (action === 'list-users') {
+      return await handleListUsers(request, env, KV, cors);
     } else if (action === 'debug-env') {
       const codes = env.INVITE_CODES || '';
       return json({
@@ -393,4 +395,32 @@ async function handleDeleteUser(request, env, KV, cors) {
 
   // 注意: 不删除飞书 Bitable 表（数据保留，防止误删）
   return json({ ok: true, message: `用户 ${username} 已删除（数据表已保留）` }, 200, cors);
+}
+
+// ===== 用户列表（仅管理员） =====
+async function handleListUsers(request, env, KV, cors) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
+
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, env.JWT_SECRET);
+  if (!payload || payload.username !== 'admin') {
+    return json({ error: '仅管理员可查看' }, 403, cors);
+  }
+
+  const keys = await KV.list({ prefix: 'user:' });
+  const users = [];
+  for (const key of keys.keys) {
+    const data = await KV.get(key.name);
+    if (data) {
+      const u = JSON.parse(data);
+      users.push({
+        username: u.username,
+        createdAt: u.createdAt,
+        inviteCode: u.inviteCode,
+        inviteType: u.inviteType,
+      });
+    }
+  }
+  return json({ ok: true, users }, 200, cors);
 }

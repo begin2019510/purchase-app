@@ -67,7 +67,23 @@ function showRegister(){document.getElementById('loginForm').style.display='none
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
 // ===== \u7ba1\u7406\u5458\u529f\u80fd =====
-function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList()}
+
+async function loadUserList(){
+  const el=document.getElementById('userList');
+  try{
+    const r=await fetch('/api/auth?action=list-users',{headers:{'Authorization':'Bearer '+getPin()}});
+    const d=await r.json();
+    if(!d.ok){el.textContent='\u52a0\u8f7d\u5931\u8d25';return}
+    if(!d.users.length){el.textContent='\u6682\u65e0\u7528\u6237';return}
+    el.innerHTML=d.users.map(u=>{
+      const isAdmin=u.username==='admin';
+      const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">\u7ba1\u7406\u5458</span>':'';
+      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">\u5220\u9664</button>';
+      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+u.createdAt.slice(0,10)+' | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
+    }).join('');
+  }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
+}
+function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList();loadUserList()}
 function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
 async function createInviteCodes(){
   const count=parseInt(document.getElementById('inviteCount').value)||1;
