@@ -58,6 +58,11 @@ async function createUserTables(env, username) {
     { field_name: '日期', type: 5, property: { date_formatter: 'yyyy/MM/dd' } },
     { field_name: '备注', type: 1 },
     { field_name: '图片', type: 1 },
+    { field_name: '创建时间', type: 1 },
+    { field_name: '审批时间', type: 1 },
+    { field_name: '下单时间', type: 1 },
+    { field_name: '到货时间', type: 1 },
+    { field_name: '归档时间', type: 1 },
   ]);
 
   const expenseApp = await createBitable(feishuToken, `[${username}] 记账管理`);
