@@ -841,10 +841,10 @@ function renderStats() {
   html += `<div id="statsSectionPurchase">`;
 
   // 大数字卡片
-  html += `<div class="stat-card" style="text-align:center;padding:24px 16px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${monthName}采购总额</div>
-    <div style="font-size:36px;font-weight:900;color:var(--pri)">¥${monthTotal.toFixed(0)}</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:4px">${monthItems.length}件商品 · ${monthReturned.length}件退货</div>
+  html += `<div class="stat-card stat-big">
+    <div class="stat-big-label">${monthName}采购总额</div>
+    <div class="stat-big-num" style="color:var(--pri)">¥${monthTotal.toFixed(0)}</div>
+    <div class="stat-big-sub"><span>📦 ${monthItems.length}件</span><span>↩️ ${monthReturned.length}退货</span></div>
   </div>`;
 
   // 预算进度
@@ -900,13 +900,10 @@ function renderStats() {
 
   // 大数字卡片
   const balance = totalIn - totalOut;
-  html += `<div class="stat-card" style="text-align:center;padding:24px 16px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${monthName}结余</div>
-    <div style="font-size:36px;font-weight:900;color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">¥${balance.toFixed(0)}</div>
-    <div style="display:flex;justify-content:center;gap:24px;margin-top:8px;font-size:13px">
-      <span style="color:var(--red)">↓ ¥${totalOut.toFixed(0)}</span>
-      <span style="color:var(--green)">↑ ¥${totalIn.toFixed(0)}</span>
-    </div>
+  html += `<div class="stat-card stat-big">
+    <div class="stat-big-label">${monthName}结余</div>
+    <div class="stat-big-num" style="color:${balance >= 0 ? 'var(--green)' : 'var(--red)'}">¥${balance.toFixed(0)}</div>
+    <div class="stat-big-sub"><span style="color:var(--red)">↓ ¥${totalOut.toFixed(0)}</span><span style="color:var(--green)">↑ ¥${totalIn.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势
