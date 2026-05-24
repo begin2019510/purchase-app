@@ -1,3 +1,7 @@
+
+// ============================================================
+// 版本 & 更新日志
+// ============================================================
 const APP_VERSION='2.6.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
@@ -39,105 +43,113 @@ let calSelectedDate=null; // 'YYYY-MM-DD'
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
 function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
-function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='\u8bf7\u8f93\u5165\u7528\u6237\u540d\u548c\u5bc6\u7801';return}doLoginAPI(username,password)}
+function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 async function doLoginAPI(username,password){
-  document.getElementById('authError').textContent='\u767b\u5f55\u4e2d...';
+  document.getElementById('authError').textContent='登录中...';
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
-    else{document.getElementById('authError').textContent=d.error||'\u767b\u5f55\u5931\u8d25'}
-  }catch(e){document.getElementById('authError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('authError').textContent=d.error||'登录失败'}
+  }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
 async function doRegister(){
   const username=document.getElementById('regUsername').value.trim();
   const password=document.getElementById('regPassword').value;
   const inviteCode=document.getElementById('regInviteCode').value.trim();
-  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='\u8bf7\u586b\u5199\u6240\u6709\u5b57\u6bb5';return}
-  document.getElementById('regError').textContent='\u6ce8\u518c\u4e2d...';
+  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
+  document.getElementById('regError').textContent='注册中...';
   try{
     const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
-    else{document.getElementById('regError').textContent=d.error||'\u6ce8\u518c\u5931\u8d25'}
-  }catch(e){document.getElementById('regError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('regError').textContent=d.error||'注册失败'}
+  }catch(e){document.getElementById('regError').textContent='网络错误'}
 }
-function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='\u8bf7\u767b\u5f55';document.getElementById('authError').textContent=''}
-function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='\u9080\u8bf7\u7801\u6ce8\u518c';document.getElementById('regError').textContent=''}
+function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='请登录';document.getElementById('authError').textContent=''}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
-// ===== \u7ba1\u7406\u5458\u529f\u80fd =====
+// ===== 管理员功能 =====
 
 async function loadUserList(){
   const el=document.getElementById('userList');
   try{
     const r=await fetch('/api/auth?action=list-users',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok){el.textContent='\u52a0\u8f7d\u5931\u8d25';return}
-    if(!d.users.length){el.textContent='\u6682\u65e0\u7528\u6237';return}
+    if(!d.ok){el.textContent='加载失败';return}
+    if(!d.users.length){el.textContent='暂无用户';return}
     el.innerHTML=d.users.map(u=>{
       const isAdmin=u.username==='admin';
-      const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">\u7ba1\u7406\u5458</span>':'';
-      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">\u5220\u9664</button>';
+      const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">管理员</span>':'';
+      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">删除</button>';
       return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+u.createdAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC) | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
     }).join('');
-  }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
+  }catch{el.textContent='加载失败'}
 }
+
+// ============================================================
+// 管理面板
+// ============================================================
 function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList();loadUserList()}
 function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
 async function createInviteCodes(){
   const count=parseInt(document.getElementById('inviteCount').value)||1;
   const el=document.getElementById('newInviteCodes');
-  el.textContent='\u751f\u6210\u4e2d...';
+  el.textContent='生成中...';
   try{
     const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='\u2705 \u5df2\u751f\u6210:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
-    else{el.textContent='\u274c '+d.error}
-  }catch{el.textContent='\u274c \u7f51\u7edc\u9519\u8bef'}
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    else{el.textContent='❌ '+d.error}
+  }catch{el.textContent='❌ 网络错误'}
 }
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
   try{
     const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok||!d.codes.length){el.textContent='\u6682\u65e0\u52a8\u6001\u9080\u8bf7\u7801';return}
+    if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">\u5df2\u4f7f\u7528 '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">\u53ef\u7528</span>';
+      const status=c.used?'<span style="color:var(--red)">已使用 '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">可用</span>';
       return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
     }).join('');
-  }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
+  }catch{el.textContent='加载失败'}
 }
 async function deleteUser(username){
-  if(!confirm('\u786e\u5b9a\u5220\u9664\u7528\u6237 '+username+' \uff1f\n\uff08\u6570\u636e\u8868\u4f1a\u4fdd\u7559\uff0c\u4ec5\u5220\u9664\u8d26\u53f7\uff09'))return;
+  if(!confirm('确定删除用户 '+username+' ？\n（数据表会保留，仅删除账号）'))return;
   try{
     const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
     if(d.ok){alert(d.message);loadInviteList();loadUserList();}
     else{alert(d.error)}
-  }catch{alert('\u7f51\u7edc\u9519\u8bef')}
+  }catch{alert('网络错误')}
 }
 async function debugMyAuth(){
   const el=document.getElementById('debugResult');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
 async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
+
+// ============================================================
+// 启动 & 认证
+// ============================================================
 async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 function logout(){
-  if(!confirm('\u786e\u8ba4\u9000\u51fa\u767b\u5f55\uff1f'))return;
+  if(!confirm('确认退出登录？'))return;
   setPin('');
   document.getElementById('adminBtn').style.display='none';
   document.getElementById('authScreen').style.display='flex';
@@ -145,6 +157,10 @@ function logout(){
   document.getElementById('loginPassword').value='';
 }
 
+
+// ============================================================
+// Service Worker & 启动
+// ============================================================
 // ===== Service Worker =====
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
 // ===== 推送 - 飞书机器人（国内可用） =====
@@ -213,6 +229,10 @@ function showSkeleton(){
 
 // ===== 下拉刷新 =====
 let ptrStartY=0,ptrDist=0,isPulling=false,isRefreshing=false;
+
+// ============================================================
+// 手势 & 交互
+// ============================================================
 function setupPullToRefresh(){
   const wrapper=document.querySelector('.ptr-wrapper');
   if(!wrapper)return;
@@ -321,6 +341,10 @@ function setupSwipe(){
   });
 }
 
+
+// ============================================================
+// 数据加载
+// ============================================================
 async function loadAll(){
   showSkeleton();
   try{
@@ -336,6 +360,10 @@ async function loadAll(){
 }
 
 // ===== 采购渲染 =====
+
+// ============================================================
+// 渲染
+// ============================================================
 function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
@@ -953,6 +981,10 @@ function renderStats() {
 }
 
 // ===== Tab 切换 =====
+
+// ============================================================
+// Tab 切换
+// ============================================================
 function switchTab(t){
   currentTab=t;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -971,6 +1003,10 @@ function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElem
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
 async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);await api('PATCH',{ids,status});toast(`已更新 ${ids.length} 项为"${status}"`);selectedIds.clear();toggleBatch();await loadAll()}
 async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);selectedIds.clear();toggleBatch();await loadAll()}
+
+// ============================================================
+// 采购 Modal
+// ============================================================
 function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待审批';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
@@ -1010,6 +1046,10 @@ function showApprovalModal(id){
 function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
 // ===== 记账操作 =====
+
+// ============================================================
+// 记账 Modal
+// ============================================================
 function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&pin='+getPin()}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['图片']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
@@ -1019,6 +1059,10 @@ async function saveExpense(){const amount=parseFloat(document.getElementById('eA
 async function delExpense(id){if(!confirm('确定删除？'))return;await expenseApi('DELETE',null,id);toast('已删除');await loadAll()}
 
 // ===== AI 助手 =====
+
+// ============================================================
+// AI 功能
+// ============================================================
 const AI_API='/api/ai';
 async function aiRequest(action,data){
   const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action,data})});

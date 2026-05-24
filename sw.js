@@ -21,15 +21,36 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   // 跳过 API 请求和非 GET 请求
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).then(res => {
-      if (res.ok) {
-        const clone = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
-      }
-      return res;
-    }).catch(() => caches.match(e.request))
-  );
+
+  const url = new URL(e.request.url);
+  const isStatic = ASSETS.includes(url.pathname) || url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$/);
+
+  if (isStatic) {
+    // 静态资源: cache-first
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
+          return res;
+        });
+      })
+    );
+  } else {
+    // 其他请求: network-first
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+  }
 });
 
 // ===== 推送通知 =====

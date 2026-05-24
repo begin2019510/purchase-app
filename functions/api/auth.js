@@ -4,76 +4,13 @@
 // 会话: JWT (HS256)
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-const CORS_ORIGINS = ['https://121212121.top', 'http://121212121.top'];
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken } from './_auth.js';
 
-function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...headers },
-  });
-}
-
-function corsHeaders(request) {
-  const origin = request.headers.get('Origin') || '';
-  const allowed = CORS_ORIGINS.includes(origin) ? origin : CORS_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,X-API-Key,Authorization',
-  };
-}
-
-// ===== 密码哈希 =====
-async function hashPassword(password, salt) {
-  const data = new TextEncoder().encode(salt + password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function generateSalt() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// ===== JWT =====
-async function createJWT(payload, secret, expiresInHours = 24) {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const tokenPayload = { ...payload, iat: now, exp: now + expiresInHours * 3600 };
-
-  const enc = (obj) => btoa(JSON.stringify(obj)).replace(/=/g, '');
-  const token = enc(header) + '.' + enc(tokenPayload);
-
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(token));
-  const sigStr = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  return token + '.' + sigStr;
-}
-
-async function verifyJWT(token, secret) {
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
-  );
-  const sig = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-  const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(parts[0] + '.' + parts[1]));
-  if (!valid) return null;
-
-  try {
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload;
-  } catch { return null; }
-}
+const json = jsonFn;
+const corsHeaders = getCorsHeaders;
 
 // ===== Feishu API =====
-async function getFeishuToken(appId, appSecret) {
+async function getFeishuTokenDirect(appId, appSecret) {
   const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -108,7 +45,7 @@ async function createTable(token, appToken, name, fields) {
 
 // ===== 创建用户 Bitable 表 =====
 async function createUserTables(env, username) {
-  const feishuToken = await getFeishuToken(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
+  const feishuToken = await getFeishuTokenDirect(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
 
   const purchaseApp = await createBitable(feishuToken, `[${username}] 采购管理`);
   const purchaseTable = await createTable(feishuToken, purchaseApp, '采购记录', [

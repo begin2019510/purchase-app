@@ -22,6 +22,34 @@ export function jsonResponse(data, status = 200, headers = {}) {
 export const corsHeaders = getCorsHeaders;
 export const json = jsonResponse;
 
+// 密码哈希
+export async function hashPassword(password, salt) {
+  const data = new TextEncoder().encode(salt + password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function generateSalt() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// JWT 创建
+export async function createJWT(payload, secret, expiresInHours = 24) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const tokenPayload = { ...payload, iat: now, exp: now + expiresInHours * 3600 };
+  const enc = (obj) => btoa(JSON.stringify(obj)).replace(/=/g, '');
+  const token = enc(header) + '.' + enc(tokenPayload);
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(token));
+  const sigStr = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return token + '.' + sigStr;
+}
+
 // JWT 验证
 export async function verifyJWT(token, secret) {
   const parts = token.split('.');
