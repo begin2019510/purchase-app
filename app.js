@@ -844,7 +844,7 @@ function renderStats() {
 
   let html = '';
 
-  // ===== Tab 切换 =====
+  // Tab 切换
   html += `<div class="stats-tabs">
     <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">🛒 采购</div>
     <div class="stats-tab" id="statsTabExpense" onclick="switchStatsTab('expense')">💰 记账</div>
@@ -853,45 +853,42 @@ function renderStats() {
   // ===== 采购 =====
   html += `<div id="statsSectionPurchase">`;
 
-  // 关键指标网格
-  html += `<div class="stat-grid">
-    <div class="stat-cell"><div class="stat-cell-val" style="color:var(--pri)">¥${monthTotal.toFixed(0)}</div><div class="stat-cell-lbl">${monthName}采购</div></div>
-    <div class="stat-cell"><div class="stat-cell-val">${monthItems.length}<span style="font-size:14px;color:var(--muted)">件</span></div><div class="stat-cell-lbl">本月商品</div></div>
-    <div class="stat-cell"><div class="stat-cell-val">¥${totalAll.toFixed(0)}</div><div class="stat-cell-lbl">累计采购</div></div>
-    <div class="stat-cell"><div class="stat-cell-val">${Object.keys(statusMap).length}<span style="font-size:14px;color:var(--muted)">种</span></div><div class="stat-cell-lbl">状态</div></div>
+  // 本月采购总额 - hero number
+  html += `<div class="stats-hero">
+    <div class="stats-hero-label">${monthName}采购总额</div>
+    <div class="stats-hero-num">¥${monthTotal.toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}件商品 · 累计 ¥${totalAll.toFixed(0)}</div>
   </div>`;
 
-  // 预算进度（如有）
+  // 预算进度
   if (budget) {
     const pct = Math.min(monthTotal / budget * 100, 100);
     const color = monthTotal > budget ? 'var(--red)' : monthTotal > budget * 0.8 ? 'var(--orange)' : 'var(--green)';
-    html += `<div class="stat-card" style="padding:14px 16px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>💰 预算</span><span style="color:${color}">¥${monthTotal.toFixed(0)} / ¥${budget}</span></div>
-      <div style="height:10px;background:var(--bg);border-radius:5px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:5px;transition:width .5s"></div></div>
+    html += `<div class="stats-section">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>预算</span><span style="color:${color}">¥${monthTotal.toFixed(0)} / ¥${budget}</span></div>
+      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div></div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
     </div>`;
   }
 
-  // 分类 + 平台 并排
+  // 分类 + 平台并排
   if (pCatEntries.length || pPlatEntries.length) {
-    html += `<div class="stat-row">`;
+    html += `<div class="stats-row">`;
     if (pCatEntries.length) {
-      html += `<div class="stat-card" style="padding:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">📂 分类</div>`;
-      const top5 = pCatEntries.slice(0, 5);
-      const maxVal = top5[0][1];
-      top5.forEach(([l, v]) => {
+      html += `<div class="stats-section"><div class="stats-section-title">📂 分类</div>`;
+      const maxVal = pCatEntries[0][1];
+      pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:11px;width:28px;text-align:right;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l}</span><div style="flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${CAT_COLORS[l]||'#94a3b8'};border-radius:4px"></div></div><span style="font-size:11px;width:44px;text-align:right;font-weight:700">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (pPlatEntries.length) {
-      html += `<div class="stat-card" style="padding:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">🏪 平台</div>`;
-      const top5 = pPlatEntries.slice(0, 5);
-      const maxVal = top5[0][1];
-      top5.forEach(([l, v]) => {
+      html += `<div class="stats-section"><div class="stats-section-title">🏪 平台</div>`;
+      const maxVal = pPlatEntries[0][1];
+      pPlatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:11px;width:28px;text-align:right;color:var(--muted);flex-shrink:0">${l}</span><div style="flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--pri);border-radius:4px"></div></div><span style="font-size:11px;width:44px;text-align:right;font-weight:700">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -902,30 +899,27 @@ function renderStats() {
   if (items.length) {
     const colors = { '待审批': 'var(--orange)', '已审批': 'var(--blue)', '已下单': '#8b5cf6', '已到': 'var(--green)', '已退': 'var(--red)', '已归档': '#6b7280' };
     const totalItems = items.length;
-    html += `<div class="stat-card" style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">📋 状态分布</div>`;
-    html += `<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;margin-bottom:10px">`;
+    html += `<div class="stats-section"><div class="stats-section-title">📋 状态分布</div>`;
+    html += `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:10px">`;
     Object.entries(statusMap).forEach(([s, n]) => {
       html += `<div style="width:${(n/totalItems*100).toFixed(1)}%;background:${colors[s]||'var(--muted)'}" title="${s}: ${n}件"></div>`;
     });
-    html += `</div><div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px">`;
+    html += `</div><div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted)">`;
     Object.entries(statusMap).forEach(([s, n]) => {
-      const pct = (n / totalItems * 100).toFixed(0);
-      html += `<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:${colors[s]||'var(--muted)'}"></span>${s} ${n}件 <span style="color:var(--muted)">(${pct}%)</span></span>`;
+      html += `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${colors[s]||'var(--muted)'};margin-right:4px;vertical-align:middle"></span>${s} ${n}</span>`;
     });
     html += `</div></div>`;
   }
-
   html += '</div>';
 
   // ===== 记账 =====
   html += `<div id="statsSectionExpense" style="display:none">`;
 
-  // 关键指标网格
-  html += `<div class="stat-grid">
-    <div class="stat-cell"><div class="stat-cell-val" style="color:${balance>=0?'var(--green)':'var(--red)'}">¥${balance.toFixed(0)}</div><div class="stat-cell-lbl">${monthName}结余</div></div>
-    <div class="stat-cell"><div class="stat-cell-val" style="color:var(--red)">¥${totalOut.toFixed(0)}</div><div class="stat-cell-lbl">支出</div></div>
-    <div class="stat-cell"><div class="stat-cell-val" style="color:var(--green)">¥${totalIn.toFixed(0)}</div><div class="stat-cell-lbl">收入</div></div>
-    <div class="stat-cell"><div class="stat-cell-val">${monthExpenses.length}<span style="font-size:14px;color:var(--muted)">笔</span></div><div class="stat-cell-lbl">本月</div></div>
+  // 结余 - hero number
+  html += `<div class="stats-hero">
+    <div class="stats-hero-label">${monthName}结余</div>
+    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">¥${balance.toFixed(0)}</div>
+    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ¥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">收入 ¥${totalIn.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势
@@ -933,69 +927,32 @@ function renderStats() {
   if (dailyData.some(d => d.value > 0)) {
     const dayMax = Math.max(...dailyData.map(d => d.value));
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / Math.max(dailyData.filter(d => d.value > 0).length, 1);
-    html += `<div class="stat-card" style="padding:14px 16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:12px;font-weight:700;color:var(--muted)">📉 每日支出</span>
-        <span style="font-size:11px;color:var(--muted)">最高 ¥${dayMax.toFixed(0)} · 日均 ¥${dayAvg.toFixed(0)}</span>
-      </div>
+    html += `<div class="stats-section">
+      <div class="stats-section-title">📉 每日支出 <span style="float:right;font-weight:400;font-size:11px">最高 ¥${dayMax.toFixed(0)} · 日均 ¥${dayAvg.toFixed(0)}</span></div>
       ${lineChart(dailyData, { color: '#ef4444', height: 140 })}
     </div>`;
   }
 
-  // 分类 + 每周 并排
+  // 分类 + 每周并排
   const weekData = getWeekData(expenses, thisMonth, '支出');
   if (eCatEntries.length || weekData.some(d => d.value > 0)) {
-    html += `<div class="stat-row">`;
+    html += `<div class="stats-row">`;
     if (eCatEntries.length) {
-      html += `<div class="stat-card" style="padding:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">📂 支出分类</div>`;
-      const top5 = eCatEntries.slice(0, 5);
-      const maxCat = top5[0][1];
-      top5.forEach(([l, v]) => {
+      html += `<div class="stats-section"><div class="stats-section-title">📂 支出分类</div>`;
+      const maxCat = eCatEntries[0][1];
+      eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:11px;width:28px;text-align:right;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l}</span><div style="flex:1;height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${CAT_COLORS[l]||'#94a3b8'};border-radius:4px"></div></div><span style="font-size:11px;width:44px;text-align:right;font-weight:700">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (weekData.some(d => d.value > 0)) {
-      html += `<div class="stat-card" style="padding:14px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">📊 每周对比</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 110 })}</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">📊 每周</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 })}</div>`;
     }
     html += `</div>`;
   }
-
-  // 收入vs支出
-  const outDaily = getMonthDailyData(expenses, thisMonth, '支出');
-  const inDaily = getMonthDailyData(expenses, thisMonth, '收入');
-  if (inDaily.some(d => d.value > 0)) {
-    html += `<div class="stat-card" style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">💹 收入 vs 支出</div>`;
-    const W = 340, H = 150, pad = { t: 20, r: 12, b: 24, l: 36 };
-    const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
-    const days = outDaily.length;
-    const maxV = Math.max(...outDaily.map(d => d.value), ...inDaily.map(d => d.value), 1);
-    const stepX = days > 1 ? cw / (days - 1) : cw;
-    const mkPath = (data) => data.map((d, i) => {
-      const x = pad.l + (days > 1 ? i * stepX : cw / 2);
-      const y = pad.t + ch - d.value / maxV * ch;
-      return (i === 0 ? 'M' : 'L') + x + ',' + y;
-    }).join(' ');
-    let grid = '';
-    for (let i = 0; i <= 3; i++) {
-      const y = pad.t + ch * i / 3;
-      const v = maxV - maxV * i / 3;
-      grid += `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="var(--border)" stroke-width=".5"/>`;
-      grid += `<text x="${pad.l - 4}" y="${y + 3}" fill="var(--muted)" font-size="8" text-anchor="end">¥${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}</text>`;
-    }
-    const labelStep = days <= 7 ? 1 : days <= 14 ? 2 : Math.ceil(days / 7);
-    let xLabels = '';
-    outDaily.forEach((d, i) => {
-      if (i % labelStep === 0 || i === outDaily.length - 1) {
-        xLabels += `<text x="${pad.l + (days > 1 ? i * stepX : cw / 2)}" y="${H - 4}" fill="var(--muted)" font-size="9" text-anchor="middle">${d.label}</text>`;
-      }
-    });
-    html += `<svg viewBox="0 0 ${W} ${H}" style="width:100%;overflow:visible">${grid}<path d="${mkPath(inDaily)}" stroke="#10b981" fill="none" stroke-width="2" stroke-linecap="round"/><path d="${mkPath(outDaily)}" stroke="#ef4444" fill="none" stroke-width="2" stroke-linecap="round"/>${xLabels}</svg>`;
-    html += `<div style="display:flex;justify-content:center;gap:16px;margin-top:6px;font-size:11px;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#ef4444;margin-right:4px"></span>支出</span><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#10b981;margin-right:4px"></span>收入</span></div></div>`;
-  }
-
   html += '</div>';
+
   document.getElementById('statsContent').innerHTML = html;
 }
 
