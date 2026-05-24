@@ -305,7 +305,7 @@ function setupSwipe(){
 }
 
 async function loadAll(){
-  console.log('[loadAll] start, currentTab='+currentTab);
+  console.log('[loadAll] start, currentTab='+currentTab+' items_before='+items.length, new Error().stack);
   showSkeleton();
   try{
     const [r, e] = await Promise.all([
@@ -330,6 +330,8 @@ function render(){
   // DEBUG: 在页面顶部显示状态
   let dbg=document.getElementById('_debug');if(!dbg){dbg=document.createElement('div');dbg.id='_debug';dbg.style.cssText='position:fixed;top:0;left:0;right:0;background:#000;color:#0f0;font:11px monospace;z-index:9999;padding:4px 8px;pointer-events:none';document.body.appendChild(dbg)}
   dbg.textContent='tab='+currentTab+' items='+items.length+' expenses='+expenses.length+' list='+(document.getElementById('list')?.innerHTML?.length||0);
+  // 延迟检测：3秒后再检查一次
+  if(!window._dbgTimer){window._dbgTimer=setTimeout(()=>{dbg.textContent+=' | 3s后: items='+items.length+' list='+(document.getElementById('list')?.innerHTML?.length||0)},3000)}
 }
 function updateHeader(){
   const total=totalCost(items);
