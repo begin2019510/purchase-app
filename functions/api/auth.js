@@ -199,11 +199,11 @@ export async function onRequest(context) {
     } else if (action === 'verify') {
       return await handleVerify(request, KV, JWT_SECRET, cors);
     } else if (action === 'create-invite') {
-      return await handleCreateInvite(request, env, KV, cors);
+      return await handleCreateInvite(request, body, env, KV, cors);
     } else if (action === 'list-invites') {
       return await handleListInvites(request, env, KV, cors);
     } else if (action === 'delete-user') {
-      return await handleDeleteUser(request, env, KV, cors);
+      return await handleDeleteUser(request, body, env, KV, cors);
     } else if (action === 'list-users') {
       return await handleListUsers(request, env, KV, cors);
     } else if (action === 'debug-env') {
@@ -318,7 +318,7 @@ async function handleVerify(request, KV, JWT_SECRET, cors) {
 }
 
 // ===== 创建邀请码（仅管理员） =====
-async function handleCreateInvite(request, env, KV, cors) {
+async function handleCreateInvite(request, body, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
 
@@ -327,8 +327,6 @@ async function handleCreateInvite(request, env, KV, cors) {
   if (!payload || payload.username !== 'admin') {
     return json({ error: '仅管理员可创建邀请码' }, 403, cors);
   }
-
-  const body = await request.json().catch(() => ({}));
   const count = Math.min(Math.max(parseInt(body.count) || 1, 1), 10);
 
   const newCodes = [];
@@ -367,7 +365,7 @@ async function handleListInvites(request, env, KV, cors) {
 }
 
 // ===== 删除用户（仅管理员，不能删自己） =====
-async function handleDeleteUser(request, env, KV, cors) {
+async function handleDeleteUser(request, body, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
 
@@ -377,7 +375,6 @@ async function handleDeleteUser(request, env, KV, cors) {
     return json({ error: '仅管理员可删除用户' }, 403, cors);
   }
 
-  const body = await request.json().catch(() => ({}));
   const { username } = body;
   if (!username) {
     return json({ error: '请指定要删除的用户名' }, 400, cors);
