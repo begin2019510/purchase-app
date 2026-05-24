@@ -1,4 +1,4 @@
-﻿const APP_VERSION='2.6.0';
+const APP_VERSION='2.6.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
   {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
@@ -119,7 +119,7 @@ async function debugMyAuthStats(){
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
   }catch(e){el.textContent='\u9519\u8bef: '+e.message}
 }
-async function verifyAndLoad(){console.log('[verifyAndLoad] start');try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
+async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 function logout(){
   if(!confirm('\u786e\u8ba4\u9000\u51fa\u767b\u5f55\uff1f'))return;
   setPin('');
@@ -165,7 +165,8 @@ async function expenseApi(method,body,id){
 
 // ===== 启动 =====
 showVersion();
-console.log('[boot] getPin()='+!!getPin());
+// 清空可能被浏览器自动填充的搜索框
+document.getElementById('searchInput').value='';
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
 if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex';loadAll()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
@@ -305,7 +306,6 @@ function setupSwipe(){
 }
 
 async function loadAll(){
-  console.log('[loadAll] start, currentTab='+currentTab+' items_before='+items.length, new Error().stack);
   showSkeleton();
   try{
     const [r, e] = await Promise.all([
@@ -314,24 +314,19 @@ async function loadAll(){
     ]);
     if(r && !r.error && Array.isArray(r)) items = r;
     if(e && !e.error && Array.isArray(e)) expenses = e;
-  }catch(e){console.error('[loadAll] error:',e)}
+  }catch{}
   isLoadingData=false;
-  console.log('[loadAll] done, items='+items.length+' expenses='+expenses.length);
   render();
 }
 
 // ===== 采购渲染 =====
 function render(){
-  console.log('[render] currentTab='+currentTab+' items='+items.length+' expenses='+expenses.length);
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
   updateHeader();
   // DEBUG: 在页面顶部显示状态
-  let dbg=document.getElementById('_debug');if(!dbg){dbg=document.createElement('div');dbg.id='_debug';dbg.style.cssText='position:fixed;top:0;left:0;right:0;background:#000;color:#0f0;font:11px monospace;z-index:9999;padding:4px 8px;pointer-events:none';document.body.appendChild(dbg)}
-  dbg.textContent='tab='+currentTab+' items='+items.length+' expenses='+expenses.length+' list='+(document.getElementById('list')?.innerHTML?.length||0);
   // 延迟检测：3秒后再检查一次
-  if(!window._dbgTimer){window._dbgTimer=setTimeout(()=>{dbg.textContent+=' | 3s后: items='+items.length+' list='+(document.getElementById('list')?.innerHTML?.length||0)},3000)}
 }
 function updateHeader(){
   const total=totalCost(items);
@@ -358,14 +353,13 @@ function renderPurchase(){
   if(q)f=f.filter(i=>(i['商品名称']||'').toLowerCase().includes(q)||(i['备注']||'').toLowerCase().includes(q));
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
-  console.log('[renderPurchase] q="'+q+'" statusFilter='+currentStatusFilter+' catFilter='+currentCatFilter+' filtered='+f.length+'/'+items.length);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
   const statuses=['全部','待审批','已审批','已下单','已到','已退','已归档'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" onclick="currentCatFilter='${c}';render()">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){console.warn('[renderPurchase] EMPTY! q="'+q+'" status='+currentStatusFilter+' cat='+currentCatFilter);listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
+  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
   const groups={};sorted.forEach(i=>{const m=getMonth(i['日期'])||'未设置日期';if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
@@ -944,7 +938,6 @@ function renderStats() {
 
 // ===== Tab 切换 =====
 function switchTab(t){
-  console.log('[switchTab] '+currentTab+' → '+t+' items='+items.length);
   currentTab=t;
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelector(`.tab:nth-child(${t==='purchase'?1:t==='expense'?2:3})`).classList.add('active');
