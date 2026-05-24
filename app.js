@@ -327,6 +327,9 @@ function render(){
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
   updateHeader();
+  // DEBUG: 在页面顶部显示状态
+  let dbg=document.getElementById('_debug');if(!dbg){dbg=document.createElement('div');dbg.id='_debug';dbg.style.cssText='position:fixed;top:0;left:0;right:0;background:#000;color:#0f0;font:11px monospace;z-index:9999;padding:4px 8px;pointer-events:none';document.body.appendChild(dbg)}
+  dbg.textContent='tab='+currentTab+' items='+items.length+' expenses='+expenses.length+' list='+(document.getElementById('list')?.innerHTML?.length||0);
 }
 function updateHeader(){
   const total=totalCost(items);
