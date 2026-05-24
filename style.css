@@ -53,7 +53,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .header-actions .action-btn{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.22);letter-spacing:.3px}
 .header-actions .action-btn:active{background:rgba(255,255,255,.35)}
 .stats-row{display:flex;gap:16px}
-.stats-row .stat{display:flex;flex-direction:column}
+.stats-row .stat{display:flex;flex-direction:column;text-align:center}
 .stats-row .stat-val{font-size:20px;font-weight:800;color:#fff}
 .stats-row .stat-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:1px}
 
@@ -149,6 +149,10 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .stats-page{padding:12px 0}
 .stat-card{background:var(--card);border-radius:16px;padding:20px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid var(--border);animation:fadeUp .3s ease-out both}
 .stat-card h3{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--muted);letter-spacing:.3px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-cell{text-align:center;padding:12px 8px}
+.stat-cell-val{font-size:28px;font-weight:900;line-height:1.1;letter-spacing:-.5px}
+.stat-cell-lbl{font-size:11px;color:var(--muted);margin-top:4px;font-weight:500}
 /* Stats page */
 .stats-tabs{display:flex;gap:0;margin-bottom:16px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--border)}
 .stats-tab{flex:1;text-align:center;padding:10px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);transition:.2s}
