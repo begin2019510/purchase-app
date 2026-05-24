@@ -76,14 +76,18 @@ export async function onRequest(context) {
       body: JSON.stringify({ fields }),
     });
     let d = await r.json();
-    if (d.code !== 0 && !d.data?.record?.record_id && body.image && body.image.length <= 30000) {
-      fields['图片'] = body.image;
-      r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields }),
-      });
-      d = await r.json();
+    if (d.code !== 0 || !d.data?.record?.record_id) {
+      // 首次失败，尝试用base64图片重试
+      if (body.image && body.image.length <= 30000) {
+        fields['图片'] = body.image;
+        r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields }),
+        });
+        d = await r.json();
+      }
+      if (d.code !== 0) return json({ error: d.msg || 'Create failed' }, 500);
     }
     return json({ id: d.data?.record?.record_id, ok: true }, 201);
   }

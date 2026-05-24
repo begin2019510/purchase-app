@@ -149,6 +149,12 @@ export async function onRequest(context) {
     } else if (action === 'list-users') {
       return await handleListUsers(request, env, KV, cors);
     } else if (action === 'debug-env') {
+      // 仅管理员可查看
+      const debugAuth = request.headers.get('Authorization');
+      if (!debugAuth) return json({ error: 'Unauthorized' }, 401, cors);
+      const debugToken = debugAuth.replace('Bearer ', '');
+      const debugPayload = await verifyJWT(debugToken, env.JWT_SECRET);
+      if (!debugPayload || debugPayload.username !== 'admin') return json({ error: '仅管理员可查看' }, 403, cors);
       const codes = env.INVITE_CODES || '';
       return json({
         ok: true,
