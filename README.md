@@ -1,4 +1,4 @@
-# 采购管家 v2.6.0
+# 采购管家 v2.7.0
 
 多用户采购记账 PWA，基于飞书 Bitable + Cloudflare Pages。
 
@@ -192,13 +192,33 @@ npx wrangler deploy
 - SW 缓存旧版本会导致前端功能缺失，需手动 Unregister 后刷新
 - 含中文的 JS 文件用 `edit` 工具修改可能编码损坏，用 Python 脚本处理
 - `img.src` 不能发送自定义 HTTP 头，图片认证必须用 query 参数
+- Chrome 手机端 SW 更新极慢，CSS 已从 SW 缓存中排除
+
+## v2.7.0 代码审查修复（2026-05-24）
+
+### 致命修复
+- Cache API 跨用户数据串台：cacheKey 加入 username 后缀
+- `new Request(url, request)` ReadableStream disturbed：去掉 request 参数
+- 新用户 Bitable 表缺时间字段：createUserTables 补全 5 个字段
+- 前端 save() 不检查错误：失败时 alert 而非静默吞掉
+
+### 严重修复
+- expenses.js POST 重试后仍返回 ok:true：加错误检查
+- debug-env 端点无认证暴露配置：加管理员权限
+- batchUpdate/delItem/delExpense 不检查结果：全部补上
+- 删账户不删 Bitable 数据表：通过 Drive API 同步删除
+
+### 中等修复
+- CSS 被 SW 缓存导致手机端不更新：CSS 永不缓存
+- header stats-row 被统计页 CSS 覆盖：高优先级选择器
+- 统计页手机端图表太小：≤480px 改为竖向堆叠
 
 ## 版本历史
 
 | 版本 | 日期 | 主要变更 |
-|------|------|---------|
+|------|------|----------|
+| v2.7.0 | 2026-05-24 | 导出增强/统计页重构/离线优化/帮助文档/代码审查修复/多用户缓存隔离 |
 | v2.6.0 | 2026-05-23 | 代码重构：JS 提取为独立 app.js；多用户登录系统 |
-| v2.7.0 | 2026-05-24 | 导出增强/采购统计/离线优化/帮助文档/统计页重构/技术债务清理 |
 | v2.5.9 | 2026-05-23 | AI 智能分类 + 批量标签提炼 |
 | v2.5.8 | 2026-05-23 | AI 自然语言记账 + 财务分析 |
 | v2.5.7 | 2026-05-23 | 骨架屏 + 下拉刷新 + 卡片滑动 |
