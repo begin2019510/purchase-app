@@ -166,7 +166,7 @@ async function expenseApi(method,body,id){
 // ===== 启动 =====
 showVersion();
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
-if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex'}
+if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex';loadAll()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
@@ -1308,6 +1308,5 @@ function doDetailModalAction(id,nextStatus){
   }).catch(()=>{toast('网络错误，请刷新');loadAll();});
 }
 
-loadAll();
 setupPullToRefresh();
 setupSwipe();
