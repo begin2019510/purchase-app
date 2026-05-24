@@ -52,10 +52,10 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .header-actions .icon-btn:active{background:rgba(255,255,255,.25)}
 .header-actions .action-btn{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.22);letter-spacing:.3px}
 .header-actions .action-btn:active{background:rgba(255,255,255,.35)}
-.stats-row{display:flex;gap:16px}
-.stats-row .stat{display:flex;flex-direction:column;text-align:center}
-.stats-row .stat-val{font-size:20px;font-weight:800;color:#fff}
-.stats-row .stat-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:1px}
+.header .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center}
+.header .stats-row .stat{display:flex;flex-direction:column;text-align:center}
+.header .stats-row .stat-val{font-size:20px;font-weight:800;color:#fff}
+.header .stats-row .stat-lbl{font-size:11px;color:rgba(255,255,255,.85);margin-top:1px}
 
 /* ===== Tabs ===== */
 .tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:68px;z-index:40;padding:0 4px}
