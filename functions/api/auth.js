@@ -336,10 +336,31 @@ async function handleDeleteUser(request, body, env, KV, cors) {
     return json({ error: '用户不存在' }, 404, cors);
   }
 
+  // 删除飞书 Bitable 数据表
+  const deleteErrors = [];
+  if (user.bitable) {
+    const feishuToken = await getFeishuTokenDirect(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
+    for (const appToken of [user.bitable.purchaseApp, user.bitable.expenseApp]) {
+      if (!appToken) continue;
+      try {
+        const res = await fetch(`https://open.feishu.cn/open-apis/drive/v1/files/${appToken}?type=bitable`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + feishuToken },
+        });
+        const d = await res.json();
+        if (d.code !== 0) deleteErrors.push(`${appToken}: ${d.msg}`);
+      } catch (e) {
+        deleteErrors.push(`${appToken}: ${e.message}`);
+      }
+    }
+  }
+
   await deleteUser(KV, username);
 
-  // 注意: 不删除飞书 Bitable 表（数据保留，防止误删）
-  return json({ ok: true, message: `用户 ${username} 已删除（数据表已保留）` }, 200, cors);
+  if (deleteErrors.length) {
+    return json({ ok: true, message: `用户 ${username} 已删除，但部分数据表删除失败`, errors: deleteErrors }, 200, cors);
+  }
+  return json({ ok: true, message: `用户 ${username} 及其数据已全部删除` }, 200, cors);
 }
 
 // ===== 用户列表（仅管理员） =====
