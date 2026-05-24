@@ -84,7 +84,8 @@ export async function onRequest(context) {
 
   try {
     if (request.method === 'GET') {
-      const cacheKey = new Request(url.toString(), request);
+      const cacheSuffix = user.username ? `_${user.username}` : '';
+      const cacheKey = new Request(url.toString() + cacheSuffix, request);
       const cache = caches.default;
       const cached = await cache.match(cacheKey);
       if (cached) {
@@ -124,7 +125,8 @@ export async function onRequest(context) {
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       // 清除缓存，下次GET读最新数据
-      const cacheKey = new Request(url.toString(), request);
+      const cacheSuffix = user.username ? `_${user.username}` : '';
+      const cacheKey = new Request(url.toString() + cacheSuffix, request);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ id: data.data?.record?.record_id });
     }
@@ -143,7 +145,8 @@ export async function onRequest(context) {
       if (body.date !== undefined) fields['日期'] = body.date ? new Date(body.date).getTime() : null;
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
-      const cacheKey = new Request(url.toString(), request);
+      const cacheSuffix = user.username ? `_${user.username}` : '';
+      const cacheKey = new Request(url.toString() + cacheSuffix, request);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
@@ -160,7 +163,8 @@ export async function onRequest(context) {
         const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
       }
-      const patchCacheKey = new Request(url.toString(), request);
+      const patchCacheSuffix = user.username ? `_${user.username}` : '';
+      const patchCacheKey = new Request(url.toString() + patchCacheSuffix, request);
       context.waitUntil(caches.default.delete(patchCacheKey));
       return json({ results, updated: results.filter(r => r.ok).length });
     }
@@ -171,7 +175,8 @@ export async function onRequest(context) {
       const data = await feishuFetch('DELETE', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       // 清除缓存
-      const cacheKey = new Request(url.toString(), request);
+      const cacheSuffix = user.username ? `_${user.username}` : '';
+      const cacheKey = new Request(url.toString() + cacheSuffix, request);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
