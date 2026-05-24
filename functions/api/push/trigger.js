@@ -1,28 +1,21 @@
 // GET/POST /api/push/trigger - 触发每日记账提醒
 // 通过飞书机器人 webhook 发送推送（国内可用）
 // 需要环境变量: CRON_SECRET（调用密钥）, FEISHU_BOT_WEBHOOK
-
-import { json, corsHeaders } from '../../_utils.js';
+import { corsHeaders, json } from './_common.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
   const headers = corsHeaders(request);
 
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers });
-  }
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
   // 验证 cron 密钥
   const authHeader = request.headers.get('Authorization');
   const url = new URL(request.url);
   const token = url.searchParams.get('token') || (authHeader ? authHeader.replace('Bearer ', '') : '');
-  if (env.CRON_SECRET && token !== env.CRON_SECRET) {
-    return json({ error: '未授权' }, 401, headers);
-  }
+  if (env.CRON_SECRET && token !== env.CRON_SECRET) return json({ error: '未授权' }, 401, headers);
 
-  if (!env.FEISHU_BOT_WEBHOOK) {
-    return json({ error: 'FEISHU_BOT_WEBHOOK 未配置，请在 Cloudflare 环境变量中添加' }, 500, headers);
-  }
+  if (!env.FEISHU_BOT_WEBHOOK) return json({ error: 'FEISHU_BOT_WEBHOOK 未配置' }, 500, headers);
 
   // 根据 UTC 时间推算北京时间，选文案
   const now = new Date();
@@ -30,14 +23,12 @@ export async function onRequest(context) {
 
   let messages;
   if (bjHour >= 11 && bjHour < 14) {
-    // 中午 12 点
     messages = [
       '🌤️ 中午了！上午买了什么？记一笔吧',
       '🥢 午饭时间到，顺便记一下今天的开销',
       '⏰ 中午提醒：别忘了记账哦',
     ];
   } else if (bjHour >= 17 && bjHour < 20) {
-    // 下午 6 点
     messages = [
       '🌆 下班时间到！今天花了多少钱，记一下吧',
       '📝 今日消费总结：打开采购管家记录一下',

@@ -1,57 +1,6 @@
-// GET /api/push/summary?type=weekly|monthly&token=xxx
+// GET /api/push/summary?type=weekly|monthly&token=***
 // 周度/月度汇总推送飞书
-// 环境变量: CRON_SECRET, FEISHU_BOT_WEBHOOK, FEISHU_APP_ID, FEISHU_APP_SECRET,
-//           FEISHU_BITABLE_APP, FEISHU_BITABLE_TABLE, FEISHU_EXPENSE_APP, FEISHU_EXPENSE_TABLE
-
-const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
-
-async function getToken(env) {
-  const res = await fetch(`${FEISHU_BASE}/auth/v3/tenant_access_token/internal`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
-  });
-  const data = await res.json();
-  if (data.code !== 0) throw new Error('Auth failed');
-  return data.tenant_access_token;
-}
-
-async function feishuFetch(method, path, body, env) {
-  const token = await getToken(env);
-  const opts = {
-    method,
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${FEISHU_BASE}${path}`, opts);
-  return res.json();
-}
-
-async function getAllRecords(app, table, env) {
-  const records = [];
-  let pageToken = '';
-  do {
-    const url = `/bitable/v1/apps/${app}/tables/${table}/records?page_size=500${pageToken ? '&page_token=' + pageToken : ''}`;
-    const data = await feishuFetch('GET', url, null, env);
-    if (data.code !== 0) throw new Error('Feishu API error: ' + JSON.stringify(data));
-    if (data.data?.items) records.push(...data.data.items);
-    pageToken = data.data?.page_token || '';
-  } while (pageToken);
-  return records;
-}
-
-function corsHeaders(request) {
-  const origin = request.headers.get('Origin') || '';
-  return {
-    'Access-Control-Allow-Origin': ['https://121212121.top', 'http://121212121.top'].includes(origin) ? origin : 'https://121212121.top',
-    'Access-Control-Allow-Methods': 'GET,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-}
-
-function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
-}
+import { corsHeaders, json, getAllRecords } from './_common.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -159,12 +108,6 @@ export async function onRequest(context) {
         const pct = totalOut > 0 ? (val / totalOut * 100).toFixed(1) : 0;
         return `  **${cat}** ¥${val.toFixed(2)} (${pct}%)`;
       }).join('\n');
-
-      // 预算使用率
-      let budgetLine = '';
-      try {
-        const budgetsStr = '{}'; // budgets are client-side, just skip
-      } catch {}
 
       // 采购统计
       const monthItems = items.filter(i => i.date && i.date.startsWith(thisMonth));

@@ -2,7 +2,7 @@
 // POST body: { message: "通知内容" }
 // 需要环境变量: FEISHU_BOT_WEBHOOK (飞书自定义机器人 webhook 地址)
 
-import { json, corsHeaders, verifyPin } from '../_utils.js';
+import { json, corsHeaders, verifyPin } from './_auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;

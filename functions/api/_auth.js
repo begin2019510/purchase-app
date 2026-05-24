@@ -18,6 +18,10 @@ export function jsonResponse(data, status = 200, headers = {}) {
   });
 }
 
+// 向后兼容别名
+export const corsHeaders = getCorsHeaders;
+export const json = jsonResponse;
+
 // JWT 验证
 export async function verifyJWT(token, secret) {
   const parts = token.split('.');
@@ -38,6 +42,11 @@ export async function verifyJWT(token, secret) {
 
 // 从请求中提取用户上下文
 // 兼容两种认证方式：JWT token (Bearer) 和 旧 PIN (X-API-Key)
+export function verifyPin(request, env) {
+  const pin = request.headers.get('X-API-Key');
+  return pin && pin === env.API_KEY;
+}
+
 export async function authenticate(request, env) {
   // 优先尝试 JWT
   const authHeader = request.headers.get('Authorization');
