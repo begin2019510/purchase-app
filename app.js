@@ -2,9 +2,10 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.6.0';
+const APP_VERSION='2.7.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.7.0',date:'2026-05-24',items:['记账/采购导出增强：支持CSV/TSV格式选择','采购统计增强：分类饼图、平台分布、6个月趋势','离线体验优化：断网检测+黄色横幅提示','在线帮助文档页面']},
   {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
   {v:'2.5.9',date:'2026-05-23',items:['AI智能分类：备注输入时自动推荐分类+标签','AI批量标签提炼：一键分析本月备注生成标签','分类基于历史数据学习用户习惯']},
   {v:'2.5.8',date:'2026-05-23',items:['AI自然语言记账：说句话自动解析金额/分类/时间','AI财务分析报告：消费异常/省钱建议/趋势洞察','AI代理后端：DeepSeek API + Cloudflare Pages Function']},
@@ -888,6 +889,33 @@ function renderStats() {
     </div></div>`;
   }
   html += '</div>';
+  // --- 采购分类饼图 ---
+  if (pCatEntries.length) {
+    html += `<div class="stat-card"><h3>📂 采购分类分布</h3><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:center">
+      ${donutChart(pCatEntries, 180, '采购')}${donutLegend(pCatEntries, monthTotal)}
+    </div></div>`;
+  }
+  // --- 采购平台分布 ---
+  if (pPlatEntries.length) {
+    html += `<div class="stat-card"><h3>🏪 采购平台分布</h3>${barChartV(pPlatEntries.map(([l, v]) => ({ label: l, value: v, color: 'var(--pri)' })), { height: 120 })}</div>`;
+  }
+  // --- 近6个月采购趋势 ---
+  (function(){
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(Date.now() + 8 * 3600 * 1000 - i * 30 * 24 * 3600 * 1000);
+      const ms = d.toISOString().slice(0, 7);
+      months.push(ms);
+    }
+    const trendData = months.map(m => {
+      const mi = items.filter(x => getMonth(x['日期']) === m);
+      const total = mi.reduce((s, x) => s + (x['单价'] || 0) * (x['数量'] || 1), 0);
+      return { label: m.slice(5) + '月', value: total };
+    });
+    if (trendData.some(d => d.value > 0)) {
+      html += `<div class="stat-card"><h3>📈 近6个月采购趋势</h3>${lineChart(trendData, { color: 'var(--pri)', height: 140 })}</div>`;
+    }
+  })();
   // --- 采购明细 ---
   if (items.length) {
     html += `<div class="stat-card"><h3>📈 采购明细</h3><div style="font-size:12px;color:var(--muted);margin-bottom:10px">各状态占比</div>`;
@@ -1054,7 +1082,7 @@ function closeApprovalModal(){document.getElementById('approvalOverlay').classLi
 // ============================================================
 function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&pin='+getPin()}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['图片']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
-function exportExpenses(){const lines=['日期\t时间\t类型\t分类\t金额\t备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';lines.push(datePart+'\t'+timePart+'\t'+(e['类型']||'')+'\t'+(e['分类']||'')+'\t¥'+(Number(e['金额']||0).toFixed(2))+'\t'+(e['备注']||''))});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+'.tsv';a.click()}
+function exportExpenses(){showExportDialog('记账',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['日期'+sep+'时间'+sep+'类型'+sep+'分类'+sep+'金额'+sep+'备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['金额']||0).toFixed(2);const note=(e['备注']||'').includes(sep)?'"'+(e['备注']||'').replace(/"/g,'""')+'"':(e['备注']||'');lines.push(datePart+sep+timePart+sep+(e['类型']||'')+sep+(e['分类']||'')+sep+'¥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+ext;a.click()})}
 // 图片: kv:前缀=KV key存飞书图片字段; 无前缀=base64（回退）
 async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&pin='+getPin(),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');await loadAll()}
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
@@ -1243,6 +1271,8 @@ function applyAICat(){
 // ===== 预算 =====
 function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
 function closeBudgetModal(){document.getElementById('budgetOverlay').classList.remove('active')}
+// ===== 导出格式选择弹窗 =====
+function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>📤 导出${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">选择导出格式</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">📄 CSV（逗号分隔）</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">📋 TSV（Tab分隔）</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">取消</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
 function saveBudget(){const month=document.getElementById('budgetMonth').value;const val=parseFloat(document.getElementById('budgetInput').value)||0;if(!month)return alert('请选择月份');const b=getBudgets();b[month]=val;setBudgets(b);toast(`已设置 ${month} 预算 ¥${val}`);closeBudgetModal();render()}
 
 // ===== FAB 点击 =====
@@ -1252,7 +1282,8 @@ document.getElementById('fabBtn').addEventListener('click',()=>{
 });
 
 // ===== 导出 =====
-function exportData(){const lines=['商品\t平台\t分类\t单价\t数量\t总价\t状态\t日期\t备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}lines.push(`${i['商品名称']||''}\t${i['平台']||''}\t${i['分类']||''}\t¥${price}\t${qty}\t¥${(price*qty).toFixed(2)}\t${i['状态']||''}\t${ds}\t${i['备注']||''}`)});const b=new Blob([lines.join('\n')],{type:'text/tab-separated-values;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`采购_${getThisMonth()}.tsv`;a.click()}
+function exportData(){exportPurchases()}
+function exportPurchases(){showExportDialog('采购',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['商品名称'+sep+'平台'+sep+'分类'+sep+'单价'+sep+'数量'+sep+'总价'+sep+'状态'+sep+'日期'+sep+'备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const note=(i['备注']||'').includes(sep)?'"'+(i['备注']||'').replace(/"/g,'""')+'"':(i['备注']||'');lines.push((i['商品名称']||'')+sep+(i['平台']||'')+sep+(i['分类']||'')+sep+'¥'+price+sep+qty+sep+'¥'+(price*qty).toFixed(2)+sep+(i['状态']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='采购_'+getThisMonth()+ext;a.click()})}
 
 // ===== 详情弹窗 =====
 const STEPPER_STEPS=['待审批','已审批','已下单'];
@@ -1376,3 +1407,26 @@ function doDetailModalAction(id,nextStatus){
 
 setupPullToRefresh();
 setupSwipe();
+
+// ===== 离线检测横幅 =====
+(function(){
+  const banner=document.createElement('div');
+  banner.id='offlineBanner';
+  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:10px 16px;background:#f59e0b;color:#000;text-align:center;font-size:13px;font-weight:700;display:none;transition:transform .3s ease;transform:translateY(-100%)';
+  banner.textContent='📡 离线模式 - 数据将在联网后同步';
+  document.body.appendChild(banner);
+  function updateOnlineStatus(){
+    if(!navigator.onLine){
+      banner.style.display='block';
+      setTimeout(()=>banner.style.transform='translateY(0)',10);
+    }else{
+      banner.style.transform='translateY(-100%)';
+      setTimeout(()=>banner.style.display='none',300);
+      // 联网后自动刷新数据
+      if(typeof loadAll==='function')loadAll();
+    }
+  }
+  window.addEventListener('online',updateOnlineStatus);
+  window.addEventListener('offline',updateOnlineStatus);
+  if(!navigator.onLine)updateOnlineStatus();
+})();

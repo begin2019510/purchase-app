@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帮助文档 - 个人管家</title>
+<meta name="theme-color" content="#6366f1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f23;--card:#1a1a2e;--card2:#16213e;--text:#e2e8f0;--muted:#94a3b8;--pri:#6366f1;--pri-light:rgba(99,102,241,.15);--border:#2d2d44;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.container{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+.hero{text-align:center;padding:40px 20px 30px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:0 0 24px 24px;margin:-20px -16px 24px}
+.hero h1{font-size:28px;font-weight:800;color:#fff;margin-bottom:6px}
+.hero p{font-size:14px;color:rgba(255,255,255,.8)}
+.section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px}
+.section h2{font-size:18px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section h2 .icon{font-size:22px}
+.section h3{font-size:15px;font-weight:700;color:var(--pri);margin:16px 0 8px}
+.section p,.section li{font-size:14px;color:var(--muted);line-height:1.8}
+.section ul{padding-left:20px;margin:6px 0}
+.section li{margin:4px 0}
+.section ol{padding-left:20px;margin:6px 0}
+.section ol li{margin:6px 0}
+.section li b{color:var(--text)}
+.step{display:flex;gap:12px;margin:10px 0;align-items:flex-start}
+.step-num{flex-shrink:0;width:28px;height:28px;background:var(--pri);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.step-text{font-size:13px;color:var(--muted);line-height:1.7;padding-top:3px}
+.step-text b{color:var(--text)}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;margin:0 2px}
+.tag-blue{background:rgba(59,130,246,.15);color:#60a5fa}
+.tag-green{background:rgba(16,185,129,.15);color:#34d399}
+.tag-orange{background:rgba(245,158,11,.15);color:#fbbf24}
+.tag-red{background:rgba(239,68,68,.15);color:#f87171}
+.tag-purple{background:rgba(139,92,246,.15);color:#a78bfa}
+.tip{background:var(--pri-light);border-left:3px solid var(--pri);padding:10px 14px;border-radius:0 8px 8px 0;margin:10px 0;font-size:13px;color:var(--muted)}
+.tip b{color:var(--pri)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th{background:var(--card2);padding:8px 10px;text-align:left;font-weight:700;color:var(--text);border-bottom:2px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
+.changelog-item{padding:8px 0;border-bottom:1px solid var(--border)}
+.changelog-item:last-child{border:none}
+.changelog-ver{font-weight:800;color:var(--pri);font-size:15px}
+.changelog-date{font-size:11px;color:var(--muted);margin-left:8px}
+.changelog-list{padding-left:16px;margin-top:4px}
+.changelog-list li{font-size:13px;color:var(--muted);margin:2px 0}
+.back-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;transition:.2s;margin-top:10px}
+.back-btn:hover{opacity:.9;transform:translateY(-1px)}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.toc a{padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-size:13px;font-weight:600;transition:.2s}
+.toc a:hover{border-color:var(--pri);background:var(--pri-light)}
+@media(max-width:480px){.container{padding:12px 12px 30px}.hero{padding:30px 16px 24px;margin:-12px -12px 18px}.section{padding:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hero">
+    <h1>❓ 帮助文档</h1>
+    <p>个人管家 v2.7.0 使用指南</p>
+  </div>
+
+  <div class="toc">
+    <a href="#quickstart">🚀 快速开始</a>
+    <a href="#purchase">🛒 采购管理</a>
+    <a href="#expense">💰 记账功能</a>
+    <a href="#ai">🤖 AI 功能</a>
+    <a href="#stats">📊 统计图表</a>
+    <a href="#faq">❓ 常见问题</a>
+    <a href="#changelog">📋 版本历史</a>
+  </div>
+
+  <!-- 快速开始 -->
+  <div class="section" id="quickstart">
+    <h2><span class="icon">🚀</span> 快速开始</h2>
+    <h3>登录</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">打开应用后会看到登录界面</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">输入<b>用户名</b>和<b>密码</b>，点击<b>登录</b></div></div>
+    <h3>注册新账号</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">在登录页点击<b>"没有账号？邀请码注册"</b></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">输入用户名（3-20字符）、密码（至少6位）、邀请码</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">点击<b>注册</b>即可开始使用</div></div>
+    <div class="tip"><b>💡 提示：</b>注册需要邀请码，请向管理员获取。管理员可在管理面板生成邀请码。</div>
+  </div>
+
+  <!-- 采购管理 -->
+  <div class="section" id="purchase">
+    <h2><span class="icon">🛒</span> 采购管理</h2>
+    <h3>新增采购</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">点击右下角 <span class="tag tag-green">+</span> 按钮</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">填写<b>商品名称</b>（必填）、平台、分类、单价、数量、日期、备注</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">点击<b>保存</b></div></div>
+
+    <h3>审批流程</h3>
+    <p>采购记录支持完整的审批流程：</p>
+    <table>
+      <tr><th>状态</th><th>说明</th><th>操作</th></tr>
+      <tr><td><span class="tag tag-orange">待审批</span></td><td>初始状态</td><td>点击卡片 → 审批通过</td></tr>
+      <tr><td><span class="tag tag-blue">已审批</span></td><td>审批通过</td><td>点击卡片 → 确认下单</td></tr>
+      <tr><td><span class="tag tag-purple">已下单</span></td><td>已下单购买</td><td>确认收货 / 退货</td></tr>
+      <tr><td><span class="tag tag-green">已到</span></td><td>已收货</td><td>可归档</td></tr>
+      <tr><td><span class="tag tag-red">已退</span></td><td>已退货</td><td>可归档</td></tr>
+      <tr><td>🗄️ 已归档</td><td>最终状态</td><td>不可变更</td></tr>
+    </table>
+
+    <h3>批量操作</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">点击顶部 <b>☑ 批量</b> 按钮进入批量模式</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">点击卡片选择/取消选择</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">可批量<b>改状态</b>或<b>删除</b></div></div>
+
+    <h3>手势操作</h3>
+    <ul>
+      <li><b>左滑卡片</b> → 快速删除</li>
+      <li><b>右滑卡片</b> → 切换到下一状态</li>
+      <li><b>下拉列表</b> → 刷新数据</li>
+    </ul>
+
+    <h3>导出数据</h3>
+    <p>点击顶部 <b>📤 导出</b> 按钮，可选择 CSV 或 TSV 格式导出采购记录。文件名自动带日期。</p>
+  </div>
+
+  <!-- 记账功能 -->
+  <div class="section" id="expense">
+    <h2><span class="icon">💰</span> 记账功能</h2>
+    <h3>手动记账</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">切换到 <b>💰 记账</b> 标签页</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">点击右下角 <span class="tag tag-green">+</span> 按钮</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">选择<b>收入/支出</b>、输入<b>金额</b>、选择<b>分类</b>和<b>时间</b></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text">可选：添加图片（拍照/相册）、备注</div></div>
+
+    <h3>日历视图</h3>
+    <p>记账页支持 <b>📋 列表</b> 和 <b>📅 日历</b> 两种视图切换。日历视图中：</p>
+    <ul>
+      <li>绿色圆点表示当天有记账</li>
+      <li>点击日期查看当天明细</li>
+      <li>空白日期可快捷添加记账</li>
+      <li>支持月份前后切换</li>
+    </ul>
+
+    <h3>图片附件</h3>
+    <p>记账时可以添加图片（如购物小票、发票）：</p>
+    <ul>
+      <li><b>📷 拍照</b>：直接拍照上传</li>
+      <li><b>🖼️ 相册</b>：从手机相册选择</li>
+      <li>图片自动压缩（≤500KB），支持全屏预览</li>
+    </ul>
+
+    <h3>导出数据</h3>
+    <p>点击顶部 <b>📤 导出</b> 按钮，可选择 CSV 或 TSV 格式导出记账记录。文件名自动带日期。</p>
+
+    <h3>预算管理</h3>
+    <p>可在统计页设置月度预算，记账页实时显示预算进度条和剩余金额。</p>
+  </div>
+
+  <!-- AI 功能 -->
+  <div class="section" id="ai">
+    <h2><span class="icon">🤖</span> AI 功能</h2>
+    <div class="tip"><b>💡 提示：</b>AI 功能需要后端 API 支持（DeepSeek），请确保后端服务正常。</div>
+
+    <h3>🗣️ 自然语言记账</h3>
+    <p>在记账页顶部的输入框中，直接说一句话就能记账：</p>
+    <ul>
+      <li>"午饭35" → 自动识别为餐饮支出 ¥35</li>
+      <li>"打车28去公司" → 交通支出 ¥28</li>
+      <li>"收到工资8000" → 收入 ¥8000</li>
+    </ul>
+    <p>AI 会自动解析金额、分类、类型，确认后一键保存。</p>
+
+    <h3>🏷️ 智能分类</h3>
+    <p>输入备注时，AI 会自动推荐最可能的分类和标签：</p>
+    <ul>
+      <li>输入"星巴克拿铁" → 建议分类"餐饮"，标签"咖啡"</li>
+      <li>点击建议即可采纳，节省手动选择时间</li>
+    </ul>
+
+    <h3>📊 财务分析</h3>
+    <p>在统计页点击 <b>📊 财务分析</b> 按钮，AI 会分析本月消费数据，生成报告，包括：</p>
+    <ul>
+      <li>消费异常检测</li>
+      <li>省钱建议</li>
+      <li>趋势洞察</li>
+    </ul>
+
+    <h3>🧠 消费画像</h3>
+    <p>点击 <b>🧠 消费画像</b> 按钮，AI 会深度分析你的消费习惯：</p>
+    <ul>
+      <li>饮食风格、生活方式、消费模式</li>
+      <li>主要开销排行</li>
+      <li>消费习惯洞察</li>
+      <li>个性化建议</li>
+    </ul>
+
+    <h3>💬 自然语言查询</h3>
+    <p>在统计页的 AI 输入框中，可以问任何问题：</p>
+    <ul>
+      <li>"这个月奶茶花了多少？"</li>
+      <li>"哪个分类支出最多？"</li>
+      <li>"我的消费趋势怎么样？"</li>
+    </ul>
+  </div>
+
+  <!-- 统计图表 -->
+  <div class="section" id="stats">
+    <h2><span class="icon">📊</span> 统计图表</h2>
+    <p>统计页提供多维度数据可视化：</p>
+    <h3>采购维度</h3>
+    <ul>
+      <li><b>本月采购总览</b>：总金额、已下单、已到货数量</li>
+      <li><b>采购分类饼图</b>：按分类统计金额占比</li>
+      <li><b>采购平台分布</b>：按平台统计金额</li>
+      <li><b>近6个月采购趋势</b>：折线图展示月度变化</li>
+      <li><b>采购状态分布</b>：各状态占比</li>
+    </ul>
+    <h3>记账维度</h3>
+    <ul>
+      <li><b>本月收支总览</b>：支出、收入、净收支、笔数</li>
+      <li><b>支出分类饼图</b>：按分类统计支出占比</li>
+      <li><b>每日支出趋势</b>：折线图展示每日支出</li>
+      <li><b>每周支出对比</b>：柱状图对比每周支出</li>
+      <li><b>收入 vs 支出</b>：双线对比图</li>
+      <li><b>支出分类排行</b>：TOP 分类柱状图</li>
+    </ul>
+  </div>
+
+  <!-- 常见问题 -->
+  <div class="section" id="faq">
+    <h2><span class="icon">❓</span> 常见问题</h2>
+
+    <h3>Q: 忘记密码怎么办？</h3>
+    <p>请联系管理员重置密码或创建新账号。</p>
+
+    <h3>Q: 数据会丢失吗？</h3>
+    <p>数据存储在云端（飞书 Bitable），即使清除浏览器缓存也不会丢失。重新登录即可恢复。</p>
+
+    <h3>Q: 支持离线使用吗？</h3>
+    <p>支持。应用使用 Service Worker 缓存，离线时可查看已缓存的页面。断网时顶部会显示黄色提示横幅，联网后自动同步数据。</p>
+
+    <h3>Q: 图片存储在哪里？</h3>
+    <p>图片使用 Cloudflare KV 存储，自动压缩以节省空间。旧数据的 base64 图片也兼容显示。</p>
+
+    <h3>Q: 如何添加管理员？</h3>
+    <p>管理员账号在系统初始化时创建，支持在管理面板创建邀请码供新用户注册。</p>
+
+    <h3>Q: 导出的文件用什么打开？</h3>
+    <p>CSV 文件可用 Excel、WPS 等直接打开；TSV 文件也可用上述软件打开（选择 Tab 分隔符）。</p>
+  </div>
+
+  <!-- 版本历史 -->
+  <div class="section" id="changelog">
+    <h2><span class="icon">📋</span> 版本历史</h2>
+    <div class="changelog-item"><div class="changelog-ver">v2.7.0 <span class="changelog-date">2026-05-24</span></div><ul class="changelog-list"><li>记账/采购导出增强：支持CSV/TSV格式选择</li><li>采购统计增强：分类饼图、平台分布、6个月趋势</li><li>离线体验优化：断网检测+黄色横幅提示</li><li>在线帮助文档页面</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.6.0 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>代码重构：JS提取为独立app.js文件</li><li>CSS已外置为style.css</li><li>版本号更新</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.9 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>AI智能分类：备注输入时自动推荐分类+标签</li><li>AI批量标签提炼</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.8 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>AI自然语言记账</li><li>AI财务分析报告</li><li>AI代理后端：DeepSeek API</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.7 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>骨架屏加载动画</li><li>下拉刷新手势支持</li><li>卡片左滑删除、右滑改状态</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.6 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>统计页新增每日支出折线趋势图</li><li>每周支出柱状对比图</li><li>收入vs支出双线对比</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.5 <span class="changelog-date">2026-05-23</span></div><ul class="changelog-list"><li>新增记账月历视图</li><li>支持月份切换导航</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.4 <span class="changelog-date">2026-05-22</span></div><ul class="changelog-list"><li>图片API+KV存储修复</li><li>Cron Worker部署</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.5.0 <span class="changelog-date">2026-05-20</span></div><ul class="changelog-list"><li>归档功能</li><li>审批流完整流程</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.4.0 <span class="changelog-date">2026-05-20</span></div><ul class="changelog-list"><li>采购审批流：5步状态管理</li><li>暗色模式</li><li>记账图片附件支持</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v2.3.0 <span class="changelog-date">2026-05-20</span></div><ul class="changelog-list"><li>暗色模式</li><li>记账图片附件</li><li>周度/月度汇总推送</li></ul></div>
+  </div>
+
+  <div style="text-align:center;margin-top:20px">
+    <a href="/" class="back-btn">🏠 返回主页</a>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v2.7.0 · 2026</p>
+  </div>
+</div>
+</body>
+</html>
