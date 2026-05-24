@@ -1,7 +1,293 @@
-﻿const APP_VERSION='2.6.0';
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>个人管家</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.5.9</span></h1>
+    <div class="header-actions">
+      <button onclick="toggleDarkMode()" id="darkModeBtn">🌙</button>
+      <button id="adminBtn" onclick="openAdminPanel()" style="display:none">👑</button>
+      <button onclick="logout()" title="退出登录" style="background:none;border:none;font-size:16px;cursor:pointer">🚪</button>
+    </div>
+    <div class="header-actions" id="headerActions">
+      <button onclick="toggleBatch()">☑ 批量</button>
+      <button onclick="exportData()">📤 导出</button>
+      <button id="pushBtn" onclick="setupPush()" style="display:none">🤖 配置推送</button>
+    </div>
+  </div>
+  <div class="stats-row" id="headerStats"></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="mainTabs">
+  <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
+  <div class="tab" onclick="switchTab('expense')">💰 记账</div>
+  <div class="tab" onclick="switchTab('stats')">📊 统计</div>
+</div>
+
+<!-- 采购 Tab -->
+<div id="tab-purchase">
+  <div class="search-bar"><input class="search-input" id="searchInput" placeholder="搜索商品名称或备注..." oninput="render()"></div>
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="chips" id="statusChips"></div>
+    <div class="container" id="list"></div>
+  </div>
+</div>
+
+<!-- 记账 Tab -->
+<div id="tab-expense" style="display:none">
+  <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
+  <div class="container">
+      <div class="ex-view-toggle" style="margin:0">
+        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
+        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
+      </div>
+    <div class="ai-bar" id="aiBar">
+      <div class="ai-input-row">
+        <input class="ai-input" id="aiInput" placeholder="说句话就能记账: 午饭35、打车28..." onkeydown="if(event.key==='Enter')sendAI()">
+        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">✨</button>
+      </div>
+      <div id="aiResult"></div>
+    </div>
+  </div>
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="chips" id="expenseChips"></div>
+    <div class="container" id="expenseContent"></div>
+  </div>
+</div>
+
+<!-- 统计 Tab -->
+<div id="tab-stats" style="display:none">
+  <div class="ptr-wrapper">
+    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="container stats-page">
+      <div class="ai-analysis" id="aiAnalysis">
+        <h3>🤖 AI 助手</h3>
+        <div class="ai-input-row" style="margin-bottom:8px">
+          <input class="ai-input" id="statsAIInput" placeholder="问我任何问题: 这个月奶茶花了多少..." onkeydown="if(event.key==='Enter')queryAI()">
+          <button class="ai-send" onclick="queryAI()">💬</button>
+        </div>
+        <div id="statsAIResult"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">📊 财务分析</button>
+          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">🧠 消费画像</button>
+        </div>
+      </div>
+      <div id="statsContent"></div>
+      <div style="margin-top:16px;padding:12px;background:var(--card);border-radius:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;color:var(--muted)">🔍 账号调试</span>
+          <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查认证状态</button>
+        </div>
+        <div id="debugResultStats" style="font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员面板 -->
+<div id="adminPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
+  <div style="max-width:500px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:18px;font-weight:800">👑 管理面板</h2>
+      <button onclick="closeAdminPanel()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <!-- 创建邀请码 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">🎟️ 创建邀请码</h3>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="inviteCount" type="number" value="1" min="1" max="10" style="width:60px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
+        <span style="line-height:40px;font-size:13px;color:var(--muted)">个</span>
+        <button onclick="createInviteCodes()" style="flex:1;padding:10px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">生成</button>
+      </div>
+      <div id="newInviteCodes" style="font-size:12px;color:var(--green);word-break:break-all"></div>
+    </div>
+    <!-- 邀请码列表 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:14px;font-weight:700">📋 邀请码列表</h3>
+        <button onclick="loadInviteList()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
+      </div>
+      <div id="inviteList" style="font-size:12px;color:var(--muted)">加载中...</div>
+    </div>
+    <!-- 调试 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:14px;font-weight:700">🔍 调试</h3>
+        <button onclick="debugMyAuth()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查我的认证</button>
+      </div>
+      <div id="debugResult" style="font-size:11px;color:var(--muted);word-break:break-all"></div>
+    </div>
+    <!-- 用户管理 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">👥 用户管理</h3>
+      <div id="userList" style="font-size:12px;color:var(--muted)">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn">+</button>
+
+<!-- Batch Bar -->
+<div class="batch-bar" id="batchBar">
+  <span class="batch-info" id="batchInfo">已选 0 项</span>
+  <select id="batchStatus"><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已下单">已下单</option><option value="已到">已到</option><option value="已退">已退</option><option value="已归档">已归档</option></select>
+  <button class="batch-btn batch-btn-primary" onclick="batchUpdate()">改状态</button>
+  <button class="batch-btn batch-btn-danger" onclick="batchDelete()">删除</button>
+  <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">取消</button>
+</div>
+
+<!-- 采购 Modal -->
+<div class="modal-overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h2 id="modalTitle">新增采购</h2>
+    <input type="hidden" id="editId">
+    <div class="form-group"><label>商品名称 *</label><input id="fName" placeholder="如：夏天裤子"></div>
+    <div class="form-row">
+      <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
+      <div class="form-group"><label>分类</label><select id="fCategory"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
+      <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>状态</label><select id="fStatus"><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
+      <div class="form-group"><label>日期</label><input id="fDate" type="date"></div>
+    </div>
+    <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="save()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 记账 Modal -->
+<div class="modal-overlay" id="expenseOverlay" onclick="if(event.target===this)closeExpenseModal()">
+  <div class="modal">
+    <input type="hidden" id="eEditId">
+    <h2 id="expenseModalTitle">💰 记一笔</h2>
+    <div class="form-row">
+      <div class="form-group"><label>类型</label><select id="eType"><option value="支出">支出</option><option value="收入">收入</option></select></div>
+      <div class="form-group"><label>金额 *</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
+      <div class="form-group"><label>日期时间</label><input id="eDate" type="datetime-local"></div>
+    </div>
+    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:6px;padding:8px 10px;background:var(--pri-light);border-radius:8px;font-size:12px;cursor:pointer;transition:.15s" onclick="applyAICat()"><span id="aiCatText"></span></div></div>
+    <div class="form-group"><label>图片</label>
+      <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
+      <div id="imageSizeInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px;display:none"></div>
+      <div style="display:flex;gap:8px">
+        <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eCameraInput').click()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">拍照</div>
+        </div>
+        <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eGalleryInput').click()">
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text">相册</div>
+        </div>
+      </div>
+      <input type="file" id="eCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
+      <input type="file" id="eGalleryInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveExpense()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="img-fullscreen" id="imgFullscreen" onclick="this.classList.remove('active')"><img id="imgFullscreenImg"></div>
+
+<!-- 审批确认 Modal -->
+<div class="modal-overlay" id="approvalOverlay" onclick="if(event.target===this)closeApprovalModal()">
+  <div class="modal">
+    <h2 id="approvalTitle">确认操作</h2>
+    <div id="approvalContent" style="text-align:center;padding:10px 0"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeApprovalModal()">取消</button>
+      <button class="btn btn-primary" id="approvalConfirmBtn">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetailModal()">
+  <div class="modal" style="max-height:90vh;padding:20px 16px">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- 预算 Modal -->
+<div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
+  <div class="modal">
+    <h2>💰 月度预算</h2>
+    <div class="form-group"><label>月预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="输入每月预算"></div>
+    <div class="form-row"><div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveBudget()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 更新日志 -->
+<div class="modal-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
+  <div class="modal">
+    <h2>📋 更新日志</h2>
+    <div id="changelogContent"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="closeChangelog()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN 锁屏 -->
+<div id="authScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center;overflow-y:auto">
+  <div style="text-align:center;padding:20px;width:100%;max-width:320px">
+    <div style="font-size:56px;margin-bottom:16px">🔐</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
+    <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">请登录</p>
+    <div id="loginForm">
+      <input id="loginUsername" type="text" placeholder="用户名" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <p id="authError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
+      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">登 录</button>
+      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showRegister()">没有账号？邀请码注册</p>
+    </div>
+    <div id="registerForm" style="display:none">
+      <input id="regUsername" type="text" placeholder="用户名（3-20字符）" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="regPassword" type="password" placeholder="密码（至少6位）" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="regInviteCode" type="text" placeholder="邀请码" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <p id="regError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
+      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">注 册</button>
+      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showLogin()">已有账号？去登录</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const APP_VERSION='2.5.9';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
-  {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
   {v:'2.5.9',date:'2026-05-23',items:['AI智能分类：备注输入时自动推荐分类+标签','AI批量标签提炼：一键分析本月备注生成标签','分类基于历史数据学习用户习惯']},
   {v:'2.5.8',date:'2026-05-23',items:['AI自然语言记账：说句话自动解析金额/分类/时间','AI财务分析报告：消费异常/省钱建议/趋势洞察','AI代理后端：DeepSeek API + Cloudflare Pages Function']},
   {v:'2.5.7',date:'2026-05-23',items:['骨架屏加载动画，告别白屏等待','下拉刷新手势支持','卡片左滑删除、右滑改状态']},
@@ -35,93 +321,92 @@ let expenseViewMode='list'; // 'list' | 'calendar'
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
 
-// ===== Auth =====
+// ===== PIN =====
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
-function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
-function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='\u8bf7\u8f93\u5165\u7528\u6237\u540d\u548c\u5bc6\u7801';return}doLoginAPI(username,password)}
+function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 async function doLoginAPI(username,password){
-  document.getElementById('authError').textContent='\u767b\u5f55\u4e2d...';
+  document.getElementById('authError').textContent='登录中...';
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
-    else{document.getElementById('authError').textContent=d.error||'\u767b\u5f55\u5931\u8d25'}
-  }catch(e){document.getElementById('authError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('authError').textContent=d.error||'登录失败'}
+  }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
 async function doRegister(){
   const username=document.getElementById('regUsername').value.trim();
   const password=document.getElementById('regPassword').value;
   const inviteCode=document.getElementById('regInviteCode').value.trim();
-  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='\u8bf7\u586b\u5199\u6240\u6709\u5b57\u6bb5';return}
-  document.getElementById('regError').textContent='\u6ce8\u518c\u4e2d...';
+  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
+  document.getElementById('regError').textContent='注册中...';
   try{
     const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
-    else{document.getElementById('regError').textContent=d.error||'\u6ce8\u518c\u5931\u8d25'}
-  }catch(e){document.getElementById('regError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('regError').textContent=d.error||'注册失败'}
+  }catch(e){document.getElementById('regError').textContent='网络错误'}
 }
-function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='\u8bf7\u767b\u5f55';document.getElementById('authError').textContent=''}
-function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='\u9080\u8bf7\u7801\u6ce8\u518c';document.getElementById('regError').textContent=''}
+function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='请登录';document.getElementById('authError').textContent=''}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
-// ===== \u7ba1\u7406\u5458\u529f\u80fd =====
+// ===== 管理员功能 =====
 function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList()}
 function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
 async function createInviteCodes(){
   const count=parseInt(document.getElementById('inviteCount').value)||1;
   const el=document.getElementById('newInviteCodes');
-  el.textContent='\u751f\u6210\u4e2d...';
+  el.textContent='生成中...';
   try{
     const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='\u2705 \u5df2\u751f\u6210:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
-    else{el.textContent='\u274c '+d.error}
-  }catch{el.textContent='\u274c \u7f51\u7edc\u9519\u8bef'}
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    else{el.textContent='❌ '+d.error}
+  }catch{el.textContent='❌ 网络错误'}
 }
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
   try{
     const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok||!d.codes.length){el.textContent='\u6682\u65e0\u52a8\u6001\u9080\u8bf7\u7801';return}
+    if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">\u5df2\u4f7f\u7528 '+c.usedAt+'</span>':'<span style="color:var(--green)">\u53ef\u7528</span>';
+      const status=c.used?'<span style="color:var(--red)">已使用 '+c.usedAt+'</span>':'<span style="color:var(--green)">可用</span>';
       return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
     }).join('');
-  }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
+  }catch{el.textContent='加载失败'}
 }
 async function deleteUser(username){
-  if(!confirm('\u786e\u5b9a\u5220\u9664\u7528\u6237 '+username+' \uff1f\n\uff08\u6570\u636e\u8868\u4f1a\u4fdd\u7559\uff0c\u4ec5\u5220\u9664\u8d26\u53f7\uff09'))return;
+  if(!confirm('确定删除用户 '+username+' ？\n（数据表会保留，仅删除账号）'))return;
   try{
     const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
     if(d.ok){alert(d.message);loadInviteList();}
     else{alert(d.error)}
-  }catch{alert('\u7f51\u7edc\u9519\u8bef')}
+  }catch{alert('网络错误')}
 }
 async function debugMyAuth(){
   const el=document.getElementById('debugResult');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
 async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
 async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 function logout(){
-  if(!confirm('\u786e\u8ba4\u9000\u51fa\u767b\u5f55\uff1f'))return;
+  if(!confirm('确认退出登录？'))return;
   setPin('');
   document.getElementById('adminBtn').style.display='none';
   document.getElementById('authScreen').style.display='flex';
@@ -150,7 +435,7 @@ async function api(method,body,id){
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
-  if(r.status===401){document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+  if(r.status===401){document.getElementById('authScreen').style.display='flex';document.getElementById('authError').textContent='会话过期';return{error:'unauthorized'}}
   return r.json();
 }
 async function expenseApi(method,body,id){
@@ -1311,3 +1596,7 @@ function doDetailModalAction(id,nextStatus){
 loadAll();
 setupPullToRefresh();
 setupSwipe();
+
+</script>
+</body>
+</html>

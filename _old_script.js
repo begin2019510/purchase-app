@@ -1,7 +1,6 @@
-﻿const APP_VERSION='2.6.0';
+const APP_VERSION='2.5.9';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
-  {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
   {v:'2.5.9',date:'2026-05-23',items:['AI智能分类：备注输入时自动推荐分类+标签','AI批量标签提炼：一键分析本月备注生成标签','分类基于历史数据学习用户习惯']},
   {v:'2.5.8',date:'2026-05-23',items:['AI自然语言记账：说句话自动解析金额/分类/时间','AI财务分析报告：消费异常/省钱建议/趋势洞察','AI代理后端：DeepSeek API + Cloudflare Pages Function']},
   {v:'2.5.7',date:'2026-05-23',items:['骨架屏加载动画，告别白屏等待','下拉刷新手势支持','卡片左滑删除、右滑改状态']},
@@ -35,93 +34,92 @@ let expenseViewMode='list'; // 'list' | 'calendar'
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
 
-// ===== Auth =====
+// ===== PIN =====
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
-function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
-function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='\u8bf7\u8f93\u5165\u7528\u6237\u540d\u548c\u5bc6\u7801';return}doLoginAPI(username,password)}
+function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 async function doLoginAPI(username,password){
-  document.getElementById('authError').textContent='\u767b\u5f55\u4e2d...';
+  document.getElementById('authError').textContent='登录中...';
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
-    else{document.getElementById('authError').textContent=d.error||'\u767b\u5f55\u5931\u8d25'}
-  }catch(e){document.getElementById('authError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('authError').textContent=d.error||'登录失败'}
+  }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
 async function doRegister(){
   const username=document.getElementById('regUsername').value.trim();
   const password=document.getElementById('regPassword').value;
   const inviteCode=document.getElementById('regInviteCode').value.trim();
-  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='\u8bf7\u586b\u5199\u6240\u6709\u5b57\u6bb5';return}
-  document.getElementById('regError').textContent='\u6ce8\u518c\u4e2d...';
+  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
+  document.getElementById('regError').textContent='注册中...';
   try{
     const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
-    else{document.getElementById('regError').textContent=d.error||'\u6ce8\u518c\u5931\u8d25'}
-  }catch(e){document.getElementById('regError').textContent='\u7f51\u7edc\u9519\u8bef'}
+    else{document.getElementById('regError').textContent=d.error||'注册失败'}
+  }catch(e){document.getElementById('regError').textContent='网络错误'}
 }
-function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='\u8bf7\u767b\u5f55';document.getElementById('authError').textContent=''}
-function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='\u9080\u8bf7\u7801\u6ce8\u518c';document.getElementById('regError').textContent=''}
+function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='请登录';document.getElementById('authError').textContent=''}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
-// ===== \u7ba1\u7406\u5458\u529f\u80fd =====
+// ===== 管理员功能 =====
 function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList()}
 function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
 async function createInviteCodes(){
   const count=parseInt(document.getElementById('inviteCount').value)||1;
   const el=document.getElementById('newInviteCodes');
-  el.textContent='\u751f\u6210\u4e2d...';
+  el.textContent='生成中...';
   try{
     const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='\u2705 \u5df2\u751f\u6210:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
-    else{el.textContent='\u274c '+d.error}
-  }catch{el.textContent='\u274c \u7f51\u7edc\u9519\u8bef'}
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    else{el.textContent='❌ '+d.error}
+  }catch{el.textContent='❌ 网络错误'}
 }
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
   try{
     const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok||!d.codes.length){el.textContent='\u6682\u65e0\u52a8\u6001\u9080\u8bf7\u7801';return}
+    if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">\u5df2\u4f7f\u7528 '+c.usedAt+'</span>':'<span style="color:var(--green)">\u53ef\u7528</span>';
+      const status=c.used?'<span style="color:var(--red)">已使用 '+c.usedAt+'</span>':'<span style="color:var(--green)">可用</span>';
       return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
     }).join('');
-  }catch{el.textContent='\u52a0\u8f7d\u5931\u8d25'}
+  }catch{el.textContent='加载失败'}
 }
 async function deleteUser(username){
-  if(!confirm('\u786e\u5b9a\u5220\u9664\u7528\u6237 '+username+' \uff1f\n\uff08\u6570\u636e\u8868\u4f1a\u4fdd\u7559\uff0c\u4ec5\u5220\u9664\u8d26\u53f7\uff09'))return;
+  if(!confirm('确定删除用户 '+username+' ？\n（数据表会保留，仅删除账号）'))return;
   try{
     const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
     if(d.ok){alert(d.message);loadInviteList();}
     else{alert(d.error)}
-  }catch{alert('\u7f51\u7edc\u9519\u8bef')}
+  }catch{alert('网络错误')}
 }
 async function debugMyAuth(){
   const el=document.getElementById('debugResult');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
 async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
-  el.textContent='\u67e5\u8be2\u4e2d...';
+  el.textContent='查询中...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='\u9519\u8bef: '+e.message}
+  }catch(e){el.textContent='错误: '+e.message}
 }
 async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
 function logout(){
-  if(!confirm('\u786e\u8ba4\u9000\u51fa\u767b\u5f55\uff1f'))return;
+  if(!confirm('确认退出登录？'))return;
   setPin('');
   document.getElementById('adminBtn').style.display='none';
   document.getElementById('authScreen').style.display='flex';
@@ -150,7 +148,7 @@ async function api(method,body,id){
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
   const r=await fetch(url,opts);
-  if(r.status===401){document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+  if(r.status===401){document.getElementById('authScreen').style.display='flex';document.getElementById('authError').textContent='会话过期';return{error:'unauthorized'}}
   return r.json();
 }
 async function expenseApi(method,body,id){
