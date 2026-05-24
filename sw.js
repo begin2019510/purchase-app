@@ -1,6 +1,6 @@
 // Service Worker - 离线缓存 + 推送通知
-const CACHE = 'purchase-cache-v27';
-const ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json', '/help'];
+const CACHE = 'purchase-cache-v28';
+const ASSETS = ['/', '/index.html', '/app.js', '/manifest.json', '/help'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -13,7 +13,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(clients.claim());
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      keys.map(k => caches.delete(k))
     ))
   );
 });
@@ -23,7 +23,7 @@ self.addEventListener('fetch', e => {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
-  const isStatic = ASSETS.includes(url.pathname) || url.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?)$/);
+  const isStatic = ASSETS.includes(url.pathname) || url.pathname.match(/\.(js|png|jpg|jpeg|gif|svg|ico|woff2?)$/);
 
   if (isStatic) {
     // 静态资源: cache-first
