@@ -281,8 +281,10 @@ async function expenseApi(method,body,id){
 
 // ===== 启动 =====
 showVersion();
-// 清空可能被浏览器自动填充的搜索框
+// 清空可能被浏览器自动填充的搜索框（延迟清空对抗Chrome autofill）
 document.getElementById('searchInput').value='';
+setTimeout(()=>{document.getElementById('searchInput').value='';render()},100);
+setTimeout(()=>{document.getElementById('searchInput').value='';render()},500);
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
 if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(t=>{if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
