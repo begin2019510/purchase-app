@@ -1231,10 +1231,9 @@ async function runPurchaseEval() {
     const d = await r.json();
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
-    resultEl.textContent = d.data;
-    
-    // 延迟切换到详情阶段
-    setTimeout(() => switchToDetailPhase(name, d), 500);
+    resultEl.innerHTML = '<div style="white-space:pre-wrap;margin-bottom:10px">' + esc(d.data) + '</div>'
+      + '<button class="ai-confirm-btn primary" onclick="switchToDetailPhase(\''+name.replace(/'/g,"\\'")+'\', null)">✔ 确认填写详情</button>'
+      + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
   } catch(e) { resultEl.textContent = '❌ 网络错误'; }
   finally { btn.disabled = false; btn.textContent = '🤖 AI需求评估'; }
 }
@@ -1247,6 +1246,11 @@ function switchToDetailPhase(name, aiData) {
   document.getElementById('fNote').value = '';
   document.getElementById('fPlatform').value = '拼多多';
   document.getElementById('fCategory').value = '日用';
+}
+
+function cancelPurchaseEval() {
+  document.getElementById('aiEvalResult').style.display = 'none';
+  document.getElementById('fName').value = '';
 }
 
 function backToEval() {
