@@ -182,12 +182,18 @@ export async function logOp(kv, action, username, details, request) {
 }
 
 // 获取指定日期的操作日志
-export async function getLogs(kv, date) {
+export async function getLogs(kv, date, username) {
   const list = await kv.list({ prefix: `log:${date}` });
   const logs = [];
   for (const item of list.keys) {
     const data = await kv.get(item.name);
-    if (data) logs.push(JSON.parse(data));
+    if (data) {
+      const log = JSON.parse(data);
+      // 如果指定了用户名，只返回该用户的日志
+      if (!username || log.username === username) {
+        logs.push(log);
+      }
+    }
   }
   // 按时间倒序
   logs.sort((a, b) => new Date(b.ts) - new Date(a.ts));

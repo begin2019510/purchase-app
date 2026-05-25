@@ -1475,19 +1475,25 @@ async function loadLogs(date) {
     const actionLabels = {
       'login': '🟢 登录',
       'register': '🆕 注册',
+      'logout': '🔴 退出登录',
       'delete_user': '🔴 删除用户',
       'create_invite': '📧 创建邀请码',
       'status_change': '📋 状态变更',
       'export': '📤 导出',
     };
 
+    // 如果是管理员，显示所有用户的日志；否则只显示自己的
+    const isAdmin = d.isAdmin;
+    const showUsername = isAdmin;
+
     el.innerHTML = d.logs.map(function(log) {
       const label = actionLabels[log.action] || log.action;
-      const time = log.ts.replace('T', ' ').replace('Z', '').slice(0, 19);
+      const time = log.ts.replace('T', ' ').replace('Z', ' UTC').slice(0, 22);
+      const usernameHtml = showUsername ? '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + esc(log.username) + '</span>' : '';
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
         '<div>' +
           '<span style="font-size:13px">' + label + '</span>' +
-          '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + esc(log.username) + '</span>' +
+          usernameHtml +
           '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + esc(log.details) + '</div>' +
         '</div>' +
         '<div style="text-align:right">' +
@@ -1499,6 +1505,15 @@ async function loadLogs(date) {
 
     dateEl.textContent = d.date;
   } catch(e) { el.textContent = '加载失败'; }
+}
+
+function openLogsPanel() {
+  document.getElementById('logsPanel').style.display = 'block';
+  loadLogs();
+}
+
+function closeLogsPanel() {
+  document.getElementById('logsPanel').style.display = 'none';
 }
 
 // ===== 离线检测横幅 =====

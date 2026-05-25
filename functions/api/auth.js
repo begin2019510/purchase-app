@@ -450,10 +450,15 @@ async function handleListLogs(request, env, KV, cors) {
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
-  if (!payload || payload.username !== 'admin') return json({ error: '仅管理员可查看' }, 403, cors);
+  if (!payload) return json({ error: 'Token无效或已过期' }, 401, cors);
 
+  const isAdmin = payload.username === 'admin';
   const url = new URL(request.url);
   const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
-  const logs = await getLogs(KV, date);
-  return json({ ok: true, logs, date }, 200, cors);
+  const filterUser = url.searchParams.get('username');
+
+  // 管理员可以查看所有日志或指定用户日志，普通用户只能查看自己的
+  const targetUser = isAdmin ? (filterUser || null) : payload.username;
+  const logs = await getLogs(KV, date, targetUser);
+  return json({ ok: true, logs, date, isAdmin, currentUser: payload.username }, 200, cors);
 }
