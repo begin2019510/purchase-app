@@ -73,6 +73,29 @@ async function getFeishuTokenForAI(env) {
 }
 
 // ===== AI 需求评估 =====
+async function searchWebPrices(productName, tavilyApiKey) {
+  if (!tavilyApiKey) return null;
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query: productName + ' 价格 京东 淘宝 拼多多',
+        search_depth: 'basic',
+        max_results: 5,
+        include_answer: true,
+      }),
+    });
+    const data = await res.json();
+    if (data.answer) return data.answer;
+    if (data.results && data.results.length > 0) {
+      return data.results.map(r => r.title + ': ' + (r.content || '').slice(0, 150)).join('\n');
+    }
+    return null;
+  } catch { return null; }
+}
+
 async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
   const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { productName, expectedPrice, platform, category } = data;
@@ -139,6 +162,9 @@ async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
     `${i['商品名称']} | ¥${i['单价']} | ${i['平台']} | ${i['分类']}`
   ).join('\n');
 
+  // 6. 全网比价（Tavily 搜索）
+  const webPrices = await searchWebPrices(productName, env.TAVILY_API_KEY);
+
   const systemPrompt = `你是个人采购顾问 AI。用户想买一个商品，你需要给出评估报告帮助判断是否需要购买。
 
 用户想买: ${productName}
@@ -155,6 +181,7 @@ ${recentItems || '暂无'}
 === 本月采购概况 ===
 本月已采购总额: ¥${monthlyTotal.toFixed(2)}
 ${budget > 0 ? '本月采购预算: ¥' + budget + '\n预算剩余: ¥' + (budget - monthlyTotal).toFixed(2) : '未设置采购预算'}
+${webPrices ? '\n=== 全网比价结果 ===\n' + webPrices : ''}
 
 请输出评估报告，格式要求:
 1. 用 emoji + 标题分段
@@ -163,9 +190,10 @@ ${budget > 0 ? '本月采购预算: ¥' + budget + '\n预算剩余: ¥' + (budge
 4. 如果有历史价格，对比分析价格趋势
 5. 如果本月预算紧张，提醒预算情况
 6. 如果最近买过类似商品，提醒是否重复
-7. 语气轻松直接，像朋友给建议
-8. 不要用markdown标题符号(#)，用emoji做段落标记
-9. 总长度控制在300字以内`;
+7. 如果有全网比价结果，分析哪里买最便宜，给出具体平台和价格
+8. 语气轻松直接，像朋友给建议
+9. 不要用markdown标题符号(#)，用emoji做段落标记
+10. 总长度控制在400字以内`;
 
   const result = await callAI(apiKey, systemPrompt, `我想买${productName}${expectedPrice ? '，预算大概' + expectedPrice + '元' : ''}`, 800);
   return json({ ok: true, data: result, similarCount: similarItems.length, monthlyTotal, budget }, 200, corsHeaders);
