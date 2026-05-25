@@ -1077,13 +1077,11 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删�
 // ============================================================
 // 采购 Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待审批';document.getElementById('fQty').value='1';
-  document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('modalBtnRow').style.display='none';document.getElementById('aiEvalRow').style.display='';document.getElementById('submitPurchaseBtn').style.opacity='0.5';document.getElementById('submitPurchaseBtn').style.pointerEvents='none';
-  document.getElementById('overlay').classList.add('active')}
-function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('aiEvalRow').style.display='none';document.getElementById('modalBtnRow').style.display='';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
+function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['商品名称']||'';document.getElementById('fPlatformEdit').value=i['平台']||'拼多多';document.getElementById('fCategoryEdit').value=i['分类']||'日用';document.getElementById('fPriceEdit').value=i['单价']||'';document.getElementById('fQtyEdit').value=i['数量']||1;document.getElementById('fStatusEdit').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error);return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error);return}toast('已添加')}closeModal();await loadAll()}
-function _cleanupAfterSave(){document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('modalBtnRow').style.display='';document.getElementById('aiEvalRow').style.display='none';document.getElementById('submitPurchaseBtn').style.opacity='0.5';document.getElementById('submitPurchaseBtn').style.pointerEvents='none'}
+async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error);return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error);return}toast('已添加')}closeModal();await loadAll()}
+
 async function delItem(id){if(!confirm('确定删除？'))return;const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);return}toast('已删除');await loadAll()}
 
 // ===== 审批流操作 =====
@@ -1215,50 +1213,65 @@ function cancelAI(){
 // --- AI 需求评估（嵌入采购创建流程） ---
 async function runPurchaseEval() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('请先填写商品名称'); return; }
+  if (!name) { alert('请先输入商品名称'); return; }
   
   const resultEl = document.getElementById('aiEvalResult');
+  const btn = document.getElementById('aiEvalBtn');
   resultEl.style.display = 'block';
   resultEl.textContent = '🤖 AI 分析中...';
-  
-  const platform = document.getElementById('fPlatform').value;
-  const price = document.getElementById('fPrice').value;
-  const category = document.getElementById('fCategory').value;
+  btn.disabled = true;
+  btn.textContent = '分析中...';
   
   try {
     const r = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
-      body: JSON.stringify({ 
-        action: 'evaluate', 
-        data: { 
-          productName: name, 
-          expectedPrice: price ? Number(price) : undefined,
-          platform: platform || undefined,
-          category: category || undefined
-        } 
-      }),
+      body: JSON.stringify({ action: 'evaluate', data: { productName: name } }),
     });
     const d = await r.json();
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
     resultEl.textContent = d.data;
     
-    // Activate submit button
-    const submitBtn = document.getElementById('submitPurchaseBtn');
-    submitBtn.style.opacity = '1';
-    submitBtn.style.pointerEvents = 'auto';
+    // 延迟切换到详情阶段
+    setTimeout(() => switchToDetailPhase(name, d), 500);
   } catch(e) { resultEl.textContent = '❌ 网络错误'; }
+  finally { btn.disabled = false; btn.textContent = '🤖 AI需求评估'; }
+}
+function switchToDetailPhase(name, aiData) {
+  document.getElementById('evalPhase').style.display = 'none';
+  document.getElementById('detailPhase').style.display = '';
+  document.getElementById('fNameDisplay').value = name;
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fPlatform').value = '拼多多';
+  document.getElementById('fCategory').value = '日用';
 }
 
+function backToEval() {
+  document.getElementById('evalPhase').style.display = '';
+  document.getElementById('detailPhase').style.display = 'none';
+  document.getElementById('aiEvalResult').style.display = 'none';
+}
+
+
 async function submitPurchase() {
-  const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('请输入商品名称'); return; }
-  const data = {name, platform: document.getElementById('fPlatform').value, category: document.getElementById('fCategory').value, price: parseFloat(document.getElementById('fPrice').value) || 0, qty: parseInt(document.getElementById('fQty').value) || 1, status: document.getElementById('fStatus').value, date: document.getElementById('fDate').value || null, note: document.getElementById('fNote').value.trim() || null};
+  const name = document.getElementById('fNameDisplay').value.trim();
+  if (!name) { alert('商品名称丢失'); return; }
+  const data = {
+    name,
+    platform: document.getElementById('fPlatform').value,
+    category: document.getElementById('fCategory').value,
+    price: parseFloat(document.getElementById('fPrice').value) || 0,
+    qty: parseInt(document.getElementById('fQty').value) || 1,
+    status: '待审批',
+    date: null,
+    note: document.getElementById('fNote').value.trim() || null
+  };
   const r = await api('POST', data);
   if (r && r.error) { alert('添加失败: ' + r.error); return; }
   toast('已添加');
-  _cleanupAfterSave();
   closeModal();
   await loadAll();
 }

@@ -184,31 +184,63 @@
   <div class="modal">
     <h2 id="modalTitle">新增采购</h2>
     <input type="hidden" id="editId">
-    <div class="form-group"><label>商品名称 *</label><input id="fName" placeholder="如：夏天裤子"></div>
-    <div class="form-row">
-      <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
-      <div class="form-group"><label>分类</label><select id="fCategory"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
-      <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>状态</label><select id="fStatus"><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
-      <div class="form-group"><label>日期</label><input id="fDate" type="date"></div>
-    </div>
-    <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
-    <div id="aiEvalResult" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
-    <div class="btn-row" id="modalBtnRow">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button class="btn btn-primary" id="modalSaveBtn" onclick="save()">保存</button>
-    </div>
-    <div id="aiEvalRow" style="display:none">
+
+    <!-- 阶段1：需求评估 -->
+    <div id="evalPhase">
+      <div class="form-group">
+        <label>想买什么？</label>
+        <input id="fName" placeholder="输入商品名称，如：AirPods Pro" autocomplete="off">
+      </div>
+      <div id="aiEvalResult" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
       <div style="display:flex;gap:8px">
-        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:1;padding:12px;background:var(--card);border:2px solid var(--pri);color:var(--pri);border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
-        <button id="submitPurchaseBtn" onclick="submitPurchase()" style="flex:1;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;opacity:0.5;pointer-events:none">确认提交</button>
+        <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">取消</button>
+        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
       </div>
     </div>
+
+    <!-- 阶段2：填写详情（评估后显示） -->
+    <div id="detailPhase" style="display:none">
+      <div class="form-group">
+        <label>商品名称</label>
+        <input id="fNameDisplay" readonly style="background:var(--bg);color:var(--text)">
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
+        <div class="form-group"><label>分类</label><select id="fCategory"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
+        <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
+      </div>
+      <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="backToEval()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">← 返回</button>
+        <button onclick="submitPurchase()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">✅ 确认提交</button>
+      </div>
+    </div>
+
+    <!-- 编辑模式（编辑已有采购时显示） -->
+    <div id="editPhase" style="display:none">
+      <div class="form-group"><label>商品名称 *</label><input id="fNameEdit" placeholder="如：夏天裤子"></div>
+      <div class="form-row">
+        <div class="form-group"><label>平台</label><select id="fPlatformEdit"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
+        <div class="form-group"><label>分类</label><select id="fCategoryEdit"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>单价（元）</label><input id="fPriceEdit" type="number" step="0.01" placeholder="0"></div>
+        <div class="form-group"><label>数量</label><input id="fQtyEdit" type="number" value="1" min="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>状态</label><select id="fStatusEdit"><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
+        <div class="form-group"><label>日期</label><input id="fDateEdit" type="date"></div>
+      </div>
+      <div class="form-group"><label>备注</label><textarea id="fNoteEdit" placeholder="可选"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="save()">保存</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
