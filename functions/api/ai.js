@@ -29,6 +29,7 @@ export async function onRequest(context) {
       case 'categorize': return await handleCategorize(apiKey, data, corsHeaders);
       case 'profile': return await handleProfile(apiKey, data, corsHeaders);
       case 'query': return await handleQuery(apiKey, data, corsHeaders);
+      case 'evaluate': return await handleEvaluate(apiKey, data, user, env, corsHeaders);
       default: return json({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
@@ -57,6 +58,117 @@ async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 800) {
   } catch {
     throw new Error('AI parse failed: ' + text.slice(0, 200));
   }
+}
+
+// ===== 飞书 Token 获取 =====
+async function getFeishuTokenForAI(env) {
+  const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
+  });
+  const data = await res.json();
+  if (data.code !== 0) throw new Error('Feishu auth failed');
+  return data.tenant_access_token;
+}
+
+// ===== AI 需求评估 =====
+async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
+  const { productName, expectedPrice, platform, category } = data;
+  if (!productName) return json({ ok: false, error: '请输入商品名称' }, 400, corsHeaders);
+
+  // 1. 获取用户的采购历史
+  let purchaseHistory = [];
+  try {
+    const bitable = user.bitable;
+    if (bitable && bitable.purchaseApp && bitable.purchaseTable) {
+      const feishuToken = await getFeishuTokenForAI(env);
+      const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${bitable.purchaseApp}/tables/${bitable.purchaseTable}/records?page_size=200`;
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + feishuToken } });
+      const result = await res.json();
+      if (result.data && result.data.items) {
+        purchaseHistory = result.data.items.map(r => ({
+          '商品名称': r.fields['商品名称'] || '',
+          '平台': r.fields['平台'] || '',
+          '分类': r.fields['分类'] || '',
+          '单价': Number(r.fields['单价'] || 0),
+          '数量': Number(r.fields['数量'] || 1),
+          '状态': r.fields['状态'] || '',
+          '日期': r.fields['日期'] || '',
+          '备注': r.fields['备注'] || '',
+        }));
+      }
+    }
+  } catch (e) {
+    // 获取历史失败不影响评估，只是没有历史参考
+  }
+
+  // 2. 搜索同类商品
+  const similarItems = purchaseHistory.filter(item => {
+    const name = (item['商品名称'] || '').toLowerCase();
+    const search = productName.toLowerCase();
+    return name.includes(search) || search.includes(name);
+  });
+
+  // 3. 计算本月采购总额
+  const thisMonth = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);
+  const monthlyTotal = purchaseHistory
+    .filter(item => {
+      if (!item['日期']) return false;
+      try {
+        const ts = typeof item['日期'] === 'number' ? item['日期'] : Date.parse(item['日期']);
+        return new Date(ts + 8 * 3600000).toISOString().slice(0, 7) === thisMonth;
+      } catch { return false; }
+    })
+    .reduce((sum, item) => sum + (item['单价'] || 0) * (item['数量'] || 1), 0);
+
+  // 4. 获取预算
+  let budget = 0;
+  try {
+    const budgetData = await env.IMAGE_STORE.get(`budget:${user.username}:${thisMonth}`);
+    if (budgetData) budget = Number(budgetData);
+  } catch {}
+
+  // 5. 构建历史数据摘要
+  const historyLines = similarItems.length > 0
+    ? similarItems.map(i => `${i['日期'] ? (typeof i['日期'] === 'number' ? new Date(i['日期'] + 8*3600000).toISOString().slice(0,10) : String(i['日期']).slice(0,10)) : '未知'} | ${i['商品名称']} | ¥${i['单价']}×${i['数量']} | ${i['平台']} | ${i['状态']}`).join('\n')
+    : '无同类商品购买记录';
+
+  const recentItems = purchaseHistory.slice(-20).map(i =>
+    `${i['商品名称']} | ¥${i['单价']} | ${i['平台']} | ${i['分类']}`
+  ).join('\n');
+
+  const systemPrompt = `你是个人采购顾问 AI。用户想买一个商品，你需要给出评估报告帮助判断是否需要购买。
+
+用户想买: ${productName}
+${expectedPrice ? '预期价格: ¥' + expectedPrice : ''}
+${platform ? '目标平台: ' + platform : ''}
+${category ? '分类: ' + category : ''}
+
+=== 同类商品历史购买记录 ===
+${historyLines}
+
+=== 近期采购记录（最近20条）===
+${recentItems || '暂无'}
+
+=== 本月采购概况 ===
+本月已采购总额: ¥${monthlyTotal.toFixed(2)}
+${budget > 0 ? '本月采购预算: ¥' + budget + '\n预算剩余: ¥' + (budget - monthlyTotal).toFixed(2) : '未设置采购预算'}
+
+请输出评估报告，格式要求:
+1. 用 emoji + 标题分段
+2. 每段简洁直接，引用具体数据
+3. 最后给出明确建议（买/不买/等一等/换个平台）
+4. 如果有历史价格，对比分析价格趋势
+5. 如果本月预算紧张，提醒预算情况
+6. 如果最近买过类似商品，提醒是否重复
+7. 语气轻松直接，像朋友给建议
+8. 不要用markdown标题符号(#)，用emoji做段落标记
+9. 总长度控制在300字以内`;
+
+  const result = await callAI(apiKey, systemPrompt, `我想买${productName}${expectedPrice ? '，预算大概' + expectedPrice + '元' : ''}`, 800);
+  return json({ ok: true, data: result, similarCount: similarItems.length, monthlyTotal, budget }, 200, corsHeaders);
 }
 
 // ===== 自然语言记账 =====

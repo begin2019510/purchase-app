@@ -2,9 +2,10 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.7.0';
+const APP_VERSION='2.8.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.8.0',date:'2026-05-25',items:['AI 需求评估：输入商品名AI分析历史采购数据+预算+价格趋势给购买建议']},
   {v:'2.7.0',date:'2026-05-24',items:['记账/采购导出增强：支持CSV/TSV格式选择','采购统计增强：分类饼图、平台分布、6个月趋势','离线体验优化：断网检测+黄色横幅提示','在线帮助文档页面']},
   {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
   {v:'2.5.9',date:'2026-05-23',items:['AI智能分类：备注输入时自动推荐分类+标签','AI批量标签提炼：一键分析本月备注生成标签','分类基于历史数据学习用户习惯']},
@@ -110,6 +111,7 @@ function showLogin(){document.getElementById('loginForm').style.display='';docum
 function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
+document.getElementById('evalProductName').addEventListener('keydown', function(e) { if (e.key === 'Enter') runEvaluate(); });
 // ===== 管理员功能 =====
 
 async function loadUserList(){
@@ -1200,6 +1202,42 @@ function cancelAI(){
   document.getElementById('aiResult').innerHTML='';
   pendingAI=null;
 }
+
+// --- AI 需求评估 ---
+async function openEvaluateModal() {
+  document.getElementById('evalProductName').value = '';
+  document.getElementById('evalResult').innerHTML = '';
+  document.getElementById('evalModal').classList.add('active');
+}
+
+function closeEvaluateModal() {
+  document.getElementById('evalModal').classList.remove('active');
+}
+
+async function runEvaluate() {
+  const name = document.getElementById('evalProductName').value.trim();
+  if (!name) { alert('请输入商品名称'); return; }
+  
+  const el = document.getElementById('evalResult');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">🤖 AI 分析中...</div>';
+  
+  try {
+    const r = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
+      body: JSON.stringify({ action: 'evaluate', data: { productName: name } }),
+    });
+    const d = await r.json();
+    if (!d.ok) { el.innerHTML = '<div style="color:var(--red)">' + esc(d.error || '评估失败') + '</div>'; return; }
+    
+    let html = '<div style="white-space:pre-wrap;line-height:1.8;font-size:14px">' + esc(d.data) + '</div>';
+    if (d.similarCount > 0) {
+      html += '<div style="margin-top:12px;padding:8px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--muted)">📊 找到 ' + d.similarCount + ' 条同类商品历史记录</div>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '<div style="color:var(--red)">网络错误</div>'; }
+}
+
 
 // --- AI 分析 ---
 // --- AI 自然语言查询 ---
