@@ -111,7 +111,7 @@ function showLogin(){document.getElementById('loginForm').style.display='';docum
 function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='邀请码注册';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
-document.getElementById('evalProductName').addEventListener('keydown', function(e) { if (e.key === 'Enter') runEvaluate(); });
+
 // ===== 管理员功能 =====
 
 async function loadUserList(){
@@ -1075,10 +1075,13 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删�
 // ============================================================
 // 采购 Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待审批';document.getElementById('fQty').value='1';document.getElementById('overlay').classList.add('active')}
-function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';['fName','fPrice','fQty','fNote','fDate'].forEach(x=>document.getElementById(x).value='');document.getElementById('fPlatform').value='拼多多';document.getElementById('fCategory').value='日用';document.getElementById('fStatus').value='待审批';document.getElementById('fQty').value='1';
+  document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('modalBtnRow').style.display='none';document.getElementById('aiEvalRow').style.display='';document.getElementById('submitPurchaseBtn').style.opacity='0.5';document.getElementById('submitPurchaseBtn').style.pointerEvents='none';
+  document.getElementById('overlay').classList.add('active')}
+function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('aiEvalRow').style.display='none';document.getElementById('modalBtnRow').style.display='';document.getElementById('fName').value=i['商品名称']||'';document.getElementById('fPlatform').value=i['平台']||'拼多多';document.getElementById('fCategory').value=i['分类']||'日用';document.getElementById('fPrice').value=i['单价']||'';document.getElementById('fQty').value=i['数量']||1;document.getElementById('fStatus').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDate').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNote').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
 async function save(){const name=document.getElementById('fName').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatform').value,category:document.getElementById('fCategory').value,price:parseFloat(document.getElementById('fPrice').value)||0,qty:parseInt(document.getElementById('fQty').value)||1,status:document.getElementById('fStatus').value,date:document.getElementById('fDate').value||null,note:document.getElementById('fNote').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error);return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error);return}toast('已添加')}closeModal();await loadAll()}
+function _cleanupAfterSave(){document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('modalBtnRow').style.display='';document.getElementById('aiEvalRow').style.display='none';document.getElementById('submitPurchaseBtn').style.opacity='0.5';document.getElementById('submitPurchaseBtn').style.pointerEvents='none'}
 async function delItem(id){if(!confirm('确定删除？'))return;const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);return}toast('已删除');await loadAll()}
 
 // ===== 审批流操作 =====
@@ -1203,42 +1206,60 @@ function cancelAI(){
   pendingAI=null;
 }
 
-// --- AI 需求评估 ---
-async function openEvaluateModal() {
-  document.getElementById('evalProductName').value = '';
-  document.getElementById('evalResult').innerHTML = '';
-  document.getElementById('evalModal').classList.add('active');
-}
 
-function closeEvaluateModal() {
-  document.getElementById('evalModal').classList.remove('active');
-}
 
-async function runEvaluate() {
-  const name = document.getElementById('evalProductName').value.trim();
-  if (!name) { alert('请输入商品名称'); return; }
+
+
+// --- AI 需求评估（嵌入采购创建流程） ---
+async function runPurchaseEval() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('请先填写商品名称'); return; }
   
-  const el = document.getElementById('evalResult');
-  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">🤖 AI 分析中...</div>';
+  const resultEl = document.getElementById('aiEvalResult');
+  resultEl.style.display = 'block';
+  resultEl.textContent = '🤖 AI 分析中...';
+  
+  const platform = document.getElementById('fPlatform').value;
+  const price = document.getElementById('fPrice').value;
+  const category = document.getElementById('fCategory').value;
   
   try {
     const r = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
-      body: JSON.stringify({ action: 'evaluate', data: { productName: name } }),
+      body: JSON.stringify({ 
+        action: 'evaluate', 
+        data: { 
+          productName: name, 
+          expectedPrice: price ? Number(price) : undefined,
+          platform: platform || undefined,
+          category: category || undefined
+        } 
+      }),
     });
     const d = await r.json();
-    if (!d.ok) { el.innerHTML = '<div style="color:var(--red)">' + esc(d.error || '评估失败') + '</div>'; return; }
+    if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
-    let html = '<div style="white-space:pre-wrap;line-height:1.8;font-size:14px">' + esc(d.data) + '</div>';
-    if (d.similarCount > 0) {
-      html += '<div style="margin-top:12px;padding:8px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--muted)">📊 找到 ' + d.similarCount + ' 条同类商品历史记录</div>';
-    }
-    el.innerHTML = html;
-  } catch(e) { el.innerHTML = '<div style="color:var(--red)">网络错误</div>'; }
+    resultEl.textContent = d.data;
+    
+    // Activate submit button
+    const submitBtn = document.getElementById('submitPurchaseBtn');
+    submitBtn.style.opacity = '1';
+    submitBtn.style.pointerEvents = 'auto';
+  } catch(e) { resultEl.textContent = '❌ 网络错误'; }
 }
 
-
+async function submitPurchase() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('请输入商品名称'); return; }
+  const data = {name, platform: document.getElementById('fPlatform').value, category: document.getElementById('fCategory').value, price: parseFloat(document.getElementById('fPrice').value) || 0, qty: parseInt(document.getElementById('fQty').value) || 1, status: document.getElementById('fStatus').value, date: document.getElementById('fDate').value || null, note: document.getElementById('fNote').value.trim() || null};
+  const r = await api('POST', data);
+  if (r && r.error) { alert('添加失败: ' + r.error); return; }
+  toast('已添加');
+  _cleanupAfterSave();
+  closeModal();
+  await loadAll();
+}
 // --- AI 分析 ---
 // --- AI 自然语言查询 ---
 async function queryAI(){
