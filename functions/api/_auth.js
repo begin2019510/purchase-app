@@ -168,3 +168,28 @@ export async function deleteAllRefreshTokens(kv, username) {
     }
   }
 }
+
+// ===== 操作日志 =====
+
+// 记录操作日志
+export async function logOp(kv, action, username, details, request) {
+  const now = new Date();
+  const ts = now.toISOString();
+  const date = ts.slice(0, 10); // YYYY-MM-DD
+  const key = `log:${date}:${now.getTime()}`;
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  await kv.put(key, JSON.stringify({ action, username, details, ip, ts }), { expirationTtl: 2592000 });
+}
+
+// 获取指定日期的操作日志
+export async function getLogs(kv, date) {
+  const list = await kv.list({ prefix: `log:${date}` });
+  const logs = [];
+  for (const item of list.keys) {
+    const data = await kv.get(item.name);
+    if (data) logs.push(JSON.parse(data));
+  }
+  // 按时间倒序
+  logs.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  return logs;
+}

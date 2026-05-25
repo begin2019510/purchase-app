@@ -134,6 +134,19 @@
       </div>
       <div id="debugResult" style="font-size:11px;color:var(--muted);word-break:break-all"></div>
     </div>
+    <!-- 操作日志 -->
+    <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:14px;font-weight:700">📋 操作日志</h3>
+        <button onclick="loadLogs()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <button onclick="changeLogDate(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">◀</button>
+        <span id="logDate" style="font-size:13px;font-weight:600"></span>
+        <button onclick="changeLogDate(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">▶</button>
+      </div>
+      <div id="logList" style="font-size:12px;color:var(--muted)">点击刷新加载日志</div>
+    </div>
     <!-- 用户管理 -->
     <div style="background:var(--card);border-radius:14px;padding:16px">
       <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">👥 用户管理</h3>

@@ -1444,6 +1444,60 @@ function doDetailModalAction(id,nextStatus){
 setupPullToRefresh();
 setupSwipe();
 
+
+// ===== 操作日志 =====
+let logDateState = new Date().toISOString().slice(0, 10);
+
+function changeLogDate(delta) {
+  const d = new Date(logDateState + 'T00:00:00+08:00');
+  d.setDate(d.getDate() + delta);
+  logDateState = d.toISOString().slice(0, 10);
+  loadLogs();
+}
+
+async function loadLogs(date) {
+  if (date) logDateState = date;
+  const el = document.getElementById('logList');
+  const dateEl = document.getElementById('logDate');
+  el.textContent = '加载中...';
+  dateEl.textContent = logDateState;
+  try {
+    const r = await fetch('/api/auth?action=list-logs&date=' + logDateState, {
+      headers: { 'Authorization': 'Bearer ' + getPin() }
+    });
+    const d = await r.json();
+    if (!d.ok) { el.textContent = d.error || '加载失败'; return; }
+    if (!d.logs.length) { el.textContent = '暂无日志'; return; }
+
+    const actionLabels = {
+      'login': '🟢 登录',
+      'register': '🆕 注册',
+      'delete_user': '🔴 删除用户',
+      'create_invite': '📧 创建邀请码',
+      'status_change': '📋 状态变更',
+      'export': '📤 导出',
+    };
+
+    el.innerHTML = d.logs.map(function(log) {
+      const label = actionLabels[log.action] || log.action;
+      const time = log.ts.replace('T', ' ').replace('Z', '').slice(0, 19);
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
+        '<div>' +
+          '<span style="font-size:13px">' + label + '</span>' +
+          '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + esc(log.username) + '</span>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + esc(log.details) + '</div>' +
+        '</div>' +
+        '<div style="text-align:right">' +
+          '<div style="font-size:10px;color:var(--muted)">' + time + '</div>' +
+          '<div style="font-size:9px;color:var(--muted)">' + esc(log.ip) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    dateEl.textContent = d.date;
+  } catch(e) { el.textContent = '加载失败'; }
+}
+
 // ===== 离线检测横幅 =====
 (function(){
   const banner=document.createElement('div');

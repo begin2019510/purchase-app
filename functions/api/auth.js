@@ -4,7 +4,7 @@
 // 会话: JWT (HS256)
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens } from './_auth.js';
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
 
 const json = jsonFn;
 const corsHeaders = getCorsHeaders;
@@ -135,9 +135,9 @@ export async function onRequest(context) {
     const body = request.method === 'POST' ? await request.json() : {};
 
     if (action === 'register') {
-      return await handleRegister(body, env, KV, JWT_SECRET, cors);
+      return await handleRegister(request, body, env, KV, JWT_SECRET, cors);
     } else if (action === 'login') {
-      return await handleLogin(body, KV, JWT_SECRET, cors);
+      return await handleLogin(request, body, KV, JWT_SECRET, cors);
     } else if (action === 'verify') {
       return await handleVerify(request, KV, JWT_SECRET, cors);
     } else if (action === 'create-invite') {
@@ -152,6 +152,8 @@ export async function onRequest(context) {
       return await handleRefresh(body, KV, JWT_SECRET, cors);
     } else if (action === 'logout') {
       return await handleLogout(body, KV, cors);
+    } else if (action === 'list-logs') {
+      return await handleListLogs(request, env, KV, cors);
     } else if (action === 'debug-env') {
       // 仅管理员可查看
       const debugAuth = request.headers.get('Authorization');
@@ -177,7 +179,7 @@ export async function onRequest(context) {
 }
 
 // ===== 注册 =====
-async function handleRegister(body, env, KV, JWT_SECRET, cors) {
+async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   const { username, password, inviteCode } = body;
   if (!username || !password || !inviteCode) {
     return json({ error: '请填写用户名、密码和邀请码' }, 400, cors);
@@ -231,11 +233,12 @@ async function handleRegister(body, env, KV, JWT_SECRET, cors) {
   const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
+  logOp(KV, 'register', username, '注册成功（邀请码: ' + inviteResult.type + '）', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
 // ===== 登录 =====
-async function handleLogin(body, KV, JWT_SECRET, cors) {
+async function handleLogin(request, body, KV, JWT_SECRET, cors) {
   const { username, password } = body;
   if (!username || !password) {
     return json({ error: '请输入用户名和密码' }, 400, cors);
@@ -254,6 +257,7 @@ async function handleLogin(body, KV, JWT_SECRET, cors) {
   const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
+  logOp(KV, 'login', username, '登录成功', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
@@ -301,7 +305,7 @@ async function handleCreateInvite(request, body, env, KV, cors) {
   const existing = JSON.parse(await KV.get('dynamic_invites') || '[]');
   existing.push(...newCodes);
   await KV.put('dynamic_invites', JSON.stringify(existing));
-
+  logOp(KV, 'create_invite', payload.username, '创建 ' + count + ' 个邀请码', request).catch(() => {});
   return json({ ok: true, codes: newCodes.map(c => c.code) }, 200, cors);
 }
 
@@ -367,6 +371,7 @@ async function handleDeleteUser(request, body, env, KV, cors) {
   await deleteAllRefreshTokens(KV, username);
   await deleteUser(KV, username);
 
+  logOp(KV, 'delete_user', payload.username, '删除用户: ' + username, request).catch(() => {});
   if (deleteErrors.length) {
     return json({ ok: true, message: `用户 ${username} 已删除，但部分数据表删除失败`, errors: deleteErrors }, 200, cors);
   }
@@ -431,4 +436,18 @@ async function handleLogout(body, KV, cors) {
   const { refreshToken } = body;
   if (refreshToken) await deleteRefreshToken(KV, refreshToken);
   return json({ ok: true }, 200, cors);
+}
+
+// ===== 查看操作日志（仅管理员） =====
+async function handleListLogs(request, env, KV, cors) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
+  const token = authHeader.replace('Bearer ', '');
+  const payload = await verifyJWT(token, env.JWT_SECRET);
+  if (!payload || payload.username !== 'admin') return json({ error: '仅管理员可查看' }, 403, cors);
+
+  const url = new URL(request.url);
+  const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
+  const logs = await getLogs(KV, date);
+  return json({ ok: true, logs, date }, 200, cors);
 }

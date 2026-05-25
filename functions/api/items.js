@@ -1,4 +1,4 @@
-import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT } from './_auth.js';
+import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -134,6 +134,20 @@ export async function onRequest(context) {
     if (request.method === 'PUT') {
       const body = await request.json();
       if (!body.id) return json({ error: 'id required' }, 400);
+
+      // 获取旧状态用于日志记录
+      let oldStatus = null;
+      let oldName = '';
+      if (body.status !== undefined) {
+        try {
+          const existingData = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, null, env);
+          if (existingData.code === 0 && existingData.data?.record) {
+            oldStatus = existingData.data.record.fields['状态'] || '未知';
+            oldName = existingData.data.record.fields['商品名称'] || '';
+          }
+        } catch {}
+      }
+
       const fields = {};
       if (body.name !== undefined) fields['商品名称'] = body.name;
       if (body.platform !== undefined) fields['平台'] = body.platform;
@@ -145,6 +159,12 @@ export async function onRequest(context) {
       if (body.date !== undefined) fields['日期'] = body.date ? new Date(body.date).getTime() : null;
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
+
+      // 记录状态变更日志
+      if (body.status !== undefined && oldStatus && body.status !== oldStatus) {
+        logOp(env.IMAGE_STORE, 'status_change', user.username, oldStatus + ' → ' + body.status + '（' + (body.name || oldName) + '）', request).catch(() => {});
+      }
+
       const cacheSuffix = user.username ? `_${user.username}` : '';
       const cacheKey = new Request(url.toString() + cacheSuffix);
       context.waitUntil(caches.default.delete(cacheKey));
