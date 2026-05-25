@@ -310,7 +310,7 @@ function showSkeleton(){
 }
 
 // ===== 下拉刷新 =====
-let ptrStartY=0,ptrDist=0,isPulling=false,isRefreshing=false;
+let ptrStartY=0,ptrDist=0,isPulling=false,ptrRefreshing=false;
 
 // ============================================================
 // 手势 & 交互
@@ -323,7 +323,7 @@ function setupPullToRefresh(){
   const text=indicator?.querySelector('.ptr-text');
   if(!indicator)return;
   wrapper.addEventListener('touchstart',e=>{
-    if(window.scrollY>0||isRefreshing)return;
+    if(window.scrollY>0||ptrRefreshing)return;
     ptrStartY=e.touches[0].clientY;
     isPulling=true;
   },{passive:true});
@@ -340,8 +340,8 @@ function setupPullToRefresh(){
   wrapper.addEventListener('touchend',async()=>{
     if(!isPulling)return;
     isPulling=false;
-    if(ptrDist>50&&!isRefreshing){
-      isRefreshing=true;
+    if(ptrDist>50&&!ptrRefreshing){
+      ptrRefreshing=true;
       if(spinner){spinner.classList.add('spinning');spinner.style.transform=''}
       if(text)text.textContent='刷新中...';
       indicator.style.transform='translateY(55px)';
@@ -349,7 +349,7 @@ function setupPullToRefresh(){
       await loadAll();
       if(spinner)spinner.classList.remove('spinning');
       if(text)text.textContent='已刷新';
-      setTimeout(()=>{indicator.style.transform='translateY(0)';isRefreshing=false},600);
+      setTimeout(()=>{indicator.style.transform='translateY(0)';ptrRefreshing=false},600);
     }else{
       indicator.style.transform='translateY(0)';
     }
