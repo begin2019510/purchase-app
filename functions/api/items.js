@@ -162,7 +162,7 @@ export async function onRequest(context) {
 
       // 记录状态变更日志
       if (body.status !== undefined && oldStatus && body.status !== oldStatus) {
-        logOp(env.IMAGE_STORE, 'status_change', user.username, oldStatus + ' → ' + body.status + '（' + (body.name || oldName) + '）', request).catch(() => {});
+        await logOp(env.IMAGE_STORE, 'status_change', user.username, oldStatus + ' → ' + body.status + '（' + (body.name || oldName) + '）', request).catch(() => {});
       }
 
       const cacheSuffix = user.username ? `_${user.username}` : '';

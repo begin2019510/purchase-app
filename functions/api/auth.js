@@ -151,7 +151,7 @@ export async function onRequest(context) {
     } else if (action === 'refresh') {
       return await handleRefresh(body, KV, JWT_SECRET, cors);
     } else if (action === 'logout') {
-      return await handleLogout(body, KV, cors);
+      return await handleLogout(request, body, KV, cors);
     } else if (action === 'list-logs') {
       return await handleListLogs(request, env, KV, cors);
     } else if (action === 'debug-env') {
@@ -233,7 +233,7 @@ async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
-  logOp(KV, 'register', username, '注册成功（邀请码: ' + inviteResult.type + '）', request).catch(() => {});
+  await logOp(KV, 'register', username, '注册成功（邀请码: ' + inviteResult.type + '）', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
@@ -257,7 +257,7 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors) {
   const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
-  logOp(KV, 'login', username, '登录成功', request).catch(() => {});
+  await logOp(KV, 'login', username, '登录成功', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
@@ -305,7 +305,7 @@ async function handleCreateInvite(request, body, env, KV, cors) {
   const existing = JSON.parse(await KV.get('dynamic_invites') || '[]');
   existing.push(...newCodes);
   await KV.put('dynamic_invites', JSON.stringify(existing));
-  logOp(KV, 'create_invite', payload.username, '创建 ' + count + ' 个邀请码', request).catch(() => {});
+  await logOp(KV, 'create_invite', payload.username, '创建 ' + count + ' 个邀请码', request).catch(() => {});
   return json({ ok: true, codes: newCodes.map(c => c.code) }, 200, cors);
 }
 
@@ -371,7 +371,7 @@ async function handleDeleteUser(request, body, env, KV, cors) {
   await deleteAllRefreshTokens(KV, username);
   await deleteUser(KV, username);
 
-  logOp(KV, 'delete_user', payload.username, '删除用户: ' + username, request).catch(() => {});
+  await logOp(KV, 'delete_user', payload.username, '删除用户: ' + username, request).catch(() => {});
   if (deleteErrors.length) {
     return json({ ok: true, message: `用户 ${username} 已删除，但部分数据表删除失败`, errors: deleteErrors }, 200, cors);
   }
@@ -432,9 +432,15 @@ async function handleRefresh(body, KV, JWT_SECRET, cors) {
 }
 
 // ===== Logout =====
-async function handleLogout(body, KV, cors) {
+async function handleLogout(request, body, KV, cors) {
   const { refreshToken } = body;
+  const authHeader = request.headers.get('Authorization');
+  let username = 'unknown';
+  if (authHeader) {
+    try { const p = JSON.parse(atob(authHeader.replace('Bearer ', '').split('.')[1])); username = p.username; } catch {}
+  }
   if (refreshToken) await deleteRefreshToken(KV, refreshToken);
+  await logOp(KV, 'logout', username, '退出登录', request).catch(() => {});
   return json({ ok: true }, 200, cors);
 }
 
