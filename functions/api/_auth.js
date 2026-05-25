@@ -121,3 +121,50 @@ export async function getFeishuToken(env) {
   if (data.code !== 0) throw new Error('Feishu auth failed');
   return data.tenant_access_token;
 }
+
+
+// ===== Refresh Token 管理 =====
+
+// 生成 refresh token (UUID)
+export function generateRefreshToken() {
+  return crypto.randomUUID();
+}
+
+// 存储 refresh token 到 KV
+export async function storeRefreshToken(kv, username, token, expiresInDays = 30) {
+  const key = 'refresh:' + token;
+  await kv.put(key, JSON.stringify({
+    username,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + expiresInDays * 86400000).toISOString(),
+  }), { expirationTtl: expiresInDays * 86400 }); // KV 自动过期
+}
+
+// 验证 refresh token
+export async function validateRefreshToken(kv, token) {
+  const data = await kv.get('refresh:' + token);
+  if (!data) return null;
+  const parsed = JSON.parse(data);
+  // 检查是否过期（KV TTL 兜底，这里做双重检查）
+  if (new Date(parsed.expiresAt) < new Date()) return null;
+  return parsed;
+}
+
+// 删除 refresh token（logout 用）
+export async function deleteRefreshToken(kv, token) {
+  await kv.delete('refresh:' + token);
+}
+
+// 删除用户所有 refresh token（管理员删用户时用）
+export async function deleteAllRefreshTokens(kv, username) {
+  const list = await kv.list({ prefix: 'refresh:' });
+  for (const key of list.keys) {
+    const data = await kv.get(key.name);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed.username === username) {
+        await kv.delete(key.name);
+      }
+    }
+  }
+}

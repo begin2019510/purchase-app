@@ -4,7 +4,7 @@
 // 会话: JWT (HS256)
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken } from './_auth.js';
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens } from './_auth.js';
 
 const json = jsonFn;
 const corsHeaders = getCorsHeaders;
@@ -148,6 +148,10 @@ export async function onRequest(context) {
       return await handleDeleteUser(request, body, env, KV, cors);
     } else if (action === 'list-users') {
       return await handleListUsers(request, env, KV, cors);
+    } else if (action === 'refresh') {
+      return await handleRefresh(body, KV, JWT_SECRET, cors);
+    } else if (action === 'logout') {
+      return await handleLogout(body, KV, cors);
     } else if (action === 'debug-env') {
       // 仅管理员可查看
       const debugAuth = request.headers.get('Authorization');
@@ -224,8 +228,10 @@ async function handleRegister(body, env, KV, JWT_SECRET, cors) {
   };
   await saveUser(KV, username, userData);
 
-  const token = await createJWT({ username, bitable: tables }, JWT_SECRET);
-  return json({ ok: true, token, username }, 200, cors);
+  const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1小时 access token
+  const refreshToken = generateRefreshToken();
+  await storeRefreshToken(KV, username, refreshToken);
+  return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
 // ===== 登录 =====
@@ -245,8 +251,10 @@ async function handleLogin(body, KV, JWT_SECRET, cors) {
     return json({ error: '用户名或密码错误' }, 401, cors);
   }
 
-  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET);
-  return json({ ok: true, token, username }, 200, cors);
+  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
+  const refreshToken = generateRefreshToken();
+  await storeRefreshToken(KV, username, refreshToken);
+  return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
 // ===== 验证 token =====
@@ -355,6 +363,8 @@ async function handleDeleteUser(request, body, env, KV, cors) {
     }
   }
 
+  // 删除用户所有 refresh token
+  await deleteAllRefreshTokens(KV, username);
   await deleteUser(KV, username);
 
   if (deleteErrors.length) {
@@ -389,4 +399,36 @@ async function handleListUsers(request, env, KV, cors) {
     }
   }
   return json({ ok: true, users }, 200, cors);
+}
+
+
+// ===== Refresh Token 续期 =====
+async function handleRefresh(body, KV, JWT_SECRET, cors) {
+  const { refreshToken } = body;
+  if (!refreshToken) return json({ error: '缺少 refreshToken' }, 400, cors);
+
+  const tokenData = await validateRefreshToken(KV, refreshToken);
+  if (!tokenData) return json({ error: 'Refresh token 无效或已过期' }, 401, cors);
+
+  const user = await getUser(KV, tokenData.username);
+  if (!user) return json({ error: '用户不存在' }, 401, cors);
+
+  // 删除旧 refresh token（rotation）
+  await deleteRefreshToken(KV, refreshToken);
+
+  // 签发新 access token (1小时)
+  const accessToken = await createJWT({ username: tokenData.username, bitable: user.bitable }, JWT_SECRET, 1);
+
+  // 签发新 refresh token
+  const newRefreshToken = generateRefreshToken();
+  await storeRefreshToken(KV, tokenData.username, newRefreshToken);
+
+  return json({ ok: true, token: accessToken, refreshToken: newRefreshToken }, 200, cors);
+}
+
+// ===== Logout =====
+async function handleLogout(body, KV, cors) {
+  const { refreshToken } = body;
+  if (refreshToken) await deleteRefreshToken(KV, refreshToken);
+  return json({ ok: true }, 200, cors);
 }

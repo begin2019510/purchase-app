@@ -43,14 +43,53 @@ let calSelectedDate=null; // 'YYYY-MM-DD'
 // ===== Auth =====
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
+function getRefreshToken(){return localStorage.getItem('refresh_token')||''}
+function setRefreshToken(t){localStorage.setItem('refresh_token',t)}
+function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token')}
 function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
+
+let isRefreshing = false;
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (isRefreshing) return refreshPromise;
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const r = await fetch('/api/auth?action=refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const d = await r.json();
+      if (d.ok && d.token) {
+        setPin(d.token);
+        setRefreshToken(d.refreshToken);
+        return d.token;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 async function doLoginAPI(username,password){
   document.getElementById('authError').textContent='登录中...';
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
   }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
@@ -63,7 +102,7 @@ async function doRegister(){
   try{
     const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);document.getElementById('authScreen').style.display='none';loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';loadAll();}
     else{document.getElementById('regError').textContent=d.error||'注册失败'}
   }catch(e){document.getElementById('regError').textContent='网络错误'}
 }
@@ -148,10 +187,38 @@ async function debugMyAuthStats(){
 // ============================================================
 // 启动 & 认证
 // ============================================================
-async function verifyAndLoad(){try{const r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});if(r.status===401){document.getElementById('authScreen').style.display='flex';return}if(!r.ok)throw new Error();const d=await r.json();document.getElementById('authScreen').style.display='none';if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll()}catch{document.getElementById('authScreen').style.display='flex'}}
+async function verifyAndLoad(){
+  try{
+    let r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
+    if(r.status===401){
+      // access token 过期，尝试用 refresh token 续期
+      const newToken=await refreshAccessToken();
+      if(newToken){
+        r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
+      }
+    }
+    if(!r.ok){
+      clearTokens();
+      document.getElementById('authScreen').style.display='flex';
+      return;
+    }
+    const d=await r.json();
+    document.getElementById('authScreen').style.display='none';
+    if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';
+    loadAll();
+  }catch{
+    document.getElementById('authScreen').style.display='flex';
+  }
+}
 function logout(){
   if(!confirm('确认退出登录？'))return;
-  setPin('');
+  // 通知后端删除 refresh token（best effort）
+  fetch('/api/auth?action=logout',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({refreshToken:getRefreshToken()}),
+  }).catch(()=>{});
+  clearTokens();
   document.getElementById('adminBtn').style.display='none';
   document.getElementById('authScreen').style.display='flex';
   document.getElementById('loginUsername').value='';
@@ -182,8 +249,15 @@ async function api(method,body,id){
   const opts={method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()}};
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
-  const r=await fetch(url,opts);
-  if(r.status===401){document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+  let r=await fetch(url,opts);
+  if(r.status===401){
+    const newToken=await refreshAccessToken();
+    if(newToken){
+      opts.headers['Authorization']='Bearer '+newToken;
+      r=await fetch(url,opts);
+    }
+    if(r.status===401){clearTokens();document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+  }
   return r.json();
 }
 async function expenseApi(method,body,id){
@@ -191,8 +265,15 @@ async function expenseApi(method,body,id){
   const opts={method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()}};
   if(method==='DELETE')url+='?id='+id;
   else if(body)opts.body=JSON.stringify(body);
-  const r=await fetch(url,opts);
-  if(r.status===401)return{error:'unauthorized'};
+  let r=await fetch(url,opts);
+  if(r.status===401){
+    const newToken=await refreshAccessToken();
+    if(newToken){
+      opts.headers['Authorization']='Bearer '+newToken;
+      r=await fetch(url,opts);
+    }
+    if(r.status===401){clearTokens();document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+  }
   return r.json();
 }
 
@@ -201,7 +282,7 @@ showVersion();
 // 清空可能被浏览器自动填充的搜索框
 document.getElementById('searchInput').value='';
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
-if(getPin()){verifyAndLoad()}else{document.getElementById('authScreen').style.display='flex';loadAll()}
+if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(t=>{if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
