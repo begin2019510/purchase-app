@@ -1,21 +1,23 @@
 // Service Worker - 离线缓存 + 推送通知
-const CACHE = 'purchase-cache-v29';
-const ASSETS = ['/', '/index.html', '/app.js', '/manifest.json', '/help'];
+// 策略：HTML/JS 始终 network-first（自动更新），其他资源 cache-first
+const CACHE = 'purchase-cache-v30';
+const STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', e => {
+  // 只预缓存不会变的静态资源，HTML/JS 不预缓存
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS))
+    caches.open(CACHE).then(c => c.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
-      keys.map(k => caches.delete(k))
+      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
     ))
   );
+  e.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', e => {
@@ -23,10 +25,21 @@ self.addEventListener('fetch', e => {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
-  const isStatic = ASSETS.includes(url.pathname) || url.pathname.match(/\.(js|png|jpg|jpeg|gif|svg|ico|woff2?)$/);
+  const isHTMLorJS = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
 
-  if (isStatic) {
-    // 静态资源: cache-first
+  if (isHTMLorJS) {
+    // HTML/JS/CSS: network-first（联网用最新，断网用缓存）
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+  } else {
+    // 图片/字体等静态资源: cache-first
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) return cached;
@@ -38,17 +51,6 @@ self.addEventListener('fetch', e => {
           return res;
         });
       })
-    );
-  } else {
-    // 其他请求: network-first
-    e.respondWith(
-      fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => caches.match(e.request))
     );
   }
 });
@@ -86,13 +88,11 @@ self.addEventListener('notificationclick', e => {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      // 如果已打开则聚焦
       for (const client of clientList) {
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
           return client.focus();
         }
       }
-      // 否则打开新窗口
       return clients.openWindow(url);
     })
   );
