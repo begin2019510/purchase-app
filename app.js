@@ -1077,7 +1077,7 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删�
 // ============================================================
 // 采购 Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['商品名称']||'';document.getElementById('fPlatformEdit').value=i['平台']||'拼多多';document.getElementById('fCategoryEdit').value=i['分类']||'日用';document.getElementById('fPriceEdit').value=i['单价']||'';document.getElementById('fQtyEdit').value=i['数量']||1;document.getElementById('fStatusEdit').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
 async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error);return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error);return}toast('已添加')}closeModal();await loadAll()}
@@ -1234,11 +1234,17 @@ async function runPurchaseEval() {
     resultEl.innerHTML = '<div style="white-space:pre-wrap;margin-bottom:10px">' + esc(d.data) + '</div>'
       + '<button class="ai-confirm-btn primary" onclick="switchToDetailPhase(\''+name.replace(/'/g,"\\'")+'\', null)">✔ 确认填写详情</button>'
       + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
+    // 记录评估上下文，显示对话区域
+    purchaseEvalContext = d.data;
+    purchaseChatHistory = [{role:'assistant', content:d.data}];
+    document.getElementById('chatArea').style.display = 'block';
+    renderChatMessages();
   } catch(e) { resultEl.textContent = '❌ 网络错误'; }
   finally { btn.disabled = false; btn.textContent = '🤖 AI需求评估'; }
 }
 function switchToDetailPhase(name, aiData) {
   document.getElementById('evalPhase').style.display = 'none';
+  document.getElementById('chatArea').style.display = 'none';
   document.getElementById('detailPhase').style.display = '';
   document.getElementById('fNameDisplay').value = name;
   document.getElementById('fPrice').value = '';
@@ -1248,15 +1254,78 @@ function switchToDetailPhase(name, aiData) {
   document.getElementById('fCategory').value = '日用';
 }
 
+let purchaseEvalContext = '';
+let purchaseChatHistory = [];
+
+function renderChatMessages() {
+  const el = document.getElementById('chatMessages');
+  el.innerHTML = purchaseChatHistory.map(m => {
+    if (m.role === 'user') return '<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">' + esc(m.content) + '</span></div>';
+    return '<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">' + esc(m.content) + '</span></div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendPurchaseChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const name = document.getElementById('fName').value.trim();
+
+  purchaseChatHistory.push({role: 'user', content: text});
+  renderChatMessages();
+
+  const btn = document.getElementById('chatSendBtn');
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    const r = await fetch('/api/ai', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin()},
+      body: JSON.stringify({
+        action: 'purchase-chat',
+        data: {
+          productName: name,
+          messages: purchaseChatHistory,
+          evalContext: purchaseEvalContext
+        }
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      purchaseChatHistory.push({role: 'assistant', content: d.data});
+      renderChatMessages();
+    } else {
+      purchaseChatHistory.push({role: 'assistant', content: '❌ ' + (d.error || '回复失败')});
+      renderChatMessages();
+    }
+  } catch(e) {
+    purchaseChatHistory.push({role: 'assistant', content: '❌ 网络错误'});
+    renderChatMessages();
+  } finally {
+    btn.disabled = false; btn.textContent = '发送';
+  }
+}
+
+function sendQuickChat(text) {
+  document.getElementById('chatInput').value = text;
+  sendPurchaseChat();
+}
+
 function cancelPurchaseEval() {
   document.getElementById('aiEvalResult').style.display = 'none';
+  document.getElementById('chatArea').style.display = 'none';
   document.getElementById('fName').value = '';
+  purchaseChatHistory = [];
+  purchaseEvalContext = '';
 }
 
 function backToEval() {
   document.getElementById('evalPhase').style.display = '';
   document.getElementById('detailPhase').style.display = 'none';
-  document.getElementById('aiEvalResult').style.display = 'none';
+  document.getElementById('aiEvalResult').style.display = 'block';
+  document.getElementById('chatArea').style.display = 'block';
 }
 
 

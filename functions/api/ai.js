@@ -30,6 +30,7 @@ export async function onRequest(context) {
       case 'profile': return await handleProfile(apiKey, data, corsHeaders);
       case 'query': return await handleQuery(apiKey, data, corsHeaders);
       case 'evaluate': return await handleEvaluate(apiKey, data, user, env, corsHeaders);
+      case 'purchase-chat': return await handlePurchaseChat(apiKey, data, corsHeaders);
       default: return json({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
@@ -366,4 +367,49 @@ emoji 标题
 
   const result = await callAI(apiKey, systemPrompt, '分析消费情况', 600);
   return json({ ok: true, data: result }, 200, corsHeaders);
+}
+
+// ===== 采购对话（评估后追问） =====
+async function handlePurchaseChat(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
+  const { productName, messages, evalContext } = data;
+  if (!productName || !messages) return json({ ok: false, error: '参数缺失' }, 400, corsHeaders);
+
+  const systemPrompt = `你是个人采购顾问 AI，正在和用户对话讨论购买「${productName}」。
+
+${evalContext ? '=== 首次评估结果 ===\n' + evalContext + '\n\n' : ''}规则:
+1. 根据对话上下文回答用户问题
+2. 建议要具体，带数字和平台
+3. 语气轻松直接，像朋友聊天
+4. 回答简洁，2-4句话
+5. 如果用户说"确定购买"或"好的"，引导用户填写详情
+6. 不用markdown标题符号，用emoji做段落标记`;
+
+  // 构建对话消息
+  const chatMessages = messages.map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  const res = await fetch(`${AI_API_BASE}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...chatMessages
+      ],
+      max_tokens: 500,
+      temperature: 0.3,
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) return json({ error: `AI API ${res.status}: ${text.slice(0, 200)}` }, 500, corsHeaders);
+  try {
+    const reply = JSON.parse(text).choices?.[0]?.message?.content || '';
+    return json({ ok: true, data: reply }, 200, corsHeaders);
+  } catch {
+    return json({ error: 'AI parse failed' }, 500, corsHeaders);
+  }
 }

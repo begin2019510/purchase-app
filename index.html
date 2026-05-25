@@ -192,6 +192,19 @@
         <input id="fName" placeholder="输入商品名称，如：AirPods Pro" autocomplete="off">
       </div>
       <div id="aiEvalResult" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
+      <!-- AI对话区域 -->
+      <div id="chatArea" style="display:none;margin-bottom:12px">
+        <div id="chatMessages" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;line-height:1.6"></div>
+        <div style="display:flex;gap:6px">
+          <input id="chatInput" placeholder="继续问AI，如：换个平台呢？" onkeydown="if(event.key==='Enter'&&!this.disabled)sendPurchaseChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
+          <button id="chatSendBtn" onclick="sendPurchaseChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">发送</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="sendQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">💰 更便宜的平台</button>
+          <button onclick="sendQuickChat('换个品牌/型号推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">🔄 换个推荐</button>
+          <button onclick="sendQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等再买</button>
+        </div>
+      </div>
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">取消</button>
         <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
