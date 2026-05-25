@@ -1449,9 +1449,12 @@ setupSwipe();
 let logDateState = new Date().toISOString().slice(0, 10);
 
 function changeLogDate(delta) {
-  const d = new Date(logDateState + 'T00:00:00+08:00');
-  d.setDate(d.getDate() + delta);
-  logDateState = d.toISOString().slice(0, 10);
+  const parts = logDateState.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2] + delta);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  logDateState = y + '-' + m + '-' + day;
   loadLogs();
 }
 
