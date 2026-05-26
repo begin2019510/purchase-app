@@ -1,6 +1,6 @@
 // Service Worker - 离线缓存 + 推送通知
 // 策略：HTML/JS/CSS network-only（永远拿最新），图片/字体 cache-first
-const CACHE = 'purchase-cache-v36';
+const CACHE = 'purchase-cache-v37';
 const STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', e => {

@@ -2,7 +2,7 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.5';
+const APP_VERSION='2.8.6';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
   {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
@@ -234,8 +234,35 @@ function logout(){
 // ============================================================
 // Service Worker & 启动
 // ============================================================
-// ===== Service Worker =====
-if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
+// ===== Service Worker（防循环加载） =====
+if('serviceWorker' in navigator){
+  const swLoads=JSON.parse(localStorage.getItem('_sw_loads')||'[]');
+  const now=Date.now();
+  const recent=swLoads.filter(t=>now-t<5000);
+  recent.push(now);
+  localStorage.setItem('_sw_loads',JSON.stringify(recent));
+  if(recent.length>=3){
+    // 5秒内加载3次 = 死循环，注销SW + 清缓存
+    localStorage.removeItem('_sw_loads');
+    navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));
+    caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));
+    // 不再reload，直接继续加载页面（无SW状态）
+  }else{
+    navigator.serviceWorker.register('/sw.js').then(reg=>{
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        if(nw)nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            // 新SW就绪，发送SKIP_WAITING让新SW接管，但不强制reload
+            nw.postMessage({type:'SKIP_WAITING'});
+          }
+        });
+      });
+    }).catch(function(){});
+  }
+}
+// 5秒后清除检测数据（页面正常加载了）
+setTimeout(()=>localStorage.removeItem('_sw_loads'),5000);
 // ===== 推送 - 飞书机器人（国内可用） =====
 // 无需浏览器权限，配置飞书机器人 webhook 即可
 // 配置方法：Cloudflare 环境变量 FEISHU_BOT_WEBHOOK
