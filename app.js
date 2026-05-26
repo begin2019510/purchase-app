@@ -2,7 +2,7 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.6';
+const APP_VERSION='2.8.7';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
   {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
@@ -535,10 +535,10 @@ function renderPurchase(){
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
   if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
-  const groups={};sorted.forEach(i=>{const m=getMonth(i['日期'])||'未设置日期';if(!groups[m])groups[m]=[];groups[m].push(i)});
+  const groups={};sorted.forEach(i=>{const isEval=i['状态']==='待评估';const m=isEval?'待评估':(getMonth(i['日期'])||'未设置日期');if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
-    const mt=totalCost(list);const dm=month==='未设置日期'?month:month.replace('-','年')+'月';
+    const mt=totalCost(list);const dm=month==='待评估'?'📋 待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
     const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};
     list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
@@ -1478,13 +1478,30 @@ function renderEvalModal() {
   if (!item) return;
   const ev = parseEvalNote(item['备注']);
   const budget = ev ? ev.budget : '未设置';
+  const summary = ev ? ev.summary : '';
   
   let html = `<div style="margin-bottom:12px">
     <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(item['商品名称']||'')}</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <span style="color:#f97316;font-weight:700;font-size:14px">💰 ¥${budget}</span>
-      <span class="badge badge-待评估">待评估</span>
-    </div>
+  </div>`;
+  
+  // AI 摘要
+  if (summary) {
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)">
+      <div style="font-weight:600;margin-bottom:4px">🤖 AI 评估摘要</div>
+      <div style="color:var(--muted)">${esc(summary)}</div>
+    </div>`;
+  }
+  
+  // 预算区间（可编辑）
+  const budgetParts = budget.includes('~') ? budget.split('~') : [budget, ''];
+  const bMin = budgetParts[0].replace(/[^\d.]/g, '');
+  const bMax = (budgetParts[1] || '').replace(/[^\d.]/g, '');
+  html += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+    <span style="font-weight:600;font-size:13px">💰 预算区间：</span>
+    <input id="evalBudgetMin" type="number" value="${bMin}" placeholder="最低" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+    <span style="color:var(--muted)">~</span>
+    <input id="evalBudgetMax" type="number" value="${bMax}" placeholder="最高" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+    <span style="font-size:12px;color:var(--muted)">元</span>
   </div>`;
   
   // 对话记录
@@ -1569,13 +1586,19 @@ function sendEvalQuickChat(text) {
 async function saveEvalProgress() {
   if (!evalModalItem) return;
   const ev = parseEvalNote(evalModalItem['备注']);
-  const budget = ev ? ev.budget : '未设置';
+  // 从可编辑输入框读取预算
+  const bMin = document.getElementById('evalBudgetMin')?.value || '';
+  const bMax = document.getElementById('evalBudgetMax')?.value || '';
+  let budgetText = '未设置';
+  if (bMin && bMax) budgetText = bMin + '~' + bMax;
+  else if (bMin) budgetText = bMin + '+';
+  else if (bMax) budgetText = bMax + '-';
   const aiSummary = evalModalChatHistory
     .filter(m => m.role === 'assistant')
     .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
     .join('');
   const chatJson = JSON.stringify(evalModalChatHistory);
-  const note = '===BUDGET===' + budget + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
+  const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
   const r = await api('PATCH', { ids: [evalModalItemId], note: note });
   if (r && r.error) { toast('保存失败'); return; }
   toast('评估已保存');
@@ -1583,9 +1606,25 @@ async function saveEvalProgress() {
   render();
 }
 
-// 进入需求填写：关闭评估弹窗，打开详情编辑
-function submitEvalToDetail() {
+// 进入需求填写：关闭评估弹窗，打开详情编辑（先保存预算修改）
+async function submitEvalToDetail() {
   if (!evalModalItem) return;
+  // 先保存预算修改
+  const bMin = document.getElementById('evalBudgetMin')?.value || '';
+  const bMax = document.getElementById('evalBudgetMax')?.value || '';
+  let budgetText = '未设置';
+  if (bMin && bMax) budgetText = bMin + '~' + bMax;
+  else if (bMin) budgetText = bMin + '+';
+  else if (bMax) budgetText = bMax + '-';
+  const ev = parseEvalNote(evalModalItem['备注']);
+  const oldBudget = ev ? ev.budget : '未设置';
+  if (budgetText !== oldBudget) {
+    const summary = ev ? ev.summary : '';
+    const chatJson = ev ? JSON.stringify(ev.chat) : '[]';
+    const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + summary + '\n===CHAT===' + chatJson;
+    await api('PATCH', { ids: [evalModalItemId], note: note });
+    evalModalItem['备注'] = note;
+  }
   closeEvalModal();
   editItem(evalModalItemId);
 }
