@@ -2,7 +2,9 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.3';
+const APP_VERSION='2.8.4';
+// 版本检测：HTML meta版本与JS不一致时强制刷新（解决手机SW缓存旧版问题）
+(()=>{const hv=document.querySelector('meta[name="app-version"]')?.content;if(hv&&hv!==APP_VERSION){localStorage.setItem('force_reload','1');location.reload();return}if(localStorage.getItem('force_reload')==='1'){localStorage.removeItem('force_reload')}})();
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
   {v:'2.8.3',date:'2026-05-26',items:['需求评估多轮对话+提交进入待评估状态，不再直接填表单']},
@@ -234,7 +236,7 @@ function logout(){
 // Service Worker & 启动
 // ============================================================
 // ===== Service Worker =====
-if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{})}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').then(function(reg){reg.addEventListener('updatefound',function(){var sw=reg.installing;if(sw){sw.addEventListener('statechange',function(){if(sw.state==='installed'&&navigator.serviceWorker.controller){sw.postMessage({type:'SKIP_WAITING'});location.reload();}});}});navigator.serviceWorker.addEventListener('controllerchange',function(){location.reload();});}).catch(function(){});}
 // ===== 推送 - 飞书机器人（国内可用） =====
 // 无需浏览器权限，配置飞书机器人 webhook 即可
 // 配置方法：Cloudflare 环境变量 FEISHU_BOT_WEBHOOK

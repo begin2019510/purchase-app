@@ -90,6 +90,10 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 // ===== 后台同步（预留） =====
 self.addEventListener('sync', e => {
   if (e.tag === 'daily-reminder') {
