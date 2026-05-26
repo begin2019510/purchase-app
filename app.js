@@ -1334,12 +1334,12 @@ async function submitEvaluation() {
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
   
   // 生成对话摘要：取前2轮对话的关键内容
-  const摘要Lines = purchaseChatHistory
+  const summaryLines = purchaseChatHistory
     .filter(m => m.role === 'assistant')
     .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
     .join('\n---\n');
   
-  const note = '【AI评估摘要】\n' + 摘要Lines
+  const note = '【AI评估摘要】\n' + summaryLines
     + (purchaseChatHistory.length > 2 ? '\n\n【对话记录（' + Math.floor(purchaseChatHistory.length / 2) + '轮）】' : '')
     + purchaseChatHistory
         .filter(m => m.role === 'user')
