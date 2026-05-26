@@ -3,8 +3,6 @@
 // 版本 & 更新日志
 // ============================================================
 const APP_VERSION='2.8.5';
-// 版本检测：HTML meta版本与JS不一致时强制刷新（解决手机SW缓存旧版问题）
-(()=>{const hv=document.querySelector('meta[name="app-version"]')?.content;if(hv&&hv!==APP_VERSION){localStorage.setItem('force_reload','1');location.reload();return}if(localStorage.getItem('force_reload')==='1'){localStorage.removeItem('force_reload')}})();
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
   {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
