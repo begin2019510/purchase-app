@@ -235,7 +235,7 @@ function logout(){
 // Service Worker & 启动
 // ============================================================
 // ===== Service Worker =====
-if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').then(function(reg){reg.addEventListener('updatefound',function(){var sw=reg.installing;if(sw){sw.addEventListener('statechange',function(){if(sw.state==='installed'&&navigator.serviceWorker.controller){sw.postMessage({type:'SKIP_WAITING'});location.reload();}});}});navigator.serviceWorker.addEventListener('controllerchange',function(){location.reload();});}).catch(function(){});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
 // ===== 推送 - 飞书机器人（国内可用） =====
 // 无需浏览器权限，配置飞书机器人 webhook 即可
 // 配置方法：Cloudflare 环境变量 FEISHU_BOT_WEBHOOK
