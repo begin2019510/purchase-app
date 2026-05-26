@@ -191,6 +191,10 @@
         <label>想买什么？</label>
         <input id="fName" placeholder="输入商品名称，如：AirPods Pro" autocomplete="off">
       </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>预算最低</label><input id="fBudgetMin" type="number" placeholder="如 200" min="0" autocomplete="off"></div>
+        <div class="form-group" style="flex:1"><label>预算最高</label><input id="fBudgetMax" type="number" placeholder="如 500" min="0" autocomplete="off"></div>
+      </div>
       <div id="aiEvalResult" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
       <!-- AI对话区域 -->
       <div id="chatArea" style="display:none;margin-bottom:12px">

@@ -2,9 +2,10 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.1';
+const APP_VERSION='2.8.2';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.8.2',date:'2026-05-26',items:['AI需求评估支持预算区间输入，评估更精准']},
   {v:'2.8.0',date:'2026-05-25',items:['AI 需求评估：输入商品名AI分析历史采购数据+预算+价格趋势给购买建议']},
   {v:'2.7.0',date:'2026-05-24',items:['记账/采购导出增强：支持CSV/TSV格式选择','采购统计增强：分类饼图、平台分布、6个月趋势','离线体验优化：断网检测+黄色横幅提示','在线帮助文档页面']},
   {v:'2.6.0',date:'2026-05-23',items:['代码重构：JS提取为独立app.js文件','CSS已外置为style.css','版本号更新']},
@@ -1214,6 +1215,8 @@ function cancelAI(){
 async function runPurchaseEval() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('请先输入商品名称'); return; }
+  const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
+  const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
   
   const resultEl = document.getElementById('aiEvalResult');
   const btn = document.getElementById('aiEvalBtn');
@@ -1226,7 +1229,7 @@ async function runPurchaseEval() {
     const r = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
-      body: JSON.stringify({ action: 'evaluate', data: { productName: name } }),
+      body: JSON.stringify({ action: 'evaluate', data: { productName: name, budgetMin, budgetMax } }),
     });
     const d = await r.json();
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }

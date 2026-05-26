@@ -99,8 +99,18 @@ async function searchWebPrices(productName, tavilyApiKey) {
 
 async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
   const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
-  const { productName, expectedPrice, platform, category } = data;
+  const { productName, expectedPrice, platform, category, budgetMin, budgetMax } = data;
   if (!productName) return json({ ok: false, error: '请输入商品名称' }, 400, corsHeaders);
+  
+  // 构建预算区间描述
+  let budgetRangeText = '';
+  if (budgetMin > 0 && budgetMax > 0) {
+    budgetRangeText = `用户预算区间: ¥${budgetMin} ~ ¥${budgetMax}`;
+  } else if (budgetMin > 0) {
+    budgetRangeText = `用户最低预算: ¥${budgetMin}（上限不限）`;
+  } else if (budgetMax > 0) {
+    budgetRangeText = `用户最高预算: ¥${budgetMax}（下限不限）`;
+  }
 
   // 1. 获取用户的采购历史
   let purchaseHistory = [];
@@ -169,7 +179,7 @@ async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
   const systemPrompt = `你是个人采购顾问 AI。用户想买一个商品，你需要给出评估报告帮助判断是否需要购买。
 
 用户想买: ${productName}
-${expectedPrice ? '预期价格: ¥' + expectedPrice : ''}
+${budgetRangeText ? budgetRangeText + '\n' : ''}${expectedPrice ? '预期价格: ¥' + expectedPrice : ''}
 ${platform ? '目标平台: ' + platform : ''}
 ${category ? '分类: ' + category : ''}
 
@@ -192,11 +202,13 @@ ${webPrices ? '\n=== 全网比价结果 ===\n' + webPrices : ''}
 5. 如果本月预算紧张，提醒预算情况
 6. 如果最近买过类似商品，提醒是否重复
 7. 如果有全网比价结果，分析哪里买最便宜，给出具体平台和价格
-8. 语气轻松直接，像朋友给建议
-9. 不要用markdown标题符号(#)，用emoji做段落标记
-10. 总长度控制在400字以内`;
+8. 如果有用户预算区间，重点分析该区间内是否有合适选择，超出区间时提醒并给出更低价替代方案
+9. 语气轻松直接，像朋友给建议
+10. 不要用markdown标题符号(#)，用emoji做段落标记
+11. 总长度控制在400字以内`;
 
-  const result = await callAI(apiKey, systemPrompt, `我想买${productName}${expectedPrice ? '，预算大概' + expectedPrice + '元' : ''}`, 800);
+  const userMsg = `我想买${productName}${budgetRangeText ? '，' + budgetRangeText : ''}${expectedPrice ? '，预算大概' + expectedPrice + '元' : ''}`;
+  const result = await callAI(apiKey, systemPrompt, userMsg, 800);
   return json({ ok: true, data: result, similarCount: similarItems.length, monthlyTotal, budget }, 200, corsHeaders);
 }
 
