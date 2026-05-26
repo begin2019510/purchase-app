@@ -173,13 +173,15 @@ export async function onRequest(context) {
 
     if (request.method === 'PATCH') {
       const body = await request.json();
-      if (!body.ids || !body.ids.length || !body.status) return json({ error: 'ids and status required' }, 400);
+      if (!body.ids || !body.ids.length) return json({ error: 'ids required' }, 400);
       const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已归档': '归档时间' };
-      const timeField = statusTimeMap[body.status];
+      const timeField = body.status ? statusTimeMap[body.status] : null;
       const results = [];
       for (const id of body.ids) {
-        const fields = { '状态': body.status };
+        const fields = {};
+        if (body.status) fields['状态'] = body.status;
         if (timeField) fields[timeField] = nowBjStr();
+        if (body.note !== undefined) fields['备注'] = body.note;
         const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
       }

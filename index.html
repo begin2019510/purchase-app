@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="2.8.4">
+<meta name="app-version" content="2.8.5">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -212,6 +212,7 @@
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">取消</button>
+        <button onclick="skipToDetail()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:12px">📝 直接填写</button>
         <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
       </div>
     </div>
@@ -321,6 +322,13 @@
 <div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetailModal()">
   <div class="modal" style="max-height:90vh;padding:20px 16px">
     <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- 评估续聊弹窗 -->
+<div class="modal-overlay" id="evalOverlay" onclick="if(event.target===this)closeEvalModal()">
+  <div class="modal" style="max-height:90vh;padding:20px 16px">
+    <div id="evalContent"></div>
   </div>
 </div>
 

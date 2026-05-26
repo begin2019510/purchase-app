@@ -2,11 +2,12 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.4';
+const APP_VERSION='2.8.5';
 // 版本检测：HTML meta版本与JS不一致时强制刷新（解决手机SW缓存旧版问题）
 (()=>{const hv=document.querySelector('meta[name="app-version"]')?.content;if(hv&&hv!==APP_VERSION){localStorage.setItem('force_reload','1');location.reload();return}if(localStorage.getItem('force_reload')==='1'){localStorage.removeItem('force_reload')}})();
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
   {v:'2.8.3',date:'2026-05-26',items:['需求评估多轮对话+提交进入待评估状态，不再直接填表单']},
   {v:'2.8.2',date:'2026-05-26',items:['AI需求评估支持预算区间输入，评估更精准']},
   {v:'2.8.0',date:'2026-05-25',items:['AI 需求评估：输入商品名AI分析历史采购数据+预算+价格趋势给购买建议']},
@@ -365,6 +366,21 @@ function setupPullToRefresh(){
   });
 }
 
+// 解析待评估记录的结构化备注
+function parseEvalNote(note) {
+  if (!note || !note.includes('===BUDGET===')) return null;
+  try {
+    const budgetMatch = note.match(/===BUDGET===([\s\S]*?)===AI_SUMMARY===/);
+    const summaryMatch = note.match(/===AI_SUMMARY===([\s\S]*?)===CHAT===/);
+    const chatMatch = note.match(/===CHAT===([\s\S]*)$/);
+    return {
+      budget: budgetMatch ? budgetMatch[1].trim() : '未设置',
+      summary: summaryMatch ? summaryMatch[1].trim() : '',
+      chat: chatMatch ? JSON.parse(chatMatch[1]) : []
+    };
+  } catch { return null; }
+}
+
 // ===== 卡片滑动 =====
 let swipeEl=null,swipeStartX=0,swipeStartY=0,swipeDelta=0,isSwiping=false;
 function setupSwipe(){
@@ -502,7 +518,12 @@ function renderPurchase(){
     const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};
     list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
     let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
-    html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:4px solid ${bc}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`});
+    // 待评估卡片：显示预算+AI摘要
+    if(status==='待评估'){const ev=parseEvalNote(i['备注']);const budgetLine=ev?'¥'+ev.budget:'预算未知';const summaryLine=ev?ev.summary.slice(0,80)+'...':'';
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:4px solid ${bc}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div><div class="price" style="color:#f97316">💰 ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">🤖 ${esc(summaryLine)}</div>`:''}</div></div></div>`}
+    else{
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:4px solid ${bc}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`}
+    });
   }
   listEl.innerHTML=html;
 }
@@ -1214,6 +1235,21 @@ function cancelAI(){
 
 
 
+// 跳过评估，直接进入需求填写
+function skipToDetail() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('请先输入商品名称'); return; }
+  document.getElementById('evalPhase').style.display = 'none';
+  document.getElementById('chatArea').style.display = 'none';
+  document.getElementById('detailPhase').style.display = '';
+  document.getElementById('fNameDisplay').value = name;
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fNote').value = '';
+  document.getElementById('fPlatform').value = '拼多多';
+  document.getElementById('fCategory').value = '日用';
+}
+
 // --- AI 需求评估（嵌入采购创建流程） ---
 async function runPurchaseEval() {
   const name = document.getElementById('fName').value.trim();
@@ -1340,31 +1376,44 @@ function submitEvaluation() {
   // 生成AI摘要（简短）
   const aiSummary = purchaseChatHistory
     .filter(m => m.role === 'assistant')
-    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 150))
+    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
     .join('');
   
   // 提取预算区间
   const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
   const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
   let budgetText = '';
-  if (budgetMin > 0 && budgetMax > 0) budgetText = '¥' + budgetMin + ' ~ ¥' + budgetMax;
-  else if (budgetMin > 0) budgetText = '≥ ¥' + budgetMin;
-  else if (budgetMax > 0) budgetText = '≤ ¥' + budgetMax;
+  if (budgetMin > 0 && budgetMax > 0) budgetText = budgetMin + '~' + budgetMax;
+  else if (budgetMin > 0) budgetText = budgetMin + '+';
+  else if (budgetMax > 0) budgetText = budgetMax + '-';
   else budgetText = '未设置';
   
-  // 切换到详情页
-  document.getElementById('evalPhase').style.display = 'none';
-  document.getElementById('chatArea').style.display = 'none';
-  document.getElementById('detailPhase').style.display = '';
-  document.getElementById('fNameDisplay').value = name;
-  document.getElementById('fPrice').value = '';
-  document.getElementById('fQty').value = '1';
-  document.getElementById('fNote').value = '【AI评估】' + aiSummary;
-  document.getElementById('fPlatform').value = '待定';
-  document.getElementById('fCategory').value = '日用';
-  // 显示预算区间
-  const budgetEl = document.getElementById('fBudgetDisplay');
-  if (budgetEl) budgetEl.textContent = budgetText;
+  // 构建备注：结构化存储
+  const chatJson = JSON.stringify(purchaseChatHistory);
+  const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
+
+  const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
+  if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
+
+  try {
+    const data = {
+      name,
+      platform: '待定',
+      category: '日用',
+      price: 0,
+      qty: 1,
+      status: '待评估',
+      date: null,
+      note: note
+    };
+    const r = await api('POST', data);
+    if (r && r.error) { alert('提交失败: ' + r.error); return; }
+    toast('评估已提交');
+    closeModal();
+    await loadAll();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✔ 提交评估'; }
+  }
 }
 
 function backToEval() {
@@ -1372,6 +1421,148 @@ function backToEval() {
   document.getElementById('detailPhase').style.display = 'none';
   document.getElementById('aiEvalResult').style.display = 'block';
   document.getElementById('chatArea').style.display = 'block';
+}
+
+// ===== 评估续聊弹窗 =====
+let evalModalChatHistory = [];
+let evalModalItemId = '';
+let evalModalItem = null;
+
+function openEvalModal(id) {
+  const item = items.find(x => x.id === id);
+  if (!item) return;
+  evalModalItemId = id;
+  evalModalItem = item;
+  const ev = parseEvalNote(item['备注']);
+  evalModalChatHistory = ev && ev.chat ? ev.chat : [];
+  if (evalModalChatHistory.length === 0) {
+    // fallback: 只有摘要
+    const summary = ev ? ev.summary : (item['备注'] || '暂无评估记录');
+    evalModalChatHistory = [{ role: 'assistant', content: summary }];
+  }
+  renderEvalModal();
+  document.getElementById('evalOverlay').classList.add('active');
+}
+
+function closeEvalModal() {
+  document.getElementById('evalOverlay').classList.remove('active');
+}
+
+function renderEvalModal() {
+  const item = evalModalItem;
+  if (!item) return;
+  const ev = parseEvalNote(item['备注']);
+  const budget = ev ? ev.budget : '未设置';
+  
+  let html = `<div style="margin-bottom:12px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(item['商品名称']||'')}</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <span style="color:#f97316;font-weight:700;font-size:14px">💰 ¥${budget}</span>
+      <span class="badge badge-待评估">待评估</span>
+    </div>
+  </div>`;
+  
+  // 对话记录
+  html += `<div id="evalModalChat" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.6">`;
+  evalModalChatHistory.forEach(m => {
+    if (m.role === 'user') {
+      html += `<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">${esc(m.content)}</span></div>`;
+    } else {
+      html += `<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">${esc(m.content)}</span></div>`;
+    }
+  });
+  html += '</div>';
+  
+  // 输入区
+  html += `<div style="display:flex;gap:6px;margin-bottom:10px">
+    <input id="evalModalInput" placeholder="继续评估，如：换个平台呢？" onkeydown="if(event.key==='Enter'&&!this.disabled)sendEvalChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
+    <button id="evalModalSendBtn" onclick="sendEvalChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">发送</button>
+  </div>`;
+  
+  // 快捷问题
+  html += `<div style="display:flex;gap:6px;margin-bottom:12px">
+    <button onclick="sendEvalQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">💰 更便宜的</button>
+    <button onclick="sendEvalQuickChat('换个品牌推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">🔄 换推荐</button>
+    <button onclick="sendEvalQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等</button>
+  </div>`;
+  
+  // 操作按钮
+  html += `<div style="display:flex;gap:8px">
+    <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">关闭</button>
+    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">📝 进入需求填写</button>
+    <button onclick="saveEvalProgress()" style="flex:1;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">💾 保存评估</button>
+  </div>`;
+  
+  document.getElementById('evalContent').innerHTML = html;
+  // 滚动到底部
+  const chatEl = document.getElementById('evalModalChat');
+  if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+async function sendEvalChat() {
+  const input = document.getElementById('evalModalInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  evalModalChatHistory.push({ role: 'user', content: text });
+  renderEvalModal();
+  const btn = document.getElementById('evalModalSendBtn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/api/ai', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin()},
+      body: JSON.stringify({
+        action: 'purchase-chat',
+        data: {
+          productName: evalModalItem['商品名称'],
+          messages: evalModalChatHistory,
+          evalContext: evalModalChatHistory[0]?.content || ''
+        }
+      })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      evalModalChatHistory.push({ role: 'assistant', content: d.data });
+    } else {
+      evalModalChatHistory.push({ role: 'assistant', content: '❌ ' + (d.error || '回复失败') });
+    }
+  } catch(e) {
+    evalModalChatHistory.push({ role: 'assistant', content: '❌ 网络错误' });
+  } finally {
+    btn.disabled = false; btn.textContent = '发送';
+    renderEvalModal();
+  }
+}
+
+function sendEvalQuickChat(text) {
+  document.getElementById('evalModalInput').value = text;
+  sendEvalChat();
+}
+
+// 保存评估进度（更新备注，保留对话记录）
+async function saveEvalProgress() {
+  if (!evalModalItem) return;
+  const ev = parseEvalNote(evalModalItem['备注']);
+  const budget = ev ? ev.budget : '未设置';
+  const aiSummary = evalModalChatHistory
+    .filter(m => m.role === 'assistant')
+    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
+    .join('');
+  const chatJson = JSON.stringify(evalModalChatHistory);
+  const note = '===BUDGET===' + budget + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
+  const r = await api('PATCH', { ids: [evalModalItemId], note: note });
+  if (r && r.error) { toast('保存失败'); return; }
+  toast('评估已保存');
+  evalModalItem['备注'] = note;
+  render();
+}
+
+// 进入需求填写：关闭评估弹窗，打开详情编辑
+function submitEvalToDetail() {
+  if (!evalModalItem) return;
+  closeEvalModal();
+  editItem(evalModalItemId);
 }
 
 
