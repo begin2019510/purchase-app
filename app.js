@@ -1331,7 +1331,7 @@ function cancelPurchaseEval() {
 async function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
-  if (purchaseChatHistory.length < 2) { alert('请先进行AI评估'); return; }
+  if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
   
   // 生成对话摘要：取前2轮对话的关键内容
   const摘要Lines = purchaseChatHistory
