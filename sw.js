@@ -1,5 +1,5 @@
 // Service Worker - 离线缓存 + 推送通知
-// 策略：HTML/JS 始终 network-first（自动更新），其他资源 cache-first
+// 策略：HTML/JS/CSS network-only（永远拿最新），图片/字体 cache-first
 const CACHE = 'purchase-cache-v34';
 const STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
@@ -28,16 +28,8 @@ self.addEventListener('fetch', e => {
   const isHTMLorJS = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
 
   if (isHTMLorJS) {
-    // HTML/JS/CSS: network-first（联网用最新，断网用缓存）
-    e.respondWith(
-      fetch(e.request).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => caches.match(e.request))
-    );
+    // HTML/JS/CSS: network-only（永远从服务器拿最新，不缓存）
+    e.respondWith(fetch(e.request));
   } else {
     // 图片/字体等静态资源: cache-first
     e.respondWith(
