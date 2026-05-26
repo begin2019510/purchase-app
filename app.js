@@ -1393,7 +1393,7 @@ function cancelPurchaseEval() {
 }
 
 // 提交评估：切换到详情页，显示预算区间和AI摘要
-function submitEvaluation() {
+async function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
