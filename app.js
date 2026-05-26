@@ -2,9 +2,10 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.8.2';
+const APP_VERSION='2.8.3';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.8.3',date:'2026-05-26',items:['需求评估多轮对话+提交进入待评估状态，不再直接填表单']},
   {v:'2.8.2',date:'2026-05-26',items:['AI需求评估支持预算区间输入，评估更精准']},
   {v:'2.8.0',date:'2026-05-25',items:['AI 需求评估：输入商品名AI分析历史采购数据+预算+价格趋势给购买建议']},
   {v:'2.7.0',date:'2026-05-24',items:['记账/采购导出增强：支持CSV/TSV格式选择','采购统计增强：分类饼图、平台分布、6个月趋势','离线体验优化：断网检测+黄色横幅提示','在线帮助文档页面']},
@@ -485,7 +486,7 @@ function renderPurchase(){
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
-  const statuses=['全部','待审批','已审批','已下单','已到','已退','已归档'];
+  const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" onclick="currentCatFilter='${c}';render()">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
@@ -496,7 +497,7 @@ function renderPurchase(){
   for(const[month,list]of Object.entries(groups)){
     const mt=totalCost(list);const dm=month==='未设置日期'?month:month.replace('-','年')+'月';
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
-    const statusColors={'待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};
+    const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};
     list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
     let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
     html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:4px solid ${bc}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`});
@@ -1086,7 +1087,7 @@ async function save(){const name=document.getElementById('fNameEdit').value.trim
 async function delItem(id){if(!confirm('确定删除？'))return;const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);return}toast('已删除');await loadAll()}
 
 // ===== 审批流操作 =====
-const NEXT_STATUS={'待审批':'已审批','已审批':'已下单','已下单':'已到'};
+const NEXT_STATUS={'待评估':'待审批','待审批':'已审批','已审批':'已下单','已下单':'已到'};
 const APPROVAL_TITLES={'待审批':'✅ 审批确认','已审批':'🛒 确认下单','已下单':'📦 确认收货'};
 const APPROVAL_TEXTS={'待审批':'确认审批通过？通过后状态变为“已审批”','已审批':'确认下单？通过后状态变为“已下单”','已下单':'确认收货？通过后状态变为“已到”'};
 function showApprovalModal(id){
@@ -1235,7 +1236,7 @@ async function runPurchaseEval() {
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
     resultEl.innerHTML = '<div style="white-space:pre-wrap;margin-bottom:10px">' + esc(d.data) + '</div>'
-      + '<button class="ai-confirm-btn primary" onclick="switchToDetailPhase(\''+name.replace(/'/g,"\\'")+'\', null)">✔ 确认填写详情</button>'
+      + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">✔ 提交评估</button>'
       + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
     // 记录评估上下文，显示对话区域
     purchaseEvalContext = d.data;
@@ -1320,8 +1321,53 @@ function cancelPurchaseEval() {
   document.getElementById('aiEvalResult').style.display = 'none';
   document.getElementById('chatArea').style.display = 'none';
   document.getElementById('fName').value = '';
+  document.getElementById('fBudgetMin').value = '';
+  document.getElementById('fBudgetMax').value = '';
   purchaseChatHistory = [];
   purchaseEvalContext = '';
+}
+
+// 提交评估：生成对话摘要，创建「待评估」状态的采购记录
+async function submitEvaluation() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('商品名称丢失'); return; }
+  if (purchaseChatHistory.length < 2) { alert('请先进行AI评估'); return; }
+  
+  // 生成对话摘要：取前2轮对话的关键内容
+  const摘要Lines = purchaseChatHistory
+    .filter(m => m.role === 'assistant')
+    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
+    .join('\n---\n');
+  
+  const note = '【AI评估摘要】\n' + 摘要Lines
+    + (purchaseChatHistory.length > 2 ? '\n\n【对话记录（' + Math.floor(purchaseChatHistory.length / 2) + '轮）】' : '')
+    + purchaseChatHistory
+        .filter(m => m.role === 'user')
+        .map((m, i) => '\nQ' + (i + 1) + ': ' + m.content)
+        .join('');
+
+  const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
+  if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
+
+  try {
+    const data = {
+      name,
+      platform: '待定',
+      category: '日用',
+      price: 0,
+      qty: 1,
+      status: '待评估',
+      date: null,
+      note: note
+    };
+    const r = await api('POST', data);
+    if (r && r.error) { alert('提交失败: ' + r.error); return; }
+    toast('评估已提交，进入待评估状态');
+    closeModal();
+    await loadAll();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✔ 提交评估'; }
+  }
 }
 
 function backToEval() {
@@ -1472,10 +1518,11 @@ function exportData(){exportPurchases()}
 function exportPurchases(){showExportDialog('采购',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['商品名称'+sep+'平台'+sep+'分类'+sep+'单价'+sep+'数量'+sep+'总价'+sep+'状态'+sep+'日期'+sep+'备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const note=(i['备注']||'').includes(sep)?'"'+(i['备注']||'').replace(/"/g,'""')+'"':(i['备注']||'');lines.push((i['商品名称']||'')+sep+(i['平台']||'')+sep+(i['分类']||'')+sep+'¥'+price+sep+qty+sep+'¥'+(price*qty).toFixed(2)+sep+(i['状态']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='采购_'+getThisMonth()+ext;a.click()})}
 
 // ===== 详情弹窗 =====
-const STEPPER_STEPS=['待审批','已审批','已下单'];
-const STEPPER_ICONS={'待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
-const STEP_TIME_FIELDS={'待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};
+const STEPPER_STEPS=['待评估','待审批','已审批','已下单'];
+const STEPPER_ICONS={'待评估':'🤔','待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
+const STEP_TIME_FIELDS={'待评估':'创建时间','待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};
 const STEP_BTN_CONFIG={
+  '待评估':{color:'var(--green)',label:'📋 提交审批',next:'待审批'},
   '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
   '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
 };

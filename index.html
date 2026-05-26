@@ -173,7 +173,7 @@
 <!-- Batch Bar -->
 <div class="batch-bar" id="batchBar">
   <span class="batch-info" id="batchInfo">已选 0 项</span>
-  <select id="batchStatus"><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已下单">已下单</option><option value="已到">已到</option><option value="已退">已退</option><option value="已归档">已归档</option></select>
+  <select id="batchStatus"><option value="待评估">待评估</option><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已下单">已下单</option><option value="已到">已到</option><option value="已退">已退</option><option value="已归档">已归档</option></select>
   <button class="batch-btn batch-btn-primary" onclick="batchUpdate()">改状态</button>
   <button class="batch-btn batch-btn-danger" onclick="batchDelete()">删除</button>
   <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">取消</button>
@@ -248,7 +248,7 @@
         <div class="form-group"><label>数量</label><input id="fQtyEdit" type="number" value="1" min="1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>状态</label><select id="fStatusEdit"><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
+        <div class="form-group"><label>状态</label><select id="fStatusEdit"><option>待评估</option><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
         <div class="form-group"><label>日期</label><input id="fDateEdit" type="date"></div>
       </div>
       <div class="form-group"><label>备注</label><textarea id="fNoteEdit" placeholder="可选"></textarea></div>
