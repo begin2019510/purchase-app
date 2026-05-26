@@ -1237,10 +1237,12 @@ async function runPurchaseEval() {
     const d = await r.json();
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
-    resultEl.innerHTML = '<div style="white-space:pre-wrap;margin-bottom:10px">' + esc(d.data) + '</div>'
+    // 提取摘要：第一段+建议行
+    const lines = d.data.split('\n').filter(l => l.trim());
+    const summary = lines.slice(0, 3).join(' ').replace(/[\*#]/g, '').slice(0, 150);
+    resultEl.innerHTML = '<div style="margin-bottom:10px;line-height:1.6">' + esc(summary) + '</div>'
       + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">✔ 提交评估</button>'
       + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
-    // 记录评估上下文，显示对话区域
     purchaseEvalContext = d.data;
     purchaseChatHistory = [{role:'assistant', content:d.data}];
     document.getElementById('chatArea').style.display = 'block';
@@ -1329,47 +1331,40 @@ function cancelPurchaseEval() {
   purchaseEvalContext = '';
 }
 
-// 提交评估：生成对话摘要，创建「待评估」状态的采购记录
-async function submitEvaluation() {
+// 提交评估：切换到详情页，显示预算区间和AI摘要
+function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
   
-  // 生成对话摘要：取前2轮对话的关键内容
-  const summaryLines = purchaseChatHistory
+  // 生成AI摘要（简短）
+  const aiSummary = purchaseChatHistory
     .filter(m => m.role === 'assistant')
-    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
-    .join('\n---\n');
+    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 150))
+    .join('');
   
-  const note = '【AI评估摘要】\n' + summaryLines
-    + (purchaseChatHistory.length > 2 ? '\n\n【对话记录（' + Math.floor(purchaseChatHistory.length / 2) + '轮）】' : '')
-    + purchaseChatHistory
-        .filter(m => m.role === 'user')
-        .map((m, i) => '\nQ' + (i + 1) + ': ' + m.content)
-        .join('');
-
-  const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
-  if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
-
-  try {
-    const data = {
-      name,
-      platform: '待定',
-      category: '日用',
-      price: 0,
-      qty: 1,
-      status: '待评估',
-      date: null,
-      note: note
-    };
-    const r = await api('POST', data);
-    if (r && r.error) { alert('提交失败: ' + r.error); return; }
-    toast('评估已提交，进入待评估状态');
-    closeModal();
-    await loadAll();
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '✔ 提交评估'; }
-  }
+  // 提取预算区间
+  const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
+  const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
+  let budgetText = '';
+  if (budgetMin > 0 && budgetMax > 0) budgetText = '¥' + budgetMin + ' ~ ¥' + budgetMax;
+  else if (budgetMin > 0) budgetText = '≥ ¥' + budgetMin;
+  else if (budgetMax > 0) budgetText = '≤ ¥' + budgetMax;
+  else budgetText = '未设置';
+  
+  // 切换到详情页
+  document.getElementById('evalPhase').style.display = 'none';
+  document.getElementById('chatArea').style.display = 'none';
+  document.getElementById('detailPhase').style.display = '';
+  document.getElementById('fNameDisplay').value = name;
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fNote').value = '【AI评估】' + aiSummary;
+  document.getElementById('fPlatform').value = '待定';
+  document.getElementById('fCategory').value = '日用';
+  // 显示预算区间
+  const budgetEl = document.getElementById('fBudgetDisplay');
+  if (budgetEl) budgetEl.textContent = budgetText;
 }
 
 function backToEval() {
@@ -1389,13 +1384,13 @@ async function submitPurchase() {
     category: document.getElementById('fCategory').value,
     price: parseFloat(document.getElementById('fPrice').value) || 0,
     qty: parseInt(document.getElementById('fQty').value) || 1,
-    status: '待审批',
+    status: '待评估',
     date: null,
     note: document.getElementById('fNote').value.trim() || null
   };
   const r = await api('POST', data);
   if (r && r.error) { alert('添加失败: ' + r.error); return; }
-  toast('已添加');
+  toast('评估已提交，进入待评估状态');
   closeModal();
   await loadAll();
 }
