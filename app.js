@@ -520,7 +520,7 @@ function updateHeader(){
   const monthTotal=totalCost(monthItems)-returnedCost;
   const expThisMonth=expenses.filter(e=>{
     if(!e['日期'])return false;
-    try{return new Date(e['日期']).toISOString().slice(0,7)===thisMonth}catch{return false}
+    try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
   const expTotal=expThisMonth.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
   const incTotal=expThisMonth.filter(e=>e['类型']==='收入').reduce((s,e)=>s+Number(e['金额']||0),0);

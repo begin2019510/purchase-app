@@ -31,10 +31,10 @@ export async function onRequest(context) {
       case 'query': return await handleQuery(apiKey, data, corsHeaders);
       case 'evaluate': return await handleEvaluate(apiKey, data, user, env, corsHeaders);
       case 'purchase-chat': return await handlePurchaseChat(apiKey, data, corsHeaders);
-      default: return json({ error: 'Unknown action' }, 400, corsHeaders);
+      default: return jsonResponse({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
-    return json({ error: e.message || 'AI request failed' }, 500, corsHeaders);
+    return jsonResponse({ error: e.message || 'AI request failed' }, 500, corsHeaders);
   }
 }
 
