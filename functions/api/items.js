@@ -7,6 +7,28 @@ function nowBjStr() {
   return d.toISOString().slice(0, 16).replace('T', ' ');
 }
 
+// Ensure new fields exist in Bitable (cached per request)
+let _fieldsEnsured = false;
+async function ensureEvalFields(APP, TABLE, env) {
+  if (_fieldsEnsured) return;
+  try {
+    const existing = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/fields?page_size=100`, null, env);
+    if (existing.code !== 0) return;
+    const names = (existing.data?.items || []).map(f => f.field_name);
+    const needed = ['评估摘要', '购买理由', '预算区间', '取消原因'];
+    for (const name of needed) {
+      if (!names.includes(name)) {
+        await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/fields`, {
+          field_name: name, type: 1
+        }, env);
+      }
+    }
+    _fieldsEnsured = true;
+  } catch (e) {
+    console.error('ensureEvalFields error:', e.message);
+  }
+}
+
 function recordToItem(r) {
   const f = r.fields;
   return {
@@ -114,6 +136,7 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'POST') {
+      await ensureEvalFields(APP, TABLE, env);
       const body = await request.json();
       if (!body.name) return json({ error: 'name required' }, 400);
       const fields = {
@@ -141,6 +164,7 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'PUT') {
+      await ensureEvalFields(APP, TABLE, env);
       const body = await request.json();
       if (!body.id) return json({ error: 'id required' }, 400);
 
