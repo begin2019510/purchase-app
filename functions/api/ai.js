@@ -3,7 +3,7 @@
 
 import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
 
-const AI_API_BASE = 'https://api.deepseek.com';
+const AI_API_BASE = 'https://api.xiaomimimo.com';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -14,9 +14,9 @@ export async function onRequest(context) {
   const user = await authenticate(request, env);
   if (!user.authenticated) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
 
-  const apiKey = env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
+  const apiKey = env.MIMO_API_KEY || env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
   if (!apiKey) {
-    return jsonResponse({ error: 'AI API key not configured. Set DEEPSEEK_API_KEY in Cloudflare Pages.' }, 500, corsHeaders);
+    return jsonResponse({ error: 'AI API key not configured. Set MIMO_API_KEY in Cloudflare Pages.' }, 500, corsHeaders);
   }
 
   try {
@@ -43,7 +43,7 @@ async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 800) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'mimo-v2-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
@@ -412,7 +412,7 @@ ${evalContext ? '=== 首次评估结果 ===\n' + evalContext + '\n\n' : ''}规�
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'mimo-v2-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         ...chatMessages
