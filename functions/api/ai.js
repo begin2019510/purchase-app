@@ -1,4 +1,4 @@
-// AI 代理 - 深度备注解析 + 消费画像 + 智能分析
+﻿// AI 代理 - 深度备注解析 + 消费画像 + 智能分析
 // 环境变量: DEEPSEEK_API_KEY
 
 import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
@@ -39,24 +39,36 @@ export async function onRequest(context) {
 }
 
 async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 800) {
+  const body = {
+    model: 'mimo-v2.5',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ],
+    max_completion_tokens: maxTokens,
+    temperature: 1.0,
+    top_p: 0.95,
+  };
   const res = await fetch(`${AI_API_BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'mimo-v2.5',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.1,
-    }),
+    body: JSON.stringify(body),
   });
   const text = await res.text();
-  if (!res.ok) throw new Error(`AI API ${res.status}: ${text.slice(0, 200)}`);
+  if (!res.ok) {
+    console.error('MiMo API error:', res.status, text.slice(0, 500));
+    throw new Error(`AI API ${res.status}: ${text.slice(0, 200)}`);
+  }
   try {
-    return JSON.parse(text).choices?.[0]?.message?.content || '';
-  } catch {
+    const parsed = JSON.parse(text);
+    const msg = parsed.choices?.[0]?.message;
+    const content = msg?.content || msg?.reasoning_content || '';
+    if (!content) {
+      console.error('MiMo API empty response:', text.slice(0, 500));
+    }
+    return content;
+  } catch (e) {
+    console.error('MiMo API parse error:', text.slice(0, 500));
     throw new Error('AI parse failed: ' + text.slice(0, 200));
   }
 }
@@ -99,7 +111,7 @@ async function searchWebPrices(productName, tavilyApiKey) {
 
 async function handleEvaluate(apiKey, data, user, env, corsHeaders) {
   const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
-  const { productName, expectedPrice, platform, category, budgetMin, budgetMax } = data;
+  const { productName, expectedPrice, platform, category, budgetMin, budgetMax, reason } = data;
   if (!productName) return json({ ok: false, error: '请输入商品名称' }, 400, corsHeaders);
   
   // 构建预算区间描述
@@ -417,14 +429,16 @@ ${evalContext ? '=== 首次评估结果 ===\n' + evalContext + '\n\n' : ''}规�
         { role: 'system', content: systemPrompt },
         ...chatMessages
       ],
-      max_tokens: 500,
-      temperature: 0.3,
+      max_completion_tokens: 500,
+      temperature: 1.0,
+      top_p: 0.95,
     }),
   });
   const text = await res.text();
   if (!res.ok) return json({ error: `AI API ${res.status}: ${text.slice(0, 200)}` }, 500, corsHeaders);
   try {
-    const reply = JSON.parse(text).choices?.[0]?.message?.content || '';
+    const msg2 = JSON.parse(text).choices?.[0]?.message;
+    const reply = msg2?.content || msg2?.reasoning_content || '';
     return json({ ok: true, data: reply }, 200, corsHeaders);
   } catch {
     return json({ error: 'AI parse failed' }, 500, corsHeaders);
