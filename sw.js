@@ -1,4 +1,4 @@
-﻿// Service Worker - auto-update + push notifications
+// Service Worker - auto-update + push notifications
 var CACHE = 'purchase-cache-v39';
 var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
