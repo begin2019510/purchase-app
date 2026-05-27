@@ -1510,6 +1510,18 @@ function closeEvalModal() {
   document.getElementById('evalOverlay').classList.remove('active');
 }
 
+async function cancelFromEval() {
+  const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
+  if (!confirm(reason ? '确定不买了？\\n理由: ' + reason : '确定不买了？')) return;
+  try {
+    const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '' });
+    if (r && r.error) { alert('操作失败: ' + r.error); return; }
+    toast('已取消采购');
+    document.getElementById('evalOverlay').classList.remove('active');
+    await loadAll();
+  } catch (e) { toast('操作失败'); }
+}
+
 function renderEvalModal() {
   const item = evalModalItem;
   if (!item) return;
@@ -1583,13 +1595,18 @@ function renderEvalModal() {
     <button onclick="sendEvalQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等</button>
   </div>`;
   
-  // 操作按钮
-  html += `<div style="display:flex;gap:8px">
-    <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">关闭</button>
-    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">📝 进入需求填写</button>
-    <button onclick="saveEvalProgress()" style="flex:1;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">💾 保存评估</button>
+  // reason input
+  html += `<div style="margin-bottom:10px">
+    <div style="font-weight:600;font-size:13px;margin-bottom:4px">购买理由（可选）</div>
+    <textarea id="evalReasonInput" rows="2" placeholder="为什么想买这个？" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;resize:vertical;box-sizing:border-box">${esc(reason)}</textarea>
   </div>`;
-  
+
+  // action buttons
+  html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">关闭</button>
+    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">📝 继续采购</button>
+    <button onclick="cancelFromEval()" style="flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">不买了</button>
+  </div>`;
   document.getElementById('evalContent').innerHTML = html;
   // 滚动到底部
   const chatEl = document.getElementById('evalModalChat');
@@ -1639,49 +1656,31 @@ function sendEvalQuickChat(text) {
 
 // 保存评估进度（更新备注，保留对话记录）
 async function saveEvalProgress() {
-  if (!evalModalItem) return;
-  const ev = parseEvalNote(evalModalItem['备注']);
-  // 从可编辑输入框读取预算
-  const bMin = document.getElementById('evalBudgetMin')?.value || '';
-  const bMax = document.getElementById('evalBudgetMax')?.value || '';
-  let budgetText = '未设置';
-  if (bMin && bMax) budgetText = bMin + '~' + bMax;
-  else if (bMin) budgetText = bMin + '+';
-  else if (bMax) budgetText = bMax + '-';
-  const aiSummary = evalModalChatHistory
-    .filter(m => m.role === 'assistant')
-    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
-    .join('');
-  const chatJson = JSON.stringify(evalModalChatHistory);
-  const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
-  const r = await api('PATCH', { ids: [evalModalItemId], note: note });
-  if (r && r.error) { toast('保存失败'); return; }
-  toast('评估已保存');
-  evalModalItem['备注'] = note;
-  render();
+  if (!evalModalItemId) return;
+  const bMin = document.getElementById('evalBudgetMin') ? document.getElementById('evalBudgetMin').value : '';
+  const bMax = document.getElementById('evalBudgetMax') ? document.getElementById('evalBudgetMax').value : '';
+  const budgetText = (bMin && bMax) ? bMin + '~' + bMax : (bMin || bMax || '');
+  const aiSummary = evalModalChatHistory.filter(m => m.role === 'assistant').map(m => m.content.replace(/\\n+/g, ' ').slice(0, 200)).join(' | ');
+  const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
+  try {
+    const r = await api('PUT', { id: evalModalItemId, evalSummary: aiSummary, buyReason: reason, budgetRange: budgetText });
+    if (r && r.error) { alert('保存失败: ' + r.error); return; }
+    toast('评估已保存');
+    await loadAll();
+  } catch (e) { toast('保存失败'); }
 }
 
 // 进入需求填写：关闭评估弹窗，打开详情编辑（先保存预算修改）
 async function submitEvalToDetail() {
   if (!evalModalItem) return;
-  // 先保存预算修改
-  const bMin = document.getElementById('evalBudgetMin')?.value || '';
-  const bMax = document.getElementById('evalBudgetMax')?.value || '';
-  let budgetText = '未设置';
-  if (bMin && bMax) budgetText = bMin + '~' + bMax;
-  else if (bMin) budgetText = bMin + '+';
-  else if (bMax) budgetText = bMax + '-';
-  const ev = parseEvalNote(evalModalItem['备注']);
-  const oldBudget = ev ? ev.budget : '未设置';
-  if (budgetText !== oldBudget) {
-    const summary = ev ? ev.summary : '';
-    const chatJson = ev ? JSON.stringify(ev.chat) : '[]';
-    const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + summary + '\n===CHAT===' + chatJson;
-    await api('PATCH', { ids: [evalModalItemId], note: note });
-    evalModalItem['备注'] = note;
-  }
-  closeEvalModal();
-  editItem(evalModalItemId);
+  const bMin = document.getElementById('evalBudgetMin') ? document.getElementById('evalBudgetMin').value : '';
+  const bMax = document.getElementById('evalBudgetMax') ? document.getElementById('evalBudgetMax').value : '';
+  const budgetText = (bMin && bMax) ? bMin + '~' + bMax : (bMin || bMax || '');
+  const aiSummary = evalModalChatHistory.filter(m => m.role === 'assistant').map(m => m.content.replace(/\\n+/g, ' ').slice(0, 200)).join(' | ');
+  const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
+  try { await api('PUT', { id: evalModalItemId, evalSummary: aiSummary, buyReason: reason, budgetRange: budgetText }); } catch {}
+  switchToDetailPhase(evalModalItem['商品名称'], '');
+  document.getElementById('evalOverlay').classList.remove('active');
 }
 
 
