@@ -1,4 +1,4 @@
-﻿import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
+import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
