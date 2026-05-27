@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="2.9.0">
+<meta name="app-version" content="2.10.0">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -16,7 +16,7 @@
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.9.0</span></h1>
+    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v2.10.0</span></h1>
     <div class="header-actions">
       <button class="icon-btn" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
       <button class="icon-btn" id="adminBtn" onclick="openAdminPanel()" title="管理面板" style="display:none">👑</button>
@@ -191,6 +191,10 @@
       <div class="form-group">
         <label>想买什么？</label>
         <input id="fName" placeholder="输入商品名称，如：AirPods Pro" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>为什么想买？<span style="color:var(--muted);font-size:11px">（选填）</span></label>
+        <textarea id="fReason" rows="2" placeholder="写写购买理由，帮助评估是否真的需要" style="resize:none" autocomplete="off"></textarea>
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1"><label>预算最低</label><input id="fBudgetMin" type="number" placeholder="如 200" min="0" autocomplete="off"></div>

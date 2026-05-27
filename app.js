@@ -2,9 +2,10 @@
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
-const APP_VERSION='2.9.0';
+const APP_VERSION='2.10.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+  {v:'2.10.0',date:'2026-05-27',items:['采购评估流程优化：新增购买理由输入、评估摘要窗口、取消采购归档']},
   {v:'2.9.0',date:'2026-05-27',items:['安全加固：登录限流(5次/15分钟)、图片大小后端校验(2MB)、金额上限校验(999999)','XSS修复：内联onclick改为事件委托+data属性','AI提示注入防护：用户数据用<<<DATA>>>分隔符包裹','图片API移除URL中的PIN参数，仅用JWT认证','debug接口收紧为仅管理员可访问','飞书API错误日志增强','SW版本号v38更新']},
   {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
   {v:'2.8.3',date:'2026-05-26',items:['需求评估多轮对话+提交进入待评估状态，不再直接填表单']},
@@ -404,10 +405,12 @@ function setupPullToRefresh(){
 function parseEvalNote(note) {
   if (!note || !note.includes('===BUDGET===')) return null;
   try {
+    const reasonMatch = note.match(/===REASON===([\s\S]*?)===BUDGET===/);
     const budgetMatch = note.match(/===BUDGET===([\s\S]*?)===AI_SUMMARY===/);
     const summaryMatch = note.match(/===AI_SUMMARY===([\s\S]*?)===CHAT===/);
     const chatMatch = note.match(/===CHAT===([\s\S]*)$/);
     return {
+      reason: reasonMatch ? reasonMatch[1].trim() : '',
       budget: budgetMatch ? budgetMatch[1].trim() : '未设置',
       summary: summaryMatch ? summaryMatch[1].trim() : '',
       chat: chatMatch ? JSON.parse(chatMatch[1]) : []
@@ -538,7 +541,7 @@ function renderPurchase(){
   if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
   if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
-  const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档'];
+  const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档','已取消'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
@@ -1136,7 +1139,7 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删�
 // ============================================================
 // 采购 Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fReason').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['商品名称']||'';document.getElementById('fPlatformEdit').value=i['平台']||'拼多多';document.getElementById('fCategoryEdit').value=i['分类']||'日用';document.getElementById('fPriceEdit').value=i['单价']||'';document.getElementById('fQtyEdit').value=i['数量']||1;document.getElementById('fStatusEdit').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['备注']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
 async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null};const editId=document.getElementById('editId').value;if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error);return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error);return}toast('已添加')}closeModal();await loadAll()}
@@ -1298,11 +1301,14 @@ async function runPurchaseEval() {
   btn.disabled = true;
   btn.textContent = '分析中...';
   
+  // 获取购买理由
+  const reason = (document.getElementById('fReason') ? document.getElementById('fReason').value : '').trim();
+  
   try {
     const r = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
-      body: JSON.stringify({ action: 'evaluate', data: { productName: name, budgetMin, budgetMax } }),
+      body: JSON.stringify({ action: 'evaluate', data: { productName: name, expectedPrice: null, platform: null, category: null, budgetMin, budgetMax, reason: reason || null } }),
     });
     const d = await r.json();
     if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
@@ -1395,10 +1401,28 @@ function cancelPurchaseEval() {
   document.getElementById('aiEvalResult').style.display = 'none';
   document.getElementById('chatArea').style.display = 'none';
   document.getElementById('fName').value = '';
+  document.getElementById('fReason').value = '';
   document.getElementById('fBudgetMin').value = '';
   document.getElementById('fBudgetMax').value = '';
   purchaseChatHistory = [];
   purchaseEvalContext = '';
+}
+
+// ===== 取消采购（归档） =====
+async function cancelPurchase(id) {
+  const item = items.find(x => x.id === id);
+  if (!item) return;
+  const reason = prompt('取消理由（选填）：');
+  if (reason === null) return; // 用户点了取消
+  
+  // 在备注中追加取消理由
+  let note = item['备注'] || '';
+  if (reason) note += '\n===CANCEL_REASON===' + reason;
+  
+  const r = await api('PATCH', { ids: [id], status: '已取消', note: note });
+  if (r && r.error) { alert('操作失败: ' + r.error); return; }
+  toast('已取消采购');
+  await loadAll();
 }
 
 // 提交评估：切换到详情页，显示预算区间和AI摘要
@@ -1406,6 +1430,9 @@ async function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
+  
+  // 获取购买理由
+  const reason = (document.getElementById('fReason').value || '').trim();
   
   // 生成AI摘要（简短）
   const aiSummary = purchaseChatHistory
@@ -1422,9 +1449,9 @@ async function submitEvaluation() {
   else if (budgetMax > 0) budgetText = budgetMax + '-';
   else budgetText = '未设置';
   
-  // 构建备注：结构化存储
+  // 构建备注：结构化存储（包含购买理由）
   const chatJson = JSON.stringify(purchaseChatHistory);
-  const note = '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
+  const note = (reason ? '===REASON===' + reason + '\n' : '') + '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
 
   const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
   if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
@@ -1488,10 +1515,29 @@ function renderEvalModal() {
   const ev = parseEvalNote(item['备注']);
   const budget = ev ? ev.budget : '未设置';
   const summary = ev ? ev.summary : '';
+  const reason = ev ? ev.reason : '';
+  const cancelReason = (item['备注'] || '').match(/===CANCEL_REASON===([\s\S]*?)$/);
+  const cancelText = cancelReason ? cancelReason[1].trim() : '';
   
   let html = `<div style="margin-bottom:12px">
     <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(item['商品名称']||'')}</div>
   </div>`;
+  
+  // 购买理由
+  if (reason) {
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--orange)">
+      <div style="font-weight:600;margin-bottom:4px">💡 购买理由</div>
+      <div style="color:var(--muted)">${esc(reason)}</div>
+    </div>`;
+  }
+  
+  // 取消理由（如果有）
+  if (cancelText) {
+    html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--red)">
+      <div style="font-weight:600;margin-bottom:4px">❌ 取消理由</div>
+      <div style="color:var(--muted)">${esc(cancelText)}</div>
+    </div>`;
+  }
   
   // AI 摘要
   if (summary) {
@@ -1499,6 +1545,7 @@ function renderEvalModal() {
       <div style="font-weight:600;margin-bottom:4px">🤖 AI 评估摘要</div>
       <div style="color:var(--muted)">${esc(summary)}</div>
     </div>`;
+  }
   }
   
   // 预算区间（可编辑）
@@ -1787,6 +1834,7 @@ const STEP_BTN_CONFIG={
   '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
   '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
 };
+const CANCELABLE_STATUSES = ['待评估','待审批','已审批'];
 function openDetailModal(id){
   const item=items.find(x=>x.id===id);
   if(!item)return;
@@ -1862,9 +1910,9 @@ function openDetailModal(id){
   html+='</div>';
 
   // 操作按钮
-  if(status==='待审批'||status==='已审批'){
+  if(CANCELABLE_STATUSES.includes(status)){
     const btnCfg=STEP_BTN_CONFIG[status];
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:${btnCfg.color}" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button></div>`;
+    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">❌ 取消</button></div>`;
   }else if(status==='已下单'){
     html+=`<div style="margin-top:16px;display:flex;gap:10px">
       <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">📦 确认收货</button>

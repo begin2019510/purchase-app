@@ -175,7 +175,7 @@ export async function onRequest(context) {
     if (request.method === 'PATCH') {
       const body = await request.json();
       if (!body.ids || !body.ids.length) return json({ error: 'ids required' }, 400);
-      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已退': '到货时间', '已归档': '归档时间' };
+      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已退': '到货时间', '已归档': '归档时间', '已取消': '归档时间' };
       const timeField = body.status ? statusTimeMap[body.status] : null;
       const results = [];
       for (const id of body.ids) {
