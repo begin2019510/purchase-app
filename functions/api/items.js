@@ -1,4 +1,4 @@
-import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
+﻿import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -86,7 +86,7 @@ export async function onRequest(context) {
   try {
     if (request.method === 'GET') {
       const cacheSuffix = user.username ? `_${user.username}` : '';
-      const cacheKey = new Request(url.toString() + cacheSuffix);
+      const cacheKey = new Request(url.origin + url.pathname + cacheSuffix);
       const cache = caches.default;
       const cached = await cache.match(cacheKey);
       if (cached) {
@@ -127,7 +127,7 @@ export async function onRequest(context) {
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       // 清除缓存，下次GET读最新数据
       const cacheSuffix = user.username ? `_${user.username}` : '';
-      const cacheKey = new Request(url.toString() + cacheSuffix);
+      const cacheKey = new Request(url.origin + url.pathname + cacheSuffix);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ id: data.data?.record?.record_id });
     }
@@ -167,7 +167,7 @@ export async function onRequest(context) {
       }
 
       const cacheSuffix = user.username ? `_${user.username}` : '';
-      const cacheKey = new Request(url.toString() + cacheSuffix);
+      const cacheKey = new Request(url.origin + url.pathname + cacheSuffix);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
@@ -187,7 +187,7 @@ export async function onRequest(context) {
         results.push({ id, ok: data.code === 0 });
       }
       const patchCacheSuffix = user.username ? `_${user.username}` : '';
-      const patchCacheKey = new Request(url.toString() + patchCacheSuffix);
+      const patchCacheKey = new Request(url.origin + url.pathname + patchCacheSuffix);
       context.waitUntil(caches.default.delete(patchCacheKey));
       return json({ results, updated: results.filter(r => r.ok).length });
     }
@@ -199,7 +199,7 @@ export async function onRequest(context) {
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       // 清除缓存
       const cacheSuffix = user.username ? `_${user.username}` : '';
-      const cacheKey = new Request(url.toString() + cacheSuffix);
+      const cacheKey = new Request(url.origin + url.pathname + cacheSuffix);
       context.waitUntil(caches.default.delete(cacheKey));
       return json({ ok: true });
     }
