@@ -52,7 +52,7 @@ async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 4096) {
   };
   const res = await fetch(`${AI_API_BASE}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
     body: JSON.stringify(body),
   });
   const text = await res.text();
