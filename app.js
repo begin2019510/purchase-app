@@ -327,7 +327,7 @@ function validateAmount(input) {
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function stripMd(s){if(!s)return'';return s.replace(/\*\*(.+?)\*\*/g,'').replace(/\*(.+?)\*/g,'').replace(/([^]+)/g,'').replace(/^#{1,6}\s+/gm,'').replace(/^>\s+/gm,'').replace(/^[-*]\s+/gm,'').replace(/^\d+\.\s+/gm,'').replace(/\n{3,}/g,'\n\n').trim()}
+function stripMd(s){if(!s)return'';return s.replace(/\*\*(.+?)\*\*/g,'').replace(/\*(.+?)\*/g,'').replace(/`([^`]+)`/g,'').replace(/^#{1,6}\s+/gm,'').replace(/^>\s+/gm,'').replace(/^[-*]\s+/gm,'').replace(/^\d+\.\s+/gm,'').replace(/\n{3,}/g,'\n\n').trim()}
 function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
