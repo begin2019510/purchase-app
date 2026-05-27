@@ -2,6 +2,29 @@
 // 检查已到/已退超过3天未归档的记录，飞书提醒
 import { corsHeaders, json, getAllRecords } from './_common.js';
 
+// 获取所有用户的采购记录（多用户支持 + 旧版兼容）
+async function getAllArchiveRecords(env) {
+  const kv = env.IMAGE_STORE;
+  const allRecords = [];
+  try {
+    const keys = await kv.list({ prefix: 'user:' });
+    for (const key of keys.keys) {
+      const data = await kv.get(key.name);
+      if (!data) continue;
+      const user = JSON.parse(data);
+      if (!user.bitable || !user.bitable.purchaseApp || !user.bitable.purchaseTable) continue;
+      try {
+        const recs = await getAllRecords(user.bitable.purchaseApp, user.bitable.purchaseTable, env);
+        allRecords.push(...recs);
+      } catch (e) { console.error('Load user records failed:', user.username, e.message); }
+    }
+  } catch {}
+  if (allRecords.length === 0 && env.FEISHU_BITABLE_APP) {
+    try { const recs = await getAllRecords(env.FEISHU_BITABLE_APP, env.FEISHU_BITABLE_TABLE, env); allRecords.push(...recs); } catch {}
+  }
+  return allRecords;
+}
+
 // 解析 "YYYY-MM-DD HH:mm" 格式的时间
 function parseTimeStr(str) {
   if (!str) return null;
@@ -34,7 +57,7 @@ export async function onRequest(context) {
     const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
     // 读取采购数据
-    const records = await getAllRecords(env.FEISHU_BITABLE_APP, env.FEISHU_BITABLE_TABLE, env);
+    const records = await getAllArchiveRecords(env);
 
     const needArchive = [];
 

@@ -2,6 +2,55 @@
 // 周度/月度汇总推送飞书
 import { corsHeaders, json, getAllRecords } from './_common.js';
 
+// 获取所有用户数据（多用户支持 + 旧版兼容）
+async function getAllUsersData(env) {
+  const kv = env.IMAGE_STORE;
+  let allItems = [], allExpenses = [];
+  try {
+    const keys = await kv.list({ prefix: 'user:' });
+    for (const key of keys.keys) {
+      const data = await kv.get(key.name);
+      if (!data) continue;
+      const user = JSON.parse(data);
+      if (!user.bitable) continue;
+      try {
+        if (user.bitable.purchaseApp && user.bitable.purchaseTable) {
+          const recs = await getAllRecords(user.bitable.purchaseApp, user.bitable.purchaseTable, env);
+          allItems.push(...recs.map(r => {
+            const f = r.fields;
+            let dateStr = null;
+            if (f['日期']) { try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {} }
+            return { name: f['商品名称'] || '', platform: f['平台'] || '', price: Number(f['单价']) || 0, qty: Number(f['数量']) || 1, status: f['状态'] || '待买', category: f['分类'] || '其他', date: dateStr, note: f['备注'] || '' };
+          }));
+        }
+        if (user.bitable.expenseApp && user.bitable.expenseTable) {
+          const recs = await getAllRecords(user.bitable.expenseApp, user.bitable.expenseTable, env);
+          allExpenses.push(...recs.map(r => {
+            const f = r.fields;
+            let dateStr = null;
+            if (f['日期']) { try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {} }
+            return { date: dateStr, type: f['类型'] || '支出', category: f['分类'] || '其他', amount: Number(f['金额']) || 0, note: f['备注'] || '' };
+          }));
+        }
+      } catch (e) { console.error('Load user data failed:', user.username, e.message); }
+    }
+  } catch {}
+  // Fallback: 旧版共享表
+  if (allItems.length === 0 && env.FEISHU_BITABLE_APP) {
+    try {
+      const recs = await getAllRecords(env.FEISHU_BITABLE_APP, env.FEISHU_BITABLE_TABLE, env);
+      allItems = recs.map(r => { const f = r.fields; let d = null; if (f['日期']) { try { d = new Date(f['日期']).toISOString().slice(0, 10); } catch {} } return { name: f['商品名称'] || '', platform: f['平台'] || '', price: Number(f['单价']) || 0, qty: Number(f['数量']) || 1, status: f['状态'] || '待买', category: f['分类'] || '其他', date: d, note: f['备注'] || '' }; });
+    } catch {}
+  }
+  if (allExpenses.length === 0 && env.FEISHU_EXPENSE_APP) {
+    try {
+      const recs = await getAllRecords(env.FEISHU_EXPENSE_APP, env.FEISHU_EXPENSE_TABLE, env);
+      allExpenses = recs.map(r => { const f = r.fields; let d = null; if (f['日期']) { try { d = new Date(f['日期']).toISOString().slice(0, 10); } catch {} } return { date: d, type: f['类型'] || '支出', category: f['分类'] || '其他', amount: Number(f['金额']) || 0, note: f['备注'] || '' }; });
+    } catch {}
+  }
+  return { items: allItems, expenses: allExpenses };
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const headers = corsHeaders(request);
@@ -21,23 +70,8 @@ export async function onRequest(context) {
     const bjNow = new Date(now.getTime() + 8 * 3600 * 1000);
     const todayStr = bjNow.toISOString().slice(0, 10);
 
-    // 读取采购数据
-    const itemRecords = await getAllRecords(env.FEISHU_BITABLE_APP, env.FEISHU_BITABLE_TABLE, env);
-    const items = itemRecords.map(r => {
-      const f = r.fields;
-      let dateStr = null;
-      if (f['日期']) { try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {} }
-      return { name: f['商品名称'] || '', platform: f['平台'] || '', price: Number(f['单价']) || 0, qty: Number(f['数量']) || 1, status: f['状态'] || '待买', category: f['分类'] || '其他', date: dateStr, note: f['备注'] || '' };
-    });
-
-    // 读取记账数据
-    const expRecords = await getAllRecords(env.FEISHU_EXPENSE_APP, env.FEISHU_EXPENSE_TABLE, env);
-    const expenses = expRecords.map(r => {
-      const f = r.fields;
-      let dateStr = null;
-      if (f['日期']) { try { dateStr = new Date(f['日期']).toISOString().slice(0, 10); } catch {} }
-      return { date: dateStr, type: f['类型'] || '支出', category: f['分类'] || '其他', amount: Number(f['金额']) || 0, note: f['备注'] || '' };
-    });
+    // 汇总所有用户数据（多用户支持 + 旧版兼容）
+    const { items, expenses } = await getAllUsersData(env);
 
     let card;
 

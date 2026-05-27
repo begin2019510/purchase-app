@@ -53,8 +53,9 @@ export async function onRequest(context) {
     return jsonResponse({ error: '未授权：请登录' }, 401, corsHeaders);
   }
 
-  // 调试: 查看当前用户的认证和表信息
+  // 调试: 查看当前用户的认证和表信息（仅管理员）
   if (url.searchParams.get('debug') === 'auth') {
+    if (user.username !== 'admin') return json({ error: '仅管理员可查看' }, 403);
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '');
     if (!token) return jsonResponse({ error: 'no token', authHeader }, 200, corsHeaders);
@@ -103,7 +104,7 @@ export async function onRequest(context) {
       const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       const items = (data.data?.items || []).map(recordToItem);
-      const resp = new Response(JSON.stringify(items), { headers: { 'Content-Type': 'application/json' } });
+      const resp = new Response(JSON.stringify(items), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private', 'Vary': 'Authorization' } });
       context.waitUntil(cache.put(cacheKey, resp.clone()));
       return json(items);
     }
@@ -174,7 +175,7 @@ export async function onRequest(context) {
     if (request.method === 'PATCH') {
       const body = await request.json();
       if (!body.ids || !body.ids.length) return json({ error: 'ids required' }, 400);
-      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已归档': '归档时间' };
+      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已退': '到货时间', '已归档': '归档时间' };
       const timeField = body.status ? statusTimeMap[body.status] : null;
       const results = [];
       for (const id of body.ids) {

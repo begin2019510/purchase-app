@@ -61,12 +61,14 @@ export async function onRequest(context) {
 
   if (method === 'POST') {
     const body = await request.json();
+    const amount = Number(body.amount) || 0;
+    if (amount < 0 || amount > 999999) return json({ error: '金额需在 0 ~ 999999 之间' }, 400);
     const fields = {
       '日期': dateToTs(body.date),
       '类型': body.type || '支出',
       '分类': body.category || '其他',
-      '金额': body.amount || 0,
-      '备注': body.note || '',
+      '金额': amount,
+      '备注': (body.note || '').slice(0, 500),
     };
     if (body.imageKey) fields['图片'] = 'kv:' + body.imageKey;
     else if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
@@ -98,8 +100,12 @@ export async function onRequest(context) {
     const fields = {};
     if (body.type !== undefined) fields['类型'] = body.type;
     if (body.category !== undefined) fields['分类'] = body.category;
-    if (body.amount !== undefined) fields['金额'] = body.amount;
-    if (body.note !== undefined) fields['备注'] = body.note;
+    if (body.amount !== undefined) {
+      const amt = Number(body.amount);
+      if (amt < 0 || amt > 999999) return json({ error: '金额需在 0 ~ 999999 之间' }, 400);
+      fields['金额'] = amt;
+    }
+    if (body.note !== undefined) fields['备注'] = (body.note || '').slice(0, 500);
     if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
     if (body.imageKey !== undefined) fields['图片'] = body.imageKey ? 'kv:' + body.imageKey : '';
     else if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }

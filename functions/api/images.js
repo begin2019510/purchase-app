@@ -13,17 +13,23 @@ export async function onRequest(context) {
     return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
   }
   async function verifyAuth(req, env) {
-    // 1. JWT token
+    // 1. JWT token from Authorization header
     const authHeader = req.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '');
       const payload = await verifyJWT(token, env.JWT_SECRET);
       if (payload) return true;
     }
-    // 2. 旧 PIN (img src can't send headers, accept query param)
+    // 2. JWT token from query parameter (for <img src> which can't send headers)
     const url = new URL(req.url);
-    const qKey = url.searchParams.get('pin');
-    const pin = req.headers.get('X-API-Key') || qKey;
+    const qToken = url.searchParams.get('token');
+    if (qToken) {
+      const payload = await verifyJWT(qToken, env.JWT_SECRET);
+      if (payload) return true;
+    }
+    // 3. 旧 PIN (backward compatibility)
+    const qPin = url.searchParams.get('pin');
+    const pin = req.headers.get('X-API-Key') || qPin;
     if (pin && pin === env.API_KEY) return true;
     return false;
   }
@@ -46,6 +52,13 @@ export async function onRequest(context) {
     
     const ext = match[1].split('/')[1] || 'jpg';
     const base64 = match[2];
+    
+    // 后端大小校验：base64 解码后不超过 2MB
+    const estimatedBytes = Math.ceil(base64.length * 3 / 4);
+    if (estimatedBytes > 2 * 1024 * 1024) {
+      return json({ error: '图片过大（' + (estimatedBytes / 1024 / 1024).toFixed(1) + 'MB），请压缩后重试' }, 413, corsHeaders);
+    }
+    
     const key = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     
     // Store in KV (base64 string)

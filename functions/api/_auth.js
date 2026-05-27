@@ -118,7 +118,7 @@ export async function getFeishuToken(env) {
     body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
   });
   const data = await res.json();
-  if (data.code !== 0) throw new Error('Feishu auth failed');
+  if (data.code !== 0) throw new Error('Feishu auth failed: code=' + data.code + ' msg=' + (data.msg || 'unknown'));
   return data.tenant_access_token;
 }
 

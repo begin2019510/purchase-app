@@ -170,6 +170,22 @@ export async function onRequest(context) {
         JWT_SECRET_SET: !!env.JWT_SECRET,
         API_KEY_SET: !!env.API_KEY,
       }, 200, cors);
+    } else if (action === 'admin-op-verify') {
+      // 管理员操作二次验证（操作密码）
+      const aovAuth = request.headers.get('Authorization');
+      if (!aovAuth) return json({ error: 'Unauthorized' }, 401, cors);
+      const aovToken = aovAuth.replace('Bearer ', '');
+      const aovPayload = await verifyJWT(aovToken, env.JWT_SECRET);
+      if (!aovPayload || aovPayload.username !== 'admin') return json({ error: '仅管理员' }, 403, cors);
+      const { opPassword } = body;
+      if (!opPassword) return json({ error: '请输入操作密码' }, 400, cors);
+      const adminUser = await getUser(KV, 'admin');
+      if (!adminUser) return json({ error: '管理员账号异常' }, 500, cors);
+      const opHash = await hashPassword(opPassword, adminUser.salt);
+      if (opHash !== adminUser.passwordHash) return json({ error: '操作密码错误' }, 401, cors);
+      // 签发短期操作 token（5分钟）
+      const opToken = await createJWT({ username: 'admin', op: true }, JWT_SECRET, 0.083);
+      return json({ ok: true, opToken }, 200, cors);
     } else {
       return json({ error: 'Unknown action' }, 400, cors);
     }
@@ -237,6 +253,35 @@ async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
+// ===== 登录限流 =====
+async function checkLoginRateLimit(kv, ip) {
+  const key = 'login_fail:' + ip;
+  const data = await kv.get(key);
+  if (!data) return { blocked: false, remaining: 5 };
+  const parsed = JSON.parse(data);
+  const now = Date.now();
+  // 清理15分钟前的记录
+  const recent = parsed.filter(t => now - t < 15 * 60 * 1000);
+  if (recent.length >= 5) {
+    const oldest = Math.min(...recent);
+    const waitSec = Math.ceil((oldest + 15 * 60 * 1000 - now) / 1000);
+    return { blocked: true, waitSec, remaining: 0 };
+  }
+  return { blocked: false, remaining: 5 - recent.length, recent };
+}
+
+async function recordLoginFail(kv, ip, recent) {
+  const key = 'login_fail:' + ip;
+  const now = Date.now();
+  const entries = recent || [];
+  entries.push(now);
+  await kv.put(key, JSON.stringify(entries), { expirationTtl: 900 });
+}
+
+async function clearLoginRateLimit(kv, ip) {
+  await kv.delete('login_fail:' + ip);
+}
+
 // ===== 登录 =====
 async function handleLogin(request, body, KV, JWT_SECRET, cors) {
   const { username, password } = body;
@@ -244,15 +289,28 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors) {
     return json({ error: '请输入用户名和密码' }, 400, cors);
   }
 
+  // 限流检查
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  const rateLimit = await checkLoginRateLimit(KV, ip);
+  if (rateLimit.blocked) {
+    await logOp(KV, 'login_blocked', username, '登录限流触发（IP: ' + ip + '）', request).catch(() => {});
+    return json({ error: `登录尝试过多，请 ${rateLimit.waitSec} 秒后重试` }, 429, cors);
+  }
+
   const user = await getUser(KV, username);
   if (!user) {
+    await recordLoginFail(KV, ip, rateLimit.recent);
     return json({ error: '用户名或密码错误' }, 401, cors);
   }
 
   const hash = await hashPassword(password, user.salt);
   if (hash !== user.passwordHash) {
+    await recordLoginFail(KV, ip, rateLimit.recent);
     return json({ error: '用户名或密码错误' }, 401, cors);
   }
+
+  // 登录成功，清除限流
+  await clearLoginRateLimit(KV, ip);
 
   const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
