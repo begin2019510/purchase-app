@@ -238,33 +238,33 @@ function logout(){
 // ============================================================
 // ===== Service Worker（防循环加载） =====
 if('serviceWorker' in navigator){
-  const swLoads=JSON.parse(localStorage.getItem('_sw_loads')||'[]');
-  const now=Date.now();
-  const recent=swLoads.filter(t=>now-t<5000);
+  var swLoads=JSON.parse(localStorage.getItem('_sw_loads')||'[]');
+  var now=Date.now();
+  var recent=swLoads.filter(function(t){return now-t<5000});
   recent.push(now);
   localStorage.setItem('_sw_loads',JSON.stringify(recent));
   if(recent.length>=3){
-    // 5秒内加载3次 = 死循环，注销SW + 清缓存
     localStorage.removeItem('_sw_loads');
-    navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));
-    caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));
-    // 不再reload，直接继续加载页面（无SW状态）
+    navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})});
+    caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k)})});
   }else{
-    navigator.serviceWorker.register('/sw.js').then(reg=>{
-      reg.addEventListener('updatefound',()=>{
-        const nw=reg.installing;
-        if(nw)nw.addEventListener('statechange',()=>{
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      reg.addEventListener('updatefound',function(){
+        var nw=reg.installing;
+        if(nw)nw.addEventListener('statechange',function(){
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            // 新SW就绪，发送SKIP_WAITING让新SW接管，但不强制reload
             nw.postMessage({type:'SKIP_WAITING'});
           }
         });
       });
     }).catch(function(){});
+    // Listen for SW_RELOAD message - auto reload on update
+    navigator.serviceWorker.addEventListener('message',function(e){
+      if(e.data&&e.data.type==='SW_RELOAD'){location.reload()}
+    });
   }
 }
 // 5秒后清除检测数据（页面正常加载了）
-setTimeout(()=>localStorage.removeItem('_sw_loads'),5000);
 // ===== 推送 - 飞书机器人（国内可用） =====
 // 无需浏览器权限，配置飞书机器人 webhook 即可
 // 配置方法：Cloudflare 环境变量 FEISHU_BOT_WEBHOOK
