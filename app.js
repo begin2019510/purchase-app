@@ -327,6 +327,7 @@ function validateAmount(input) {
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function stripMd(s){if(!s)return'';return s.replace(/\*\*(.+?)\*\*/g,'').replace(/\*(.+?)\*/g,'').replace(/([^]+)/g,'').replace(/^#{1,6}\s+/gm,'').replace(/^>\s+/gm,'').replace(/^[-*]\s+/gm,'').replace(/^\d+\.\s+/gm,'').replace(/\n{3,}/g,'\n\n').trim()}
 function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
@@ -1316,7 +1317,7 @@ async function runPurchaseEval() {
     // 提取摘要：第一段+建议行
     const lines = d.data.split('\n').filter(l => l.trim());
     const summary = lines.slice(0, 3).join(' ').replace(/[\*#]/g, '').slice(0, 150);
-    resultEl.innerHTML = '<div style="margin-bottom:10px;line-height:1.6">' + esc(summary) + '</div>'
+    resultEl.innerHTML = '<div style="margin-bottom:10px;line-height:1.6">' + stripMd(esc(summary)) + '</div>'
       + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">✔ 提交评估</button>'
       + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
     purchaseEvalContext = d.data;
@@ -1344,8 +1345,8 @@ let purchaseChatHistory = [];
 function renderChatMessages() {
   const el = document.getElementById('chatMessages');
   el.innerHTML = purchaseChatHistory.map(m => {
-    if (m.role === 'user') return '<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">' + esc(m.content) + '</span></div>';
-    return '<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">' + esc(m.content) + '</span></div>';
+    if (m.role === 'user') return '<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">' + stripMd(esc(m.content)) + '</span></div>';
+    return '<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">' + stripMd(esc(m.content)) + '</span></div>';
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
@@ -1543,7 +1544,7 @@ function renderEvalModal() {
   if (summary) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)">
       <div style="font-weight:600;margin-bottom:4px">🤖 AI 评估摘要</div>
-      <div style="color:var(--muted)">${esc(summary)}</div>
+      <div style="color:var(--muted)">${stripMd(esc(summary))}</div>
     </div>`;
   }
   
@@ -1563,9 +1564,9 @@ function renderEvalModal() {
   html += `<div id="evalModalChat" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.6">`;
   evalModalChatHistory.forEach(m => {
     if (m.role === 'user') {
-      html += `<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">${esc(m.content)}</span></div>`;
+      html += `<div style="text-align:right;margin-bottom:6px"><span style="display:inline-block;background:var(--pri);color:#fff;padding:6px 10px;border-radius:10px 10px 2px 10px;max-width:85%">${stripMd(esc(m.content))}</span></div>`;
     } else {
-      html += `<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">${esc(m.content)}</span></div>`;
+      html += `<div style="text-align:left;margin-bottom:6px"><span style="display:inline-block;background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:10px 10px 10px 2px;max-width:85%">${stripMd(esc(m.content))}</span></div>`;
     }
   });
   html += '</div>';
