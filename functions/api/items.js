@@ -24,6 +24,10 @@ function recordToItem(r) {
     '下单时间': f['下单时间'] || '',
     '到货时间': f['到货时间'] || '',
     '归档时间': f['归档时间'] || '',
+    '评估摘要': f['评估摘要'] || '',
+    '购买理由': f['购买理由'] || '',
+    '预算区间': f['预算区间'] || '',
+    '取消原因': f['取消原因'] || '',
   };
 }
 
@@ -121,6 +125,10 @@ export async function onRequest(context) {
         '分类': body.category || '其他',
         '备注': body.note || '',
         '创建时间': nowBjStr(),
+        '评估摘要': body.evalSummary || '',
+        '购买理由': body.buyReason || '',
+        '预算区间': body.budgetRange || '',
+        '取消原因': '',
       };
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
@@ -158,6 +166,10 @@ export async function onRequest(context) {
       if (body.category !== undefined) fields['分类'] = body.category;
       if (body.note !== undefined) fields['备注'] = body.note;
       if (body.date !== undefined) fields['日期'] = body.date ? new Date(body.date).getTime() : null;
+      if (body.evalSummary !== undefined) fields['评估摘要'] = body.evalSummary;
+      if (body.buyReason !== undefined) fields['购买理由'] = body.buyReason;
+      if (body.budgetRange !== undefined) fields['预算区间'] = body.budgetRange;
+      if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
 
