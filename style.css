@@ -1,9 +1,7 @@
-/* Google Fonts - cute rounded font */
-@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap");
 
 
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--pri:#a78bfa;--pri-dark:#8b5cf6;--pri-light:#f5f0ff;--pri-g:linear-gradient(135deg,#a78bfa,#c084fc);--bg:#f8f6ff;--card:#fffbfe;--text:#2d1b4e;--muted:#8b7da0;--border:#ede5f5;--green:#34d399;--red:#fb7185;--orange:#fbbf24;--blue:#818cf8;--pink:#f472b6;--radius:20px;--shadow:0 4px 14px rgba(167,139,250,.1),0 1px 3px rgba(0,0,0,.03)}
+:root{--pri:#0d9488;--pri-dark:#0f766e;--pri-light:#f0fdfa;--pri-g:linear-gradient(135deg,#0d4f4f,#0d9488);--bg:#f0fdfa;--card:#fff;--text:#1a1a2e;--muted:#6b7280;--border:#e5e7eb;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--pink:#ec4899;--radius:18px;--shadow:0 2px 12px rgba(067,139,250,.1),0 1px 3px rgba(0,0,0,.03)}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
 @media(prefers-color-scheme:dark){:root:not(.light){--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}}
 body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}
@@ -405,126 +403,174 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .detail-action-btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;color:#fff;margin-top:10px}
 .detail-action-btn:active{transform:scale(.97)}
 
-/* ===== Cute Component Overrides ===== */
+/* ===== Clean Modern Components ===== */
+/* Teal color scheme, white cards, colorful tags - matching reference design */
 
-/* Font */
-body { font-family: "Nunito", -apple-system, "SF Pro Display", sans-serif !important; }
-
-/* Cards - soft lavender tint + rounded + colored shadow */
-.card, .swipe-card {
-  background: linear-gradient(135deg, #fffbfe, #faf5ff) !important;
-  border: 1.5px solid #ede5f5 !important;
-  border-radius: 22px !important;
-  box-shadow: 0 4px 16px rgba(167,139,250,.08), 0 1px 3px rgba(0,0,0,.03) !important;
-  transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease !important;
+/* === Header === */
+.header {
+  background: linear-gradient(135deg, #0d4f4f, #0d9488) !important;
+  border-bottom-left-radius: 24px !important;
+  border-bottom-right-radius: 24px !important;
 }
-.card:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 24px rgba(167,139,250,.12), 0 2px 4px rgba(0,0,0,.03) !important; }
-.card:active { transform: scale(.97) !important; }
-
-/* Buttons - gradient + bounce */
-.btn-primary, .btn.btn-primary {
-  background: linear-gradient(135deg, #c084fc, #a78bfa) !important;
-  border: none !important;
-  border-radius: 16px !important;
-  box-shadow: 0 4px 14px rgba(167,139,250,.3) !important;
-  font-weight: 700 !important;
-  transition: all .18s cubic-bezier(.34,1.56,.64,1) !important;
+.header h1 { font-size: 19px !important; }
+.header-version { background: rgba(255,255,255,.2) !important; }
+.header-actions button {
+  background: rgba(255,255,255,.15) !important;
+  border-radius: 12px !important;
 }
-.btn-primary:active { transform: scale(.94) !important; }
-.btn-secondary, .btn.btn-secondary {
-  background: #f5f0ff !important;
-  color: #7c3aed !important;
-  border: 2px solid #ede5f5 !important;
-  border-radius: 16px !important;
-}
-
-/* FAB - gradient + pulse */
-.fab {
-  background: linear-gradient(135deg, #c084fc, #f472b6) !important;
-  border-radius: 50% !important;
-  box-shadow: 0 6px 20px rgba(192,132,252,.35), 0 2px 6px rgba(0,0,0,.08) !important;
-  border: 3px solid rgba(255,255,255,.5) !important;
-  transition: all .22s cubic-bezier(.34,1.56,.64,1) !important;
-}
-.fab:active { transform: scale(.88) rotate(-10deg) !important; }
-
-/* Chips - rounded pill */
-.chip { border-radius: 20px !important; border-color: #ede5f5 !important; font-weight: 600 !important; }
-.chip.active { background: linear-gradient(135deg, #c084fc, #a78bfa) !important; color: #fff !important; border-color: transparent !important; box-shadow: 0 3px 10px rgba(167,139,250,.25) !important; }
-
-/* Search bar - soft rounded */
-.search-bar { border-color: #ede5f5 !important; border-radius: 22px !important; box-shadow: 0 3px 12px rgba(167,139,250,.06) !important; }
-.search-input { border-radius: 20px !important; }
-
-/* Tabs - cute active */
-.tab { border-radius: 18px 18px 0 0 !important; font-weight: 700 !important; }
-.tab.active { box-shadow: inset 0 -3px 0 #c084fc !important; color: var(--pri) !important; }
-
-/* Modal - soft rounded */
-.modal { border-radius: 28px !important; border: 2px solid #ede5f5 !important; box-shadow: 0 20px 60px rgba(167,139,250,.1) !important; }
-
-/* Form inputs - soft focus */
-.form-group input, .form-group select, .form-group textarea { border-radius: 16px !important; border-color: #ede5f5 !important; }
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #c084fc !important; box-shadow: 0 0 0 4px rgba(192,132,252,.1) !important; }
-
-/* AI bar */
-.ai-bar { border-color: #ede5f5 !important; border-radius: 22px !important; }
-.ai-input { border-radius: 16px !important; border-color: #ede5f5 !important; }
-.ai-send:active { transform: scale(.88) rotate(-6deg) !important; }
-.ai-confirm-btn { border-radius: 16px !important; font-weight: 700 !important; }
-.ai-confirm-btn.primary { background: linear-gradient(135deg, #c084fc, #818cf8) !important; box-shadow: 0 3px 12px rgba(167,139,250,.25) !important; }
-
-/* Mini cards */
-.mini-card { border-radius: 20px !important; border-color: #ede5f5 !important; }
-
-/* Expense cards */
-.ex-section { border-radius: 22px !important; border-color: #ede5f5 !important; }
-.ex-total-card { border-radius: 22px !important; background: linear-gradient(135deg, #faf5ff, #f0f0ff) !important; border-color: #ede5f5 !important; }
-
-/* AI analysis */
-.ai-analysis { border-color: #ede5f5 !important; border-radius: 22px !important; }
-
-/* Action buttons */
-.action-btn { border-radius: 16px !important; }
-
-/* Detail */
-.detail-action-btn { border-radius: 20px !important; box-shadow: 0 6px 20px rgba(167,139,250,.2) !important; }
-.detail-meta span { border-radius: 16px !important; background: #f5f0ff !important; border-color: #ede5f5 !important; }
-.detail-price { color: var(--pri) !important; }
-
-/* Calendar */
-.cal-day { border-color: #ede5f5 !important; border-radius: 16px !important; }
-.cal-day-detail { border-radius: 22px !important; border-color: #ede5f5 !important; }
-.cal-detail-add { background: linear-gradient(135deg, #c084fc, #a78bfa) !important; border-radius: 16px !important; }
-
-/* Toast */
-.toast { border-radius: 18px !important; border-color: #ede5f5 !important; }
-
-/* Upload */
-.img-upload-area { border-radius: 18px !important; border-color: #c084fc !important; background: #faf5ff !important; }
-
-/* View toggle */
-.ex-view-btn.active { background: linear-gradient(135deg, #c084fc, #a78bfa) !important; color: #fff !important; }
-
-/* Header actions */
-.header-actions button { border-radius: 16px !important; }
 .header-actions .icon-btn { border-radius: 50% !important; }
-.header .stats-row .stat { background: rgba(255,255,255,.15) !important; border-radius: 18px !important; }
+.header-actions .action-btn { border-radius: 10px !important; }
+.header .stats-row .stat {
+  background: rgba(255,255,255,.12) !important;
+  border-radius: 16px !important;
+}
 
-/* Dark mode */
-body.dark { --bg:#1a1028; --card:#2a1530; --text:#e8dff0; --muted:#a090b8; --border:#3d2050; --pri:#c084fc; --pri-light:rgba(192,132,252,.12); }
-body.dark .card, body.dark .swipe-card { background: linear-gradient(135deg, #2a1530, #251235) !important; border-color: #3d2050 !important; box-shadow: 0 4px 16px rgba(192,132,252,.08) !important; }
-body.dark .btn-primary { background: linear-gradient(135deg, #c084fc, #a78bfa) !important; }
-body.dark .chip.active { background: linear-gradient(135deg, #c084fc, #a78bfa) !important; }
-body.dark .modal { background: #2a1530 !important; border-color: #3d2050 !important; }
-body.dark .ai-bar, body.dark .ai-analysis { border-color: #3d2050 !important; }
-body.dark .ex-section, body.dark .ex-total-card { background: #2a1530 !important; border-color: #3d2050 !important; }
-body.dark .badge-待审批 { background: rgba(254,243,199,.15) !important; color: #fbbf24 !important; }
-body.dark .badge-已审批 { background: rgba(219,234,254,.15) !important; color: #60a5fa !important; }
-body.dark .badge-已下单 { background: rgba(237,233,254,.15) !important; color: #a78bfa !important; }
-body.dark .badge-已到 { background: rgba(220,252,231,.15) !important; color: #4ade80 !important; }
-body.dark .badge-已退 { background: rgba(254,226,226,.15) !important; color: #f87171 !important; }
-body.dark .badge-已归档 { background: rgba(243,244,265,.15) !important; color: #9ca3af !important; }
-body.dark .badge-待评估 { background: rgba(252,231,243,.15) !important; color: #f472b6 !important; }
-body.dark .badge-评估中 { background: rgba(224,231,255,.15) !important; color: #818cf8 !important; }
-body.dark .badge-已取消 { background: rgba(243,244,246,.15) !important; color: #9ca3af !important; }
+/* === Tabs === */
+.tabs { border-bottom: 2px solid #e5e7eb !important; }
+.tab { border-radius: 12px 12px 0 0 !important; font-weight: 700 !important; }
+.tab.active { box-shadow: inset 0 -3px 0 #0d9488 !important; color: #0d9488 !important; }
+
+/* === Search bar === */
+.search-bar {
+  border-radius: 16px !important;
+  border: 1.5px solid #e5e7eb !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04) !important;
+}
+.search-input { border-radius: 14px !important; }
+
+/* === Cards: clean white with subtle shadow === */
+.card, .swipe-card {
+  background: #fff !important;
+  border-radius: 18px !important;
+  border: 1.5px solid #f0f0f0 !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06) !important;
+  transition: transform .2s ease, box-shadow .2s ease !important;
+}
+.card:hover { transform: translateY(-2px) !important; box-shadow: 0 6px 20px rgba(0,0,0,.08) !important; }
+.card:active { transform: scale(.98) !important; }
+
+/* === Buttons === */
+.btn-primary, .btn.btn-primary {
+  background: linear-gradient(135deg, #0d9488, #14b8a6) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  box-shadow: 0 3px 12px rgba(13,148,136,.25) !important;
+  font-weight: 700 !important;
+  transition: all .18s ease !important;
+}
+.btn-primary:active { transform: scale(.96) !important; }
+.btn-secondary, .btn.btn-secondary {
+  background: #f0fdfa !important;
+  color: #0d9488 !important;
+  border: 2px solid #99f6e4 !important;
+  border-radius: 14px !important;
+}
+
+/* === FAB === */
+.fab {
+  background: linear-gradient(135deg, #0d4f4f, #0d9488) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 6px 20px rgba(13,148,136,.35) !important;
+  border: 3px solid rgba(255,255,255,.3) !important;
+}
+.fab:active { transform: scale(.9) !important; }
+
+/* === Chips === */
+.chip { border-radius: 20px !important; font-weight: 600 !important; border-color: #e5e7eb !important; }
+.chip.active { background: #0d9488 !important; color: #fff !important; border-color: transparent !important; box-shadow: 0 2px 8px rgba(13,148,136,.2) !important; }
+
+/* === Badges: clean colored pills === */
+.badge, [class^="badge-"], [class*=" badge-"] {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+}
+.badge-待审批 { background: #dbeafe !important; color: #1e40af !important; border: 1px solid #93c5fd !important; }
+.badge-已审批 { background: #d1fae5 !important; color: #065f46 !important; border: 1px solid #6ee7b7 !important; }
+.badge-已下单 { background: #ede9fe !important; color: #5b21b6 !important; border: 1px solid #c4b5fd !important; }
+.badge-已到 { background: #dcfce7 !important; color: #166534 !important; border: 1px solid #86efac !important; }
+.badge-已退 { background: #fee2e2 !important; color: #991b1b !important; border: 1px solid #fca5a5 !important; }
+.badge-已归档 { background: #f3f4f6 !important; color: #374151 !important; border: 1px solid #d1d5db !important; }
+.badge-待评估 { background: #fef3c7 !important; color: #92400e !important; border: 1px solid #fcd34d !important; }
+.badge-评估中 { background: #e0e7ff !important; color: #3730a3 !important; border: 1px solid #a5b4fc !important; }
+.badge-已取消 { background: #f3f4f6 !important; color: #6b7280 !important; border: 1px solid #d1d5db !important; }
+.cat-badge { border-radius: 10px !important; }
+
+/* === Modal === */
+.modal { border-radius: 24px !important; border: none !important; box-shadow: 0 20px 60px rgba(0,0,0,.15) !important; }
+
+/* === Form inputs === */
+.form-group input, .form-group select, .form-group textarea {
+  border-radius: 14px !important;
+  border: 1.5px solid #e5e7eb !important;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(13,148,136,.1) !important;
+}
+
+/* === AI bar === */
+.ai-bar { border-radius: 18px !important; border-color: #e5e7eb !important; }
+.ai-input { border-radius: 14px !important; border-color: #e5e7eb !important; }
+.ai-send { border-radius: 50% !important; }
+.ai-send:active { transform: scale(.9) !important; }
+.ai-confirm-btn { border-radius: 14px !important; font-weight: 700 !important; }
+.ai-confirm-btn.primary { background: linear-gradient(135deg, #0d9488, #14b8a6) !important; box-shadow: 0 3px 12px rgba(13,148,136,.2) !important; }
+.ai-confirm-btn.secondary { background: #f0fdfa !important; color: #0d9488 !important; border-color: #99f6e4 !important; }
+
+/* === AI analysis === */
+.ai-analysis { border-radius: 18px !important; border-color: #e5e7eb !important; }
+
+/* === Mini cards === */
+.mini-card { border-radius: 16px !important; border-color: #e5e7eb !important; }
+
+/* === Expense cards === */
+.ex-section { border-radius: 18px !important; border-color: #e5e7eb !important; }
+.ex-total-card { border-radius: 18px !important; background: linear-gradient(135deg, #f0fdfa, #ecfdf5) !important; border-color: #99f6e4 !important; }
+
+/* === Calendar === */
+.cal-day { border-radius: 12px !important; border-color: #e5e7eb !important; }
+.cal-day-detail { border-radius: 18px !important; border-color: #e5e7eb !important; }
+.cal-detail-add { background: #0d9488 !important; border-radius: 12px !important; }
+
+/* === Action buttons === */
+.action-btn { border-radius: 12px !important; }
+
+/* === Detail === */
+.detail-action-btn { border-radius: 16px !important; box-shadow: 0 4px 16px rgba(13,148,136,.25) !important; }
+.detail-meta span { border-radius: 12px !important; background: #f0fdfa !important; border-color: #d1fae5 !important; }
+.detail-price { color: #0d9488 !important; }
+
+/* === Toast === */
+.toast { border-radius: 14px !important; border-color: #e5e7eb !important; }
+
+/* === Upload === */
+.img-upload-area { border-radius: 14px !important; border-color: #0d9488 !important; background: #f0fdfa !important; }
+
+/* === View toggle === */
+.ex-view-toggle { border-radius: 14px !important; }
+.ex-view-btn.active { background: #0d9488 !important; color: #fff !important; }
+
+/* === Stepper === */
+.step-active .step-dot { box-shadow: 0 0 0 6px rgba(13,148,136,.15) !important; }
+
+/* === Dark mode: teal tint === */
+body.dark { --bg:#0f1f1f; --card:#1a2e2e; --text:#e0f2f1; --muted:#80cbc4; --border:#2d4a4a; --pri:#2dd4bf; --pri-dark:#14b8a6; --pri-light:rgba(45,212,191,.1); }
+body.dark .header { background: linear-gradient(135deg, #0a2f2f, #0d4f4f) !important; }
+body.dark .card, body.dark .swipe-card { background: #1a2e2e !important; border-color: #2d4a4a !important; box-shadow: 0 2px 12px rgba(0,0,0,.3) !important; }
+body.dark .modal { background: #1a2e2e !important; }
+body.dark .btn-primary { background: linear-gradient(135deg, #0d9488, #14b8a6) !important; }
+body.dark .chip.active { background: #0d9488 !important; }
+body.dark .ai-bar, body.dark .ai-analysis { border-color: #2d4a4a !important; }
+body.dark .ex-section, body.dark .ex-total-card { background: #1a2e2e !important; border-color: #2d4a4a !important; }
+body.dark .ex-view-btn.active { background: #0d9488 !important; }
+body.dark .badge-待审批 { background: rgba(219,234,254,.12) !important; color: #60a5fa !important; }
+body.dark .badge-已审批 { background: rgba(209,250,229,.12) !important; color: #34d399 !important; }
+body.dark .badge-已下单 { background: rgba(237,233,254,.12) !important; color: #a78bfa !important; }
+body.dark .badge-已到 { background: rgba(220,252,231,.12) !important; color: #4ade80 !important; }
+body.dark .badge-已退 { background: rgba(254,226,226,.12) !important; color: #f87171 !important; }
+body.dark .badge-已归档 { background: rgba(243,244,246,.12) !important; color: #9ca3af !important; }
+body.dark .badge-待评估 { background: rgba(254,243,199,.12) !important; color: #fbbf24 !important; }
+body.dark .badge-评估中 { background: rgba(224,231,255,.12) !important; color: #818cf8 !important; }
+body.dark .badge-已取消 { background: rgba(243,244,246,.12) !important; color: #9ca3af !important; }
