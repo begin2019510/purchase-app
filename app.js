@@ -1514,7 +1514,7 @@ async function cancelFromEval() {
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
   if (!confirm(reason ? '确定不买了？\\n理由: ' + reason : '确定不买了？')) return;
   try {
-    const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '' });
+    const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
     toast('已取消采购');
     document.getElementById('evalOverlay').classList.remove('active');

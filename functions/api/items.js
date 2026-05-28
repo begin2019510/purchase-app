@@ -148,6 +148,7 @@ export async function onRequest(context) {
         '分类': body.category || '其他',
         '备注': body.note || '',
         '创建时间': nowBjStr(),
+        '日期': Date.now(),
         '评估摘要': body.evalSummary || '',
         '购买理由': body.buyReason || '',
         '预算区间': body.budgetRange || '',
@@ -194,6 +195,7 @@ export async function onRequest(context) {
       if (body.buyReason !== undefined) fields['购买理由'] = body.buyReason;
       if (body.budgetRange !== undefined) fields['预算区间'] = body.budgetRange;
       if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
+      if (body.setDate && !fields['日期']) fields['日期'] = Date.now();
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
 
@@ -211,7 +213,7 @@ export async function onRequest(context) {
     if (request.method === 'PATCH') {
       const body = await request.json();
       if (!body.ids || !body.ids.length) return json({ error: 'ids required' }, 400);
-      const statusTimeMap = { '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已退': '到货时间', '已归档': '归档时间', '已取消': '归档时间' };
+      const statusTimeMap = { '待评估': '创建时间', '待审批': '创建时间', '已审批': '审批时间', '已下单': '下单时间', '已到': '到货时间', '已退': '到货时间', '已归档': '归档时间', '已取消': '归档时间' };
       const timeField = body.status ? statusTimeMap[body.status] : null;
       const results = [];
       for (const id of body.ids) {
@@ -219,6 +221,7 @@ export async function onRequest(context) {
         if (body.status) fields['状态'] = body.status;
         if (timeField) fields[timeField] = nowBjStr();
         if (body.note !== undefined) fields['备注'] = body.note;
+        if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
         const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
       }
