@@ -402,102 +402,291 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .detail-action-btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;color:#fff;margin-top:10px}
 .detail-action-btn:active{transform:scale(.97)}
 
+/* ===== Cute Sketch Style ===== */
+/* Hand-drawn wobbly borders + sketch shadows on components only */
 
-
-/* ===== Subtle accent colors: pink + light blue ===== */
-
-:root{
-  --pri:#ec4899;
-  --pri-dark:#db2777;
-  --pri-light:#fdf2f8;
-  --pri-g:linear-gradient(135deg,#f472b6,#a78bfa);
-  --green:#34d399;
-  --blue:#60a5fa;
-  --pink:#f472b6;
-  --lavender:#a78bfa;
+/* --- Cards: wobbly border + sketch shadow --- */
+.card, .swipe-card {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: 4px 4px 0 0 rgba(99,102,241,.08) !important;
+  transition: transform .18s ease, box-shadow .18s ease !important;
+}
+.card:active, .swipe-card:active {
+  transform: scale(.985) rotate(-.5deg) !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.12) !important;
 }
 
-/* Header - keep gradient but add pink */
-.header{
-  background:linear-gradient(135deg,#f472b6 0%,#818cf8 50%,#60a5fa 100%);
+/* --- Buttons: bubbly wobbly --- */
+.btn, .btn-primary, .btn-secondary {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.12) !important;
+  border: 2px solid transparent !important;
+  transition: transform .15s ease, box-shadow .15s ease !important;
+}
+.btn:active, .btn-primary:active, .btn-secondary:active {
+  transform: translateY(2px) rotate(.5deg) !important;
+  box-shadow: 1px 1px 0 0 rgba(99,102,241,.15) !important;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #a78bfa, #818cf8) !important;
+  border-color: #7c3aed !important;
+}
+.btn-secondary {
+  border: 2px solid var(--border) !important;
 }
 
-/* Active tab - pink */
-.tab.active{
-  color:var(--pri);
-  border-bottom-color:var(--pri);
+/* --- Action buttons in header --- */
+.action-btn {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 2px 2px 0 0 rgba(255,255,255,.15) !important;
 }
 
-/* Chips - pink when active */
-.chip.active{
-  background:var(--pri);
-  border-color:var(--pri);
-  box-shadow:0 2px 8px rgba(236,72,153,.25);
+/* --- AI send button --- */
+.ai-send {
+  border-radius: 50% !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.15) !important;
+  transition: transform .15s ease !important;
+}
+.ai-send:active {
+  transform: scale(.9) rotate(-5deg) !important;
 }
 
-/* FAB - pink */
-.fab{
-  background:var(--pri-g);
-  box-shadow:0 4px 16px rgba(236,72,153,.4);
+/* --- AI confirm buttons --- */
+.ai-confirm-btn {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.1) !important;
 }
 
-/* Buttons - pink gradient */
-.btn-primary{
-  background:var(--pri-g);
-  box-shadow:0 2px 8px rgba(236,72,153,.3);
+/* --- Chips: cute pill shape --- */
+.chip {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 1.5px solid var(--border) !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.06) !important;
+  transition: all .2s ease !important;
+}
+.chip.active {
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.15) !important;
+  border-color: var(--pri) !important;
 }
 
-/* Card price - pink */
-.card .price{color:var(--pri)}
+/* --- Badges: wobbly pill + pastel colors --- */
+.badge, [class^="badge-"], [class*=" badge-"] {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 1.5px 1.5px 0 0 rgba(0,0,0,.06) !important;
+  border: 1.5px solid transparent !important;
+  font-weight: 700 !important;
+}
+.badge-待审批 { background: #fef3c7 !important; color: #92400e !important; border-color: #fcd34d !important; }
+.badge-已审批 { background: #dbeafe !important; color: #1e40af !important; border-color: #93c5fd !important; }
+.badge-已下单 { background: #ede9fe !important; color: #5b21b6 !important; border-color: #c4b5fd !important; }
+.badge-已到 { background: #d1fae5 !important; color: #065f46 !important; border-color: #6ee7b7 !important; }
+.badge-已退 { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5 !important; }
+.badge-已归档 { background: #f1f5f9 !important; color: #475569 !important; border-color: #cbd5e1 !important; }
+.badge-待评估 { background: #fce7f3 !important; color: #9d174d !important; border-color: #f9a8d4 !important; }
+.badge-评估中 { background: #e0e7ff !important; color: #3730a3 !important; border-color: #a5b4fc !important; }
+.badge-已取消 { background: #f3f4f6 !important; color: #6b7280 !important; border-color: #d1d5db !important; }
 
-/* Badge for 待评估 */
-.badge-待评估{background:#fce7f3;color:#be185d}
-
-/* Category badge - pink tint */
-.cat-badge{
-  background:#fdf2f8;
-  color:#ec4899;
+/* --- Category badge --- */
+.cat-badge {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 1.5px 1.5px 0 0 rgba(99,102,241,.08) !important;
 }
 
-/* Checkbox when checked - pink */
-.batch-mode .card .checkbox.checked{
-  background:var(--pri);
-  border-color:var(--pri);
+/* --- FAB: big cute circle with sketch shadow --- */
+.fab {
+  border-radius: 50% !important;
+  box-shadow: 4px 4px 0 0 rgba(99,102,241,.18), 0 4px 12px rgba(99,102,241,.2) !important;
+  border: 3px solid rgba(255,255,255,.3) !important;
+  transition: transform .2s ease, box-shadow .2s ease !important;
+}
+.fab:active {
+  transform: scale(.9) rotate(-8deg) !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.2), 0 2px 8px rgba(99,102,241,.15) !important;
 }
 
-/* Search focus - pink glow */
-.search-input:focus{
-  border-color:var(--pink);
-  box-shadow:0 0 0 3px rgba(244,114,182,.12);
+/* --- Modals: wobbly frame --- */
+.modal {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2.5px solid var(--border) !important;
+  box-shadow: 6px 6px 0 0 rgba(99,102,241,.08) !important;
 }
 
-/* Form focus - pink glow */
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
-  border-color:var(--pink);
-  box-shadow:0 0 0 3px rgba(244,114,182,.12);
+/* --- Search bar --- */
+.search-bar {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.06) !important;
+}
+.search-input {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
 }
 
-/* AI confirm button */
-.ai-confirm-btn.primary{
-  background:var(--pri-g);
-  box-shadow:0 2px 8px rgba(236,72,153,.3);
+/* --- Form inputs --- */
+.form-group input, .form-group select, .form-group textarea {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: inset 2px 2px 0 0 rgba(99,102,241,.04) !important;
+  transition: border-color .2s ease, box-shadow .2s ease !important;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--pri) !important;
+  box-shadow: inset 2px 2px 0 0 rgba(99,102,241,.06), 0 0 0 3px rgba(99,102,241,.1) !important;
 }
 
-/* Budget bar - pink gradient */
-.budget-fill{
-  background:var(--pri-g);
+/* --- Tabs --- */
+.tab {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  transition: all .2s ease !important;
+}
+.tab.active {
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.12) !important;
 }
 
-/* Stats hero number - pink */
-.stats-hero-num{
-  color:var(--pri);
+/* --- Stat cards in header --- */
+.header .stats-row .stat {
+  background: rgba(255,255,255,.12) !important;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 1.5px solid rgba(255,255,255,.15) !important;
+  box-shadow: 2px 2px 0 0 rgba(255,255,255,.08) !important;
 }
 
-/* Stepper active dot - pink */
-.step-active .step-dot{
-  background:var(--pri);
-  box-shadow:0 0 0 4px rgba(236,72,153,.15);
+/* --- Expense section cards --- */
+.ex-section {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.06) !important;
+}
+.ex-total-card {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.08) !important;
 }
 
-/* Selection color - pink tint */
-::selection{background:rgba(236,72,153,.15)}
+/* --- AI bar --- */
+.ai-bar {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.06) !important;
+}
+.ai-input {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+
+/* --- AI result --- */
+.ai-result {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+
+/* --- AI analysis card --- */
+.ai-analysis {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+  box-shadow: 4px 4px 0 0 rgba(99,102,241,.08) !important;
+}
+
+/* --- Mini stat cards --- */
+.mini-card {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 1.5px solid var(--border) !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.06) !important;
+}
+
+/* --- Calendar day cards --- */
+.cal-day {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 1.5px solid var(--border) !important;
+}
+.cal-day-detail {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.08) !important;
+}
+
+/* --- Stepper dots: slightly wobbly --- */
+.step-dot {
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,.06) !important;
+}
+
+/* --- Detail action button --- */
+.detail-action-btn {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 4px 4px 0 0 rgba(99,102,241,.15) !important;
+  border: 2px solid rgba(255,255,255,.2) !important;
+}
+.detail-action-btn:active {
+  transform: translateY(2px) rotate(.5deg) !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.18) !important;
+}
+
+/* --- Toast --- */
+.toast {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 3px 3px 0 0 rgba(0,0,0,.1) !important;
+  border: 2px solid var(--border) !important;
+}
+
+/* --- Ex view toggle --- */
+.ex-view-toggle {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+.ex-view-btn {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+
+/* --- Calendar nav buttons --- */
+.cal-nav button {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 2px 2px 0 0 rgba(99,102,241,.08) !important;
+}
+
+/* --- Image upload area --- */
+.img-upload-area {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px dashed var(--pri) !important;
+  box-shadow: 3px 3px 0 0 rgba(99,102,241,.06) !important;
+}
+
+/* --- Skeleton loading --- */
+.skeleton-card {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+}
+
+/* --- Budget card --- */
+.ex-budget {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  border: 2px solid var(--border) !important;
+}
+
+/* --- Detail meta tags --- */
+.detail-meta span {
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
+  box-shadow: 1.5px 1.5px 0 0 rgba(99,102,241,.06) !important;
+}
+
+/* --- Wiggle animation on hover --- */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-1deg); }
+  75% { transform: rotate(1deg); }
+}
+.card:hover {
+  animation: wiggle .4s ease-in-out;
+}
+
+/* --- Dark mode adjustments --- */
+body.dark .card, body.dark .swipe-card,
+body.dark .modal {
+  box-shadow: 4px 4px 0 0 rgba(99,102,241,.15) !important;
+  border-color: #334155 !important;
+}
+body.dark .btn-primary {
+  background: linear-gradient(135deg, #818cf8, #6366f1) !important;
+}
+body.dark .badge-待审批 { background: rgba(254,243,199,.15) !important; color: #fbbf24 !important; border-color: rgba(252,211,77,.3) !important; }
+body.dark .badge-已审批 { background: rgba(219,234,254,.15) !important; color: #60a5fa !important; border-color: rgba(147,197,253,.3) !important; }
+body.dark .badge-已下单 { background: rgba(237,233,254,.15) !important; color: #a78bfa !important; border-color: rgba(196,181,253,.3) !important; }
+body.dark .badge-已到 { background: rgba(220,252,231,.15) !important; color: #4ade80 !important; border-color: rgba(110,231,183,.3) !important; }
+body.dark .badge-已退 { background: rgba(254,226,226,.15) !important; color: #f87171 !important; border-color: rgba(252,165,165,.3) !important; }
+body.dark .badge-已归档 { background: rgba(243,244,265,.15) !important; color: #9ca3af !important; border-color: rgba(209,213,219,.3) !important; }
+body.dark .badge-待评估 { background: rgba(252,231,243,.15) !important; color: #f472b6 !important; border-color: rgba(249,168,212,.3) !important; }
+body.dark .badge-评估中 { background: rgba(224,231,255,.15) !important; color: #818cf8 !important; border-color: rgba(165,184,252,.3) !important; }
+body.dark .badge-已取消 { background: rgba(243,244,246,.15) !important; color: #9ca3af !important; border-color: rgba(209,213,219,.3) !important; }
