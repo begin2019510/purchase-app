@@ -1431,28 +1431,20 @@ async function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
-  
-  // 获取购买理由
+
   const reason = (document.getElementById('fReason').value || '').trim();
-  
-  // 生成AI摘要（简短）
+
   const aiSummary = purchaseChatHistory
     .filter(m => m.role === 'assistant')
-    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
-    .join('');
-  
-  // 提取预算区间
+    .map(m => m.content.replace(/\\n+/g, ' ').slice(0, 200))
+    .join(' | ');
+
   const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
   const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
   let budgetText = '';
   if (budgetMin > 0 && budgetMax > 0) budgetText = budgetMin + '~' + budgetMax;
   else if (budgetMin > 0) budgetText = budgetMin + '+';
   else if (budgetMax > 0) budgetText = budgetMax + '-';
-  else budgetText = '未设置';
-  
-  // 构建备注：结构化存储（包含购买理由）
-  const chatJson = JSON.stringify(purchaseChatHistory);
-  const note = (reason ? '===REASON===' + reason + '\n' : '') + '===BUDGET===' + budgetText + '\n===AI_SUMMARY===' + aiSummary + '\n===CHAT===' + chatJson;
 
   const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
   if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
@@ -1465,8 +1457,11 @@ async function submitEvaluation() {
       price: 0,
       qty: 1,
       status: '待评估',
-      date: null,
-      note: note
+      date: new Date().toISOString().slice(0,10),
+      note: '',
+      evalSummary: aiSummary,
+      buyReason: reason,
+      budgetRange: budgetText
     };
     const r = await api('POST', data);
     if (r && r.error) { alert('提交失败: ' + r.error); return; }
@@ -1512,7 +1507,7 @@ function closeEvalModal() {
 
 async function cancelFromEval() {
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
-  if (!confirm(reason ? '确定不买了？\\n理由: ' + reason : '确定不买了？')) return;
+  if (!confirm(reason ? '确定不买了？' + String.fromCharCode(10) + '理由: ' + reason : '确定不买了？')) return;
   try {
     const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
