@@ -40,7 +40,7 @@ export async function onRequest(context) {
 
 async function callAI(apiKey, systemPrompt, userMessage, maxTokens = 4096) {
   const body = {
-    model: 'mimo-v2.5-pro',
+    model: 'mimo-v2.5',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
@@ -434,7 +434,7 @@ ${evalContext ? '=== 首次评估结果 ===\n' + evalContext + '\n\n' : ''}规�
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'mimo-v2.5-pro',
+      model: 'mimo-v2.5',
       messages: [
         { role: 'system', content: systemPrompt },
         ...chatMessages
