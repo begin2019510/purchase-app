@@ -403,292 +403,101 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .detail-action-btn:active{transform:scale(.97)}
 
 
-/* ===== Cute & Soft UI ===== */
+
+/* ===== Subtle accent colors: pink + light blue ===== */
 
 :root{
   --pri:#ec4899;
   --pri-dark:#db2777;
   --pri-light:#fdf2f8;
-  --pri-g:linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa);
-  --bg:#fef7ff;
-  --card:#fff;
-  --border:#fce7f3;
-  --radius:18px;
-  --shadow:0 2px 12px rgba(236,72,153,.08),0 1px 4px rgba(0,0,0,.03);
-  --shadow-lg:0 8px 30px rgba(236,72,153,.12),0 2px 8px rgba(0,0,0,.04);
+  --pri-g:linear-gradient(135deg,#f472b6,#a78bfa);
   --green:#34d399;
-  --red:#fb7185;
-  --orange:#fbbf24;
   --blue:#60a5fa;
   --pink:#f472b6;
   --lavender:#a78bfa;
-  --mint:#6ee7b7;
-  --ease:cubic-bezier(.25,.46,.45,.94);
-  --bounce:cubic-bezier(.34,1.56,.64,1);
 }
 
-/* Dark mode cute */
-body.dark{
-  --bg:#1a1025;
-  --card:#261838;
-  --text:#f0e6f6;
-  --muted:#b8a5c8;
-  --border:#3d2a52;
-  --pri-light:rgba(236,72,153,.12);
-}
-
-/* Header - soft gradient */
+/* Header - keep gradient but add pink */
 .header{
-  background:linear-gradient(135deg,#f472b6 0%,#c084fc 35%,#818cf8 65%,#60a5fa 100%);
-  padding-bottom:20px;
-  border-radius:0 0 24px 24px;
-  box-shadow:0 4px 20px rgba(236,72,153,.2);
+  background:linear-gradient(135deg,#f472b6 0%,#818cf8 50%,#60a5fa 100%);
 }
 
-/* Tab bar - cute pills */
-.tabs{
-  background:var(--card);
-  border-bottom:none;
-  padding:8px 12px;
-  gap:6px;
-  box-shadow:0 2px 8px rgba(236,72,153,.06);
-}
-.tab{
-  border-radius:14px;
-  border-bottom:none;
-  padding:10px 0;
-  font-size:13px;
-  transition:all .3s var(--ease);
-}
+/* Active tab - pink */
 .tab.active{
-  background:var(--pri-g);
-  color:#fff;
-  border-bottom:none;
-  box-shadow:0 3px 12px rgba(236,72,153,.3);
+  color:var(--pri);
+  border-bottom-color:var(--pri);
 }
 
-/* Cards - soft and bubbly */
-.card,.swipe-card{
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  border:1.5px solid var(--border);
-  transition:all .3s var(--ease);
-  animation:cardFadeIn .4s var(--ease) both;
-}
-.card:active,.swipe-card:active{
-  transform:scale(.97);
-  box-shadow:var(--shadow-lg);
-}
-@keyframes cardFadeIn{
-  from{opacity:0;transform:translateY(10px)}
-  to{opacity:1;transform:translateY(0)}
-}
-.card:nth-child(1){animation-delay:.03s}
-.card:nth-child(2){animation-delay:.06s}
-.card:nth-child(3){animation-delay:.09s}
-.card:nth-child(4){animation-delay:.12s}
-.card:nth-child(5){animation-delay:.15s}
-
-/* Badges - pastel colors */
-.badge{border-radius:10px;font-weight:700;letter-spacing:.2px}
-.badge-待评估{background:#fef3c7;color:#b45309}
-.badge-待审批{background:#fce7f3;color:#be185d}
-.badge-已审批{background:#dbeafe;color:#1d4ed8}
-.badge-已下单{background:#ede9fe;color:#6d28d9}
-.badge-已到{background:#d1fae5;color:#047857}
-.badge-已退{background:#ffe4e6;color:#be123c}
-.badge-已归档{background:#f1f5f9;color:#64748b}
-.badge-已取消{background:#f1f5f9;color:#64748b}
-.cat-badge{background:var(--pri-light);color:var(--pri);border-radius:10px}
-
-/* FAB - cute pink */
-.fab{
-  background:var(--pri-g);
-  border-radius:22px;
-  width:60px;
-  height:60px;
-  box-shadow:0 6px 24px rgba(236,72,153,.4);
-  transition:all .3s var(--bounce);
-}
-.fab:active{transform:scale(.85)}
-
-/* Buttons - soft press */
-.btn{
-  border-radius:14px;
-  transition:all .2s var(--ease);
-}
-.btn:active{transform:scale(.95)}
-.btn-primary{
-  background:var(--pri-g);
-  box-shadow:0 3px 14px rgba(236,72,153,.3);
-}
-
-/* Chips - rounded pills */
-.chip{
-  border-radius:20px;
-  border-color:var(--border);
-  transition:all .25s var(--ease);
-}
+/* Chips - pink when active */
 .chip.active{
   background:var(--pri);
   border-color:var(--pri);
-  box-shadow:0 3px 12px rgba(236,72,153,.3);
-}
-.chip:active{transform:scale(.93)}
-
-/* Search - soft focus */
-.search-input{
-  border-radius:14px;
-  border-color:var(--border);
-  transition:all .3s var(--ease);
-}
-.search-input:focus{
-  border-color:var(--pink);
-  box-shadow:0 0 0 3px rgba(244,114,182,.12);
+  box-shadow:0 2px 8px rgba(236,72,153,.25);
 }
 
-/* Form inputs - cute focus */
-.form-group input,.form-group select,.form-group textarea{
-  border-radius:14px;
-  border-color:var(--border);
-  transition:all .3s var(--ease);
-}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
-  border-color:var(--pink);
-  box-shadow:0 0 0 3px rgba(244,114,182,.12);
-}
-
-/* Modal - smooth slide */
-.modal{
-  border-radius:24px 24px 0 0;
-  animation:modalSlideUp .35s var(--ease);
-}
-@keyframes modalSlideUp{
-  from{transform:translateY(30%);opacity:0}
-  to{transform:translateY(0);opacity:1}
-}
-
-/* Stats hero - gradient text */
-.stats-hero-num{
+/* FAB - pink */
+.fab{
   background:var(--pri-g);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
+  box-shadow:0 4px 16px rgba(236,72,153,.4);
 }
 
-/* Budget/progress bars - pink gradient */
-.budget-fill,.stats-bar-fill,.cat-bar-fill{
+/* Buttons - pink gradient */
+.btn-primary{
   background:var(--pri-g);
-  border-radius:6px;
-}
-
-/* Stepper - cute dots */
-.step-done .step-dot{
-  background:#34d399;
-  color:#fff;
-}
-.step-active .step-dot{
-  background:var(--pri-g);
-  color:#fff;
-  box-shadow:0 0 0 4px rgba(236,72,153,.15);
-}
-
-/* Toast - bouncy */
-.toast{
-  border-radius:14px;
-  background:var(--card);
-  color:var(--text);
-  box-shadow:var(--shadow-lg);
-  animation:toastBounce .4s var(--bounce);
-}
-@keyframes toastBounce{
-  from{transform:translateY(20px) scale(.9);opacity:0}
-  to{transform:translateY(0) scale(1);opacity:1}
-}
-
-/* Detail action buttons */
-.detail-action-btn{
-  border-radius:14px;
-  transition:all .2s var(--ease);
-}
-.detail-action-btn:active{transform:scale(.95)}
-
-/* AI bar */
-.ai-bar{
-  border-radius:16px;
-  border-color:var(--border);
-}
-.ai-input{
-  border-radius:12px;
-  border-color:var(--border);
-}
-.ai-input:focus{
-  border-color:var(--pink);
-}
-
-/* Image upload */
-.img-upload-area{
-  border-color:var(--pink);
-  background:var(--pri-light);
-  border-radius:16px;
-}
-
-/* Skeleton */
-.skeleton::after{
-  background:linear-gradient(90deg,transparent,rgba(236,72,153,.06),transparent);
-}
-
-/* Swipe actions */
-.swipe-actions-left{background:var(--red)}
-.swipe-actions-right{background:var(--green)}
-
-/* Custom scrollbar */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-
-/* Selection */
-::selection{background:rgba(236,72,153,.15)}
-
-/* Smooth scroll */
-html{scroll-behavior:smooth}
-
-/* Section titles */
-.section-title{
-  font-size:13px;
-  font-weight:700;
-  color:var(--muted);
-  padding:12px 4px 6px;
+  box-shadow:0 2px 8px rgba(236,72,153,.3);
 }
 
 /* Card price - pink */
 .card .price{color:var(--pri)}
 
-/* Checkbox cute */
-.card .checkbox{
-  border-radius:8px;
-  border-color:var(--border);
+/* Badge for 待评估 */
+.badge-待评估{background:#fce7f3;color:#be185d}
+
+/* Category badge - pink tint */
+.cat-badge{
+  background:#fdf2f8;
+  color:#ec4899;
 }
+
+/* Checkbox when checked - pink */
 .batch-mode .card .checkbox.checked{
   background:var(--pri);
   border-color:var(--pri);
 }
 
-/* Weekly bar chart */
-.weekly-bar{
-  background:var(--pri-g);
-  border-radius:8px 8px 0 0;
+/* Search focus - pink glow */
+.search-input:focus{
+  border-color:var(--pink);
+  box-shadow:0 0 0 3px rgba(244,114,182,.12);
 }
 
-/* Batch bar */
-.batch-bar{
-  border-top-color:var(--border);
-  border-radius:16px 16px 0 0;
+/* Form focus - pink glow */
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  border-color:var(--pink);
+  box-shadow:0 0 0 3px rgba(244,114,182,.12);
 }
 
-/* AI confirm buttons */
+/* AI confirm button */
 .ai-confirm-btn.primary{
   background:var(--pri-g);
-  border-radius:12px;
-  box-shadow:0 3px 12px rgba(236,72,153,.3);
+  box-shadow:0 2px 8px rgba(236,72,153,.3);
 }
+
+/* Budget bar - pink gradient */
+.budget-fill{
+  background:var(--pri-g);
+}
+
+/* Stats hero number - pink */
+.stats-hero-num{
+  color:var(--pri);
+}
+
+/* Stepper active dot - pink */
+.step-active .step-dot{
+  background:var(--pri);
+  box-shadow:0 0 0 4px rgba(236,72,153,.15);
+}
+
+/* Selection color - pink tint */
+::selection{background:rgba(236,72,153,.15)}
