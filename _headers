@@ -2,6 +2,12 @@
   Cache-Control: no-cache, no-store, must-revalidate
   X-Content-Type-Options: nosniff
 
+/theme.css
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/main.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
 /style.css
   Cache-Control: no-cache, no-store, must-revalidate
 
