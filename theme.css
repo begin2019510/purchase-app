@@ -506,3 +506,63 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 
 /* Header stat cards */
 .header .stats-row .stat { box-shadow: 2px 2px 0 0 rgba(255,255,255,.1) !important; }
+
+/* ===== Mobile Layout Fix ===== */
+/* More breathing room, better spacing on mobile */
+
+/* Container - more padding */
+.container { padding: 12px 16px !important; }
+
+/* Cards - more breathing room */
+.card, .swipe-card {
+  padding: 16px 16px 14px !important;
+  margin-bottom: 12px !important;
+  /* Softer pink - less visual bulk */
+  border: 1.5px solid #f5e0e8 !important;
+  box-shadow: 2px 2px 0 0 #f5d0dd !important;
+}
+
+/* Chips - more spacing */
+.chips { gap: 8px !important; padding: 8px 16px !important; }
+.chip { padding: 6px 14px !important; font-size: 13px !important; }
+
+/* Search bar */
+.search-bar { padding: 12px 16px !important; }
+.search-input { font-size: 15px !important; padding: 10px 14px !important; }
+
+/* Tabs - more comfortable */
+.tabs { padding: 0 8px !important; }
+.tab { padding: 14px 0 !important; font-size: 15px !important; }
+
+/* Stats row - 2 columns on mobile */
+.stats-row { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+
+/* Section titles */
+.section-title { padding: 8px 0 !important; margin-top: 4px !important; }
+
+/* Modal - more padding on mobile */
+.modal { padding: 20px 16px !important; }
+
+/* Form groups - more spacing */
+.form-group { margin-bottom: 14px !important; }
+.form-group input, .form-group textarea { padding: 12px 14px !important; font-size: 15px !important; }
+
+/* AI bar */
+.ai-bar { padding: 12px !important; }
+.ai-input { padding: 10px 14px !important; font-size: 15px !important; }
+
+/* Badge - slightly larger */
+.badge, [class^="badge-"], [class*=" badge-"] { padding: 3px 10px !important; font-size: 12px !important; }
+.cat-badge { padding: 3px 10px !important; font-size: 12px !important; }
+
+/* Action buttons in cards - better spacing */
+.actions { gap: 4px !important; }
+.actions button { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+
+/* Responsive: small phones */
+@media (max-width: 380px) {
+  .container { padding: 10px 12px !important; }
+  .card { padding: 14px 14px 12px !important; }
+  .stats-row { gap: 8px !important; }
+  .chip { padding: 5px 12px !important; font-size: 12px !important; }
+}
