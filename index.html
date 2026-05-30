@@ -37,12 +37,32 @@
   <div class="stats-row" id="headerStats"></div>
 </div>
 
-<!-- Tabs -->
-<div class="tabs" id="mainTabs">
+<!-- Tabs - Desktop top nav -->
+<div class="tabs desktop-only" id="mainTabs">
   <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
   <div class="tab" onclick="switchTab('expense')">💰 记账</div>
   <div class="tab" onclick="switchTab('stats')">📊 统计</div>
 </div>
+
+<!-- Bottom Nav - Mobile only -->
+<nav class="bottom-nav mobile-only" id="bottomNav">
+  <div class="nav-item active" onclick="switchTab('purchase')" data-tab="purchase">
+    <span class="nav-icon">🛒</span>
+    <span class="nav-label">采购</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('expense')" data-tab="expense">
+    <span class="nav-icon">💰</span>
+    <span class="nav-label">记账</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('stats')" data-tab="stats">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">统计</span>
+  </div>
+  <div class="nav-item" onclick="openChangelog()" data-tab="more">
+    <span class="nav-icon">⚙️</span>
+    <span class="nav-label">更多</span>
+  </div>
+</nav>
 
 <!-- 采购 Tab -->
 <div id="tab-purchase">

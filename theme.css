@@ -165,7 +165,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .stats-section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:12px}
 .stats-section-title{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px}
 .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-@media(max-width:480px){.stats-row{grid-template-columns:1fr;gap:12px}.stats-bar-label{width:48px;font-size:13px}.stats-bar-val{width:56px;font-size:13px}.stats-bar-track{height:12px}}
+.stats-bar-label{width:48px;font-size:13px}.stats-bar-val{width:56px;font-size:13px}.stats-bar-track{height:12px}}
 .stats-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .stats-bar-label{font-size:12px;width:36px;text-align:right;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stats-bar-track{flex:1;height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
@@ -507,62 +507,138 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 /* Header stat cards */
 .header .stats-row .stat { box-shadow: 2px 2px 0 0 rgba(255,255,255,.1) !important; }
 
-/* ===== Mobile Layout Fix ===== */
-/* More breathing room, better spacing on mobile */
+/* ===== Responsive System ===== */
 
-/* Container - more padding */
-.container { padding: 12px 16px !important; }
+/* --- Visibility helpers --- */
+.mobile-only { display: none !important; }
+.desktop-only { display: block !important; }
 
-/* Cards - more breathing room */
+/* --- Bottom Navigation (Mobile) --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 10px rgba(0,0,0,.05);
+  z-index: 100;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: .2s;
+  border-radius: 12px;
+  min-width: 56px;
+}
+.nav-item:active { transform: scale(.9); }
+.nav-icon { font-size: 22px; }
+.nav-label { font-size: 11px; font-weight: 600; color: var(--muted); }
+.nav-item.active .nav-label { color: var(--pri); font-weight: 700; }
+.nav-item.active { background: var(--pri-light); }
+
+/* --- Desktop Layout --- */
+.desktop-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  padding: 0 20px;
+}
+.desktop-sidebar {
+  position: sticky;
+  top: 140px;
+  height: fit-content;
+}
+
+/* --- Cards --- */
 .card, .swipe-card {
   padding: 16px 16px 14px !important;
   margin-bottom: 12px !important;
-  /* Softer pink - less visual bulk */
   border: 1.5px solid #f5e0e8 !important;
   box-shadow: 2px 2px 0 0 #f5d0dd !important;
 }
 
-/* Chips - more spacing */
+/* --- Container --- */
+.container { padding: 12px 16px !important; }
+
+/* --- Chips --- */
 .chips { gap: 8px !important; padding: 8px 16px !important; }
 .chip { padding: 6px 14px !important; font-size: 13px !important; }
 
-/* Search bar */
+/* --- Search --- */
 .search-bar { padding: 12px 16px !important; }
 .search-input { font-size: 15px !important; padding: 10px 14px !important; }
 
-/* Tabs - more comfortable */
+/* --- Tabs (Desktop) --- */
 .tabs { padding: 0 8px !important; }
 .tab { padding: 14px 0 !important; font-size: 15px !important; }
 
-/* Stats row - 2 columns on mobile */
+/* --- Stats --- */
 .stats-row { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
 
-/* Section titles */
-.section-title { padding: 8px 0 !important; margin-top: 4px !important; }
-
-/* Modal - more padding on mobile */
-.modal { padding: 20px 16px !important; }
-
-/* Form groups - more spacing */
+/* --- Form --- */
 .form-group { margin-bottom: 14px !important; }
 .form-group input, .form-group textarea { padding: 12px 14px !important; font-size: 15px !important; }
 
-/* AI bar */
+/* --- AI --- */
 .ai-bar { padding: 12px !important; }
 .ai-input { padding: 10px 14px !important; font-size: 15px !important; }
 
-/* Badge - slightly larger */
+/* --- Badge --- */
 .badge, [class^="badge-"], [class*=" badge-"] { padding: 3px 10px !important; font-size: 12px !important; }
-.cat-badge { padding: 3px 10px !important; font-size: 12px !important; }
 
-/* Action buttons in cards - better spacing */
-.actions { gap: 4px !important; }
-.actions button { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+/* ===== Tablet (768px+) ===== */
+@media (min-width: 768px) {
+  .stats-row { grid-template-columns: repeat(4, 1fr) !important; }
+  .container { max-width: 720px; margin: 0 auto; }
+  .card, .swipe-card { padding: 18px 20px 16px !important; }
+}
 
-/* Responsive: small phones */
+/* ===== Desktop (1024px+) ===== */
+@media (min-width: 1024px) {
+  .container { max-width: 900px; }
+  .header { padding: 24px 32px 20px !important; }
+  .header h1 { font-size: 22px !important; }
+  .card, .swipe-card { padding: 20px 24px 18px !important; margin-bottom: 14px !important; }
+  .search-bar { max-width: 900px; margin: 0 auto; }
+  .chips { max-width: 900px; margin: 0 auto; }
+  .modal { max-width: 560px; }
+  .fab { width: 64px; height: 64px; font-size: 30px; }
+}
+
+/* ===== Large Desktop (1440px+) ===== */
+@media (min-width: 1440px) {
+  .container { max-width: 1100px; }
+  .search-bar { max-width: 1100px; }
+  .chips { max-width: 1100px; }
+}
+
+/* ===== Small Phone (<=380px) ===== */
 @media (max-width: 380px) {
   .container { padding: 10px 12px !important; }
   .card { padding: 14px 14px 12px !important; }
   .stats-row { gap: 8px !important; }
   .chip { padding: 5px 12px !important; font-size: 12px !important; }
+  .nav-item { min-width: 48px; padding: 4px 8px; }
+}
+
+/* ===== Mobile (< 768px) ===== */
+@media (max-width: 767px) {
+  .mobile-only { display: flex !important; }
+  .desktop-only { display: none !important; }
+  body { padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
+  .fab { bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
+  .header { padding: 16px 16px 14px !important; }
+  .header h1 { font-size: 18px !important; }
+  .container { max-width: 100%; }
 }
