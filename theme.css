@@ -403,133 +403,106 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .detail-action-btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;transition:.2s;color:#fff;margin-top:10px}
 .detail-action-btn:active{transform:scale(.97)}
 
-/* ===== Hand-drawn Sketch Style ===== */
-/* ONLY touches components - background/header/layout unchanged */
+/* ===== Hand-drawn Pink Components ===== */
+/* Only components - background/header/layout untouched */
 
-/* Cards - wobbly border + hard shadow */
+/* Cards - sketch shadow + pink tint border */
 .card, .swipe-card {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 2px solid var(--border) !important;
-  box-shadow: 4px 4px 0 0 rgba(0,0,0,.08) !important;
+  border: 2px solid #f0d0d8 !important;
+  box-shadow: 3px 3px 0 0 #f0c0cc !important;
   transition: transform .2s ease, box-shadow .2s ease !important;
 }
-.card:hover { transform: translateY(-2px) rotate(-.5deg) !important; box-shadow: 5px 6px 0 0 rgba(0,0,0,.1) !important; }
-.card:active { transform: scale(.97) rotate(.5deg) !important; box-shadow: 2px 2px 0 0 rgba(0,0,0,.08) !important; }
+.card:hover { transform: translateY(-2px) !important; box-shadow: 4px 5px 0 0 #f0c0cc !important; }
+.card:active { transform: scale(.98) !important; box-shadow: 1px 1px 0 0 #f0c0cc !important; }
 
-/* Buttons - wobbly + hard shadow */
+/* Buttons - pink shadow */
 .btn, .btn-primary, .btn-secondary {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  box-shadow: 3px 3px 0 0 rgba(0,0,0,.1) !important;
+  box-shadow: 3px 3px 0 0 #f0c0cc !important;
   transition: transform .15s ease, box-shadow .15s ease !important;
 }
 .btn:active, .btn-primary:active, .btn-secondary:active {
-  transform: translateY(2px) rotate(.5deg) !important;
-  box-shadow: 1px 1px 0 0 rgba(0,0,0,.1) !important;
+  transform: translateY(2px) !important;
+  box-shadow: 1px 1px 0 0 #f0c0cc !important;
 }
 
-/* FAB - wobbly circle */
+/* FAB - pink shadow */
 .fab {
-  border-radius: 50% !important;
-  box-shadow: 4px 4px 0 0 rgba(0,0,0,.12) !important;
+  box-shadow: 4px 4px 0 0 #f0b0c0, 0 4px 12px rgba(236,72,153,.2) !important;
   border: 3px solid rgba(255,255,255,.4) !important;
   transition: transform .2s ease !important;
 }
-.fab:active { transform: scale(.9) rotate(-8deg) !important; }
+.fab:active { transform: scale(.9) !important; }
 
-/* Chips - wobbly pill */
+/* Chips - pink border */
 .chip {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 1.5px solid var(--border) !important;
-  box-shadow: 2px 2px 0 0 rgba(0,0,0,.05) !important;
+  border: 1.5px solid #f0d0d8 !important;
+  box-shadow: 2px 2px 0 0 #f0d0d8 !important;
 }
-.chip.active { box-shadow: 2px 2px 0 0 rgba(99,102,241,.15) !important; }
+.chip.active { box-shadow: 2px 2px 0 0 rgba(236,72,153,.2) !important; }
 
-/* Badges - wobbly */
+/* Badges - pink shadow */
 .badge, [class^="badge-"], [class*=" badge-"] {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  box-shadow: 2px 2px 0 0 rgba(0,0,0,.06) !important;
+  box-shadow: 2px 2px 0 0 #f0d0d8 !important;
 }
-.cat-badge { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
+.cat-badge { box-shadow: 2px 2px 0 0 #f0d0d8 !important; }
 
-/* Modal - wobbly frame */
+/* Modal - pink frame */
 .modal {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 2.5px solid var(--border) !important;
-  box-shadow: 6px 6px 0 0 rgba(0,0,0,.08) !important;
+  border: 2.5px solid #f0d0d8 !important;
+  box-shadow: 6px 6px 0 0 #f0c0cc !important;
 }
 
-/* Search bar - wobbly */
+/* Search bar */
 .search-bar {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 2px solid var(--border) !important;
-  box-shadow: 3px 3px 0 0 rgba(0,0,0,.05) !important;
+  border: 2px solid #f0d0d8 !important;
+  box-shadow: 3px 3px 0 0 #f0d0d8 !important;
 }
-.search-input { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
 
-/* Form inputs - wobbly */
+/* Form inputs */
 .form-group input, .form-group select, .form-group textarea {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 2px solid var(--border) !important;
+  border: 2px solid #f0d0d8 !important;
   transition: border-color .2s ease, box-shadow .2s ease !important;
 }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-  border-color: var(--pri) !important;
-  box-shadow: 0 0 0 3px rgba(99,102,241,.1) !important;
+  border-color: #ec4899 !important;
+  box-shadow: 0 0 0 3px rgba(236,72,153,.1) !important;
 }
-
-/* Tabs */
-.tab { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-.tab.active { box-shadow: 2px -2px 0 0 rgba(99,102,241,.1) !important; }
 
 /* AI bar */
-.ai-bar {
-  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important;
-  border: 2px solid var(--border) !important;
-  box-shadow: 3px 3px 0 0 rgba(0,0,0,.05) !important;
-}
-.ai-input { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-.ai-send:active { transform: scale(.88) rotate(-6deg) !important; }
-.ai-confirm-btn { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 3px 3px 0 0 rgba(0,0,0,.08) !important; }
-.ai-analysis { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; border: 2px solid var(--border) !important; box-shadow: 4px 4px 0 0 rgba(0,0,0,.06) !important; }
+.ai-bar { border: 2px solid #f0d0d8 !important; box-shadow: 3px 3px 0 0 #f0d0d8 !important; }
+.ai-input { border: 2px solid #f0d0d8 !important; }
+.ai-input:focus { border-color: #ec4899 !important; box-shadow: 0 0 0 3px rgba(236,72,153,.1) !important; }
+.ai-send:active { transform: scale(.88) !important; }
+.ai-confirm-btn { box-shadow: 3px 3px 0 0 #f0c0cc !important; }
+.ai-analysis { border: 2px solid #f0d0d8 !important; box-shadow: 4px 4px 0 0 #f0d0d8 !important; }
 
 /* Mini cards */
-.mini-card { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; border: 1.5px solid var(--border) !important; box-shadow: 2px 2px 0 0 rgba(0,0,0,.05) !important; }
+.mini-card { border: 1.5px solid #f0d0d8 !important; box-shadow: 2px 2px 0 0 #f0d0d8 !important; }
 
 /* Expense */
-.ex-section { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; border: 2px solid var(--border) !important; box-shadow: 3px 3px 0 0 rgba(0,0,0,.05) !important; }
-.ex-total-card { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 3px 3px 0 0 rgba(99,102,241,.06) !important; }
-.ex-budget { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
+.ex-section { border: 2px solid #f0d0d8 !important; box-shadow: 3px 3px 0 0 #f0d0d8 !important; }
+.ex-total-card { box-shadow: 3px 3px 0 0 #f0c0cc !important; }
 
 /* Calendar */
-.cal-day { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-.cal-day-detail { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 4px 4px 0 0 rgba(0,0,0,.06) !important; }
-.cal-nav button { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 2px 2px 0 0 rgba(0,0,0,.05) !important; }
+.cal-day { border: 1.5px solid #f0d0d8 !important; }
+.cal-day-detail { border: 2px solid #f0d0d8 !important; box-shadow: 4px 4px 0 0 #f0d0d8 !important; }
+.cal-nav button { box-shadow: 2px 2px 0 0 #f0d0d8 !important; }
 
 /* Action buttons */
-.action-btn { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-.header-actions button { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
+.action-btn { box-shadow: 2px 2px 0 0 rgba(255,255,255,.15) !important; }
 
 /* Detail */
-.detail-action-btn { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 4px 4px 0 0 rgba(99,102,241,.15) !important; }
-.detail-meta span { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 2px 2px 0 0 rgba(0,0,0,.05) !important; }
+.detail-action-btn { box-shadow: 4px 4px 0 0 #f0b0c0 !important; }
+.detail-meta span { box-shadow: 2px 2px 0 0 #f0d0d8 !important; background: #fff0f5 !important; border-color: #f0d0d8 !important; }
 
 /* Toast */
-.toast { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; box-shadow: 3px 3px 0 0 rgba(0,0,0,.08) !important; }
+.toast { box-shadow: 3px 3px 0 0 #f0c0cc !important; border: 2px solid #f0d0d8 !important; }
 
 /* Upload */
-.img-upload-area { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
+.img-upload-area { border-color: #ec4899 !important; }
 
 /* View toggle */
-.ex-view-toggle { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-.ex-view-btn { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
+.ex-view-btn.active { box-shadow: 2px 2px 0 0 #f0c0cc !important; }
 
 /* Header stat cards */
-.header .stats-row .stat { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-
-/* Skeleton */
-.skeleton-card { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px !important; }
-
-/* Dark mode sketch shadows */
-body.dark .card, body.dark .swipe-card { box-shadow: 4px 4px 0 0 rgba(99,102,241,.12) !important; }
-body.dark .modal { box-shadow: 6px 6px 0 0 rgba(99,102,241,.1) !important; }
-body.dark .btn-primary, body.dark .btn { box-shadow: 3px 3px 0 0 rgba(99,102,241,.12) !important; }
+.header .stats-row .stat { box-shadow: 2px 2px 0 0 rgba(255,255,255,.1) !important; }
