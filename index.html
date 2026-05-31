@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -19,19 +19,21 @@
 <!-- Header -->
 <div class="header">
   <div class="header-top">
-    <h1 id="headerTitle">🏠 个人管家<span class="header-version" id="versionBadge">v1780018527</span></h1>
-    <div class="header-actions">
-      <button class="icon-btn" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
-      <button class="icon-btn" id="adminBtn" onclick="openAdminPanel()" title="管理面板" style="display:none">👑</button>
-      <button class="icon-btn" onclick="openLogsPanel()" title="操作日志">📋</button>
-      <button class="icon-btn" onclick="window.open('/help','_blank')" title="帮助">❓</button>
-      <button class="icon-btn" onclick="logout()" title="退出">🚪</button>
+    <div class="app-logo">
+      <div class="logo-icon">🏠</div>
+      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780018527</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button></span>
-      <span id="actionExpense" style="display:none"><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
+      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button></span>
+      <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
       <span id="actionStats" style="display:none"></span>
-      <button class="action-btn" id="pushBtn" onclick="setupPush()" style="display:none">🤖 推送</button>
+      <button class="action-btn desktop-only" id="pushBtn" onclick="setupPush()" style="display:none">🤖 推送</button>
+      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
+      <button class="icon-btn desktop-only" id="adminBtn" onclick="openAdminPanel()" title="管理面板" style="display:none">👑</button>
+      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="操作日志">📋</button>
+      <button class="icon-btn desktop-only" onclick="window.open('/help','_blank')" title="帮助">❓</button>
+      <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
+      <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">⚙️</button>
     </div>
   </div>
   <div class="stats-row" id="headerStats"></div>
@@ -44,6 +46,70 @@
   <div class="tab" onclick="switchTab('stats')">📊 统计</div>
 </div>
 
+<!-- Settings Overlay - Mobile only -->
+<div class="settings-overlay mobile-only" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <h2>⚙️ 设置</h2>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">通用</div>
+      <div class="settings-item" onclick="settingsAction('darkMode')">
+        <div class="settings-icon">🌙</div>
+        <div class="settings-label">暗色模式</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('export')">
+        <div class="settings-icon">📤</div>
+        <div class="settings-label">导出数据</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('batch')">
+        <div class="settings-icon">☑</div>
+        <div class="settings-label">批量操作</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('push')">
+        <div class="settings-icon">🤖</div>
+        <div class="settings-label">推送通知</div>
+        <div class="settings-arrow">›</div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">工具</div>
+      <div class="settings-item" onclick="settingsAction('logs')">
+        <div class="settings-icon">📋</div>
+        <div class="settings-label">操作日志</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('changelog')">
+        <div class="settings-icon">🔔</div>
+        <div class="settings-label">更新日志</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('help')">
+        <div class="settings-icon">❓</div>
+        <div class="settings-label">帮助</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('admin')" id="settingsAdmin" style="display:none">
+        <div class="settings-icon">👑</div>
+        <div class="settings-label">管理面板</div>
+        <div class="settings-arrow">›</div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">账户</div>
+      <div class="settings-item" onclick="settingsAction('logout')" style="color:var(--red)">
+        <div class="settings-icon" style="background:rgba(239,68,68,.1)">🚪</div>
+        <div class="settings-label">退出登录</div>
+        <div class="settings-arrow">›</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Bottom Nav - Mobile only -->
 <nav class="bottom-nav mobile-only" id="bottomNav">
   <div class="nav-item active" onclick="switchTab('purchase')" data-tab="purchase">
@@ -51,16 +117,12 @@
     <span class="nav-label">采购</span>
   </div>
   <div class="nav-item" onclick="switchTab('expense')" data-tab="expense">
-    <span class="nav-icon">💰</span>
+    <span class="nav-icon">📝</span>
     <span class="nav-label">记账</span>
   </div>
   <div class="nav-item" onclick="switchTab('stats')" data-tab="stats">
     <span class="nav-icon">📊</span>
     <span class="nav-label">统计</span>
-  </div>
-  <div class="nav-item" onclick="openChangelog()" data-tab="more">
-    <span class="nav-icon">⚙️</span>
-    <span class="nav-label">更多</span>
   </div>
 </nav>
 

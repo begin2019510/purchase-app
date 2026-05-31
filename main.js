@@ -1,4 +1,4 @@
-
+﻿
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
@@ -1118,15 +1118,22 @@ function switchStatsTab(tab) {
 // ============================================================
 function switchTab(t){
   currentTab=t;
+  // 电脑端标签高亮
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelector(`.tab:nth-child(${t==='purchase'?1:t==='expense'?2:3})`).classList.add('active');
+  var tabIndex=t==='purchase'?1:t==='expense'?2:3;
+  var desktopTab=document.querySelector('.tabs .tab:nth-child('+tabIndex+')');
+  if(desktopTab)desktopTab.classList.add('active');
+  // 手机端底部导航高亮
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  var navItem=document.querySelector('.nav-item[data-tab="'+t+'"]');
+  if(navItem)navItem.classList.add('active');
   document.getElementById('tab-purchase').style.display=t==='purchase'?'':'none';
   document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
   document.getElementById('actionPurchase').style.display=t==='purchase'?'':'none';
-    document.getElementById('actionExpense').style.display=t==='expense'?'':'none';
-    document.getElementById('actionStats').style.display=t==='stats'?'':'none';
+  document.getElementById('actionExpense').style.display=t==='expense'?'':'none';
+  document.getElementById('actionStats').style.display=t==='stats'?'':'none';
   if(t==='expense'&&!calYear)initCalMonth();
   render();
 }
@@ -2070,3 +2077,55 @@ document.addEventListener('click', function(e) {
   window.addEventListener('offline',updateOnlineStatus);
   if(!navigator.onLine)updateOnlineStatus();
 })();
+
+// ===== 设置面板 =====
+function openSettings(){
+  document.getElementById('settingsOverlay').classList.add('active');
+}
+function closeSettings(){
+  document.getElementById('settingsOverlay').classList.remove('active');
+}
+function settingsAction(action){
+  closeSettings();
+  switch(action){
+    case 'darkMode': toggleDarkMode(); break;
+    case 'admin': openAdminPanel(); break;
+    case 'logs': openLogsPanel(); break;
+    case 'help': window.open('/help','_blank'); break;
+    case 'export': 
+      if(currentTab==='purchase') exportData();
+      else if(currentTab==='expense') exportExpenses();
+      break;
+    case 'batch': toggleBatch(); break;
+    case 'push': setupPush(); break;
+    case 'changelog': openChangelog(); break;
+    case 'logout': logout(); break;
+  }
+}
+
+// ===== 设置面板 =====
+function openSettings(){
+  var el=document.getElementById('settingsOverlay');
+  if(el)el.classList.add('active');
+}
+function closeSettings(){
+  var el=document.getElementById('settingsOverlay');
+  if(el)el.classList.remove('active');
+}
+function settingsAction(action){
+  closeSettings();
+  switch(action){
+    case 'darkMode': toggleDarkMode(); break;
+    case 'admin': openAdminPanel(); break;
+    case 'logs': openLogsPanel(); break;
+    case 'help': window.open('/help','_blank'); break;
+    case 'export': 
+      if(currentTab==='purchase') exportData();
+      else if(currentTab==='expense') exportExpenses();
+      break;
+    case 'batch': toggleBatch(); break;
+    case 'push': setupPush(); break;
+    case 'changelog': openChangelog(); break;
+    case 'logout': logout(); break;
+  }
+}
