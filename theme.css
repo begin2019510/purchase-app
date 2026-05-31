@@ -674,55 +674,89 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
   .mobile-only.settings-overlay { display: none !important; }
   .mobile-only.settings-overlay.active { display: flex !important; }
   .desktop-only { display: none !important; }
+
+  /* 底部安全区 */
+  body { padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
+
+  /* Header: 极简一行 */
+  .header { padding: 8px 12px 6px !important; }
+  .header-top { margin-bottom: 0 !important; }
+  .header h1 { font-size: 15px !important; }
+  .app-logo { gap: 6px; }
+  .logo-icon { width: 26px; height: 26px; font-size: 15px; border-radius: 7px; }
+  .logo-text { font-size: 15px; }
+  .header-version { font-size: 8px; padding: 1px 5px; }
+
+  /* 隐藏统计行 */
   .stats-row { display: none !important; }
 
-  body { padding-bottom: calc(56px + env(safe-area-inset-bottom)) !important; }
+  /* 搜索栏: 紧凑 */
+  .search-bar { padding: 6px 12px !important; }
+  .search-input { font-size: 13px !important; padding: 7px 10px 7px 32px !important; border-radius: 10px !important; }
 
-  .header { padding: 10px 12px 8px !important; }
-  .header-top { margin-bottom: 6px !important; }
-  .header h1 { font-size: 16px !important; }
-  .app-logo { gap: 6px; }
-  .logo-icon { width: 28px; height: 28px; font-size: 16px; border-radius: 8px; }
-  .logo-text { font-size: 16px; }
+  /* Chips: 紧凑 */
+  .chips { padding: 4px 12px !important; gap: 5px !important; }
+  .chip { padding: 4px 10px !important; font-size: 11px !important; border-radius: 14px !important; }
 
-  .header .stats-row { gap: 4px !important; padding: 0 2px; }
-  .header .stats-row .stat { padding: 4px 0 !important; }
-  .header .stats-row .stat-val { font-size: 14px !important; }
-  .header .stats-row .stat-lbl { font-size: 9px !important; }
+  /* Container */
+  .container { max-width: 100%; padding: 6px 12px !important; }
 
-  .search-bar { padding: 8px 12px !important; }
-  .search-input { font-size: 14px !important; padding: 8px 12px !important; }
+  /* Section title */
+  .section-title { font-size: 12px; padding: 6px 0 4px; margin: 0; }
 
-  .chips { padding: 4px 12px !important; gap: 6px !important; }
-  .chip { padding: 5px 12px !important; font-size: 12px !important; }
-
-  .container { max-width: 100%; padding: 8px 12px !important; }
-
-  .card, .swipe-card { padding: 12px 14px 10px !important; margin-bottom: 8px !important; padding-right: 72px !important; }
-  .card .name { font-size: 14px; }
-  .card .price { font-size: 14px; }
-  .card .actions button { font-size: 14px; padding: 3px; }
+  /* Cards: 紧凑清爽 */
+  .card, .swipe-card {
+    padding: 10px 12px 8px !important;
+    margin-bottom: 6px !important;
+    padding-right: 66px !important;
+    border-radius: 12px !important;
+  }
+  .card .name { font-size: 13px; line-height: 1.2; }
+  .card .price { font-size: 13px; }
+  .card .meta { margin-top: 4px; gap: 4px; }
   .card .meta span { font-size: 10px; }
-  .badge { padding: 2px 6px !important; font-size: 9px !important; }
+  .card .actions { top: 6px; right: 4px; }
+  .card .actions button { font-size: 13px; padding: 2px; }
+  .badge { padding: 2px 6px !important; font-size: 9px !important; border-radius: 6px !important; }
   .cat-badge { padding: 2px 6px !important; font-size: 9px !important; }
 
-  .section-title { font-size: 12px; padding: 8px 2px 4px; }
+  /* FAB: 小一点 */
+  .fab { bottom: calc(60px + env(safe-area-inset-bottom)) !important; width: 46px; height: 46px; font-size: 22px; border-radius: 14px; }
 
-  .fab { bottom: calc(64px + env(safe-area-inset-bottom)) !important; width: 50px; height: 50px; font-size: 24px; }
+  /* Modal */
+  .modal { max-width: 100%; margin: 0 8px; border-radius: 18px !important; }
 
-  .modal { max-width: 100%; margin: 0 8px; border-radius: 20px !important; }
-
-  .bottom-nav { padding: 4px 0 calc(4px + env(safe-area-inset-bottom)); }
-  .nav-item { min-width: 52px; padding: 4px 8px; }
-  .nav-icon { font-size: 20px; }
+  /* Bottom nav: 紧凑 */
+  .bottom-nav { padding: 3px 0 calc(3px + env(safe-area-inset-bottom)); }
+  .nav-item { min-width: 50px; padding: 3px 6px; gap: 1px; border-radius: 10px; }
+  .nav-icon { font-size: 19px; }
   .nav-label { font-size: 10px; }
 
-  .ex-total-card { padding: 10px 12px !important; }
-  .ex-total-val { font-size: 16px !important; }
-  .ex-entry { padding: 10px 12px !important; }
-  .ex-entry-amount { font-size: 14px !important; }
-  .ai-bar { padding: 8px !important; }
-  .ai-input { font-size: 14px !important; padding: 8px 12px !important; }
+  /* 记账页面: 紧凑 */
+  .ex-total-card { padding: 8px 10px !important; border-radius: 12px !important; }
+  .ex-total-val { font-size: 15px !important; }
+  .ex-total-label { font-size: 11px !important; }
+  .ex-total-icon { width: 30px; height: 30px; font-size: 15px; }
+  .ex-entry { padding: 8px 10px !important; }
+  .ex-entry-amount { font-size: 13px !important; }
+  .ex-entry-cat { font-size: 13px; }
+  .ex-entry-note { font-size: 11px; }
+  .ex-thumb { width: 30px; height: 30px; }
+  .ex-day-header { font-size: 12px; }
+  .ex-day-circle { width: 26px; height: 26px; font-size: 11px; }
+  .ai-bar { padding: 6px !important; }
+  .ai-input { font-size: 13px !important; padding: 7px 10px !important; }
+  .ai-send { width: 32px; height: 32px; font-size: 14px; }
+
+  /* 记账视图切换 */
+  .ex-view-toggle { padding: 3px; border-radius: 10px; }
+  .ex-view-btn { padding: 5px 10px; font-size: 12px; }
+
+  /* 表单 */
+  .form-group { margin-bottom: 10px; }
+  .form-group label { font-size: 12px; margin-bottom: 4px; }
+  .form-group input, .form-group select, .form-group textarea { padding: 9px 12px; font-size: 14px; border-radius: 12px; }
+  .btn { padding: 10px 16px; font-size: 14px; border-radius: 12px; }
 }
 }
 
