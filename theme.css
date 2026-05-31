@@ -512,6 +512,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 /* --- Visibility helpers --- */
 .mobile-only { display: none !important; }
 .desktop-only { display: block !important; }
+.tabs.desktop-only { display: flex !important; }
 
 /* --- Bottom Navigation (Mobile) --- */
 .bottom-nav {
