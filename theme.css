@@ -637,6 +637,13 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
   .stats-row { grid-template-columns: repeat(4, 1fr) !important; }
   .container { max-width: 720px; margin: 0 auto; }
   .card, .swipe-card { padding: 18px 20px 16px !important; }
+  .stats-section { padding: 24px !important; }
+  .stats-section-title { font-size: 15px !important; margin-bottom: 14px !important; }
+  .stats-bar-label { font-size: 14px !important; width: 56px !important; }
+  .stats-bar-track { height: 14px !important; }
+  .stats-bar-val { font-size: 14px !important; width: 64px !important; }
+  .stats-bar-row { margin-bottom: 12px !important; gap: 12px !important; }
+  .stats-hero-num { font-size: 64px !important; }
 }
 
 /* ===== Desktop (1024px+) ===== */
@@ -674,6 +681,7 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
   .mobile-only.settings-overlay { display: none !important; }
   .mobile-only.settings-overlay.active { display: flex !important; }
   .desktop-only { display: none !important; }
+  .tabs.desktop-only { display: none !important; }
 
   /* 底部安全区 */
   body { padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
@@ -688,7 +696,17 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
   .header-version { font-size: 8px; padding: 1px 5px; }
 
   /* 隐藏统计行 */
-  .stats-row { display: none !important; }
+  .stats-row { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .stats-section { padding: 14px !important; border-radius: 14px !important; }
+  .stats-section-title { font-size: 12px !important; margin-bottom: 8px !important; }
+  .stats-bar-label { font-size: 11px !important; width: 32px !important; }
+  .stats-bar-track { height: 8px !important; }
+  .stats-bar-val { font-size: 11px !important; width: 42px !important; }
+  .stats-hero { padding: 24px 16px 20px !important; }
+  .stats-hero-num { font-size: 36px !important; }
+  .stats-hero-label { font-size: 12px !important; }
+  .stats-hero-sub { font-size: 12px !important; }
+  .stats-tab { padding: 7px !important; font-size: 12px !important; }
 
   /* 搜索栏: 紧凑 */
   .search-bar { padding: 6px 12px !important; }
