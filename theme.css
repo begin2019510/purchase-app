@@ -53,10 +53,10 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .header-actions .icon-btn:active{background:rgba(255,255,255,.25)}
 .header-actions .action-btn{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;background:rgba(255,255,255,.22);letter-spacing:.3px}
 .header-actions .action-btn:active{background:rgba(255,255,255,.35)}
-.header .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
-.header .stats-row .stat{display:flex;flex-direction:column;text-align:center;padding:6px 2px}
-.header .stats-row .stat-val{font-size:16px;font-weight:800;color:#fff}
-.header .stats-row .stat-lbl{font-size:10px;color:rgba(255,255,255,.85);margin-top:1px}
+.header-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.header-stats .stat{display:flex;flex-direction:column;text-align:center;padding:6px 2px}
+.header-stats .stat-val{font-size:16px;font-weight:800;color:#fff}
+.header-stats .stat-lbl{font-size:10px;color:rgba(255,255,255,.85);margin-top:1px}
 
 /* ===== Tabs ===== */
 .tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:68px;z-index:40;padding:0 4px}
@@ -505,7 +505,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .ex-view-btn.active { box-shadow: 2px 2px 0 0 #f0c0cc !important; }
 
 /* Header stat cards */
-.header .stats-row .stat { box-shadow: 2px 2px 0 0 rgba(255,255,255,.1) !important; }
+.header-stats .stat { box-shadow: 2px 2px 0 0 rgba(255,255,255,.1) !important; }
 /* ===== Dark Mode - Indigo/Purple accent ===== */
 body.dark .card, body.dark .swipe-card {
   border-color: #312e81 !important;
@@ -695,7 +695,30 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
   .logo-text { font-size: 15px; }
   .header-version { font-size: 8px; padding: 1px 5px; }
 
-  /* 隐藏统计行 */
+  /* Header 月度总览 - 单行紧凑 */
+  .header-stats {
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    background: rgba(255,255,255,.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .header-stats .stat {
+    flex: 1;
+    padding: 5px 2px !important;
+    border-right: 1px solid rgba(255,255,255,.15);
+    flex-direction: column;
+    text-align: center;
+    min-width: 0;
+  }
+  .header-stats .stat:last-child { border-right: none; }
+  .header-stats .stat-val { font-size: 13px !important; font-weight: 800; }
+  .header-stats .stat-lbl { font-size: 8px !important; margin-top: 0; opacity: .8; white-space: nowrap; }
+
+  /* 统计页面表格 - 单列 */
   .stats-row { grid-template-columns: 1fr !important; gap: 8px !important; }
   .stats-section { padding: 14px !important; border-radius: 14px !important; }
   .stats-section-title { font-size: 12px !important; margin-bottom: 8px !important; }
