@@ -634,16 +634,61 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 }
 
 /* ===== Mobile (< 768px) ===== */
+/* ===== Mobile (< 768px) ===== */
 @media (max-width: 767px) {
   .mobile-only { display: flex !important; }
   .mobile-only.settings-overlay { display: none !important; }
   .mobile-only.settings-overlay.active { display: flex !important; }
   .desktop-only { display: none !important; }
-  body { padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
-  .fab { bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
-  .header { padding: 16px 16px 14px !important; }
-  .header h1 { font-size: 18px !important; }
-  .container { max-width: 100%; }
+
+  body { padding-bottom: calc(56px + env(safe-area-inset-bottom)) !important; }
+
+  .header { padding: 10px 12px 8px !important; }
+  .header-top { margin-bottom: 6px !important; }
+  .header h1 { font-size: 16px !important; }
+  .app-logo { gap: 6px; }
+  .logo-icon { width: 28px; height: 28px; font-size: 16px; border-radius: 8px; }
+  .logo-text { font-size: 16px; }
+
+  .header .stats-row { gap: 4px !important; padding: 0 2px; }
+  .header .stats-row .stat { padding: 4px 0 !important; }
+  .header .stats-row .stat-val { font-size: 14px !important; }
+  .header .stats-row .stat-lbl { font-size: 9px !important; }
+
+  .search-bar { padding: 8px 12px !important; }
+  .search-input { font-size: 14px !important; padding: 8px 12px !important; }
+
+  .chips { padding: 4px 12px !important; gap: 6px !important; }
+  .chip { padding: 5px 12px !important; font-size: 12px !important; }
+
+  .container { max-width: 100%; padding: 8px 12px !important; }
+
+  .card, .swipe-card { padding: 12px 14px 10px !important; margin-bottom: 8px !important; padding-right: 72px !important; }
+  .card .name { font-size: 14px; }
+  .card .price { font-size: 14px; }
+  .card .actions button { font-size: 14px; padding: 3px; }
+  .card .meta span { font-size: 10px; }
+  .badge { padding: 2px 6px !important; font-size: 9px !important; }
+  .cat-badge { padding: 2px 6px !important; font-size: 9px !important; }
+
+  .section-title { font-size: 12px; padding: 8px 2px 4px; }
+
+  .fab { bottom: calc(64px + env(safe-area-inset-bottom)) !important; width: 50px; height: 50px; font-size: 24px; }
+
+  .modal { max-width: 100%; margin: 0 8px; border-radius: 20px !important; }
+
+  .bottom-nav { padding: 4px 0 calc(4px + env(safe-area-inset-bottom)); }
+  .nav-item { min-width: 52px; padding: 4px 8px; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; }
+
+  .ex-total-card { padding: 10px 12px !important; }
+  .ex-total-val { font-size: 16px !important; }
+  .ex-entry { padding: 10px 12px !important; }
+  .ex-entry-amount { font-size: 14px !important; }
+  .ai-bar { padding: 8px !important; }
+  .ai-input { font-size: 14px !important; padding: 8px 12px !important; }
+}
 }
 
 /* ===== Logo ===== */
@@ -668,13 +713,7 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 .settings-label{flex:1;font-size:14px;font-weight:600}
 .settings-arrow{color:var(--muted);font-size:14px}
 
-/* Mobile compact stats */
-@media (max-width: 767px) {
-  .header .stats-row .stat { padding: 6px 2px !important; }
-  .header .stats-row .stat-val { font-size: 14px !important; }
-  .header .stats-row .stat-lbl { font-size: 9px !important; }
-  .header { padding: 12px 12px 10px !important; }
-}
+
 
 /* Desktop settings button hidden */
 @media (min-width: 768px) {
