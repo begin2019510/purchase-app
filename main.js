@@ -2104,28 +2104,3 @@ function settingsAction(action){
 }
 
 // ===== 设置面板 =====
-function openSettings(){
-  var el=document.getElementById('settingsOverlay');
-  if(el)el.classList.add('active');
-}
-function closeSettings(){
-  var el=document.getElementById('settingsOverlay');
-  if(el)el.classList.remove('active');
-}
-function settingsAction(action){
-  closeSettings();
-  switch(action){
-    case 'darkMode': toggleDarkMode(); break;
-    case 'admin': openAdminPanel(); break;
-    case 'logs': openLogsPanel(); break;
-    case 'help': window.open('/help','_blank'); break;
-    case 'export': 
-      if(currentTab==='purchase') exportData();
-      else if(currentTab==='expense') exportExpenses();
-      break;
-    case 'batch': toggleBatch(); break;
-    case 'push': setupPush(); break;
-    case 'changelog': openChangelog(); break;
-    case 'logout': logout(); break;
-  }
-}
