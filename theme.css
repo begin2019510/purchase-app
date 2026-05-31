@@ -635,6 +635,8 @@ body.dark .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255
 /* ===== Mobile (< 768px) ===== */
 @media (max-width: 767px) {
   .mobile-only { display: flex !important; }
+  .mobile-only.settings-overlay { display: none !important; }
+  .mobile-only.settings-overlay.active { display: flex !important; }
   .desktop-only { display: none !important; }
   body { padding-bottom: calc(70px + env(safe-area-inset-bottom)) !important; }
   .fab { bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
