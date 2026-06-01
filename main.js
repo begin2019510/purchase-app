@@ -259,9 +259,10 @@ if('serviceWorker' in navigator){
         });
       });
     }).catch(function(){});
+    navigator.serviceWorker.addEventListener('controllerchange',function(){location.reload(true)});
     // Listen for SW_RELOAD message - auto reload on update
     navigator.serviceWorker.addEventListener('message',function(e){
-      if(e.data&&e.data.type==='SW_RELOAD'){location.reload()}
+      if(e.data&&e.data.type==='SW_RELOAD'){location.reload(true)}
     });
   }
 }

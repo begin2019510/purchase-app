@@ -1,5 +1,5 @@
 // Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v50';
+var CACHE = 'purchase-cache-v51';
 var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', function(e) {
@@ -24,7 +24,7 @@ self.addEventListener('fetch', function(e) {
   var url = new URL(e.request.url);
   var isHTML = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
   if (isHTML) {
-    e.respondWith(fetch(e.request));
+    e.respondWith(fetch(e.request, { cache: 'no-store' }));
   } else {
     e.respondWith(
       caches.match(e.request).then(function(cached) {
