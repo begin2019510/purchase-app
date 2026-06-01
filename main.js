@@ -275,9 +275,12 @@ async function setupPush(){
   alert(msg);
 }
 
-function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
-function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
+var _budgetCache=null;
+function getBudgets(){if(_budgetCache)return _budgetCache;try{_budgetCache=JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{_budgetCache={}}return _budgetCache}
+function setBudgets(b){_budgetCache=b;localStorage.setItem('purchase_budgets',JSON.stringify(b));syncBudgetToServer(b)}
 function getBudget(m){return getBudgets()[m]||0}
+function syncBudgetToServer(b){try{fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({data:b})}).catch(function(){})}catch(e){}}
+function loadBudgetFromServer(){try{return fetch('/api/budgets',{headers:{'Authorization':'Bearer '+getPin()}}).then(function(r){return r.json()}).then(function(d){if(d&&d.data&&Object.keys(d.data).length){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data))}return d.data||{}}).catch(function(){return getBudgets()})}catch(e){return Promise.resolve(getBudgets())}}
 function getBudgetNum(m){var b=getBudget(m);return(b&&typeof b==='object')?(b.total||0):(typeof b==='number'?b:0)}
 // === 周预算系统 ===
 function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const base=Math.floor(ld/4);const rem=ld%4;const w=[];let s=1;for(let i=0;i<4;i++){const days=base+(i<rem?1:0);w.push({num:i+1,start:s,end:s+days-1});s+=days}return w}
@@ -571,6 +574,8 @@ function setupSwipe(){
 // 数据加载
 // ============================================================
 async function loadAll(){
+  try{await loadBudgetFromServer()}catch(e){}
+  try{await loadBudgetFromServer()}catch(e){}
   showSkeleton();
   try{
     const [r, e] = await Promise.all([
