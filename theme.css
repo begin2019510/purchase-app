@@ -5,7 +5,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
 @media(prefers-color-scheme:dark){:root:not(.light){--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}}
 body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}
-body.dark .tabs,body.dark .search-bar,body.dark .batch-bar,body.dark .modal{background:var(--card);max-width:460px;margin:0 auto;padding:20px;border-radius:18px;max-height:85vh;overflow-y:auto;position:relative;top:50%;transform:translateY(-50%)}
+body.dark .tabs,body.dark .search-bar,body.dark .batch-bar,body.dark /* duplicate modal removed */
 body.dark .search-input,body.dark .chip{background:var(--card);color:var(--text)}
 body.dark .ex-section{background:var(--card)}
 body.dark .ex-entry{background:var(--bg)}
@@ -121,11 +121,11 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .batch-btn-cancel{background:var(--border);color:var(--text)}
 
 /* ===== Modal ===== */
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:100;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
 .modal-overlay.active{display:flex}
-.modal{background:var(--card);border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.4,0,.2,1)}
+/* bottom-sheet modal removed - using centered modal */
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal h2{font-size:18px;font-weight:800;margin-bottom:16px;text-align:center}
+.modal{background:var(--card);max-width:480px;width:100%;margin:0 auto;padding:20px;border-radius:18px;max-height:80vh;overflow-y:auto}.modal h2{font-size:18px;font-weight:800;margin-bottom:16px;text-align:center}
 .changelog-ver{font-size:14px;font-weight:700;color:var(--pri);margin-top:14px;padding-bottom:4px;border-bottom:1.5px solid var(--border)}
 .changelog-ver:first-child{margin-top:0}
 .changelog-date{font-size:11px;color:var(--muted);margin-left:6px;font-weight:400}
