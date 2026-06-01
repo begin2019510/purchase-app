@@ -90,7 +90,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);position:relative;transition:.15s;padding-right:88px;border:1.5px solid transparent}
 .card:active{transform:scale(.985)}
 .card.selected{background:var(--pri-light);border-color:var(--pri)}
-.card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding-right:48px}
 .card .name{font-size:15px;font-weight:700;flex:1;line-height:1.3}
 .card .price{font-size:15px;font-weight:800;color:var(--pri);white-space:nowrap;text-align:right;max-width:80px;overflow:hidden;text-overflow:ellipsis}
 .card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}

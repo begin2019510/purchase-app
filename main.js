@@ -278,6 +278,7 @@ async function setupPush(){
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
+function getBudgetNum(m){var b=getBudget(m);return(b&&typeof b==='object')?(b.total||0):(typeof b==='number'?b:0)}
 // === 周预算系统 ===
 function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const base=Math.floor(ld/4);const rem=ld%4;const w=[];let s=1;for(let i=0;i<4;i++){const days=base+(i<rem?1:0);w.push({num:i+1,start:s,end:s+days-1});s+=days}return w}
 function getWeekForDate(ds,ym){if(!ds)return-1;const d=parseInt(ds.slice(8,10));const w=getMonthWeeks(ym);for(let i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}return-1}
@@ -336,7 +337,7 @@ async function analyzeBudget(){
   el.innerHTML='<div style="color:var(--muted)">AI 分析中...</div>';
   try{
     const r=await (await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action:'budget-analyze',data:{prompt,month:m,totalBudget:total,weekBudgets:wo,expenses:expenses}})})).json();
-    if(r&&r.reply){
+    if(r&&(r.reply||r.data||r.ok)){
       const reply=r.data||r.reply||r.result||'';el.innerHTML='<div style="white-space:pre-wrap;line-height:1.6">'+esc(reply)+'</div>';
       const btn=document.createElement('button');
       btn.textContent='一键采用建议预算';
@@ -660,7 +661,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
   const totalIn=0;
   const net=-totalOut;
-  const budget=getBudget(thisMonth);
+  const budget=getBudgetNum(thisMonth);
   const count=searched.length;
   const periodLabel=currentWeekFilter>=0?'本周':'本月';
   const catMap={};
@@ -668,7 +669,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
   const pl=currentWeekFilter>=0?'本周':'本月';
-  const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudget(thisMonth);
+  const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudgetNum(thisMonth);
   const br=Math.max(wb-totalOut,0);
   html+=`<div class="ex-header">
     <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
@@ -693,7 +694,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
         <span>${pct.toFixed(0)}% 已用</span>
-        <span>${currentWeekFilter>=0?'第'+(currentWeekFilter+1)+'周':'月度'}预算</span>
+        <span>${currentWeekFilter>=0?(function(){var ws=getMonthWeeks(thisMonth);return '第'+ws[currentWeekFilter].num+'周('+ws[currentWeekFilter].start+'-'+ws[currentWeekFilter].end+'日)'})():'月度预算'}</span>
       </div>
     </div>`;
   } else {
@@ -1059,7 +1060,7 @@ function renderExpenseCalendar(){
 }
 function renderStats() { console.log('renderStats START');
   const thisMonth = getThisMonth();
-  const budgetRaw = getBudget(thisMonth); const budget = (budgetRaw && typeof budgetRaw === 'object') ? (budgetRaw.total || 0) : (typeof budgetRaw === 'number' ? budgetRaw : 0);
+  const budget = getBudgetNum(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
   // 数据
