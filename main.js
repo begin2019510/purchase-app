@@ -283,6 +283,18 @@ function getWeekForDate(ds,ym){if(!ds)return-1;const d=parseInt(ds.slice(8,10));
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
 function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
+function renderWeekBudgetInputs(m,total){
+  const weeks=getMonthWeeks(m);
+  const wb=getWeekBudgets(m);
+  let html='<div style="margin-top:12px"><label style="font-size:13px;font-weight:700;display:block;margin-bottom:8px">每周预算</label>';
+  weeks.forEach((w,i)=>{
+    const val=wb.weeks[i]||'';
+    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">第'+w.num+'周 ('+w.start+'-'+w.end+'日)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="¥" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
+  });
+  html+='</div>';
+  document.getElementById('weekBudgetSection').innerHTML=html;
+}
+
 
 
 // ===== API =====
@@ -601,8 +613,8 @@ function renderExpense(){
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
 const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
   const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
-  const totalIn=searched.filter(e=>e['类型']==='收入').reduce((s,e)=>s+Number(e['金额']||0),0);
-  const net=totalIn-totalOut;
+  const totalIn=0;
+  const net=-totalOut;
   const budget=getBudget(thisMonth);
   const count=searched.length;
   const periodLabel=currentWeekFilter>=0?'本周':'本月';
@@ -1851,13 +1863,9 @@ function openBudgetModal(){
   const m=getThisMonth();
   document.getElementById('budgetMonth').value=m;
   const b=getBudgets()[m];
-  if(b&&typeof b==='object'&&b.weekBudget){
-    document.getElementById('budgetInput').value='';
-    document.getElementById('weekBudgetInput').value=b.weekBudget||'';
-  }else{
-    document.getElementById('budgetInput').value=b||'';
-    document.getElementById('weekBudgetInput').value='';
-  }
+  const total=(b&&typeof b==='object')?b.total:(typeof b==='number'?b:0);
+  document.getElementById('budgetInput').value=total||'';
+  renderWeekBudgetInputs(m,total);
   document.getElementById('budgetOverlay').classList.add('active');
 }
 
