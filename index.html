@@ -25,8 +25,8 @@
     </div>
     <div class="header-actions" id="headerActions">
       <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
-      <span id="actionExpense" class="desktop-only hidden"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
-      <span id="actionStats" class="hidden"></span>
+      <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
+      <span id="actionStats" style="display:none"></span>
       <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
       <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="日志">📋</button>
       <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
