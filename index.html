@@ -16,6 +16,27 @@
 <meta http-equiv="Expires" content="0">
 </head>
 <body>
+<script>
+(function(){
+  var V='1780400001';
+  try{
+    var s=sessionStorage.getItem('app_ver');
+    if(s&&s!==V){
+      sessionStorage.setItem('app_ver',V);
+      if('caches'in window){caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}
+      location.reload(true);
+      return;
+    }
+    sessionStorage.setItem('app_ver',V);
+  }catch(e){}
+  if('serviceWorker'in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(r){
+      r.forEach(function(reg){reg.update()})
+    })
+  }
+})();
+</script>
+
 
 <!-- Header -->
 <div class="header">
