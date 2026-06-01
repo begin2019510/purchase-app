@@ -279,8 +279,24 @@ var _budgetCache=null;
 function getBudgets(){if(_budgetCache)return _budgetCache;try{_budgetCache=JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{_budgetCache={}}return _budgetCache}
 function setBudgets(b){_budgetCache=b;localStorage.setItem('purchase_budgets',JSON.stringify(b));syncBudgetToServer(b)}
 function getBudget(m){return getBudgets()[m]||0}
-function syncBudgetToServer(b){try{fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({data:b})}).catch(function(){})}catch(e){}}
-function loadBudgetFromServer(){return fetch('/api/budgets',{headers:{'Authorization':'Bearer '+getPin()}}).then(function(r){if(!r.ok)return getBudgets();return r.json()}).then(function(d){if(d&&d.data){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}return getBudgets()}).catch(function(){return getBudgets()})}
+async function syncBudgetToServer(b){
+  try{
+    var token=getPin();
+    var r=await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:b})});
+    if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:b})})}}
+  }catch(e){}
+}
+async function loadBudgetFromServer(){
+  try{
+    var token=getPin();
+    var r=await fetch('/api/budgets',{headers:{'Authorization':'Bearer '+token}});
+    if(r.status===401){var nt=await refreshAccessToken();if(nt){r=await fetch('/api/budgets',{headers:{'Authorization':'Bearer '+nt}})}}
+    if(!r.ok)return getBudgets();
+    var d=await r.json();
+    if(d&&d.data){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
+    return getBudgets();
+  }catch(e){return getBudgets()}
+}
 function getBudgetNum(m){var b=getBudget(m);return(b&&typeof b==='object')?(b.total||0):(typeof b==='number'?b:0)}
 // === 周预算系统 ===
 function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const base=Math.floor(ld/4);const rem=ld%4;const w=[];let s=1;for(let i=0;i<4;i++){const days=base+(i<rem?1:0);w.push({num:i+1,start:s,end:s+days-1});s+=days}return w}
