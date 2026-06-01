@@ -44,7 +44,6 @@ let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
 let expenseViewMode='list';
 let currentWeekFilter=-1; // 'list' | 'calendar'
-let currentWeekFilter=-1; // -1=本月全部, 0=第1周, 1=第2周...
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
 
@@ -584,40 +583,6 @@ function formatDay(dayStr) {
   try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}月${(d.getDate()+'').padStart(2,'0')}日`, weekday: '周'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
 }
 
-// ===== 获取月份的周信息 =====
-function getMonthWeeks(yearMonth) {
-  const [y, m] = yearMonth.split('-').map(Number);
-  const firstDay = new Date(y, m - 1, 1);
-  const lastDay = new Date(y, m, 0);
-  const weeks = [];
-  let weekStart = 1;
-  let weekNum = 1;
-  while (weekStart <= lastDay.getDate()) {
-    // 找这周的结束：周日或月末
-    let weekEnd = weekStart;
-    const startDow = new Date(y, m - 1, weekStart).getDay();
-    const daysToSunday = startDow === 0 ? 0 : 7 - startDow;
-    weekEnd = Math.min(weekStart + daysToSunday, lastDay.getDate());
-    weeks.push({
-      num: weekNum,
-      start: weekStart,
-      end: weekEnd,
-      label: `第${weekNum}周(${weekStart}-${weekEnd}日)`
-    });
-    weekStart = weekEnd + 1;
-    weekNum++;
-  }
-  return weeks;
-}
-function getWeekForDate(dateStr, yearMonth) {
-  if (!dateStr) return -1;
-  const day = parseInt(dateStr.slice(8, 10));
-  const weeks = getMonthWeeks(yearMonth);
-  for (let i = 0; i < weeks.length; i++) {
-    if (day >= weeks[i].start && day <= weeks[i].end) return i;
-  }
-  return -1;
-}
 function renderExpense(){
   if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
   const thisMonth=getThisMonth();
