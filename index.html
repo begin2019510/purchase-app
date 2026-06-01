@@ -1,15 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="app-version" content="1780018527">
-<title>个人管家</title>
+<title>���˹ܼ�</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=1780020000">
+<link rel="stylesheet" href="theme.css?v=1780323732">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -20,17 +20,17 @@
 <div class="header">
   <div class="header-top">
     <div class="app-logo">
-      <div class="logo-icon">🏠</div>
-      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780018527</sup></h1>
+      <div class="logo-icon">??</div>
+      <h1 id="headerTitle" class="logo-text">���˹ܼ�<sup class="header-version" id="versionBadge">v1780018527</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
-      <span id="actionExpense" class="desktop-only hidden"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
+      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">? ����</button><button class="action-btn" onclick="exportData()">?? ����</button><button class="action-btn" onclick="openBudgetModal()">?? Ԥ��</button></span>
+      <span id="actionExpense" class="desktop-only hidden"><button class="action-btn" onclick="openBudgetModal()">?? Ԥ��</button><button class="action-btn" onclick="exportExpenses()">?? ����</button></span>
       <span id="actionStats" class="desktop-only hidden"></span>
-      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
-      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="日志">📋</button>
-      <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
-      <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">⚙️</button>
+      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="��ɫģʽ">??</button>
+      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="��־">??</button>
+      <button class="icon-btn desktop-only" onclick="logout()" title="�˳�">??</button>
+      <button class="settings-btn mobile-only" onclick="openSettings()" title="����">??</button>
     </div>
   </div>
   <div class="header-stats" id="headerStats"></div>
@@ -38,75 +38,75 @@
 
 <!-- Tabs - Desktop top nav -->
 <div class="tabs desktop-only" id="mainTabs">
-  <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
-  <div class="tab" onclick="switchTab('expense')">💰 记账</div>
-  <div class="tab" onclick="switchTab('stats')">📊 统计</div>
+  <div class="tab active" onclick="switchTab('purchase')">?? �ɹ�</div>
+  <div class="tab" onclick="switchTab('expense')">?? ����</div>
+  <div class="tab" onclick="switchTab('stats')">?? ͳ��</div>
 </div>
 
 <!-- Settings Overlay - Mobile only -->
 <div class="settings-overlay mobile-only" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="settings-panel">
     <div class="settings-header">
-      <h2>⚙️ 设置</h2>
-      <button class="settings-close" onclick="closeSettings()">✕</button>
+      <h2>?? ����</h2>
+      <button class="settings-close" onclick="closeSettings()">?</button>
     </div>
     <div class="settings-group">
-      <div class="settings-group-title">通用</div>
+      <div class="settings-group-title">ͨ��</div>
       <div class="settings-item" onclick="settingsAction('darkMode')">
-        <div class="settings-icon">🌙</div>
-        <div class="settings-label">暗色模式</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">��ɫģʽ</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('export')">
-        <div class="settings-icon">📤</div>
-        <div class="settings-label">导出数据</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">��������</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('batch')">
-        <div class="settings-icon">☑</div>
-        <div class="settings-label">批量操作</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">?</div>
+        <div class="settings-label">��������</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('budget')">
-        <div class="settings-icon">🎯</div>
-        <div class="settings-label">预算设置</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">Ԥ������</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('push')">
-        <div class="settings-icon">🤖</div>
-        <div class="settings-label">推送通知</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">����֪ͨ</div>
+        <div class="settings-arrow">?</div>
       </div>
     </div>
     <div class="settings-group">
-      <div class="settings-group-title">工具</div>
+      <div class="settings-group-title">����</div>
       <div class="settings-item" onclick="settingsAction('logs')">
-        <div class="settings-icon">📋</div>
-        <div class="settings-label">操作日志</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">������־</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('changelog')">
-        <div class="settings-icon">🔔</div>
-        <div class="settings-label">更新日志</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">������־</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('help')">
-        <div class="settings-icon">❓</div>
-        <div class="settings-label">帮助</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">?</div>
+        <div class="settings-label">����</div>
+        <div class="settings-arrow">?</div>
       </div>
       <div class="settings-item" onclick="settingsAction('admin')" id="settingsAdmin" style="display:none">
-        <div class="settings-icon">👑</div>
-        <div class="settings-label">管理面板</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon">??</div>
+        <div class="settings-label">�������</div>
+        <div class="settings-arrow">?</div>
       </div>
     </div>
     <div class="settings-group">
-      <div class="settings-group-title">账户</div>
+      <div class="settings-group-title">�˻�</div>
       <div class="settings-item" onclick="settingsAction('logout')" style="color:var(--red)">
-        <div class="settings-icon" style="background:rgba(239,68,68,.1)">🚪</div>
-        <div class="settings-label">退出登录</div>
-        <div class="settings-arrow">›</div>
+        <div class="settings-icon" style="background:rgba(239,68,68,.1)">??</div>
+        <div class="settings-label">�˳���¼</div>
+        <div class="settings-arrow">?</div>
       </div>
     </div>
   </div>
@@ -115,22 +115,22 @@
 <!-- Bottom Nav - Mobile only -->
 <nav class="bottom-nav mobile-only" id="bottomNav">
   <div class="nav-item active" onclick="switchTab('purchase')" data-tab="purchase">
-    <span class="nav-icon">🛒</span>
-    <span class="nav-label">采购</span>
+    <span class="nav-icon">??</span>
+    <span class="nav-label">�ɹ�</span>
   </div>
   <div class="nav-item" onclick="switchTab('expense')" data-tab="expense">
-    <span class="nav-icon">📝</span>
-    <span class="nav-label">记账</span>
+    <span class="nav-icon">??</span>
+    <span class="nav-label">����</span>
   </div>
   <div class="nav-item" onclick="switchTab('stats')" data-tab="stats">
-    <span class="nav-icon">📊</span>
-    <span class="nav-label">统计</span>
+    <span class="nav-icon">??</span>
+    <span class="nav-label">ͳ��</span>
   </div>
 </nav>
 
-<!-- 采购 Tab -->
+<!-- �ɹ� Tab -->
 <div id="tab-purchase">
-  <div class="search-bar"><input class="search-input" id="searchInput" placeholder="搜索商品名称或备注..." autocomplete="off" oninput="render()"></div>
+  <div class="search-bar"><input class="search-input" id="searchInput" placeholder="������Ʒ���ƻ�ע..." autocomplete="off" oninput="render()"></div>
   <div class="ptr-wrapper">
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
     <div class="chips" id="statusChips"></div>
@@ -138,18 +138,18 @@
   </div>
 </div>
 
-<!-- 记账 Tab -->
+<!-- ���� Tab -->
 <div id="tab-expense" style="display:none">
-  <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
+  <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="������ע..." oninput="render()"></div>
   <div class="container">
       <div class="ex-view-toggle" style="margin:0">
-        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
-        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
+        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">?? �б�</button>
+        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">?? ����</button>
       </div>
     <div class="ai-bar" id="aiBar">
       <div class="ai-input-row">
-        <input class="ai-input" id="aiInput" placeholder="说句话就能记账: 午饭35、打车28..." onkeydown="if(event.key==='Enter')sendAI()">
-        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">✨</button>
+        <input class="ai-input" id="aiInput" placeholder="˵�仰���ܼ���: �緹35����28..." onkeydown="if(event.key==='Enter')sendAI()">
+        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">?</button>
       </div>
       <div id="aiResult"></div>
     </div>
@@ -161,28 +161,28 @@
   </div>
 </div>
 
-<!-- 统计 Tab -->
+<!-- ͳ�� Tab -->
 <div id="tab-stats" style="display:none">
   <div class="ptr-wrapper">
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
     <div class="container stats-page">
       <div class="ai-analysis" id="aiAnalysis">
-        <h3>🤖 AI 助手</h3>
+        <h3>?? AI ����</h3>
         <div class="ai-input-row" style="margin-bottom:8px">
-          <input class="ai-input" id="statsAIInput" placeholder="问我任何问题: 这个月奶茶花了多少..." onkeydown="if(event.key==='Enter')queryAI()">
-          <button class="ai-send" onclick="queryAI()">💬</button>
+          <input class="ai-input" id="statsAIInput" placeholder="�����κ�����: ������̲軨�˶���..." onkeydown="if(event.key==='Enter')queryAI()">
+          <button class="ai-send" onclick="queryAI()">??</button>
         </div>
         <div id="statsAIResult"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">📊 财务分析</button>
-          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">🧠 消费画像</button>
+          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">?? �������</button>
+          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">?? ���ѻ���</button>
         </div>
       </div>
       <div id="statsContent"></div>
       <div style="margin-top:16px;padding:12px;background:var(--card);border-radius:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--muted)">🔍 账号调试</span>
-          <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查认证状态</button>
+          <span style="font-size:12px;color:var(--muted)">?? �˺ŵ���</span>
+          <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">�����֤״̬</button>
         </div>
         <div id="debugResultStats" style="font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px"></div>
       </div>
@@ -190,65 +190,65 @@
   </div>
 </div>
 
-<!-- 管理员面板 -->
+<!-- ����Ա��� -->
 <div id="adminPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:18px;font-weight:800">👑 管理面板</h2>
-      <button onclick="closeAdminPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">← 返回</button>
+      <h2 style="font-size:18px;font-weight:800">?? �������</h2>
+      <button onclick="closeAdminPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">�� ����</button>
     </div>
-    <!-- 创建邀请码 -->
+    <!-- ���������� -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">🎟️ 创建邀请码</h3>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">??? ����������</h3>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input id="inviteCount" type="number" value="1" min="1" max="10" style="width:60px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
-        <span style="line-height:40px;font-size:13px;color:var(--muted)">个</span>
-        <button onclick="createInviteCodes()" style="flex:1;padding:10px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">生成</button>
+        <span style="line-height:40px;font-size:13px;color:var(--muted)">��</span>
+        <button onclick="createInviteCodes()" style="flex:1;padding:10px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">����</button>
       </div>
       <div id="newInviteCodes" style="font-size:12px;color:var(--green);word-break:break-all"></div>
     </div>
-    <!-- 邀请码列表 -->
+    <!-- �������б� -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">📋 邀请码列表</h3>
-        <button onclick="loadInviteList()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
+        <h3 style="font-size:14px;font-weight:700">?? �������б�</h3>
+        <button onclick="loadInviteList()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">ˢ��</button>
       </div>
-      <div id="inviteList" style="font-size:12px;color:var(--muted)">加载中...</div>
+      <div id="inviteList" style="font-size:12px;color:var(--muted)">������...</div>
     </div>
-    <!-- 调试 -->
+    <!-- ���� -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">🔍 调试</h3>
-        <button onclick="debugMyAuth()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查我的认证</button>
+        <h3 style="font-size:14px;font-weight:700">?? ����</h3>
+        <button onclick="debugMyAuth()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">����ҵ���֤</button>
       </div>
       <div id="debugResult" style="font-size:11px;color:var(--muted);word-break:break-all"></div>
     </div>
-    <!-- 用户管理 -->
+    <!-- �û����� -->
     <div style="background:var(--card);border-radius:14px;padding:16px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">👥 用户管理</h3>
-      <div id="userList" style="font-size:12px;color:var(--muted)">加载中...</div>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">?? �û�����</h3>
+      <div id="userList" style="font-size:12px;color:var(--muted)">������...</div>
     </div>
   </div>
 </div>
 
-<!-- 操作日志面板 -->
+<!-- ������־��� -->
 <div id="logsPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:18px;font-weight:800">📋 操作日志</h2>
-      <button onclick="closeLogsPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">← 返回</button>
+      <h2 style="font-size:18px;font-weight:800">?? ������־</h2>
+      <button onclick="closeLogsPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">�� ����</button>
     </div>
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">📋 操作日志</h3>
-        <button onclick="loadLogs()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
+        <h3 style="font-size:14px;font-weight:700">?? ������־</h3>
+        <button onclick="loadLogs()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">ˢ��</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <button onclick="changeLogDate(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">◀</button>
+        <button onclick="changeLogDate(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">?</button>
         <span id="logDate" style="font-size:13px;font-weight:600"></span>
-        <button onclick="changeLogDate(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">▶</button>
+        <button onclick="changeLogDate(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">?</button>
       </div>
-      <div id="logList" style="font-size:12px;color:var(--muted)">点击刷新加载日志</div>
+      <div id="logList" style="font-size:12px;color:var(--muted)">���ˢ�¼�����־</div>
     </div>
   </div>
 </div>
@@ -260,222 +260,222 @@
 
 <!-- Batch Bar -->
 <div class="batch-bar" id="batchBar">
-  <span class="batch-info" id="batchInfo">已选 0 项</span>
-  <select id="batchStatus"><option value="待评估">待评估</option><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已下单">已下单</option><option value="已到">已到</option><option value="已退">已退</option><option value="已归档">已归档</option></select>
-  <button class="batch-btn batch-btn-primary" onclick="batchUpdate()">改状态</button>
-  <button class="batch-btn batch-btn-danger" onclick="batchDelete()">删除</button>
-  <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">取消</button>
+  <span class="batch-info" id="batchInfo">��ѡ 0 ��</span>
+  <select id="batchStatus"><option value="������">������</option><option value="������">������</option><option value="������">������</option><option value="���µ�">���µ�</option><option value="�ѵ�">�ѵ�</option><option value="����">����</option><option value="�ѹ鵵">�ѹ鵵</option></select>
+  <button class="batch-btn batch-btn-primary" onclick="batchUpdate()">��״̬</button>
+  <button class="batch-btn batch-btn-danger" onclick="batchDelete()">ɾ��</button>
+  <button class="batch-btn batch-btn-cancel" onclick="toggleBatch()">ȡ��</button>
 </div>
 
-<!-- 采购 Modal -->
+<!-- �ɹ� Modal -->
 <div class="modal-overlay" id="overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <h2 id="modalTitle">新增采购</h2>
+    <h2 id="modalTitle">�����ɹ�</h2>
     <input type="hidden" id="editId">
 
-    <!-- 阶段1：需求评估 -->
+    <!-- �׶�1���������� -->
     <div id="evalPhase">
       <div class="form-group">
-        <label>想买什么？</label>
-        <input id="fName" placeholder="输入商品名称，如：AirPods Pro" autocomplete="off">
+        <label>����ʲô��</label>
+        <input id="fName" placeholder="������Ʒ���ƣ��磺AirPods Pro" autocomplete="off">
       </div>
       <div class="form-group">
-        <label>为什么想买？<span style="color:var(--muted);font-size:11px">（选填）</span></label>
-        <textarea id="fReason" rows="2" placeholder="写写购买理由，帮助评估是否真的需要" style="resize:none" autocomplete="off"></textarea>
+        <label>Ϊʲô����<span style="color:var(--muted);font-size:11px">��ѡ�</span></label>
+        <textarea id="fReason" rows="2" placeholder="дд�������ɣ����������Ƿ������Ҫ" style="resize:none" autocomplete="off"></textarea>
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1"><label>预算最低</label><input id="fBudgetMin" type="number" placeholder="如 200" min="0" autocomplete="off"></div>
-        <div class="form-group" style="flex:1"><label>预算最高</label><input id="fBudgetMax" type="number" placeholder="如 500" min="0" autocomplete="off"></div>
+        <div class="form-group" style="flex:1"><label>Ԥ�����</label><input id="fBudgetMin" type="number" placeholder="�� 200" min="0" autocomplete="off"></div>
+        <div class="form-group" style="flex:1"><label>Ԥ�����</label><input id="fBudgetMax" type="number" placeholder="�� 500" min="0" autocomplete="off"></div>
       </div>
       <div id="aiEvalResult" style="display:none;background:var(--bg);border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;line-height:1.7;white-space:pre-wrap"></div>
-      <!-- AI对话区域 -->
+      <!-- AI�Ի����� -->
       <div id="chatArea" style="display:none;margin-bottom:12px">
         <div id="chatMessages" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;line-height:1.6"></div>
         <div style="display:flex;gap:6px">
-          <input id="chatInput" placeholder="继续问AI，如：换个平台呢？" onkeydown="if(event.key==='Enter'&&!this.disabled)sendPurchaseChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-          <button id="chatSendBtn" onclick="sendPurchaseChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">发送</button>
+          <input id="chatInput" placeholder="������AI���磺����ƽ̨�أ�" onkeydown="if(event.key==='Enter'&&!this.disabled)sendPurchaseChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
+          <button id="chatSendBtn" onclick="sendPurchaseChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">����</button>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button onclick="sendQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">💰 更便宜的平台</button>
-          <button onclick="sendQuickChat('换个品牌/型号推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">🔄 换个推荐</button>
-          <button onclick="sendQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等再买</button>
+          <button onclick="sendQuickChat('��û�и����˵�ƽ̨��')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? �����˵�ƽ̨</button>
+          <button onclick="sendQuickChat('����Ʒ��/�ͺ��Ƽ���')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? �����Ƽ�</button>
+          <button onclick="sendQuickChat('�ȵ����������')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">? �ȵ�����</button>
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">取消</button>
-        <button onclick="skipToDetail()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:12px">📝 直接填写</button>
-        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
+        <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">ȡ��</button>
+        <button onclick="skipToDetail()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:12px">?? ֱ����д</button>
+        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">?? AI��������</button>
       </div>
     </div>
 
-    <!-- 阶段2：填写详情（评估后显示） -->
+    <!-- �׶�2����д���飨��������ʾ�� -->
     <div id="detailPhase" style="display:none">
       <div class="form-group">
-        <label>商品名称</label>
+        <label>��Ʒ����</label>
         <input id="fNameDisplay" readonly style="background:var(--bg);color:var(--text)">
       </div>
       <div class="form-group">
-        <label>预算区间</label>
-        <div id="fBudgetDisplay" style="padding:10px;background:var(--bg);border-radius:8px;font-size:14px;color:var(--pri);font-weight:600">未设置</div>
+        <label>Ԥ������</label>
+        <div id="fBudgetDisplay" style="padding:10px;background:var(--bg);border-radius:8px;font-size:14px;color:var(--pri);font-weight:600">δ����</div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>平台</label><select id="fPlatform"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
-        <div class="form-group"><label>分类</label><select id="fCategory"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
+        <div class="form-group"><label>ƽ̨</label><select id="fPlatform"><option>ƴ���</option><option>�Ա�</option><option>����</option><option>����</option><option>����</option></select></div>
+        <div class="form-group"><label>����</label><select id="fCategory"><option>����</option><option>����</option><option>��ʳ</option><option>����</option><option>��ͨ</option><option>����</option></select></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>单价（元）</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
-        <div class="form-group"><label>数量</label><input id="fQty" type="number" value="1" min="1"></div>
+        <div class="form-group"><label>���ۣ�Ԫ��</label><input id="fPrice" type="number" step="0.01" placeholder="0"></div>
+        <div class="form-group"><label>����</label><input id="fQty" type="number" value="1" min="1"></div>
       </div>
-      <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
+      <div class="form-group"><label>��ע</label><textarea id="fNote" placeholder="��ѡ"></textarea></div>
       <div style="display:flex;gap:8px">
-        <button onclick="backToEval()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">← 返回</button>
-        <button onclick="submitPurchase()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">✅ 确认提交</button>
+        <button onclick="backToEval()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">�� ����</button>
+        <button onclick="submitPurchase()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">? ȷ���ύ</button>
       </div>
     </div>
 
-    <!-- 编辑模式（编辑已有采购时显示） -->
+    <!-- �༭ģʽ���༭���вɹ�ʱ��ʾ�� -->
     <div id="editPhase" style="display:none">
-      <div class="form-group"><label>商品名称 *</label><input id="fNameEdit" placeholder="如：夏天裤子"></div>
+      <div class="form-group"><label>��Ʒ���� *</label><input id="fNameEdit" placeholder="�磺�������"></div>
       <div class="form-row">
-        <div class="form-group"><label>平台</label><select id="fPlatformEdit"><option>拼多多</option><option>淘宝</option><option>京东</option><option>抖音</option><option>其他</option></select></div>
-        <div class="form-group"><label>分类</label><select id="fCategoryEdit"><option>日用</option><option>服饰</option><option>饮食</option><option>电子</option><option>交通</option><option>其他</option></select></div>
+        <div class="form-group"><label>ƽ̨</label><select id="fPlatformEdit"><option>ƴ���</option><option>�Ա�</option><option>����</option><option>����</option><option>����</option></select></div>
+        <div class="form-group"><label>����</label><select id="fCategoryEdit"><option>����</option><option>����</option><option>��ʳ</option><option>����</option><option>��ͨ</option><option>����</option></select></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>单价（元）</label><input id="fPriceEdit" type="number" step="0.01" placeholder="0"></div>
-        <div class="form-group"><label>数量</label><input id="fQtyEdit" type="number" value="1" min="1"></div>
+        <div class="form-group"><label>���ۣ�Ԫ��</label><input id="fPriceEdit" type="number" step="0.01" placeholder="0"></div>
+        <div class="form-group"><label>����</label><input id="fQtyEdit" type="number" value="1" min="1"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>状态</label><select id="fStatusEdit"><option>待评估</option><option>待审批</option><option>已审批</option><option>已下单</option><option>已到</option><option>已退</option><option>已归档</option></select></div>
-        <div class="form-group"><label>日期</label><input id="fDateEdit" type="date"></div>
+        <div class="form-group"><label>״̬</label><select id="fStatusEdit"><option>������</option><option>������</option><option>������</option><option>���µ�</option><option>�ѵ�</option><option>����</option><option>�ѹ鵵</option></select></div>
+        <div class="form-group"><label>����</label><input id="fDateEdit" type="date"></div>
       </div>
-      <div class="form-group"><label>备注</label><textarea id="fNoteEdit" placeholder="可选"></textarea></div>
+      <div class="form-group"><label>��ע</label><textarea id="fNoteEdit" placeholder="��ѡ"></textarea></div>
       <div class="btn-row">
-        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-        <button class="btn btn-primary" onclick="save()">保存</button>
+        <button class="btn btn-secondary" onclick="closeModal()">ȡ��</button>
+        <button class="btn btn-primary" onclick="save()">����</button>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- 记账 Modal -->
+<!-- ���� Modal -->
 <div class="modal-overlay" id="expenseOverlay" onclick="if(event.target===this)closeExpenseModal()">
   <div class="modal">
     <input type="hidden" id="eEditId">
-    <h2 id="expenseModalTitle">💰 记一笔</h2>
+    <h2 id="expenseModalTitle">?? ��һ��</h2>
     <div class="form-row">
-      <input type="hidden" id="eType" value="支出">
-      <div class="form-group"><label>金额 *</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <input type="hidden" id="eType" value="֧��">
+      <div class="form-group"><label>��� *</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>分类</label><select id="eCategory"><option>餐饮</option><option>交通</option><option>购物</option><option>娱乐</option><option>居住</option><option>医疗</option><option>教育</option><option>其他</option></select></div>
-      <div class="form-group"><label>日期时间</label><input id="eDate" type="datetime-local"></div>
+      <div class="form-group"><label>����</label><select id="eCategory"><option>����</option><option>��ͨ</option><option>����</option><option>����</option><option>��ס</option><option>ҽ��</option><option>����</option><option>����</option></select></div>
+      <div class="form-group"><label>����ʱ��</label><input id="eDate" type="datetime-local"></div>
     </div>
-    <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:6px;padding:8px 10px;background:var(--pri-light);border-radius:8px;font-size:12px;cursor:pointer;transition:.15s" onclick="applyAICat()"><span id="aiCatText"></span></div></div>
-    <div class="form-group"><label>图片</label>
-      <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
+    <div class="form-group"><label>��ע</label><input id="eNote" placeholder="��ѡ" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:6px;padding:8px 10px;background:var(--pri-light);border-radius:8px;font-size:12px;cursor:pointer;transition:.15s" onclick="applyAICat()"><span id="aiCatText"></span></div></div>
+    <div class="form-group"><label>ͼƬ</label>
+      <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">??? ɾ��ͼƬ</button></div>
       <div id="imageSizeInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px;display:none"></div>
       <div style="display:flex;gap:8px">
         <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eCameraInput').click()">
-          <div class="upload-icon">📷</div>
-          <div class="upload-text">拍照</div>
+          <div class="upload-icon">??</div>
+          <div class="upload-text">����</div>
         </div>
         <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eGalleryInput').click()">
-          <div class="upload-icon">🖼️</div>
-          <div class="upload-text">相册</div>
+          <div class="upload-icon">???</div>
+          <div class="upload-text">���</div>
         </div>
       </div>
       <input type="file" id="eCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleImageUpload(this)">
       <input type="file" id="eGalleryInput" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
     </div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeExpenseModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveExpense()">保存</button>
+      <button class="btn btn-secondary" onclick="closeExpenseModal()">ȡ��</button>
+      <button class="btn btn-primary" onclick="saveExpense()">����</button>
     </div>
   </div>
 </div>
 
 <div class="img-fullscreen" id="imgFullscreen" onclick="this.classList.remove('active')"><img id="imgFullscreenImg"></div>
 
-<!-- 审批确认 Modal -->
+<!-- ����ȷ�� Modal -->
 <div class="modal-overlay" id="approvalOverlay" onclick="if(event.target===this)closeApprovalModal()">
   <div class="modal">
-    <h2 id="approvalTitle">确认操作</h2>
+    <h2 id="approvalTitle">ȷ�ϲ���</h2>
     <div id="approvalContent" style="text-align:center;padding:10px 0"></div>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeApprovalModal()">取消</button>
-      <button class="btn btn-primary" id="approvalConfirmBtn">确认</button>
+      <button class="btn btn-secondary" onclick="closeApprovalModal()">ȡ��</button>
+      <button class="btn btn-primary" id="approvalConfirmBtn">ȷ��</button>
     </div>
   </div>
 </div>
 
-<!-- 详情弹窗 -->
+<!-- ���鵯�� -->
 <div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetailModal()">
   <div class="modal" style="max-height:90vh;padding:20px 16px">
     <div id="detailContent"></div>
   </div>
 </div>
 
-<!-- 评估续聊弹窗 -->
+<!-- �������ĵ��� -->
 <div class="modal-overlay" id="evalOverlay" onclick="if(event.target===this)closeEvalModal()">
   <div class="modal" style="max-height:90vh;padding:20px 16px">
     <div id="evalContent"></div>
   </div>
 </div>
 
-<!-- 预算 Modal -->
+<!-- Ԥ�� Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
-    <h2>🎯 预算设置</h2>
-    <div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div>
-    <div class="form-group"><label>月总预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="每月总预算"></div>
+    <h2>?? Ԥ������</h2>
+    <div class="form-group"><label>�·�</label><input id="budgetMonth" type="month"></div>
+    <div class="form-group"><label>����Ԥ�㣨Ԫ��</label><input id="budgetInput" type="number" step="1" placeholder="ÿ����Ԥ��"></div>
     <div id="weekBudgetSection"></div>
-    <p style="font-size:11px;color:var(--muted);margin:8px 0">各周预算之和不能超过月总预算</p>
+    <p style="font-size:11px;color:var(--muted);margin:8px 0">����Ԥ��֮�Ͳ��ܳ�������Ԥ��</p>
     <div id="budgetAiResult" style="display:none;margin:8px 0;padding:12px;background:var(--bg);border-radius:12px;font-size:13px;line-height:1.6"></div>
-    <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">🤖 AI 智能分析预算</button>
+    <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">?? AI ���ܷ���Ԥ��</button>
     <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveBudget()">保存</button>
+      <button class="btn btn-secondary" onclick="closeBudgetModal()">ȡ��</button>
+      <button class="btn btn-primary" onclick="saveBudget()">����</button>
     </div>
   </div>
 </div>
 
-<!-- 更新日志 -->
+<!-- ������־ -->
 <div class="modal-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
   <div class="modal">
-    <h2>📋 更新日志</h2>
+    <h2>?? ������־</h2>
     <div id="changelogContent"></div>
     <div class="btn-row" style="margin-top:16px">
-      <button class="btn btn-primary" onclick="closeChangelog()">关闭</button>
+      <button class="btn btn-primary" onclick="closeChangelog()">�ر�</button>
     </div>
   </div>
 </div>
 
-<!-- PIN 锁屏 -->
+<!-- PIN ���� -->
 <div id="authScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center;overflow-y:auto">
   <div style="text-align:center;padding:20px;width:100%;max-width:320px">
-    <div style="font-size:56px;margin-bottom:16px">🔐</div>
-    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
-    <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">请登录</p>
+    <div style="font-size:56px;margin-bottom:16px">??</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">���˹ܼ�</h2>
+    <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">���¼</p>
     <div id="loginForm">
-      <input id="loginUsername" type="text" placeholder="用户名" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <input id="loginUsername" type="text" placeholder="�û���" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="loginPassword" type="password" placeholder="����" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
       <p id="authError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">登 录</button>
-      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showRegister()">没有账号？邀请码注册</p>
+      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">�� ¼</button>
+      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showRegister()">û���˺ţ�������ע��</p>
     </div>
     <div id="registerForm" style="display:none">
-      <input id="regUsername" type="text" placeholder="用户名（3-20字符）" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="regPassword" type="password" placeholder="密码（至少6位）" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="regInviteCode" type="text" placeholder="邀请码" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <input id="regUsername" type="text" placeholder="�û�����3-20�ַ���" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="regPassword" type="password" placeholder="���루����6λ��" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
+      <input id="regInviteCode" type="text" placeholder="������" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
       <p id="regError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">注 册</button>
-      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showLogin()">已有账号？去登录</p>
+      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">ע ��</button>
+      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showLogin()">�����˺ţ�ȥ��¼</p>
     </div>
   </div>
 </div>
 
-<script src="main.js?v=1780020000"></script>
+<script src="main.js?v=1780323732"></script>
 
 </body>
 </html>
