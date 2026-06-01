@@ -284,6 +284,7 @@ function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
 function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
 function renderWeekBudgetInputs(m,total){
+  console.log('BUDGET_DEBUG_renderWeek: m='+m+' total='+total);
   const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
   const monthExpenses=expenses.filter(e=>getMonth(e['日期'])===m&&e['类型']!=='收入');
@@ -311,7 +312,7 @@ function renderWeekBudgetInputs(m,total){
     html+='</div></div>';
   });
   html+='</div>';
-  document.getElementById('weekBudgetSection').innerHTML=html;
+  console.log('BUDGET_DEBUG_html_length:', html.length);document.getElementById('weekBudgetSection').innerHTML=html;console.log('BUDGET_DEBUG_done');
 }
 
 async function analyzeBudget(){
