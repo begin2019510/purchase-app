@@ -286,14 +286,34 @@ function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,pe
 function renderWeekBudgetInputs(m,total){
   const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
-  let html='<div style="margin-top:12px"><label style="font-size:13px;font-weight:700;display:block;margin-bottom:8px">每周预算</label>';
+  const monthExpenses=expenses.filter(e=>getMonth(e['日期'])===m&&e['类型']!=='收入');
+  let html='<div style="margin-top:16px">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html+='<span style="font-size:13px;font-weight:700">📅 每周预算</span>';
+  let allocated=0;Object.values(wb.weeks||{}).forEach(v=>{if(v>0)allocated+=v});
+  if(total>0){html+='<span style="font-size:11px;color:var(--muted)">已分配 ¥'+allocated+'/'+total+'</span>'}
+  html+='</div>';
   weeks.forEach((w,i)=>{
     const val=wb.weeks[i]||'';
-    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">第'+w.num+'周 ('+w.start+'-'+w.end+'日)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="¥" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
+    let spent=0;
+    monthExpenses.forEach(e=>{const d=parseInt((e['日期']||'').slice(8,10));if(d>=w.start&&d<=w.end)spent+=Number(e['金额']||0)});
+    const budget=val||0;
+    const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
+    const barColor=pct>=100?'var(--red)':pct>=80?'var(--orange)':'var(--green)';
+    html+='<div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+    html+='<span style="font-size:12px;font-weight:600">第'+w.num+'周 <span style="color:var(--muted);font-weight:400">'+w.start+'-'+w.end+'日</span></span>';
+    html+='<span style="font-size:11px;color:var(--muted)">已花 ¥'+spent.toFixed(0)+'</span>';
+    html+='</div>';
+    html+='<div style="display:flex;align-items:center;gap:8px">';
+    html+='<input id="weekBudget_'+i+'" type="number" min="0" step="1" placeholder="¥0" value="'+val+'" style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:center">';
+    if(budget>0){html+='<div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px;transition:width .3s"></div></div>'}
+    html+='</div></div>';
   });
   html+='</div>';
   document.getElementById('weekBudgetSection').innerHTML=html;
 }
+
 async function analyzeBudget(){
   const m=document.getElementById('budgetMonth').value||getThisMonth();
   const total=parseFloat(document.getElementById('budgetInput').value)||0;
@@ -1863,30 +1883,31 @@ function closeBudgetModal(){document.getElementById('budgetOverlay').classList.r
 function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>📤 导出${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">选择导出格式</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">📄 CSV（逗号分隔）</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">📋 TSV（Tab分隔）</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">取消</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
 function saveBudget(){
   const month=document.getElementById('budgetMonth').value;
-  const val=parseFloat(document.getElementById('budgetInput').value)||0;
-  const weekVal=parseFloat(document.getElementById('weekBudgetInput').value)||0;
+  const total=parseFloat(document.getElementById('budgetInput').value)||0;
   if(!month)return alert('请选择月份');
-  const b=getBudgets();
-  if(weekVal>0){
-    // 按周预算
-    const weeks=getMonthWeeks(month);
-    const weekObj={};
-    weeks.forEach((w,i)=>{weekObj[i]=weekVal});
-    b[month]={weekBudget:weekVal,weeks:weekObj};
-  }else{
-    b[month]=val;
+  if(total<0)return alert('预算不能为负数');
+  const weeks=getMonthWeeks(month);
+  const weekObj={};let weekSum=0;
+  for(let i=0;i<weeks.length;i++){
+    const el=document.getElementById('weekBudget_'+i);
+    const v=el?parseFloat(el.value)||0:0;
+    if(v<0){alert('周预算不能为负数');return}
+    if(v>0){weekObj[i]=v;weekSum+=v}
   }
-  setBudgets(b);
-  toast(`已设置 ${month} 预算 ${weekVal>0?'每周¥'+weekVal:'每月¥'+val}`);
+  if(total>0&&weekSum>total){alert('周预算总和 ¥'+weekSum+' 超过月预算 ¥'+total);return}
+  setWeekBudgets(month,total,0,weekObj);
+  const msg=Object.keys(weekObj).length?'月预算'+total+'，'+Object.keys(weekObj).length+'个周预算':'月预算'+total;
+  toast('已设置 '+msg);
   closeBudgetModal();
   render();
 }
+
 function openBudgetModal(){
   const m=getThisMonth();
   document.getElementById('budgetMonth').value=m;
   const b=getBudgets()[m];
   const total=(b&&typeof b==='object')?b.total:(typeof b==='number'?b:0);
-  document.getElementById('budgetInput').value=total||'';
+  document.getElementById('budgetInput').value=total||'';document.getElementById('budgetInput').min=0;
   renderWeekBudgetInputs(m,total);
   document.getElementById('budgetOverlay').classList.add('active');
 }
