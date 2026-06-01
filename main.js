@@ -911,12 +911,13 @@ function renderExpenseCalendar(){
   const today=new Date(Date.now()+8*3600*1000);
   const todayStr=today.getUTCFullYear()+'-'+String(today.getUTCMonth()+1).padStart(2,'0')+'-'+String(today.getUTCDate()).padStart(2,'0');
   const calMonthStr=calYear+'-'+String(calMonth+1).padStart(2,'0');
+  const periodLabel2=currentWeekFilter>=0?'本周':'本月';
 
   let html='';
   // 顶部统计（精简）
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
   </div>`;
 
   // 日历头部
