@@ -427,18 +427,6 @@
 </div>
 
 <!-- 预算 Modal -->
-<div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
-  <div class="modal">
-    <h2>💰 月度预算</h2>
-    <div class="form-group"><label>月预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="输入每月预算"></div>
-    <div class="form-row"><div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div></div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveBudget()">保存</button>
-    </div>
-  </div>
-</div>
-
 <!-- 更新日志 -->
 <div class="modal-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
   <div class="modal">
@@ -518,10 +506,10 @@
   </div>
 </div>
 <!-- Missing modal/overlay elements (added for JS compatibility) -->
-<div class="modal-overlay" id="exportOverlay" style="display:none"></div>
-<div id="statsTabPurchase" style="display:none"></div>
-<div id="statsTabExpense" style="display:none"></div>
-<div id="statsSectionPurchase" style="display:none"></div>
-<div id="statsSectionExpense" style="display:none"></div>
+
+
+
+
+
 </body>
 </html>
