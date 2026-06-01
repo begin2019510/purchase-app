@@ -43,6 +43,7 @@ let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
 let expenseViewMode='list'; // 'list' | 'calendar'
+let currentWeekFilter=-1; // -1=本月全部, 0=第1周, 1=第2周...
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
 
@@ -574,6 +575,41 @@ function formatDay(dayStr) {
   if (!dayStr) return { date: '??', weekday: '?' };
   try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}月${(d.getDate()+'').padStart(2,'0')}日`, weekday: '周'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
 }
+
+// ===== 获取月份的周信息 =====
+function getMonthWeeks(yearMonth) {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const firstDay = new Date(y, m - 1, 1);
+  const lastDay = new Date(y, m, 0);
+  const weeks = [];
+  let weekStart = 1;
+  let weekNum = 1;
+  while (weekStart <= lastDay.getDate()) {
+    // 找这周的结束：周日或月末
+    let weekEnd = weekStart;
+    const startDow = new Date(y, m - 1, weekStart).getDay();
+    const daysToSunday = startDow === 0 ? 0 : 7 - startDow;
+    weekEnd = Math.min(weekStart + daysToSunday, lastDay.getDate());
+    weeks.push({
+      num: weekNum,
+      start: weekStart,
+      end: weekEnd,
+      label: `第${weekNum}周(${weekStart}-${weekEnd}日)`
+    });
+    weekStart = weekEnd + 1;
+    weekNum++;
+  }
+  return weeks;
+}
+function getWeekForDate(dateStr, yearMonth) {
+  if (!dateStr) return -1;
+  const day = parseInt(dateStr.slice(8, 10));
+  const weeks = getMonthWeeks(yearMonth);
+  for (let i = 0; i < weeks.length; i++) {
+    if (day >= weeks[i].start && day <= weeks[i].end) return i;
+  }
+  return -1;
+}
 function renderExpense(){
   if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
   const thisMonth=getThisMonth();
@@ -588,13 +624,14 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   const net=totalIn-totalOut;
   const budget=getBudget(thisMonth);
   const count=searched.length;
+  const periodLabel=currentWeekFilter>=0?'本周':'本月';
   const catMap={};
   searched.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">本月收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
     <div class="ex-total-card ex-net ${net>=0?'ex-surplus':'ex-deficit'}"><div class="ex-total-icon">📊</div><div class="ex-total-info"><div class="ex-total-label">净收支</div><div class="ex-total-val">¥${net.toFixed(2)}</div></div></div>
     <div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>
   </div>`;
@@ -878,8 +915,8 @@ function renderExpenseCalendar(){
   let html='';
   // 顶部统计（精简）
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">本月收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
   </div>`;
 
   // 日历头部
@@ -1134,6 +1171,7 @@ function switchTab(t){
   document.getElementById('actionPurchase').style.display=t==='purchase'?'':'none';
   document.getElementById('actionExpense').style.display=t==='expense'?'':'none';
   document.getElementById('actionStats').style.display=t==='stats'?'':'none';
+  if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();
 }
