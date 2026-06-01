@@ -1,32 +1,32 @@
 
 // ============================================================
-// °æ±¾ & ¸üĞÂÈÕÖ¾
+// ç‰ˆæœ¬ & æ›´æ–°æ—¥å¿—
 // ============================================================
 const APP_VERSION='2.11.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
-  {v:'2.10.0',date:'2026-05-27',items:['²É¹ºÆÀ¹ÀÁ÷³ÌÓÅ»¯£ºĞÂÔö¹ºÂòÀíÓÉÊäÈë¡¢ÆÀ¹ÀÕªÒª´°¿Ú¡¢È¡Ïû²É¹º¹éµµ']},
-  {v:'2.9.0',date:'2026-05-27',items:['°²È«¼Ó¹Ì£ºµÇÂ¼ÏŞÁ÷(5´Î/15·ÖÖÓ)¡¢Í¼Æ¬´óĞ¡ºó¶ËĞ£Ñé(2MB)¡¢½ğ¶îÉÏÏŞĞ£Ñé(999999)','XSSĞŞ¸´£ºÄÚÁªonclick¸ÄÎªÊÂ¼şÎ¯ÍĞ+dataÊôĞÔ','AIÌáÊ¾×¢Èë·À»¤£ºÓÃ»§Êı¾İÓÃ<<<DATA>>>·Ö¸ô·û°ü¹ü','Í¼Æ¬APIÒÆ³ıURLÖĞµÄPIN²ÎÊı£¬½öÓÃJWTÈÏÖ¤','debug½Ó¿ÚÊÕ½ôÎª½ö¹ÜÀíÔ±¿É·ÃÎÊ','·ÉÊéAPI´íÎóÈÕÖ¾ÔöÇ¿','SW°æ±¾ºÅv38¸üĞÂ']},
-  {v:'2.8.5',date:'2026-05-26',items:['ÆÀ¹À¿¨Æ¬ÏÔÊ¾Ô¤Ëã+AIÕªÒª','ÆÀ¹Àµ¯´°Ö§³ÖĞøÁÄ+±£´æ+Ìø×ªĞèÇóÌîĞ´','ÆÀ¹ÀÒ³¿ÉÌø¹ıÖ±½ÓÌîĞ´']},
-  {v:'2.8.3',date:'2026-05-26',items:['ĞèÇóÆÀ¹À¶àÂÖ¶Ô»°+Ìá½»½øÈë´ıÆÀ¹À×´Ì¬£¬²»ÔÙÖ±½ÓÌî±íµ¥']},
-  {v:'2.8.2',date:'2026-05-26',items:['AIĞèÇóÆÀ¹ÀÖ§³ÖÔ¤ËãÇø¼äÊäÈë£¬ÆÀ¹À¸ü¾«×¼']},
-  {v:'2.8.0',date:'2026-05-25',items:['AI ĞèÇóÆÀ¹À£ºÊäÈëÉÌÆ·ÃûAI·ÖÎöÀúÊ·²É¹ºÊı¾İ+Ô¤Ëã+¼Û¸ñÇ÷ÊÆ¸ø¹ºÂò½¨Òé']},
-  {v:'2.7.0',date:'2026-05-24',items:['¼ÇÕË/²É¹ºµ¼³öÔöÇ¿£ºÖ§³ÖCSV/TSV¸ñÊ½Ñ¡Ôñ','²É¹ºÍ³¼ÆÔöÇ¿£º·ÖÀà±ıÍ¼¡¢Æ½Ì¨·Ö²¼¡¢6¸öÔÂÇ÷ÊÆ','ÀëÏßÌåÑéÓÅ»¯£º¶ÏÍø¼ì²â+»ÆÉ«ºá·ùÌáÊ¾','ÔÚÏß°ïÖúÎÄµµÒ³Ãæ']},
-  {v:'2.6.0',date:'2026-05-23',items:['´úÂëÖØ¹¹£ºJSÌáÈ¡Îª¶ÀÁ¢app.jsÎÄ¼ş','CSSÒÑÍâÖÃÎªstyle.css','°æ±¾ºÅ¸üĞÂ']},
-  {v:'2.5.9',date:'2026-05-23',items:['AIÖÇÄÜ·ÖÀà£º±¸×¢ÊäÈëÊ±×Ô¶¯ÍÆ¼ö·ÖÀà+±êÇ©','AIÅúÁ¿±êÇ©ÌáÁ¶£ºÒ»¼ü·ÖÎö±¾ÔÂ±¸×¢Éú³É±êÇ©','·ÖÀà»ùÓÚÀúÊ·Êı¾İÑ§Ï°ÓÃ»§Ï°¹ß']},
-  {v:'2.5.8',date:'2026-05-23',items:['AI×ÔÈ»ÓïÑÔ¼ÇÕË£ºËµ¾ä»°×Ô¶¯½âÎö½ğ¶î/·ÖÀà/Ê±¼ä','AI²ÆÎñ·ÖÎö±¨¸æ£ºÏû·ÑÒì³£/Ê¡Ç®½¨Òé/Ç÷ÊÆ¶´²ì','AI´úÀíºó¶Ë£ºDeepSeek API + Cloudflare Pages Function']},
-  {v:'2.5.7',date:'2026-05-23',items:['¹Ç¼ÜÆÁ¼ÓÔØ¶¯»­£¬¸æ±ğ°×ÆÁµÈ´ı','ÏÂÀ­Ë¢ĞÂÊÖÊÆÖ§³Ö','¿¨Æ¬×ó»¬É¾³ı¡¢ÓÒ»¬¸Ä×´Ì¬']},
-  {v:'2.5.6',date:'2026-05-23',items:['Í³¼ÆÒ³ĞÂÔöÃ¿ÈÕÖ§³öÕÛÏßÇ÷ÊÆÍ¼','Ã¿ÖÜÖ§³öÖù×´¶Ô±ÈÍ¼','ÊÕÈëvsÖ§³öË«Ïß¶Ô±È','Ö§³ö·ÖÀàÅÅĞĞÖù×´Í¼']},
-  {v:'2.5.5',date:'2026-05-23',items:['ĞÂÔö¼ÇÕËÔÂÀúÊÓÍ¼£ºÈÕÀúÍø¸ñÕ¹Ê¾Ã¿ÈÕÊÕÖ§','µã»÷ÈÕÆÚ²é¿´µ±Ìì¼ÇÕËÃ÷Ï¸','Ö§³ÖÔÂ·İÇĞ»»µ¼º½','¿ÕÈÕÆÚ¿É¿ì½İ¼ÇÒ»±Ê','ÁĞ±í/ÈÕÀúÊÓÍ¼×ÔÓÉÇĞ»»']},
-  {v:'2.5.4',date:'2026-05-22',items:['Í¼Æ¬API·µ»Ø¶ş½øÖÆÊı¾İ+pinÈÏÖ¤','²É¹ºÍ³¼ÆgetMonthÊ±¼ä´ÁĞŞ¸´','ÍË»õ½ğ¶î¼õ·¨ĞŞ¸´','ÉóÅúÁ÷ÒÑµ½´ò¹³ĞŞ¸´','¼ÇÕËÉ¾Í¼¹¦ÄÜ','Cron Worker²¿Êğ']},
-  {v:'2.5.3',date:'2026-05-21',items:['Í¼Æ¬ÉÏ´«·ÖÎªÅÄÕÕ+Ïà²áÁ½¸ö°´Å¥','ÅÄÕÕÓÃcapture=environment£¬Ïà²áÎŞÏŞÖÆ','¼æÈİËùÓĞÊÖ»úä¯ÀÀÆ÷']},
-  {v:'2.5.2',date:'2026-05-21',items:['Í¼Æ¬´æ´¢Éı¼¶£º¸ÄÓÃCloudflare KV£¬¸æ±ğ32KBÏŞÖÆ','Í¼Æ¬Ñ¹ËõÉÏÏŞÌáÉıÖÁ800px/500KB','¾ÉÍ¼Æ¬×Ô¶¯¼æÈİ£¬ĞÂÍ¼Æ¬´æKV']},
-  {v:'2.5.1',date:'2026-05-21',items:['¼ÇÕË¾«È·Ê±¼ä´Á£ºĞÂ½¨/±à¼­¾ùÖ§³ÖÑ¡Ôñ¾ßÌåÊ±¼ä','µ¼³öCSVÔö¼Ó¶ÀÁ¢Ê±¼äÁĞ','¿¨Æ¬Ê±¼äÏÔÊ¾ÓÅ»¯£º??Ç°×º+Õı³£¿É¼û','µã»÷°æ±¾ºÅ²é¿´¸üĞÂÈÕÖ¾']},
-  {v:'2.5.0',date:'2026-05-20',items:['¹éµµ¹¦ÄÜ£ºÒÑµ½/ÒÑÍË3Ììºó×Ô¶¯ÌáĞÑ¹éµµ','ÉóÅúÁ÷ÍêÕûÁ÷³Ì£º´ıÉóÅú¡úÒÑÉóÅú¡úÒÑÏÂµ¥¡úÒÑµ½/ÒÑÍË¡úÒÑ¹éµµ','ĞÂÔöarchive-check¶¨Ê±ÈÎÎñ','BitableĞÂÔö¹éµµÊ±¼ä×Ö¶Î']},
-  {v:'2.4.2',date:'2026-05-20',items:['ÉóÅúÁ÷·ÖÖ§½á¹¹ĞŞ¸´£ºÒÑµ½ºÍÒÑÍËÊÇ·ÖÖ§¶ø·ÇÏßĞÔ','ÏêÇéµ¯´°¸Ä°æ£ºstepperÁ÷³ÌÕ¹Ê¾+²Ù×÷°´Å¥','ÒÑµ½/ÒÑÍËÖÕÌ¬ÏÔÊ¾¹éµµ°´Å¥']},
-  {v:'2.4.1',date:'2026-05-20',items:['ÏêÇéµ¯´°ÖØ×ö£º·ÉÊéÉóÅúÁ÷·ç¸ñ','ÊúÏòstepperÊ±¼äÏß','¿¨Æ¬Ö»ÏÔÊ¾×´Ì¬+×îĞÂÊ±¼ä']},
-  {v:'2.4.0',date:'2026-05-20',items:['²É¹ºÉóÅúÁ÷£º5²½×´Ì¬¹ÜÀí','×Ô¶¯¼ÇÂ¼×´Ì¬±ä¸üÊ±¼ä','°µÉ«Ä£Ê½','¼ÇÕËÍ¼Æ¬¸½¼şÖ§³Ö','ÖÜ¶È/ÔÂ¶È»ã×Ü·ÉÊéÍÆËÍ']},
-  {v:'2.3.0',date:'2026-05-20',items:['°µÉ«Ä£Ê½£¨¸úËæÏµÍ³+ÊÖ¶¯ÇĞ»»£©','¼ÇÕËÍ¼Æ¬¸½¼ş£¨ÅÄÕÕ+Ñ¹Ëõ+È«ÆÁÔ¤ÀÀ£©','ÖÜ¶È/ÔÂ¶È»ã×Ü·ÉÊéÍÆËÍ']},
+  {v:'2.10.0',date:'2026-05-27',items:['é‡‡è´­è¯„ä¼°æµç¨‹ä¼˜åŒ–ï¼šæ–°å¢è´­ä¹°ç†ç”±è¾“å…¥ã€è¯„ä¼°æ‘˜è¦çª—å£ã€å–æ¶ˆé‡‡è´­å½’æ¡£']},
+  {v:'2.9.0',date:'2026-05-27',items:['å®‰å…¨åŠ å›ºï¼šç™»å½•é™æµ(5æ¬¡/15åˆ†é’Ÿ)ã€å›¾ç‰‡å¤§å°åç«¯æ ¡éªŒ(2MB)ã€é‡‘é¢ä¸Šé™æ ¡éªŒ(999999)','XSSä¿®å¤ï¼šå†…è”onclickæ”¹ä¸ºäº‹ä»¶å§”æ‰˜+dataå±æ€§','AIæç¤ºæ³¨å…¥é˜²æŠ¤ï¼šç”¨æˆ·æ•°æ®ç”¨<<<DATA>>>åˆ†éš”ç¬¦åŒ…è£¹','å›¾ç‰‡APIç§»é™¤URLä¸­çš„PINå‚æ•°ï¼Œä»…ç”¨JWTè®¤è¯','debugæ¥å£æ”¶ç´§ä¸ºä»…ç®¡ç†å‘˜å¯è®¿é—®','é£ä¹¦APIé”™è¯¯æ—¥å¿—å¢å¼º','SWç‰ˆæœ¬å·v38æ›´æ–°']},
+  {v:'2.8.5',date:'2026-05-26',items:['è¯„ä¼°å¡ç‰‡æ˜¾ç¤ºé¢„ç®—+AIæ‘˜è¦','è¯„ä¼°å¼¹çª—æ”¯æŒç»­èŠ+ä¿å­˜+è·³è½¬éœ€æ±‚å¡«å†™','è¯„ä¼°é¡µå¯è·³è¿‡ç›´æ¥å¡«å†™']},
+  {v:'2.8.3',date:'2026-05-26',items:['éœ€æ±‚è¯„ä¼°å¤šè½®å¯¹è¯+æäº¤è¿›å…¥å¾…è¯„ä¼°çŠ¶æ€ï¼Œä¸å†ç›´æ¥å¡«è¡¨å•']},
+  {v:'2.8.2',date:'2026-05-26',items:['AIéœ€æ±‚è¯„ä¼°æ”¯æŒé¢„ç®—åŒºé—´è¾“å…¥ï¼Œè¯„ä¼°æ›´ç²¾å‡†']},
+  {v:'2.8.0',date:'2026-05-25',items:['AI éœ€æ±‚è¯„ä¼°ï¼šè¾“å…¥å•†å“åAIåˆ†æå†å²é‡‡è´­æ•°æ®+é¢„ç®—+ä»·æ ¼è¶‹åŠ¿ç»™è´­ä¹°å»ºè®®']},
+  {v:'2.7.0',date:'2026-05-24',items:['è®°è´¦/é‡‡è´­å¯¼å‡ºå¢å¼ºï¼šæ”¯æŒCSV/TSVæ ¼å¼é€‰æ‹©','é‡‡è´­ç»Ÿè®¡å¢å¼ºï¼šåˆ†ç±»é¥¼å›¾ã€å¹³å°åˆ†å¸ƒã€6ä¸ªæœˆè¶‹åŠ¿','ç¦»çº¿ä½“éªŒä¼˜åŒ–ï¼šæ–­ç½‘æ£€æµ‹+é»„è‰²æ¨ªå¹…æç¤º','åœ¨çº¿å¸®åŠ©æ–‡æ¡£é¡µé¢']},
+  {v:'2.6.0',date:'2026-05-23',items:['ä»£ç é‡æ„ï¼šJSæå–ä¸ºç‹¬ç«‹app.jsæ–‡ä»¶','CSSå·²å¤–ç½®ä¸ºstyle.css','ç‰ˆæœ¬å·æ›´æ–°']},
+  {v:'2.5.9',date:'2026-05-23',items:['AIæ™ºèƒ½åˆ†ç±»ï¼šå¤‡æ³¨è¾“å…¥æ—¶è‡ªåŠ¨æ¨èåˆ†ç±»+æ ‡ç­¾','AIæ‰¹é‡æ ‡ç­¾æç‚¼ï¼šä¸€é”®åˆ†ææœ¬æœˆå¤‡æ³¨ç”Ÿæˆæ ‡ç­¾','åˆ†ç±»åŸºäºå†å²æ•°æ®å­¦ä¹ ç”¨æˆ·ä¹ æƒ¯']},
+  {v:'2.5.8',date:'2026-05-23',items:['AIè‡ªç„¶è¯­è¨€è®°è´¦ï¼šè¯´å¥è¯è‡ªåŠ¨è§£æé‡‘é¢/åˆ†ç±»/æ—¶é—´','AIè´¢åŠ¡åˆ†ææŠ¥å‘Šï¼šæ¶ˆè´¹å¼‚å¸¸/çœé’±å»ºè®®/è¶‹åŠ¿æ´å¯Ÿ','AIä»£ç†åç«¯ï¼šDeepSeek API + Cloudflare Pages Function']},
+  {v:'2.5.7',date:'2026-05-23',items:['éª¨æ¶å±åŠ è½½åŠ¨ç”»ï¼Œå‘Šåˆ«ç™½å±ç­‰å¾…','ä¸‹æ‹‰åˆ·æ–°æ‰‹åŠ¿æ”¯æŒ','å¡ç‰‡å·¦æ»‘åˆ é™¤ã€å³æ»‘æ”¹çŠ¶æ€']},
+  {v:'2.5.6',date:'2026-05-23',items:['ç»Ÿè®¡é¡µæ–°å¢æ¯æ—¥æ”¯å‡ºæŠ˜çº¿è¶‹åŠ¿å›¾','æ¯å‘¨æ”¯å‡ºæŸ±çŠ¶å¯¹æ¯”å›¾','æ”¶å…¥vsæ”¯å‡ºåŒçº¿å¯¹æ¯”','æ”¯å‡ºåˆ†ç±»æ’è¡ŒæŸ±çŠ¶å›¾']},
+  {v:'2.5.5',date:'2026-05-23',items:['æ–°å¢è®°è´¦æœˆå†è§†å›¾ï¼šæ—¥å†ç½‘æ ¼å±•ç¤ºæ¯æ—¥æ”¶æ”¯','ç‚¹å‡»æ—¥æœŸæŸ¥çœ‹å½“å¤©è®°è´¦æ˜ç»†','æ”¯æŒæœˆä»½åˆ‡æ¢å¯¼èˆª','ç©ºæ—¥æœŸå¯å¿«æ·è®°ä¸€ç¬”','åˆ—è¡¨/æ—¥å†è§†å›¾è‡ªç”±åˆ‡æ¢']},
+  {v:'2.5.4',date:'2026-05-22',items:['å›¾ç‰‡APIè¿”å›äºŒè¿›åˆ¶æ•°æ®+pinè®¤è¯','é‡‡è´­ç»Ÿè®¡getMonthæ—¶é—´æˆ³ä¿®å¤','é€€è´§é‡‘é¢å‡æ³•ä¿®å¤','å®¡æ‰¹æµå·²åˆ°æ‰“é’©ä¿®å¤','è®°è´¦åˆ å›¾åŠŸèƒ½','Cron Workeréƒ¨ç½²']},
+  {v:'2.5.3',date:'2026-05-21',items:['å›¾ç‰‡ä¸Šä¼ åˆ†ä¸ºæ‹ç…§+ç›¸å†Œä¸¤ä¸ªæŒ‰é’®','æ‹ç…§ç”¨capture=environmentï¼Œç›¸å†Œæ— é™åˆ¶','å…¼å®¹æ‰€æœ‰æ‰‹æœºæµè§ˆå™¨']},
+  {v:'2.5.2',date:'2026-05-21',items:['å›¾ç‰‡å­˜å‚¨å‡çº§ï¼šæ”¹ç”¨Cloudflare KVï¼Œå‘Šåˆ«32KBé™åˆ¶','å›¾ç‰‡å‹ç¼©ä¸Šé™æå‡è‡³800px/500KB','æ—§å›¾ç‰‡è‡ªåŠ¨å…¼å®¹ï¼Œæ–°å›¾ç‰‡å­˜KV']},
+  {v:'2.5.1',date:'2026-05-21',items:['è®°è´¦ç²¾ç¡®æ—¶é—´æˆ³ï¼šæ–°å»º/ç¼–è¾‘å‡æ”¯æŒé€‰æ‹©å…·ä½“æ—¶é—´','å¯¼å‡ºCSVå¢åŠ ç‹¬ç«‹æ—¶é—´åˆ—','å¡ç‰‡æ—¶é—´æ˜¾ç¤ºä¼˜åŒ–ï¼š??å‰ç¼€+æ­£å¸¸å¯è§','ç‚¹å‡»ç‰ˆæœ¬å·æŸ¥çœ‹æ›´æ–°æ—¥å¿—']},
+  {v:'2.5.0',date:'2026-05-20',items:['å½’æ¡£åŠŸèƒ½ï¼šå·²åˆ°/å·²é€€3å¤©åè‡ªåŠ¨æé†’å½’æ¡£','å®¡æ‰¹æµå®Œæ•´æµç¨‹ï¼šå¾…å®¡æ‰¹â†’å·²å®¡æ‰¹â†’å·²ä¸‹å•â†’å·²åˆ°/å·²é€€â†’å·²å½’æ¡£','æ–°å¢archive-checkå®šæ—¶ä»»åŠ¡','Bitableæ–°å¢å½’æ¡£æ—¶é—´å­—æ®µ']},
+  {v:'2.4.2',date:'2026-05-20',items:['å®¡æ‰¹æµåˆ†æ”¯ç»“æ„ä¿®å¤ï¼šå·²åˆ°å’Œå·²é€€æ˜¯åˆ†æ”¯è€Œéçº¿æ€§','è¯¦æƒ…å¼¹çª—æ”¹ç‰ˆï¼šstepperæµç¨‹å±•ç¤º+æ“ä½œæŒ‰é’®','å·²åˆ°/å·²é€€ç»ˆæ€æ˜¾ç¤ºå½’æ¡£æŒ‰é’®']},
+  {v:'2.4.1',date:'2026-05-20',items:['è¯¦æƒ…å¼¹çª—é‡åšï¼šé£ä¹¦å®¡æ‰¹æµé£æ ¼','ç«–å‘stepperæ—¶é—´çº¿','å¡ç‰‡åªæ˜¾ç¤ºçŠ¶æ€+æœ€æ–°æ—¶é—´']},
+  {v:'2.4.0',date:'2026-05-20',items:['é‡‡è´­å®¡æ‰¹æµï¼š5æ­¥çŠ¶æ€ç®¡ç†','è‡ªåŠ¨è®°å½•çŠ¶æ€å˜æ›´æ—¶é—´','æš—è‰²æ¨¡å¼','è®°è´¦å›¾ç‰‡é™„ä»¶æ”¯æŒ','å‘¨åº¦/æœˆåº¦æ±‡æ€»é£ä¹¦æ¨é€']},
+  {v:'2.3.0',date:'2026-05-20',items:['æš—è‰²æ¨¡å¼ï¼ˆè·Ÿéšç³»ç»Ÿ+æ‰‹åŠ¨åˆ‡æ¢ï¼‰','è®°è´¦å›¾ç‰‡é™„ä»¶ï¼ˆæ‹ç…§+å‹ç¼©+å…¨å±é¢„è§ˆï¼‰','å‘¨åº¦/æœˆåº¦æ±‡æ€»é£ä¹¦æ¨é€']},
 ];
 function openChangelog(){const c=document.getElementById('changelogContent');let html='';CHANGELOG.forEach(r=>{html+=`<div class='changelog-ver'>v${r.v}<span class='changelog-date'>${r.date}</span></div><ul class='changelog-list'>`;r.items.forEach(i=>{html+=`<li>${i}</li>`});html+='</ul>'});c.innerHTML=html;document.getElementById('changelogOverlay').classList.add('active')}
 function closeChangelog(){document.getElementById('changelogOverlay').classList.remove('active')}
@@ -39,7 +39,7 @@ function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=
 const API='/api/items';
 const EXPENSE_API='/api/expenses';
 let items=[], expenses=[];
-let currentStatusFilter='È«²¿',currentCatFilter='È«²¿';
+let currentStatusFilter='å…¨éƒ¨',currentCatFilter='å…¨éƒ¨';
 let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
 let expenseViewMode='list';
@@ -53,8 +53,8 @@ function setPin(p){localStorage.setItem('auth_token',p)}
 function getRefreshToken(){return localStorage.getItem('refresh_token')||''}
 function setRefreshToken(t){localStorage.setItem('refresh_token',t)}
 function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token')}
-function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='ÇëÊäÈëÓÃ»§ÃûºÍÃÜÂë';return}doLoginAPI(username,password)}
-function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='ÇëÊäÈëÓÃ»§ÃûºÍÃÜÂë';return}doLoginAPI(username,password)}
+function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='è¯·è¾“å…¥ç”¨æˆ·åå’Œå¯†ç ';return}doLoginAPI(username,password)}
+function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='è¯·è¾“å…¥ç”¨æˆ·åå’Œå¯†ç ';return}doLoginAPI(username,password)}
 
 let isRefreshing = false;
 let refreshPromise = null;
@@ -92,114 +92,114 @@ async function refreshAccessToken() {
 }
 
 async function doLoginAPI(username,password){
-  document.getElementById('authError').textContent='µÇÂ¼ÖĞ...';
+  document.getElementById('authError').textContent='ç™»å½•ä¸­...';
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
-    else{document.getElementById('authError').textContent=d.error||'µÇÂ¼Ê§°Ü'}
-  }catch(e){document.getElementById('authError').textContent='ÍøÂç´íÎó'}
+    else{document.getElementById('authError').textContent=d.error||'ç™»å½•å¤±è´¥'}
+  }catch(e){document.getElementById('authError').textContent='ç½‘ç»œé”™è¯¯'}
 }
 async function doRegister(){
   const username=document.getElementById('regUsername').value.trim();
   const password=document.getElementById('regPassword').value;
   const inviteCode=document.getElementById('regInviteCode').value.trim();
-  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='ÇëÌîĞ´ËùÓĞ×Ö¶Î';return}
-  document.getElementById('regError').textContent='×¢²áÖĞ...';
+  if(!username||!password||!inviteCode){document.getElementById('regError').textContent='è¯·å¡«å†™æ‰€æœ‰å­—æ®µ';return}
+  document.getElementById('regError').textContent='æ³¨å†Œä¸­...';
   try{
     const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';loadAll();}
-    else{document.getElementById('regError').textContent=d.error||'×¢²áÊ§°Ü'}
-  }catch(e){document.getElementById('regError').textContent='ÍøÂç´íÎó'}
+    else{document.getElementById('regError').textContent=d.error||'æ³¨å†Œå¤±è´¥'}
+  }catch(e){document.getElementById('regError').textContent='ç½‘ç»œé”™è¯¯'}
 }
-function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='ÇëµÇÂ¼';document.getElementById('authError').textContent=''}
-function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='ÑûÇëÂë×¢²á';document.getElementById('regError').textContent=''}
+function showLogin(){document.getElementById('loginForm').style.display='';document.getElementById('registerForm').style.display='none';document.getElementById('authSubtitle').textContent='è¯·ç™»å½•';document.getElementById('authError').textContent=''}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='';document.getElementById('authSubtitle').textContent='é‚€è¯·ç æ³¨å†Œ';document.getElementById('regError').textContent=''}
 document.getElementById('loginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()});
 
-// ===== ¹ÜÀíÔ±¹¦ÄÜ =====
+// ===== ç®¡ç†å‘˜åŠŸèƒ½ =====
 
 async function loadUserList(){
   const el=document.getElementById('userList');
   try{
     const r=await fetch('/api/auth?action=list-users',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok){el.textContent='¼ÓÔØÊ§°Ü';return}
-    if(!d.users.length){el.textContent='ÔİÎŞÓÃ»§';return}
+    if(!d.ok){el.textContent='åŠ è½½å¤±è´¥';return}
+    if(!d.users.length){el.textContent='æš‚æ— ç”¨æˆ·';return}
     el.innerHTML=d.users.map(u=>{
       const isAdmin=u.username==='admin';
-      const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">¹ÜÀíÔ±</span>':'';
-      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">É¾³ı</button>';
+      const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">ç®¡ç†å‘˜</span>':'';
+      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">åˆ é™¤</button>';
       return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+u.createdAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC) | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
     }).join('');
-  }catch{el.textContent='¼ÓÔØÊ§°Ü'}
+  }catch{el.textContent='åŠ è½½å¤±è´¥'}
 }
 
 // ============================================================
-// ¹ÜÀíÃæ°å
+// ç®¡ç†é¢æ¿
 // ============================================================
 function openAdminPanel(){document.getElementById('adminPanel').style.display='block';loadInviteList();loadUserList()}
 function closeAdminPanel(){document.getElementById('adminPanel').style.display='none'}
 async function createInviteCodes(){
   const count=parseInt(document.getElementById('inviteCount').value)||1;
   const el=document.getElementById('newInviteCodes');
-  el.textContent='Éú³ÉÖĞ...';
+  el.textContent='ç”Ÿæˆä¸­...';
   try{
     const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='? ÒÑÉú³É:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    if(d.ok){el.innerHTML='? å·²ç”Ÿæˆ:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
     else{el.textContent='? '+d.error}
-  }catch{el.textContent='? ÍøÂç´íÎó'}
+  }catch{el.textContent='? ç½‘ç»œé”™è¯¯'}
 }
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
   try{
     const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    if(!d.ok||!d.codes.length){el.textContent='ÔİÎŞ¶¯Ì¬ÑûÇëÂë';return}
+    if(!d.ok||!d.codes.length){el.textContent='æš‚æ— åŠ¨æ€é‚€è¯·ç ';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">ÒÑÊ¹ÓÃ '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">¿ÉÓÃ</span>';
+      const status=c.used?'<span style="color:var(--red)">å·²ä½¿ç”¨ '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">å¯ç”¨</span>';
       return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
     }).join('');
-  }catch{el.textContent='¼ÓÔØÊ§°Ü'}
+  }catch{el.textContent='åŠ è½½å¤±è´¥'}
 }
 async function deleteUser(username){
-  if(!confirm('È·¶¨É¾³ıÓÃ»§ '+username+' £¿\n£¨Êı¾İ±í»á±£Áô£¬½öÉ¾³ıÕËºÅ£©'))return;
+  if(!confirm('ç¡®å®šåˆ é™¤ç”¨æˆ· '+username+' ï¼Ÿ\nï¼ˆæ•°æ®è¡¨ä¼šä¿ç•™ï¼Œä»…åˆ é™¤è´¦å·ï¼‰'))return;
   try{
     const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
     if(d.ok){alert(d.message);loadInviteList();loadUserList();}
     else{alert(d.error)}
-  }catch{alert('ÍøÂç´íÎó')}
+  }catch{alert('ç½‘ç»œé”™è¯¯')}
 }
 async function debugMyAuth(){
   const el=document.getElementById('debugResult');
-  el.textContent='²éÑ¯ÖĞ...';
+  el.textContent='æŸ¥è¯¢ä¸­...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='´íÎó: '+e.message}
+  }catch(e){el.textContent='é”™è¯¯: '+e.message}
 }
 async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
-  el.textContent='²éÑ¯ÖĞ...';
+  el.textContent='æŸ¥è¯¢ä¸­...';
   try{
     const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
-  }catch(e){el.textContent='´íÎó: '+e.message}
+  }catch(e){el.textContent='é”™è¯¯: '+e.message}
 }
 
 // ============================================================
-// Æô¶¯ & ÈÏÖ¤
+// å¯åŠ¨ & è®¤è¯
 // ============================================================
 async function verifyAndLoad(){
   try{
     let r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
     if(r.status===401){
-      // access token ¹ıÆÚ£¬³¢ÊÔÓÃ refresh token ĞøÆÚ
+      // access token è¿‡æœŸï¼Œå°è¯•ç”¨ refresh token ç»­æœŸ
       const newToken=await refreshAccessToken();
       if(newToken){
         r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
@@ -219,8 +219,8 @@ async function verifyAndLoad(){
   }
 }
 function logout(){
-  if(!confirm('È·ÈÏÍË³öµÇÂ¼£¿'))return;
-  // Í¨Öªºó¶ËÉ¾³ı refresh token£¨best effort£©
+  if(!confirm('ç¡®è®¤é€€å‡ºç™»å½•ï¼Ÿ'))return;
+  // é€šçŸ¥åç«¯åˆ é™¤ refresh tokenï¼ˆbest effortï¼‰
   fetch('/api/auth?action=logout',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -235,9 +235,9 @@ function logout(){
 
 
 // ============================================================
-// Service Worker & Æô¶¯
+// Service Worker & å¯åŠ¨
 // ============================================================
-// ===== Service Worker£¨·ÀÑ­»·¼ÓÔØ£© =====
+// ===== Service Workerï¼ˆé˜²å¾ªç¯åŠ è½½ï¼‰ =====
 if('serviceWorker' in navigator){
   var swLoads=JSON.parse(localStorage.getItem('_sw_loads')||'[]');
   var now=Date.now();
@@ -265,19 +265,19 @@ if('serviceWorker' in navigator){
     });
   }
 }
-// 5ÃëºóÇå³ı¼ì²âÊı¾İ£¨Ò³ÃæÕı³£¼ÓÔØÁË£©
-// ===== ÍÆËÍ - ·ÉÊé»úÆ÷ÈË£¨¹úÄÚ¿ÉÓÃ£© =====
-// ÎŞĞèä¯ÀÀÆ÷È¨ÏŞ£¬ÅäÖÃ·ÉÊé»úÆ÷ÈË webhook ¼´¿É
-// ÅäÖÃ·½·¨£ºCloudflare »·¾³±äÁ¿ FEISHU_BOT_WEBHOOK
+// 5ç§’åæ¸…é™¤æ£€æµ‹æ•°æ®ï¼ˆé¡µé¢æ­£å¸¸åŠ è½½äº†ï¼‰
+// ===== æ¨é€ - é£ä¹¦æœºå™¨äººï¼ˆå›½å†…å¯ç”¨ï¼‰ =====
+// æ— éœ€æµè§ˆå™¨æƒé™ï¼Œé…ç½®é£ä¹¦æœºå™¨äºº webhook å³å¯
+// é…ç½®æ–¹æ³•ï¼šCloudflare ç¯å¢ƒå˜é‡ FEISHU_BOT_WEBHOOK
 async function setupPush(){
-  const msg = 'ÍÆËÍÊ¹ÓÃ·ÉÊé»úÆ÷ÈË\n\n²Ù×÷²½Öè£º\n1. ·ÉÊé´ò¿ªÒ»¸öÈºÁÄ\n2. ÈºÉèÖÃ ¡ú Èº»úÆ÷ÈË ¡ú Ìí¼Ó»úÆ÷ÈË\n3. Ñ¡Ôñ×Ô¶¨Òå»úÆ÷ÈË ¡ú ¸´ÖÆ Webhook µØÖ·\n4. ÔÚ Cloudflare Pages ÉèÖÃÖĞÌí¼Ó»·¾³±äÁ¿£º\n   FEISHU_BOT_WEBHOOK = ¸´ÖÆµÄµØÖ·\n5. È»ºó GitHub Actions Ã¿Ìì 20:00 ×Ô¶¯·¢ÌáĞÑ';
+  const msg = 'æ¨é€ä½¿ç”¨é£ä¹¦æœºå™¨äºº\n\næ“ä½œæ­¥éª¤ï¼š\n1. é£ä¹¦æ‰“å¼€ä¸€ä¸ªç¾¤èŠ\n2. ç¾¤è®¾ç½® â†’ ç¾¤æœºå™¨äºº â†’ æ·»åŠ æœºå™¨äºº\n3. é€‰æ‹©è‡ªå®šä¹‰æœºå™¨äºº â†’ å¤åˆ¶ Webhook åœ°å€\n4. åœ¨ Cloudflare Pages è®¾ç½®ä¸­æ·»åŠ ç¯å¢ƒå˜é‡ï¼š\n   FEISHU_BOT_WEBHOOK = å¤åˆ¶çš„åœ°å€\n5. ç„¶å GitHub Actions æ¯å¤© 20:00 è‡ªåŠ¨å‘æé†’';
   alert(msg);
 }
 
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
-// === ÖÜÔ¤ËãÏµÍ³ ===
+// === å‘¨é¢„ç®—ç³»ç»Ÿ ===
 function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const w=[];let s=1,n=1;while(s<=ld){let e=s;const d=new Date(y,m-1,s).getDay();e=Math.min(s+(d===0?0:7-d),ld);w.push({num:n,start:s,end:e});s=e+1;n++}return w}
 function getWeekForDate(ds,ym){if(!ds)return-1;const d=parseInt(ds.slice(8,10));const w=getMonthWeeks(ym);for(let i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}return-1}
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
@@ -286,10 +286,10 @@ function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,pe
 function renderWeekBudgetInputs(m,total){
   const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
-  let html='<div style="margin-top:12px"><label style="font-size:13px;font-weight:700;display:block;margin-bottom:8px">Ã¿ÖÜÔ¤Ëã</label>';
+  let html='<div style="margin-top:12px"><label style="font-size:13px;font-weight:700;display:block;margin-bottom:8px">æ¯å‘¨é¢„ç®—</label>';
   weeks.forEach((w,i)=>{
     const val=wb.weeks[i]||'';
-    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">µÚ'+w.num+'ÖÜ ('+w.start+'-'+w.end+'ÈÕ)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="£¤" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
+    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">ç¬¬'+w.num+'å‘¨ ('+w.start+'-'+w.end+'æ—¥)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="ï¿¥" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
   });
   html+='</div>';
   document.getElementById('weekBudgetSection').innerHTML=html;
@@ -300,20 +300,20 @@ async function analyzeBudget(){
   const weeks=getMonthWeeks(m);
   const wo={};
   weeks.forEach((w,i)=>{const el=document.getElementById('weekBudget_'+i);wo[i]=el?parseFloat(el.value)||0:0});
-  const monthExpenses=expenses.filter(e=>{if(!e['ÈÕÆÚ'])return false;try{return getMonth(e['ÈÕÆÚ'])===m}catch{return false}});
-  const totalOut=monthExpenses.filter(e=>e['ÀàĞÍ']==='Ö§³ö').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+  const monthExpenses=expenses.filter(e=>{if(!e['æ—¥æœŸ'])return false;try{return getMonth(e['æ—¥æœŸ'])===m}catch{return false}});
+  const totalOut=monthExpenses.filter(e=>e['ç±»å‹']==='æ”¯å‡º').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
   const catMap={};
-  monthExpenses.filter(e=>e['ÀàĞÍ']==='Ö§³ö').forEach(e=>{const c=e['·ÖÀà']||'ÆäËû';catMap[c]=(catMap[c]||0)+Number(e['½ğ¶î']||0)});
-  const catStr=Object.entries(catMap).map(([k,v])=>k+':£¤'+v.toFixed(0)).join(', ');
-  const weekStr=weeks.map((w,i)=>'µÚ'+w.num+'ÖÜ:£¤'+(wo[i]||0)).join(', ');
-  const prompt='ÄãÊÇÒ»¸ö²ÆÎñÔ¤Ëã¹ËÎÊ¡£Çë°ïÎÒ·ÖÎöÔ¤Ëã²¢¸ø³ö½¨Òé¡£\nÔÂ·İ:'+m+'\nÔÂ×ÜÔ¤Ëã:£¤'+total+'\nÃ¿ÖÜÔ¤Ëã:'+weekStr+'\n±¾ÔÂÒÑÖ§³ö:£¤'+totalOut.toFixed(0)+'\nÖ§³ö·ÖÀà:'+catStr+'\nÇë·ÖÎöÔ¤Ëã·ÖÅäÊÇ·ñºÏÀí£¬¸ø³öÓÅ»¯½¨Òé¡£';
+  monthExpenses.filter(e=>e['ç±»å‹']==='æ”¯å‡º').forEach(e=>{const c=e['åˆ†ç±»']||'å…¶ä»–';catMap[c]=(catMap[c]||0)+Number(e['é‡‘é¢']||0)});
+  const catStr=Object.entries(catMap).map(([k,v])=>k+':ï¿¥'+v.toFixed(0)).join(', ');
+  const weekStr=weeks.map((w,i)=>'ç¬¬'+w.num+'å‘¨:ï¿¥'+(wo[i]||0)).join(', ');
+  const prompt='ä½ æ˜¯ä¸€ä¸ªè´¢åŠ¡é¢„ç®—é¡¾é—®ã€‚è¯·å¸®æˆ‘åˆ†æé¢„ç®—å¹¶ç»™å‡ºå»ºè®®ã€‚\næœˆä»½:'+m+'\næœˆæ€»é¢„ç®—:ï¿¥'+total+'\næ¯å‘¨é¢„ç®—:'+weekStr+'\næœ¬æœˆå·²æ”¯å‡º:ï¿¥'+totalOut.toFixed(0)+'\næ”¯å‡ºåˆ†ç±»:'+catStr+'\nè¯·åˆ†æé¢„ç®—åˆ†é…æ˜¯å¦åˆç†ï¼Œç»™å‡ºä¼˜åŒ–å»ºè®®ã€‚';
   const el=document.getElementById('budgetAiResult');
-  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">?? AI ·ÖÎöÖĞ...</div>';
+  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">?? AI åˆ†æä¸­...</div>';
   try{
     const r=await api('POST',{prompt,type:'chat'});
     if(r&&r.reply){el.innerHTML='<div style="white-space:pre-wrap">'+esc(r.reply)+'</div>'}
-    else{el.innerHTML='<div style="color:var(--red)">·ÖÎöÊ§°Ü</div>'}
-  }catch(e){el.innerHTML='<div style="color:var(--red)">ÇëÇóÊ§°Ü</div>'}
+    else{el.innerHTML='<div style="color:var(--red)">åˆ†æå¤±è´¥</div>'}
+  }catch(e){el.innerHTML='<div style="color:var(--red)">è¯·æ±‚å¤±è´¥</div>'}
 }
 
 
@@ -353,15 +353,15 @@ async function expenseApi(method,body,id){
   return r.json();
 }
 
-// ===== Æô¶¯ =====
+// ===== å¯åŠ¨ =====
 showVersion();
-// Çå¿Õ¿ÉÄÜ±»ä¯ÀÀÆ÷×Ô¶¯Ìî³äµÄËÑË÷¿ò£¨ÑÓ³ÙÇå¿Õ¶Ô¿¹Chrome autofill£©
+// æ¸…ç©ºå¯èƒ½è¢«æµè§ˆå™¨è‡ªåŠ¨å¡«å……çš„æœç´¢æ¡†ï¼ˆå»¶è¿Ÿæ¸…ç©ºå¯¹æŠ—Chrome autofillï¼‰
 document.getElementById('searchInput').value='';
 setTimeout(()=>{document.getElementById('searchInput').value='';render()},100);
 setTimeout(()=>{document.getElementById('searchInput').value='';render()},500);
 if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
 if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(t=>{if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
-// ===== ½ğ¶îĞ£Ñé =====
+// ===== é‡‘é¢æ ¡éªŒ =====
 function validateAmount(input) {
   const v = parseFloat(input.value);
   if (v < 0) input.value = 0;
@@ -374,9 +374,9 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;')
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
 function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}
-function totalCost(l){return l.reduce((s,i)=>s+(i['µ¥¼Û']||0)*(i['ÊıÁ¿']||1),0)}
+function totalCost(l){return l.reduce((s,i)=>s+(i['å•ä»·']||0)*(i['æ•°é‡']||1),0)}
 
-// ===== ¹Ç¼ÜÆÁ =====
+// ===== éª¨æ¶å± =====
 function skelCards(n){
   let h='';
   for(let i=0;i<n;i++)
@@ -396,11 +396,11 @@ function showSkeleton(){
   else el.innerHTML=skelStats()+skelCards(3);
 }
 
-// ===== ÏÂÀ­Ë¢ĞÂ =====
+// ===== ä¸‹æ‹‰åˆ·æ–° =====
 let ptrStartY=0,ptrDist=0,isPulling=false,ptrRefreshing=false;
 
 // ============================================================
-// ÊÖÊÆ & ½»»¥
+// æ‰‹åŠ¿ & äº¤äº’
 // ============================================================
 function setupPullToRefresh(){
   const wrapper=document.querySelector('.ptr-wrapper');
@@ -421,7 +421,7 @@ function setupPullToRefresh(){
       const pull=Math.min(ptrDist*0.5,60);
       indicator.style.transform=`translateY(${pull}px)`;
       if(spinner)spinner.style.transform=`rotate(${ptrDist*2}deg)`;
-      if(text)text.textContent=pull>50?'ËÉÊÖË¢ĞÂ':'ÏÂÀ­Ë¢ĞÂ';
+      if(text)text.textContent=pull>50?'æ¾æ‰‹åˆ·æ–°':'ä¸‹æ‹‰åˆ·æ–°';
     }
   },{passive:true});
   wrapper.addEventListener('touchend',async()=>{
@@ -430,12 +430,12 @@ function setupPullToRefresh(){
     if(ptrDist>50&&!ptrRefreshing){
       ptrRefreshing=true;
       if(spinner){spinner.classList.add('spinning');spinner.style.transform=''}
-      if(text)text.textContent='Ë¢ĞÂÖĞ...';
+      if(text)text.textContent='åˆ·æ–°ä¸­...';
       indicator.style.transform='translateY(55px)';
       showSkeleton();
       await loadAll();
       if(spinner)spinner.classList.remove('spinning');
-      if(text)text.textContent='ÒÑË¢ĞÂ';
+      if(text)text.textContent='å·²åˆ·æ–°';
       setTimeout(()=>{indicator.style.transform='translateY(0)';ptrRefreshing=false},600);
     }else{
       indicator.style.transform='translateY(0)';
@@ -444,7 +444,7 @@ function setupPullToRefresh(){
   });
 }
 
-// ½âÎö´ıÆÀ¹À¼ÇÂ¼µÄ½á¹¹»¯±¸×¢
+// è§£æå¾…è¯„ä¼°è®°å½•çš„ç»“æ„åŒ–å¤‡æ³¨
 function parseEvalNote(note) {
   if (!note || !note.includes('===BUDGET===')) return null;
   try {
@@ -454,20 +454,20 @@ function parseEvalNote(note) {
     const chatMatch = note.match(/===CHAT===([\s\S]*)$/);
     return {
       reason: reasonMatch ? reasonMatch[1].trim() : '',
-      budget: budgetMatch ? budgetMatch[1].trim() : 'Î´ÉèÖÃ',
+      budget: budgetMatch ? budgetMatch[1].trim() : 'æœªè®¾ç½®',
       summary: summaryMatch ? summaryMatch[1].trim() : '',
       chat: chatMatch ? JSON.parse(chatMatch[1]) : []
     };
   } catch { return null; }
 }
 
-// ===== ¿¨Æ¬»¬¶¯ =====
+// ===== å¡ç‰‡æ»‘åŠ¨ =====
 let swipeEl=null,swipeStartX=0,swipeStartY=0,swipeDelta=0,isSwiping=false;
 function setupSwipe(){
   document.addEventListener('touchstart',e=>{
     const card=e.target.closest('.swipe-card')||e.target.closest('.card[data-type]');
     if(!card)return;
-    // ²»À¹½Ø°´Å¥µã»÷
+    // ä¸æ‹¦æˆªæŒ‰é’®ç‚¹å‡»
     if(e.target.closest('button')||e.target.closest('.card-checkbox'))return;
     swipeEl=card;
     swipeStartX=e.touches[0].clientX;
@@ -480,7 +480,7 @@ function setupSwipe(){
     if(!swipeEl)return;
     const dx=e.touches[0].clientX-swipeStartX;
     const dy=e.touches[0].clientY-swipeStartY;
-    // ÅĞ¶Ï·½Ïò£¬Ö»ÔÚË®Æ½»¬¶¯Ê±À¹½Ø
+    // åˆ¤æ–­æ–¹å‘ï¼Œåªåœ¨æ°´å¹³æ»‘åŠ¨æ—¶æ‹¦æˆª
     if(!isSwiping&&Math.abs(dy)>Math.abs(dx)){swipeEl.classList.remove('swiping');swipeEl=null;return}
     isSwiping=true;
     swipeDelta=Math.max(-120,Math.min(80,dx));
@@ -496,7 +496,7 @@ function setupSwipe(){
     const id=card.dataset.id;
     const type=card.dataset.type; // 'purchase' or 'expense'
     if(swipeDelta<-80){
-      // ×ó»¬ ¡ú É¾³ı
+      // å·¦æ»‘ â†’ åˆ é™¤
       card.style.transform='translateX(-100%)';
       card.style.opacity='0';
       card.style.transition='all .25s ease';
@@ -505,21 +505,21 @@ function setupSwipe(){
         else await delItem(id);
       },250);
     }else if(swipeDelta>60){
-      // ÓÒ»¬ ¡ú ¸Ä×´Ì¬(²É¹º)
+      // å³æ»‘ â†’ æ”¹çŠ¶æ€(é‡‡è´­)
       card.style.transform='translateX(0)';
       if(type==='purchase'){
         const item=items.find(x=>x.id===id);
         if(item){
-          const status=item['×´Ì¬']||'´ıÉóÅú';
+          const status=item['çŠ¶æ€']||'å¾…å®¡æ‰¹';
           const next=NEXT_STATUS[status];
           if(next){
             await api('PATCH',{ids:[id],status:next});
-            toast(`ÒÑ¸üĞÂÎª"${next}"`);
+            toast(`å·²æ›´æ–°ä¸º"${next}"`);
             await loadAll();
-          }else{toast('ÒÑÊÇÖÕÌ¬')}
+          }else{toast('å·²æ˜¯ç»ˆæ€')}
         }
       }else{
-        toast('ÓÒ»¬½öÖ§³Ö²É¹º¿¨Æ¬');
+        toast('å³æ»‘ä»…æ”¯æŒé‡‡è´­å¡ç‰‡');
       }
     }else{
       card.style.transform='translateX(0)';
@@ -529,7 +529,7 @@ function setupSwipe(){
 
 
 // ============================================================
-// Êı¾İ¼ÓÔØ
+// æ•°æ®åŠ è½½
 // ============================================================
 async function loadAll(){
   showSkeleton();
@@ -545,76 +545,76 @@ async function loadAll(){
   render();
 }
 
-// ===== ²É¹ºäÖÈ¾ =====
+// ===== é‡‡è´­æ¸²æŸ“ =====
 
 // ============================================================
-// äÖÈ¾
+// æ¸²æŸ“
 // ============================================================
 function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
   updateHeader();
-  // DEBUG: ÔÚÒ³Ãæ¶¥²¿ÏÔÊ¾×´Ì¬
-  // ÑÓ³Ù¼ì²â£º3ÃëºóÔÙ¼ì²éÒ»´Î
+  // DEBUG: åœ¨é¡µé¢é¡¶éƒ¨æ˜¾ç¤ºçŠ¶æ€
+  // å»¶è¿Ÿæ£€æµ‹ï¼š3ç§’åå†æ£€æŸ¥ä¸€æ¬¡
 }
 function updateHeader(){
   const total=totalCost(items);
   const thisMonth=getThisMonth();
-  const monthItems=items.filter(i=>getMonth(i['ÈÕÆÚ'])===thisMonth);
-  const returnedCost=monthItems.filter(i=>i['×´Ì¬']==='ÒÑÍË').reduce((s,i)=>s+(i['µ¥¼Û']||0)*(i['ÊıÁ¿']||1),0);
+  const monthItems=items.filter(i=>getMonth(i['æ—¥æœŸ'])===thisMonth);
+  const returnedCost=monthItems.filter(i=>i['çŠ¶æ€']==='å·²é€€').reduce((s,i)=>s+(i['å•ä»·']||0)*(i['æ•°é‡']||1),0);
   const monthTotal=totalCost(monthItems)-returnedCost;
   const expThisMonth=expenses.filter(e=>{
-    if(!e['ÈÕÆÚ'])return false;
-    try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}
+    if(!e['æ—¥æœŸ'])return false;
+    try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}
   });
-  const expTotal=expThisMonth.filter(e=>e['ÀàĞÍ']==='Ö§³ö').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
-  const incTotal=expThisMonth.filter(e=>e['ÀàĞÍ']==='ÊÕÈë').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+  const expTotal=expThisMonth.filter(e=>e['ç±»å‹']==='æ”¯å‡º').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
+  const incTotal=expThisMonth.filter(e=>e['ç±»å‹']==='æ”¶å…¥').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
   document.getElementById('headerStats').innerHTML=`
-    <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">²É¹º</span></div>
-    <div class="stat"><span class="stat-val">£¤${monthTotal.toFixed(0)}</span><span class="stat-lbl">±¾ÔÂ²É¹º</span></div>
-    <div class="stat"><span class="stat-val" style="color:#fca5a5">£¤${expTotal.toFixed(0)}</span><span class="stat-lbl">±¾ÔÂÖ§³ö</span></div>
-    <div class="stat"><span class="stat-val" style="color:#86efac">£¤${incTotal.toFixed(0)}</span><span class="stat-lbl">±¾ÔÂÊÕÈë</span></div>
+    <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">é‡‡è´­</span></div>
+    <div class="stat"><span class="stat-val">ï¿¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">æœ¬æœˆé‡‡è´­</span></div>
+    <div class="stat"><span class="stat-val" style="color:#fca5a5">ï¿¥${expTotal.toFixed(0)}</span><span class="stat-lbl">æœ¬æœˆæ”¯å‡º</span></div>
+    <div class="stat"><span class="stat-val" style="color:#86efac">ï¿¥${incTotal.toFixed(0)}</span><span class="stat-lbl">æœ¬æœˆæ”¶å…¥</span></div>
   `;
 }
 function renderPurchase(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   let f=items;
-  if(q)f=f.filter(i=>(i['ÉÌÆ·Ãû³Æ']||'').toLowerCase().includes(q)||(i['±¸×¢']||'').toLowerCase().includes(q));
-  if(currentStatusFilter!=='È«²¿')f=f.filter(i=>i['×´Ì¬']===currentStatusFilter);
-  if(currentCatFilter!=='È«²¿')f=f.filter(i=>i['·ÖÀà']===currentCatFilter);
-  const sorted=[...f].sort((a,b)=>(b['ÈÕÆÚ']||0)-(a['ÈÕÆÚ']||0));
-  const statuses=['È«²¿','´ıÆÀ¹À','´ıÉóÅú','ÒÑÉóÅú','ÒÑÏÂµ¥','ÒÑµ½','ÒÑÍË','ÒÑ¹éµµ','ÒÑÈ¡Ïû'];
-  const cats=['È«²¿',...new Set(items.map(i=>i['·ÖÀà']).filter(Boolean))];
-  document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='È«²¿'?items.length:items.filter(i=>i['×´Ì¬']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${c}</div>`}).join('');
+  if(q)f=f.filter(i=>(i['å•†å“åç§°']||'').toLowerCase().includes(q)||(i['å¤‡æ³¨']||'').toLowerCase().includes(q));
+  if(currentStatusFilter!=='å…¨éƒ¨')f=f.filter(i=>i['çŠ¶æ€']===currentStatusFilter);
+  if(currentCatFilter!=='å…¨éƒ¨')f=f.filter(i=>i['åˆ†ç±»']===currentCatFilter);
+  const sorted=[...f].sort((a,b)=>(b['æ—¥æœŸ']||0)-(a['æ—¥æœŸ']||0));
+  const statuses=['å…¨éƒ¨','å¾…è¯„ä¼°','å¾…å®¡æ‰¹','å·²å®¡æ‰¹','å·²ä¸‹å•','å·²åˆ°','å·²é€€','å·²å½’æ¡£','å·²å–æ¶ˆ'];
+  const cats=['å…¨éƒ¨',...new Set(items.map(i=>i['åˆ†ç±»']).filter(Boolean))];
+  document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='å…¨éƒ¨'?items.length:items.filter(i=>i['çŠ¶æ€']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">??</div>ÔİÎŞ²É¹º¼ÇÂ¼<br>µãÓÒÏÂ½Ç + Ìí¼Ó</div>';return}
-  const groups={};sorted.forEach(i=>{const isEval=i['×´Ì¬']==='´ıÆÀ¹À';const m=isEval?'´ıÆÀ¹À':(getMonth(i['ÈÕÆÚ'])||'Î´ÉèÖÃÈÕÆÚ');if(!groups[m])groups[m]=[];groups[m].push(i)});
+  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">??</div>æš‚æ— é‡‡è´­è®°å½•<br>ç‚¹å³ä¸‹è§’ + æ·»åŠ </div>';return}
+  const groups={};sorted.forEach(i=>{const isEval=i['çŠ¶æ€']==='å¾…è¯„ä¼°';const m=isEval?'å¾…è¯„ä¼°':(getMonth(i['æ—¥æœŸ'])||'æœªè®¾ç½®æ—¥æœŸ');if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
-    const mt=totalCost(list);const dm=month==='´ıÆÀ¹À'?'?? ´ıÆÀ¹À':(month==='Î´ÉèÖÃÈÕÆÚ'?month:month.replace('-','Äê')+'ÔÂ');
-    html+=`<div class="section-title"><span>${dm}</span><span>£¤${mt.toFixed(2)}</span></div>`;
-    const statusColors={'´ıÆÀ¹À':'#f97316','´ıÉóÅú':'#f59e0b','ÒÑÉóÅú':'#3b82f6','ÒÑÏÂµ¥':'#8b5cf6','ÒÑµ½':'#10b981','ÒÑÍË':'#ef4444','ÒÑ¹éµµ':'#6b7280'};const catColors={'ÈÕ³£»¤Àí':'#f472b6','Éú»îÓÃÆ·':'#10b981','Ê³Æ·ÒûÁÏ':'#f59e0b','µç×Ó²úÆ·':'#8b5cf6','ÔË¶¯×°±¸':'#ef4444'};const catEmoji={'ÈÕ³£»¤Àí':'??','Éú»îÓÃÆ·':'??','Ê³Æ·ÒûÁÏ':'??','µç×Ó²úÆ·':'??','ÔË¶¯×°±¸':'??','ÆäËû':'??'};
-    list.forEach(i=>{const qty=i['ÊıÁ¿']||1;const price=i['µ¥¼Û']||0;const status=i['×´Ì¬']||'´ıÉóÅú';const cat=i['·ÖÀà']||'ÆäËû';let ds='';if(i['ÈÕÆÚ']){try{ds=new Date(i['ÈÕÆÚ']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
-    let tsHtml='';if(i['µ½»õÊ±¼ä']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? µ½»õ ${i['µ½»õÊ±¼ä']}</div>`}else if(i['ÏÂµ¥Ê±¼ä']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? ÏÂµ¥ ${i['ÏÂµ¥Ê±¼ä']}</div>`}else if(i['ÉóÅúÊ±¼ä']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? ÉóÅú ${i['ÉóÅúÊ±¼ä']}</div>`}else if(i['´´½¨Ê±¼ä']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">´´½¨ ${i['´´½¨Ê±¼ä']}</div>`}
-    // ´ıÆÀ¹À¿¨Æ¬£ºÏÔÊ¾Ô¤Ëã+AIÕªÒª
-    if(status==='´ıÆÀ¹À'){const budgetLine=i['Ô¤ËãÇø¼ä']?'£¤'+i['Ô¤ËãÇø¼ä']:'Ô¤ËãÎ´Öª';const summaryLine=i['ÆÀ¹ÀÕªÒª']?i['ÆÀ¹ÀÕªÒª'].slice(0,80)+'...':'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>¡ú ÏÂÒ»²½</span></div><div class="swipe-actions swipe-actions-left"><span>??? É¾³ı</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="±à¼­">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="É¾³ı">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['ÉÌÆ·Ãû³Æ']||'')}</div><div class="price" style="color:#f97316">?? ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">?? ${esc(summaryLine)}</div>`:''}</div></div></div>`}
+    const mt=totalCost(list);const dm=month==='å¾…è¯„ä¼°'?'?? å¾…è¯„ä¼°':(month==='æœªè®¾ç½®æ—¥æœŸ'?month:month.replace('-','å¹´')+'æœˆ');
+    html+=`<div class="section-title"><span>${dm}</span><span>ï¿¥${mt.toFixed(2)}</span></div>`;
+    const statusColors={'å¾…è¯„ä¼°':'#f97316','å¾…å®¡æ‰¹':'#f59e0b','å·²å®¡æ‰¹':'#3b82f6','å·²ä¸‹å•':'#8b5cf6','å·²åˆ°':'#10b981','å·²é€€':'#ef4444','å·²å½’æ¡£':'#6b7280'};const catColors={'æ—¥å¸¸æŠ¤ç†':'#f472b6','ç”Ÿæ´»ç”¨å“':'#10b981','é£Ÿå“é¥®æ–™':'#f59e0b','ç”µå­äº§å“':'#8b5cf6','è¿åŠ¨è£…å¤‡':'#ef4444'};const catEmoji={'æ—¥å¸¸æŠ¤ç†':'??','ç”Ÿæ´»ç”¨å“':'??','é£Ÿå“é¥®æ–™':'??','ç”µå­äº§å“':'??','è¿åŠ¨è£…å¤‡':'??','å…¶ä»–':'??'};
+    list.forEach(i=>{const qty=i['æ•°é‡']||1;const price=i['å•ä»·']||0;const status=i['çŠ¶æ€']||'å¾…å®¡æ‰¹';const cat=i['åˆ†ç±»']||'å…¶ä»–';let ds='';if(i['æ—¥æœŸ']){try{ds=new Date(i['æ—¥æœŸ']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
+    let tsHtml='';if(i['åˆ°è´§æ—¶é—´']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? åˆ°è´§ ${i['åˆ°è´§æ—¶é—´']}</div>`}else if(i['ä¸‹å•æ—¶é—´']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? ä¸‹å• ${i['ä¸‹å•æ—¶é—´']}</div>`}else if(i['å®¡æ‰¹æ—¶é—´']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? å®¡æ‰¹ ${i['å®¡æ‰¹æ—¶é—´']}</div>`}else if(i['åˆ›å»ºæ—¶é—´']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">åˆ›å»º ${i['åˆ›å»ºæ—¶é—´']}</div>`}
+    // å¾…è¯„ä¼°å¡ç‰‡ï¼šæ˜¾ç¤ºé¢„ç®—+AIæ‘˜è¦
+    if(status==='å¾…è¯„ä¼°'){const budgetLine=i['é¢„ç®—åŒºé—´']?'ï¿¥'+i['é¢„ç®—åŒºé—´']:'é¢„ç®—æœªçŸ¥';const summaryLine=i['è¯„ä¼°æ‘˜è¦']?i['è¯„ä¼°æ‘˜è¦'].slice(0,80)+'...':'';
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>â†’ ä¸‹ä¸€æ­¥</span></div><div class="swipe-actions swipe-actions-left"><span>??? åˆ é™¤</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="ç¼–è¾‘">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="åˆ é™¤">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['å•†å“åç§°']||'')}</div><div class="price" style="color:#f97316">?? ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">?? ${esc(summaryLine)}</div>`:''}</div></div></div>`}
     else{
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>¡ú ÏÂÒ»²½</span></div><div class="swipe-actions swipe-actions-left"><span>??? É¾³ı</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="±à¼­">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="É¾³ı">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['ÉÌÆ·Ãû³Æ']||'')}</div>${price?`<div class="price">£¤${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>?? ${esc(i['Æ½Ì¨']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>?? ${ds}</span>`:''}${qty>1?`<span>¡Á${qty}</span>`:''}</div>${i['±¸×¢']?`<div class="note">?? ${esc(i['±¸×¢'])}</div>`:''}${tsHtml}</div></div></div>`}
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>â†’ ä¸‹ä¸€æ­¥</span></div><div class="swipe-actions swipe-actions-left"><span>??? åˆ é™¤</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="ç¼–è¾‘">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="åˆ é™¤">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['å•†å“åç§°']||'')}</div>${price?`<div class="price">ï¿¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>?? ${esc(i['å¹³å°']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>?? ${ds}</span>`:''}${qty>1?`<span>Ã—${qty}</span>`:''}</div>${i['å¤‡æ³¨']?`<div class="note">?? ${esc(i['å¤‡æ³¨'])}</div>`:''}${tsHtml}</div></div></div>`}
     });
   }
   listEl.innerHTML=html;
 }
 
-// ===== ¼ÇÕËäÖÈ¾ =====
-const CAT_ICONS={'²ÍÒû':'??','½»Í¨':'??','¹ºÎï':'???','ÓéÀÖ':'??','¾Ó×¡':'??','Ò½ÁÆ':'??','½ÌÓı':'??','ÆäËû':'??'};
-const CAT_COLORS = {'ÈÕÓÃ':'#6366f1','·şÊÎ':'#8b5cf6','ÒûÊ³':'#10b981','µç×Ó':'#3b82f6','½»Í¨':'#f59e0b','ÆäËû':'#94a3b8','²ÍÒû':'#ef4444','¹ºÎï':'#ec4899','ÓéÀÖ':'#8b5cf6','¾Ó×¡':'#10b981','Ò½ÁÆ':'#f59e0b','½ÌÓı':'#3b82f6'};
-const WEEKDAYS=['ÈÕ','Ò»','¶ş','Èı','ËÄ','Îå','Áù'];
+// ===== è®°è´¦æ¸²æŸ“ =====
+const CAT_ICONS={'é¤é¥®':'??','äº¤é€š':'??','è´­ç‰©':'???','å¨±ä¹':'??','å±…ä½':'??','åŒ»ç–—':'??','æ•™è‚²':'??','å…¶ä»–':'??'};
+const CAT_COLORS = {'æ—¥ç”¨':'#6366f1','æœé¥°':'#8b5cf6','é¥®é£Ÿ':'#10b981','ç”µå­':'#3b82f6','äº¤é€š':'#f59e0b','å…¶ä»–':'#94a3b8','é¤é¥®':'#ef4444','è´­ç‰©':'#ec4899','å¨±ä¹':'#8b5cf6','å±…ä½':'#10b981','åŒ»ç–—':'#f59e0b','æ•™è‚²':'#3b82f6'};
+const WEEKDAYS=['æ—¥','ä¸€','äºŒ','ä¸‰','å››','äº”','å…­'];
 function formatDay(dayStr) {
   if (!dayStr) return { date: '??', weekday: '?' };
-  try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}ÔÂ${(d.getDate()+'').padStart(2,'0')}ÈÕ`, weekday: 'ÖÜ'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
+  try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}æœˆ${(d.getDate()+'').padStart(2,'0')}æ—¥`, weekday: 'å‘¨'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
 }
 
 function renderExpense(){
@@ -623,60 +623,60 @@ function renderExpense(){
   const monthWeeks=getMonthWeeks(thisMonth);
   const chipsEl=document.getElementById('expenseChips');
   if(chipsEl){
-    let ch='<div class="chip '+(currentWeekFilter===-1?'active':'')+'" onclick="currentWeekFilter=-1;render()">±¾ÔÂ</div>';
-    monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">µÚ'+w.num+'ÖÜ</div>'});
+    let ch='<div class="chip '+(currentWeekFilter===-1?'active':'')+'" onclick="currentWeekFilter=-1;render()">æœ¬æœˆ</div>';
+    monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">ç¬¬'+w.num+'å‘¨</div>'});
     chipsEl.innerHTML=ch;
   }
   let monthExpenses=expenses.filter(e=>{
-    if(!e['ÈÕÆÚ'])return false;
-    try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}
-  }).sort((a,b)=>(b['ÈÕÆÚ']||'')>(a['ÈÕÆÚ']||'')?1:-1);
-  if(currentWeekFilter>=0){monthExpenses=monthExpenses.filter(e=>getWeekForDate(e['ÈÕÆÚ'],thisMonth)===currentWeekFilter)}
+    if(!e['æ—¥æœŸ'])return false;
+    try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}
+  }).sort((a,b)=>(b['æ—¥æœŸ']||'')>(a['æ—¥æœŸ']||'')?1:-1);
+  if(currentWeekFilter>=0){monthExpenses=monthExpenses.filter(e=>getWeekForDate(e['æ—¥æœŸ'],thisMonth)===currentWeekFilter)}
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
-const searched=sq?monthExpenses.filter(e=>(e['±¸×¢']||'').toLowerCase().includes(sq)||(e['·ÖÀà']||'').toLowerCase().includes(sq)):monthExpenses;
-  const totalOut=searched.filter(e=>e['ÀàĞÍ']==='Ö§³ö').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+const searched=sq?monthExpenses.filter(e=>(e['å¤‡æ³¨']||'').toLowerCase().includes(sq)||(e['åˆ†ç±»']||'').toLowerCase().includes(sq)):monthExpenses;
+  const totalOut=searched.filter(e=>e['ç±»å‹']==='æ”¯å‡º').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
   const totalIn=0;
   const net=-totalOut;
   const budget=getBudget(thisMonth);
   const count=searched.length;
-  const periodLabel=currentWeekFilter>=0?'±¾ÖÜ':'±¾ÔÂ';
+  const periodLabel=currentWeekFilter>=0?'æœ¬å‘¨':'æœ¬æœˆ';
   const catMap={};
-  searched.filter(e=>e['ÀàĞÍ']==='Ö§³ö').forEach(e=>{const c=e['·ÖÀà']||'ÆäËû';catMap[c]=(catMap[c]||0)+Number(e['½ğ¶î']||0);});
+  searched.filter(e=>e['ç±»å‹']==='æ”¯å‡º').forEach(e=>{const c=e['åˆ†ç±»']||'å…¶ä»–';catMap[c]=(catMap[c]||0)+Number(e['é‡‘é¢']||0);});
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
-  const pl=currentWeekFilter>=0?'±¾ÖÜ':'±¾ÔÂ';
+  const pl=currentWeekFilter>=0?'æœ¬å‘¨':'æœ¬æœˆ';
   const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudget(thisMonth);
   const br=Math.max(wb-totalOut,0);
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}Ö§³ö</div><div class="ex-total-val">£¤${totalOut.toFixed(2)}</div></div></div>
-    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}Ô¤Ëã</div><div class="ex-total-val">£¤${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'?':'??'}</div><div class="ex-total-info"><div class="ex-total-label">Ê£Óà</div><div class="ex-total-val">£¤${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">±ÊÊı</div><div class="ex-total-val">${count}±Ê</div></div></div>`}
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}æ”¯å‡º</div><div class="ex-total-val">ï¿¥${totalOut.toFixed(2)}</div></div></div>
+    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}é¢„ç®—</div><div class="ex-total-val">ï¿¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'?':'??'}</div><div class="ex-total-info"><div class="ex-total-label">å‰©ä½™</div><div class="ex-total-val">ï¿¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">ç¬”æ•°</div><div class="ex-total-val">${count}ç¬”</div></div></div>`}
   </div>`;
   if(wb>0){const pct=Math.min(totalOut/wb*100,100);const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';html+='<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 16px 6px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px"></div></div>'}
   
   if(catEntries.length){
-    html+=`<div class="ex-section"><div class="ex-section-title">?? Ö§³ö·ÖÀà</div><div class="ex-chart-area">${donutChart(catEntries,170,'Ö§³ö')}${donutLegend(catEntries,totalOut)}</div></div>`;
+    html+=`<div class="ex-section"><div class="ex-section-title">?? æ”¯å‡ºåˆ†ç±»</div><div class="ex-chart-area">${donutChart(catEntries,170,'æ”¯å‡º')}${donutLegend(catEntries,totalOut)}</div></div>`;
   }
   const dayGroups={};
-  searched.forEach(e=>{let day='Î´ÖªÈÕÆÚ';if(e['ÈÕÆÚ']){try{day=e['ÈÕÆÚ'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
-  html+=`<div class="ex-section"><div class="ex-section-title">?? Ïû·Ñ¼ÇÂ¼</div><div class="ex-timeline">`;
-  if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">??</div><div class="ex-empty-text">±¾ÔÂÔİÎŞ¼ÇÕË</div><div class="ex-empty-hint">µãÓÒÏÂ½Ç + ¼ÇÒ»±Ê</div></div>`;
+  searched.forEach(e=>{let day='æœªçŸ¥æ—¥æœŸ';if(e['æ—¥æœŸ']){try{day=e['æ—¥æœŸ'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
+  html+=`<div class="ex-section"><div class="ex-section-title">?? æ¶ˆè´¹è®°å½•</div><div class="ex-timeline">`;
+  if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">??</div><div class="ex-empty-text">æœ¬æœˆæš‚æ— è®°è´¦</div><div class="ex-empty-hint">ç‚¹å³ä¸‹è§’ + è®°ä¸€ç¬”</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
-    const dayTotal=list.filter(e=>e['ÀàĞÍ']==='Ö§³ö').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+    const dayTotal=list.filter(e=>e['ç±»å‹']==='æ”¯å‡º').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
     const {date,weekday,day:dayNum}=formatDay(day);
     html+=`<div class="ex-day"><div class="ex-day-marker"><div class="ex-day-circle">${dayNum||'?'}</div><div class="ex-day-line"></div></div>
-      <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-£¤${dayTotal.toFixed(2)}</span></div>`;
+      <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-ï¿¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
-      const isOut=e['ÀàĞÍ']==='Ö§³ö';
-      const cc=CAT_COLORS[e['·ÖÀà']||'ÆäËû']||'#94a3b8';
-      // ===== Í¼Æ¬ÏÔÊ¾ =====
-// kv:Ç°×º -> KV key -> /api/images?key=xxx
-// ÎŞkv:Ç°×º -> base64Ö±½ÓÏÔÊ¾£¨¾ÉÊı¾İ¼æÈİ£©
-const imgSrc=e['Í¼Æ¬']&&e['Í¼Æ¬'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['Í¼Æ¬'].slice(3))+'&token='+encodeURIComponent(getPin()):e['Í¼Æ¬'];
+      const isOut=e['ç±»å‹']==='æ”¯å‡º';
+      const cc=CAT_COLORS[e['åˆ†ç±»']||'å…¶ä»–']||'#94a3b8';
+      // ===== å›¾ç‰‡æ˜¾ç¤º =====
+// kv:å‰ç¼€ -> KV key -> /api/images?key=xxx
+// æ— kv:å‰ç¼€ -> base64ç›´æ¥æ˜¾ç¤ºï¼ˆæ—§æ•°æ®å…¼å®¹ï¼‰
+const imgSrc=e['å›¾ç‰‡']&&e['å›¾ç‰‡'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['å›¾ç‰‡'].slice(3))+'&token='+encodeURIComponent(getPin()):e['å›¾ç‰‡'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? É¾³ı</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['·ÖÀà']||'ÆäËû']||'??'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['·ÖÀà']||'ÆäËû')}</div>${e['ÈÕÆÚ']&&e['ÈÕÆÚ'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['ÈÕÆÚ'].slice(11,16)}</div>`:''}${e['±¸×¢']?`<div class="ex-entry-note">${esc(e['±¸×¢'])}</div>`:''}</div>
-        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}£¤${Number(e['½ğ¶î']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="±à¼­">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="É¾³ı">???</button></div></div>`;
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? åˆ é™¤</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['åˆ†ç±»']||'å…¶ä»–']||'??'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['åˆ†ç±»']||'å…¶ä»–')}</div>${e['æ—¥æœŸ']&&e['æ—¥æœŸ'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['æ—¥æœŸ'].slice(11,16)}</div>`:''}${e['å¤‡æ³¨']?`<div class="ex-entry-note">${esc(e['å¤‡æ³¨'])}</div>`:''}</div>
+        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}ï¿¥${Number(e['é‡‘é¢']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="ç¼–è¾‘">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="åˆ é™¤">???</button></div></div>`;
     });
     html+=`</div></div>`;
   }
@@ -690,11 +690,11 @@ function barChart(entries, maxVal, colorFn) {
   return entries.map(([label, val]) => {
     const pct = max > 0 ? (val / max * 100) : 0;
     const color = colorFn ? colorFn(label) : 'var(--pri)';
-    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">£¤${val.toFixed(0)}</span></div>`;
+    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">ï¿¥${val.toFixed(0)}</span></div>`;
   }).join('');
 }
 function donutChart(entries, size, label) {
-  if (!entries.length) return '<div class="empty-chart">ÔİÎŞÊı¾İ</div>';
+  if (!entries.length) return '<div class="empty-chart">æš‚æ— æ•°æ®</div>';
   const total = entries.reduce((s, e) => s + e[1], 0);
   const cx = size / 2, cy = size / 2;
   const t = Math.max(size * 0.14, 14);
@@ -714,14 +714,14 @@ function donutChart(entries, size, label) {
   return `<div class="donut-wrap"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${t}"/>
     ${segs}
-    <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">£¤${total.toFixed(0)}</text>
-    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'×Ü¼Æ'}</text>
+    <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">ï¿¥${total.toFixed(0)}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'æ€»è®¡'}</text>
   </svg></div>`;
 }
 function donutLegend(entries, total) {
   return `<div class="donut-legend">${entries.map(([l, v]) => {
     const pct = total ? (v / total * 100).toFixed(1) : 0;
-    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">£¤${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
+    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">ï¿¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
   }).join('')}</div>`;
 }
 function miniCards(items) {
@@ -730,38 +730,38 @@ function miniCards(items) {
   ).join('')}</div>`;
 }
 
-// ===== SVG Ç÷ÊÆÍ¼ =====
+// ===== SVG è¶‹åŠ¿å›¾ =====
 function lineChart(data, opts={}){
   // data: [{label, value, color?}]
   const W=opts.width||340, H=opts.height||140, pad={t:20,r:12,b:24,l:36};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  if(!data.length)return '<div class="empty-chart">ÔİÎŞÊı¾İ</div>';
+  if(!data.length)return '<div class="empty-chart">æš‚æ— æ•°æ®</div>';
   const vals=data.map(d=>d.value);
   const maxV=Math.max(...vals,1);
   const minV=0;
   const range=maxV-minV||1;
   const stepX=data.length>1?cw/(data.length-1):cw;
   const color=opts.color||'var(--pri)';
-  // Éú³Éµã×ø±ê
+  // ç”Ÿæˆç‚¹åæ ‡
   const pts=data.map((d,i)=>({
     x:pad.l+(data.length>1?i*stepX:cw/2),
     y:pad.t+ch-(d.value-minV)/range*ch,
     v:d.value, label:d.label, color:d.color||color
   }));
-  // ÕÛÏßpath
+  // æŠ˜çº¿path
   const linePath=pts.map((p,i)=>(i===0?'M':'L')+p.x+','+p.y).join(' ');
-  // Ãæ»ıpath
+  // é¢ç§¯path
   const areaPath=linePath+` L${pts[pts.length-1].x},${pad.t+ch} L${pts[0].x},${pad.t+ch} Z`;
-  // Íø¸ñÏß
+  // ç½‘æ ¼çº¿
   const gridLines=4;
   let grid='';
   for(let i=0;i<=gridLines;i++){
     const y=pad.t+ch*i/gridLines;
     const v=maxV-range*i/gridLines;
     grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
-    grid+=`<text x="${pad.l-4}" y="${y+3}" class="trend-val" style="text-anchor:end;font-size:8px">£¤${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+    grid+=`<text x="${pad.l-4}" y="${y+3}" class="trend-val" style="text-anchor:end;font-size:8px">ï¿¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
   }
-  // XÖá±êÇ©£¨Ã¿¸ô¼¸¸öÏÔÊ¾£©
+  // Xè½´æ ‡ç­¾ï¼ˆæ¯éš”å‡ ä¸ªæ˜¾ç¤ºï¼‰
   const labelStep=data.length<=7?1:data.length<=14?2:Math.ceil(data.length/7);
   let xLabels='';
   pts.forEach((p,i)=>{
@@ -769,7 +769,7 @@ function lineChart(data, opts={}){
       xLabels+=`<text x="${p.x}" y="${H-4}" class="trend-label">${p.label}</text>`;
     }
   });
-  // Ô²µã
+  // åœ†ç‚¹
   let dots='';
   pts.forEach(p=>{
     if(p.v>0){
@@ -788,19 +788,19 @@ function barChartV(data, opts={}){
   // data: [{label, value, color?}]
   const W=opts.width||340, H=opts.height||130, pad={t:16,r:8,b:28,l:8};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
-  if(!data.length)return '<div class="empty-chart">ÔİÎŞÊı¾İ</div>';
+  if(!data.length)return '<div class="empty-chart">æš‚æ— æ•°æ®</div>';
   const maxV=Math.max(...data.map(d=>d.value),1);
   const barW=Math.min(cw/data.length*0.6,36);
   const gap=cw/data.length;
   const color=opts.color||'var(--pri)';
-  // Íø¸ñ
+  // ç½‘æ ¼
   const gridLines=3;
   let grid='';
   for(let i=0;i<=gridLines;i++){
     const y=pad.t+ch*i/gridLines;
     const v=maxV-maxV*i/gridLines;
     grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
-    grid+=`<text x="${pad.l}" y="${y-3}" class="trend-val" style="font-size:8px">£¤${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+    grid+=`<text x="${pad.l}" y="${y-3}" class="trend-val" style="font-size:8px">ï¿¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
   }
   let bars='';
   data.forEach((d,i)=>{
@@ -814,7 +814,7 @@ function barChartV(data, opts={}){
     </rect>`;
     bars+=`<text x="${x+barW/2}" y="${H-8}" class="trend-label">${d.label}</text>`;
     if(d.value>0){
-      bars+=`<text x="${x+barW/2}" y="${y-4}" class="trend-tooltip">£¤${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value.toFixed(0)}</text>`;
+      bars+=`<text x="${x+barW/2}" y="${y-4}" class="trend-tooltip">ï¿¥${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value.toFixed(0)}</text>`;
     }
   });
   return `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
@@ -822,23 +822,23 @@ function barChartV(data, opts={}){
   </svg></div>`;
 }
 
-function getMonthDailyData(expenses, monthStr, type='Ö§³ö'){
-  // °´Ìì¾ÛºÏÄ³ÔÂÊı¾İ
+function getMonthDailyData(expenses, monthStr, type='æ”¯å‡º'){
+  // æŒ‰å¤©èšåˆæŸæœˆæ•°æ®
   const days=new Date(parseInt(monthStr.slice(0,4)),parseInt(monthStr.slice(5,7)),0).getDate();
   const result=[];
   for(let d=1;d<=days;d++){
     const ds=monthStr+'-'+String(d).padStart(2,'0');
     const dayTotal=expenses.filter(e=>{
-      if(!e['ÈÕÆÚ']||e['ÀàĞÍ']!==type)return false;
-      try{return e['ÈÕÆÚ'].slice(0,10)===ds}catch{return false}
-    }).reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+      if(!e['æ—¥æœŸ']||e['ç±»å‹']!==type)return false;
+      try{return e['æ—¥æœŸ'].slice(0,10)===ds}catch{return false}
+    }).reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
     result.push({label:d+'',value:dayTotal});
   }
   return result;
 }
 
-function getWeekData(expenses, monthStr, type='Ö§³ö'){
-  // °´ÖÜ¾ÛºÏÄ³ÔÂÊı¾İ
+function getWeekData(expenses, monthStr, type='æ”¯å‡º'){
+  // æŒ‰å‘¨èšåˆæŸæœˆæ•°æ®
   const days=new Date(parseInt(monthStr.slice(0,4)),parseInt(monthStr.slice(5,7)),0).getDate();
   const weeks=[];
   let weekStart=1;
@@ -848,9 +848,9 @@ function getWeekData(expenses, monthStr, type='Ö§³ö'){
     for(let d=weekStart;d<=weekEnd;d++){
       const ds=monthStr+'-'+String(d).padStart(2,'0');
       total+=expenses.filter(e=>{
-        if(!e['ÈÕÆÚ']||e['ÀàĞÍ']!==type)return false;
-        try{return e['ÈÕÆÚ'].slice(0,10)===ds}catch{return false}
-      }).reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+        if(!e['æ—¥æœŸ']||e['ç±»å‹']!==type)return false;
+        try{return e['æ—¥æœŸ'].slice(0,10)===ds}catch{return false}
+      }).reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
     }
     weeks.push({label:`${weekStart}-${weekEnd}`,value:total});
     weekStart=weekEnd+1;
@@ -858,7 +858,7 @@ function getWeekData(expenses, monthStr, type='Ö§³ö'){
   return weeks;
 }
 
-// ===== ÔÂÀúÊÓÍ¼ =====
+// ===== æœˆå†è§†å›¾ =====
 function initCalMonth(){
   const now=new Date(Date.now()+8*3600*1000);
   calYear=now.getUTCFullYear(); calMonth=now.getUTCMonth();
@@ -885,68 +885,68 @@ function selectCalDay(dateStr){
 }
 function addExpenseForDate(dateStr){
   openExpenseModal();
-  // Ô¤ÌîÈÕÆÚ
+  // é¢„å¡«æ—¥æœŸ
   document.getElementById('eDate').value=dateStr+'T'+new Date(Date.now()+8*3600*1000).toISOString().slice(11,16);
 }
 function renderExpenseCalendar(){
   const thisMonth=getThisMonth();
   const monthExpenses=expenses.filter(e=>{
-    if(!e['ÈÕÆÚ'])return false;
-    try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}
+    if(!e['æ—¥æœŸ'])return false;
+    try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}
   });
   const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
-  const searched=sq?monthExpenses.filter(e=>(e['±¸×¢']||'').toLowerCase().includes(sq)||(e['·ÖÀà']||'').toLowerCase().includes(sq)):monthExpenses;
+  const searched=sq?monthExpenses.filter(e=>(e['å¤‡æ³¨']||'').toLowerCase().includes(sq)||(e['åˆ†ç±»']||'').toLowerCase().includes(sq)):monthExpenses;
 
-  // °´Ìì¾ÛºÏ
+  // æŒ‰å¤©èšåˆ
   const dayMap={};
   searched.forEach(e=>{
-    if(!e['ÈÕÆÚ'])return;
+    if(!e['æ—¥æœŸ'])return;
     try{
-      const ds=e['ÈÕÆÚ'].slice(0,10);
+      const ds=e['æ—¥æœŸ'].slice(0,10);
       if(!dayMap[ds])dayMap[ds]={out:0,in:0,count:0,entries:[]};
-      const amt=Number(e['½ğ¶î']||0);
-      if(e['ÀàĞÍ']==='Ö§³ö')dayMap[ds].out+=amt; else dayMap[ds].in+=amt;
+      const amt=Number(e['é‡‘é¢']||0);
+      if(e['ç±»å‹']==='æ”¯å‡º')dayMap[ds].out+=amt; else dayMap[ds].in+=amt;
       dayMap[ds].count++;
       dayMap[ds].entries.push(e);
     }catch{}
   });
 
-  // ÔÂ·İÍ³¼Æ
-  const totalOut=searched.filter(e=>e['ÀàĞÍ']==='Ö§³ö').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
-  const totalIn=searched.filter(e=>e['ÀàĞÍ']==='ÊÕÈë').reduce((s,e)=>s+Number(e['½ğ¶î']||0),0);
+  // æœˆä»½ç»Ÿè®¡
+  const totalOut=searched.filter(e=>e['ç±»å‹']==='æ”¯å‡º').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
+  const totalIn=searched.filter(e=>e['ç±»å‹']==='æ”¶å…¥').reduce((s,e)=>s+Number(e['é‡‘é¢']||0),0);
 
-  // ÈÕÀúÍø¸ñ
+  // æ—¥å†ç½‘æ ¼
   const firstDay=new Date(calYear,calMonth,1).getDay();
   const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
   const today=new Date(Date.now()+8*3600*1000);
   const todayStr=today.getUTCFullYear()+'-'+String(today.getUTCMonth()+1).padStart(2,'0')+'-'+String(today.getUTCDate()).padStart(2,'0');
   const calMonthStr=calYear+'-'+String(calMonth+1).padStart(2,'0');
-  const periodLabel2=currentWeekFilter>=0?'±¾ÖÜ':'±¾ÔÂ';
+  const periodLabel2=currentWeekFilter>=0?'æœ¬å‘¨':'æœ¬æœˆ';
 
   let html='';
-  // ¶¥²¿Í³¼Æ£¨¾«¼ò£©
+  // é¡¶éƒ¨ç»Ÿè®¡ï¼ˆç²¾ç®€ï¼‰
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}Ö§³ö</div><div class="ex-total-val">£¤${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}ÊÕÈë</div><div class="ex-total-val">£¤${totalIn.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}æ”¯å‡º</div><div class="ex-total-val">ï¿¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}æ”¶å…¥</div><div class="ex-total-val">ï¿¥${totalIn.toFixed(2)}</div></div></div>
   </div>`;
 
-  // ÈÕÀúÍ·²¿
-  const monthNames=['1ÔÂ','2ÔÂ','3ÔÂ','4ÔÂ','5ÔÂ','6ÔÂ','7ÔÂ','8ÔÂ','9ÔÂ','10ÔÂ','11ÔÂ','12ÔÂ'];
+  // æ—¥å†å¤´éƒ¨
+  const monthNames=['1æœˆ','2æœˆ','3æœˆ','4æœˆ','5æœˆ','6æœˆ','7æœˆ','8æœˆ','9æœˆ','10æœˆ','11æœˆ','12æœˆ'];
   html+=`<div class="ex-section"><div class="cal-header">
     <div class="cal-nav"><button onclick="calNav(-1)">?</button></div>
-    <div class="cal-title">${calYear}Äê ${monthNames[calMonth]}</div>
+    <div class="cal-title">${calYear}å¹´ ${monthNames[calMonth]}</div>
     <div class="cal-nav"><button onclick="calNav(1)">?</button></div>
   </div>`;
 
-  // ĞÇÆÚÍ·
+  // æ˜ŸæœŸå¤´
   html+=`<div class="cal-weekdays">`;
-  ['ÈÕ','Ò»','¶ş','Èı','ËÄ','Îå','Áù'].forEach(d=>{html+=`<div class="cal-weekday">${d}</div>`});
+  ['æ—¥','ä¸€','äºŒ','ä¸‰','å››','äº”','å…­'].forEach(d=>{html+=`<div class="cal-weekday">${d}</div>`});
   html+=`</div><div class="cal-grid">`;
 
-  // ¿Õ°×¸ñ
+  // ç©ºç™½æ ¼
   for(let i=0;i<firstDay;i++) html+=`<div class="cal-day empty"></div>`;
 
-  // ÈÕÆÚ¸ñ
+  // æ—¥æœŸæ ¼
   for(let d=1;d<=daysInMonth;d++){
     const ds=calMonthStr+'-'+String(d).padStart(2,'0');
     const isToday=ds===todayStr;
@@ -960,48 +960,48 @@ function renderExpenseCalendar(){
     let amtHtml='';
     if(dayData){
       const net=dayData.in-dayData.out;
-      if(dayData.out>0)amtHtml+=`<div class="cal-day-amt">-£¤${dayData.out.toFixed(0)}</div>`;
-      if(dayData.in>0)amtHtml+=`<div class="cal-day-amt cal-day-in">+£¤${dayData.in.toFixed(0)}</div>`;
+      if(dayData.out>0)amtHtml+=`<div class="cal-day-amt">-ï¿¥${dayData.out.toFixed(0)}</div>`;
+      if(dayData.in>0)amtHtml+=`<div class="cal-day-amt cal-day-in">+ï¿¥${dayData.in.toFixed(0)}</div>`;
     }
     html+=`<div class="${classes}" data-cal-day="${ds}">
-      <div class="cal-day-num">${d}</div>${amtHtml}${dayData?`<div class="cal-day-count">${dayData.count}±Ê</div>`:''}</div>`;
+      <div class="cal-day-num">${d}</div>${amtHtml}${dayData?`<div class="cal-day-count">${dayData.count}ç¬”</div>`:''}</div>`;
   }
   html+=`</div>`;
 
-  // Ñ¡ÖĞÈÕÃ÷Ï¸
+  // é€‰ä¸­æ—¥æ˜ç»†
   if(calSelectedDate && dayMap[calSelectedDate]){
     const dd=dayMap[calSelectedDate];
     const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
-    const dateLabel=(selDate.getMonth()+1)+'ÔÂ'+selDate.getDate()+'ÈÕ ÖÜ'+WEEKDAYS[selDate.getDay()];
+    const dateLabel=(selDate.getMonth()+1)+'æœˆ'+selDate.getDate()+'æ—¥ å‘¨'+WEEKDAYS[selDate.getDay()];
     html+=`<div class="cal-day-detail"><div class="cal-detail-header">
       <div class="cal-detail-date">?? ${dateLabel}</div>
-      <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ ¼ÇÒ»±Ê</button>
+      <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ è®°ä¸€ç¬”</button>
     </div>`;
     if(dd.out>0||dd.in>0){
       html+=`<div style="display:flex;gap:12px;margin-bottom:8px;font-size:13px;font-weight:700">`;
-      if(dd.out>0)html+=`<span style="color:var(--red)">?? Ö§³ö £¤${dd.out.toFixed(2)}</span>`;
-      if(dd.in>0)html+=`<span style="color:var(--green)">?? ÊÕÈë £¤${dd.in.toFixed(2)}</span>`;
+      if(dd.out>0)html+=`<span style="color:var(--red)">?? æ”¯å‡º ï¿¥${dd.out.toFixed(2)}</span>`;
+      if(dd.in>0)html+=`<span style="color:var(--green)">?? æ”¶å…¥ ï¿¥${dd.in.toFixed(2)}</span>`;
       html+=`</div>`;
     }
     dd.entries.forEach(e=>{
-      const isOut=e['ÀàĞÍ']==='Ö§³ö';
-      const cc=CAT_COLORS[e['·ÖÀà']||'ÆäËû']||'#94a3b8';
-      const imgSrc=e['Í¼Æ¬']&&e['Í¼Æ¬'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['Í¼Æ¬'].slice(3))+'&token='+encodeURIComponent(getPin()):e['Í¼Æ¬'];
+      const isOut=e['ç±»å‹']==='æ”¯å‡º';
+      const cc=CAT_COLORS[e['åˆ†ç±»']||'å…¶ä»–']||'#94a3b8';
+      const imgSrc=e['å›¾ç‰‡']&&e['å›¾ç‰‡'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['å›¾ç‰‡'].slice(3))+'&token='+encodeURIComponent(getPin()):e['å›¾ç‰‡'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? É¾³ı</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['·ÖÀà']||'ÆäËû']||'??'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['·ÖÀà']||'ÆäËû')}</div>${e['ÈÕÆÚ']&&e['ÈÕÆÚ'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['ÈÕÆÚ'].slice(11,16)}</div>`:''}${e['±¸×¢']?`<div class="ex-entry-note">${esc(e['±¸×¢'])}</div>`:''}</div>
-        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}£¤${Number(e['½ğ¶î']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="±à¼­">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="É¾³ı">???</button></div></div>`;
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? åˆ é™¤</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['åˆ†ç±»']||'å…¶ä»–']||'??'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['åˆ†ç±»']||'å…¶ä»–')}</div>${e['æ—¥æœŸ']&&e['æ—¥æœŸ'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['æ—¥æœŸ'].slice(11,16)}</div>`:''}${e['å¤‡æ³¨']?`<div class="ex-entry-note">${esc(e['å¤‡æ³¨'])}</div>`:''}</div>
+        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}ï¿¥${Number(e['é‡‘é¢']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="ç¼–è¾‘">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="åˆ é™¤">???</button></div></div>`;
     });
     html+=`</div>`;
   } else if(calSelectedDate){
-    // Ñ¡ÖĞÁËÃ»ÓĞÊı¾İµÄÌì
+    // é€‰ä¸­äº†æ²¡æœ‰æ•°æ®çš„å¤©
     const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
-    const dateLabel=(selDate.getMonth()+1)+'ÔÂ'+selDate.getDate()+'ÈÕ ÖÜ'+WEEKDAYS[selDate.getDay()];
+    const dateLabel=(selDate.getMonth()+1)+'æœˆ'+selDate.getDate()+'æ—¥ å‘¨'+WEEKDAYS[selDate.getDay()];
     html+=`<div class="cal-day-detail"><div class="cal-detail-header">
       <div class="cal-detail-date">?? ${dateLabel}</div>
-      <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ ¼ÇÒ»±Ê</button>
-    </div><div class="ex-empty" style="padding:20px"><div class="ex-empty-hint">µ±ÌìÔİÎŞ¼ÇÕË</div></div></div>`;
+      <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ è®°ä¸€ç¬”</button>
+    </div><div class="ex-empty" style="padding:20px"><div class="ex-empty-hint">å½“å¤©æš‚æ— è®°è´¦</div></div></div>`;
   }
 
   html+=`</div>`;
@@ -1010,95 +1010,95 @@ function renderExpenseCalendar(){
 function renderStats() {
   const thisMonth = getThisMonth();
   const budget = getBudget(thisMonth);
-  const monthName = thisMonth.slice(5).replace(/^0/, '') + 'ÔÂ';
+  const monthName = thisMonth.slice(5).replace(/^0/, '') + 'æœˆ';
 
-  // Êı¾İ
-  const monthItems = items.filter(i => getMonth(i['ÈÕÆÚ']) === thisMonth);
-  const monthReturned = monthItems.filter(i => i['×´Ì¬'] === 'ÒÑÍË');
-  const monthTotal = monthItems.reduce((s, i) => s + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1), 0) - monthReturned.reduce((s, i) => s + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1), 0);
-  const totalAll = items.reduce((s, i) => s + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1), 0) - items.filter(i => i['×´Ì¬'] === 'ÒÑÍË').reduce((s, i) => s + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1), 0);
+  // æ•°æ®
+  const monthItems = items.filter(i => getMonth(i['æ—¥æœŸ']) === thisMonth);
+  const monthReturned = monthItems.filter(i => i['çŠ¶æ€'] === 'å·²é€€');
+  const monthTotal = monthItems.reduce((s, i) => s + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1), 0) - monthReturned.reduce((s, i) => s + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1), 0);
+  const totalAll = items.reduce((s, i) => s + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1), 0) - items.filter(i => i['çŠ¶æ€'] === 'å·²é€€').reduce((s, i) => s + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1), 0);
   const statusMap = {};
-  items.forEach(i => { const s = i['×´Ì¬'] || '´ıÉóÅú'; statusMap[s] = (statusMap[s] || 0) + 1; });
+  items.forEach(i => { const s = i['çŠ¶æ€'] || 'å¾…å®¡æ‰¹'; statusMap[s] = (statusMap[s] || 0) + 1; });
   const monthExpenses = expenses.filter(e => {
-    if (!e['ÈÕÆÚ']) return false;
-    try { return getMonth(e['ÈÕÆÚ']) === thisMonth } catch { return false }
+    if (!e['æ—¥æœŸ']) return false;
+    try { return getMonth(e['æ—¥æœŸ']) === thisMonth } catch { return false }
   });
-  const totalOut = monthExpenses.filter(e => e['ÀàĞÍ'] === 'Ö§³ö').reduce((s, e) => s + Number(e['½ğ¶î'] || 0), 0);
-  const totalIn = monthExpenses.filter(e => e['ÀàĞÍ'] === 'ÊÕÈë').reduce((s, e) => s + Number(e['½ğ¶î'] || 0), 0);
+  const totalOut = monthExpenses.filter(e => e['ç±»å‹'] === 'æ”¯å‡º').reduce((s, e) => s + Number(e['é‡‘é¢'] || 0), 0);
+  const totalIn = monthExpenses.filter(e => e['ç±»å‹'] === 'æ”¶å…¥').reduce((s, e) => s + Number(e['é‡‘é¢'] || 0), 0);
   const balance = totalIn - totalOut;
 
-  // ·ÖÀà/Æ½Ì¨Êı¾İ
+  // åˆ†ç±»/å¹³å°æ•°æ®
   const pCatMap = {};
-  monthItems.forEach(i => { const c = i['·ÖÀà'] || 'ÆäËû'; pCatMap[c] = (pCatMap[c] || 0) + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1); });
+  monthItems.forEach(i => { const c = i['åˆ†ç±»'] || 'å…¶ä»–'; pCatMap[c] = (pCatMap[c] || 0) + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1); });
   const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
   const pPlatMap = {};
-  monthItems.forEach(i => { const p = i['Æ½Ì¨'] || 'ÆäËû'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['µ¥¼Û'] || 0) * (i['ÊıÁ¿'] || 1); });
+  monthItems.forEach(i => { const p = i['å¹³å°'] || 'å…¶ä»–'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['å•ä»·'] || 0) * (i['æ•°é‡'] || 1); });
   const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const eCatMap = {};
-  monthExpenses.filter(e => e['ÀàĞÍ'] === 'Ö§³ö').forEach(e => { const c = e['·ÖÀà'] || 'ÆäËû'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['½ğ¶î'] || 0); });
+  monthExpenses.filter(e => e['ç±»å‹'] === 'æ”¯å‡º').forEach(e => { const c = e['åˆ†ç±»'] || 'å…¶ä»–'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['é‡‘é¢'] || 0); });
   const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
 
   let html = '';
 
-  // Tab ÇĞ»»
+  // Tab åˆ‡æ¢
   html += `<div class="stats-tabs">
-    <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">?? ²É¹º</div>
-    <div class="stats-tab" id="statsTabExpense" onclick="switchStatsTab('expense')">?? ¼ÇÕË</div>
+    <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">?? é‡‡è´­</div>
+    <div class="stats-tab" id="statsTabExpense" onclick="switchStatsTab('expense')">?? è®°è´¦</div>
   </div>`;
 
-  // ===== ²É¹º =====
+  // ===== é‡‡è´­ =====
   html += `<div id="statsSectionPurchase">`;
 
-  // ±¾ÔÂ²É¹º×Ü¶î - hero number
+  // æœ¬æœˆé‡‡è´­æ€»é¢ - hero number
   html += `<div class="stats-hero">
-    <div class="stats-hero-label">${monthName}²É¹º×Ü¶î</div>
-    <div class="stats-hero-num">£¤${monthTotal.toFixed(0)}</div>
-    <div class="stats-hero-sub">${monthItems.length}¼şÉÌÆ· ¡¤ ÀÛ¼Æ £¤${totalAll.toFixed(0)}</div>
+    <div class="stats-hero-label">${monthName}é‡‡è´­æ€»é¢</div>
+    <div class="stats-hero-num">ï¿¥${monthTotal.toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}ä»¶å•†å“ Â· ç´¯è®¡ ï¿¥${totalAll.toFixed(0)}</div>
   </div>`;
 
-  // Ô¤Ëã½ø¶È
+  // é¢„ç®—è¿›åº¦
   if (budget) {
     const pct = Math.min(monthTotal / budget * 100, 100);
     const color = monthTotal > budget ? 'var(--red)' : monthTotal > budget * 0.8 ? 'var(--orange)' : 'var(--green)';
     html += `<div class="stats-section">
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>Ô¤Ëã</span><span style="color:${color}">£¤${monthTotal.toFixed(0)} / £¤${budget}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>é¢„ç®—</span><span style="color:${color}">ï¿¥${monthTotal.toFixed(0)} / ï¿¥${budget}</span></div>
       <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% ÒÑÓÃ</span><span>Ê£Óà £¤${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% å·²ç”¨</span><span>å‰©ä½™ ï¿¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
     </div>`;
   }
 
-  // ·ÖÀà + Æ½Ì¨²¢ÅÅ
+  // åˆ†ç±» + å¹³å°å¹¶æ’
   if (pCatEntries.length || pPlatEntries.length) {
     html += `<div class="stats-row">`;
     if (pCatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? ·ÖÀà</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">?? åˆ†ç±»</div>`;
       const maxVal = pCatEntries[0][1];
       pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">£¤${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">ï¿¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (pPlatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? Æ½Ì¨</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">?? å¹³å°</div>`;
       const maxVal = pPlatEntries[0][1];
       pPlatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">£¤${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">ï¿¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     html += `</div>`;
   }
 
-  // ×´Ì¬·Ö²¼
+  // çŠ¶æ€åˆ†å¸ƒ
   if (items.length) {
-    const colors = { '´ıÉóÅú': 'var(--orange)', 'ÒÑÉóÅú': 'var(--blue)', 'ÒÑÏÂµ¥': '#8b5cf6', 'ÒÑµ½': 'var(--green)', 'ÒÑÍË': 'var(--red)', 'ÒÑ¹éµµ': '#6b7280' };
+    const colors = { 'å¾…å®¡æ‰¹': 'var(--orange)', 'å·²å®¡æ‰¹': 'var(--blue)', 'å·²ä¸‹å•': '#8b5cf6', 'å·²åˆ°': 'var(--green)', 'å·²é€€': 'var(--red)', 'å·²å½’æ¡£': '#6b7280' };
     const totalItems = items.length;
-    html += `<div class="stats-section"><div class="stats-section-title">?? ×´Ì¬·Ö²¼</div>`;
+    html += `<div class="stats-section"><div class="stats-section-title">?? çŠ¶æ€åˆ†å¸ƒ</div>`;
     html += `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:10px">`;
     Object.entries(statusMap).forEach(([s, n]) => {
-      html += `<div style="width:${(n/totalItems*100).toFixed(1)}%;background:${colors[s]||'var(--muted)'}" title="${s}: ${n}¼ş"></div>`;
+      html += `<div style="width:${(n/totalItems*100).toFixed(1)}%;background:${colors[s]||'var(--muted)'}" title="${s}: ${n}ä»¶"></div>`;
     });
     html += `</div><div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted)">`;
     Object.entries(statusMap).forEach(([s, n]) => {
@@ -1108,42 +1108,42 @@ function renderStats() {
   }
   html += '</div>';
 
-  // ===== ¼ÇÕË =====
+  // ===== è®°è´¦ =====
   html += `<div id="statsSectionExpense" style="display:none">`;
 
-  // ½áÓà - hero number
+  // ç»“ä½™ - hero number
   html += `<div class="stats-hero">
-    <div class="stats-hero-label">${monthName}½áÓà</div>
-    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">£¤${balance.toFixed(0)}</div>
-    <div class="stats-hero-sub"><span style="color:var(--red)">Ö§³ö £¤${totalOut.toFixed(0)}</span> ¡¤ <span style="color:var(--green)">ÊÕÈë £¤${totalIn.toFixed(0)}</span></div>
+    <div class="stats-hero-label">${monthName}ç»“ä½™</div>
+    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">ï¿¥${balance.toFixed(0)}</div>
+    <div class="stats-hero-sub"><span style="color:var(--red)">æ”¯å‡º ï¿¥${totalOut.toFixed(0)}</span> Â· <span style="color:var(--green)">æ”¶å…¥ ï¿¥${totalIn.toFixed(0)}</span></div>
   </div>`;
 
-  // Ã¿ÈÕÇ÷ÊÆ
-  const dailyData = getMonthDailyData(expenses, thisMonth, 'Ö§³ö');
+  // æ¯æ—¥è¶‹åŠ¿
+  const dailyData = getMonthDailyData(expenses, thisMonth, 'æ”¯å‡º');
   if (dailyData.some(d => d.value > 0)) {
     const dayMax = Math.max(...dailyData.map(d => d.value));
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / Math.max(dailyData.filter(d => d.value > 0).length, 1);
     html += `<div class="stats-section">
-      <div class="stats-section-title">?? Ã¿ÈÕÖ§³ö <span style="float:right;font-weight:400;font-size:11px">×î¸ß £¤${dayMax.toFixed(0)} ¡¤ ÈÕ¾ù £¤${dayAvg.toFixed(0)}</span></div>
+      <div class="stats-section-title">?? æ¯æ—¥æ”¯å‡º <span style="float:right;font-weight:400;font-size:11px">æœ€é«˜ ï¿¥${dayMax.toFixed(0)} Â· æ—¥å‡ ï¿¥${dayAvg.toFixed(0)}</span></div>
       ${lineChart(dailyData, { color: '#ef4444', height: 140 })}
     </div>`;
   }
 
-  // ·ÖÀà + Ã¿ÖÜ²¢ÅÅ
-  const weekData = getWeekData(expenses, thisMonth, 'Ö§³ö');
+  // åˆ†ç±» + æ¯å‘¨å¹¶æ’
+  const weekData = getWeekData(expenses, thisMonth, 'æ”¯å‡º');
   if (eCatEntries.length || weekData.some(d => d.value > 0)) {
     html += `<div class="stats-row">`;
     if (eCatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? Ö§³ö·ÖÀà</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">?? æ”¯å‡ºåˆ†ç±»</div>`;
       const maxCat = eCatEntries[0][1];
       eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">£¤${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">ï¿¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (weekData.some(d => d.value > 0)) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? Ã¿ÖÜ</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 })}</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">?? æ¯å‘¨</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 })}</div>`;
     }
     html += `</div>`;
   }
@@ -1159,19 +1159,19 @@ function switchStatsTab(tab) {
   document.getElementById('statsTabExpense').className = tab === 'expense' ? 'chip active' : 'chip';
 }
 
-// ===== Tab ÇĞ»» =====
+// ===== Tab åˆ‡æ¢ =====
 
 // ============================================================
-// Tab ÇĞ»»
+// Tab åˆ‡æ¢
 // ============================================================
 function switchTab(t){
   currentTab=t;
-  // µçÄÔ¶Ë±êÇ©¸ßÁÁ
+  // ç”µè„‘ç«¯æ ‡ç­¾é«˜äº®
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   var tabIndex=t==='purchase'?1:t==='expense'?2:3;
   var desktopTab=document.querySelector('.tabs .tab:nth-child('+tabIndex+')');
   if(desktopTab)desktopTab.classList.add('active');
-  // ÊÖ»ú¶Ëµ×²¿µ¼º½¸ßÁÁ
+  // æ‰‹æœºç«¯åº•éƒ¨å¯¼èˆªé«˜äº®
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   var navItem=document.querySelector('.nav-item[data-tab="'+t+'"]');
   if(navItem)navItem.classList.add('active');
@@ -1187,47 +1187,47 @@ function switchTab(t){
   render();
 }
 
-// ===== ²É¹º²Ù×÷ =====
-function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='ÒÑÑ¡ 0 Ïî';render()}
-function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`ÒÑÑ¡ ${selectedIds.size} Ïî`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('ÇëÏÈÑ¡ÔñÉÌÆ·');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`ÕıÔÚ¸üĞÂ ${ids.length} Ïî...`);const r=await api('PATCH',{ids,status});if(r&&r.error){alert('ÅúÁ¿¸üĞÂÊ§°Ü: '+r.error);return}toast(`ÒÑ¸üĞÂ ${ids.length} ÏîÎª¡°${status}¡±`);selectedIds.clear();toggleBatch();await loadAll()}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`È·¶¨É¾³ıÑ¡ÖĞµÄ ${selectedIds.size} Ïî£¿`))return;const ids=[...selectedIds];items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`ÒÑÉ¾³ı ${ok} Ïî`);await loadAll()}
+// ===== é‡‡è´­æ“ä½œ =====
+function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='å·²é€‰ 0 é¡¹';render()}
+function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`å·²é€‰ ${selectedIds.size} é¡¹`;render()}
+async function batchUpdate(){if(!selectedIds.size)return toast('è¯·å…ˆé€‰æ‹©å•†å“');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`æ­£åœ¨æ›´æ–° ${ids.length} é¡¹...`);const r=await api('PATCH',{ids,status});if(r&&r.error){alert('æ‰¹é‡æ›´æ–°å¤±è´¥: '+r.error);return}toast(`å·²æ›´æ–° ${ids.length} é¡¹ä¸ºâ€œ${status}â€`);selectedIds.clear();toggleBatch();await loadAll()}
+async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`ç¡®å®šåˆ é™¤é€‰ä¸­çš„ ${selectedIds.size} é¡¹ï¼Ÿ`))return;const ids=[...selectedIds];items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`å·²åˆ é™¤ ${ok} é¡¹`);await loadAll()}
 
 // ============================================================
-// ²É¹º Modal
+// é‡‡è´­ Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='ĞÂÔö²É¹º';document.getElementById('fName').value='';document.getElementById('fReason').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
-function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='±à¼­²É¹º';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['ÉÌÆ·Ãû³Æ']||'';document.getElementById('fPlatformEdit').value=i['Æ½Ì¨']||'Æ´¶à¶à';document.getElementById('fCategoryEdit').value=i['·ÖÀà']||'ÈÕÓÃ';document.getElementById('fPriceEdit').value=i['µ¥¼Û']||'';document.getElementById('fQtyEdit').value=i['ÊıÁ¿']||1;document.getElementById('fStatusEdit').value=i['×´Ì¬']||'´ıÉóÅú';const d=i['ÈÕÆÚ'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['±¸×¢']||'';document.getElementById('overlay').classList.add('active')}
+function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='æ–°å¢é‡‡è´­';document.getElementById('fName').value='';document.getElementById('fReason').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';document.getElementById('overlay').classList.add('active')}
+function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='ç¼–è¾‘é‡‡è´­';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['å•†å“åç§°']||'';document.getElementById('fPlatformEdit').value=i['å¹³å°']||'æ‹¼å¤šå¤š';document.getElementById('fCategoryEdit').value=i['åˆ†ç±»']||'æ—¥ç”¨';document.getElementById('fPriceEdit').value=i['å•ä»·']||'';document.getElementById('fQtyEdit').value=i['æ•°é‡']||1;document.getElementById('fStatusEdit').value=i['çŠ¶æ€']||'å¾…å®¡æ‰¹';const d=i['æ—¥æœŸ'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['å¤‡æ³¨']||'';document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('ÇëÊäÈëÉÌÆ·Ãû³Æ');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null};if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('¸üĞÂÊ§°Ü: '+r.error);return}toast('ÒÑ¸üĞÂ')}else{const r=await api('POST',data);if(r&&r.error){alert('Ìí¼ÓÊ§°Ü: '+r.error);return}toast('ÒÑÌí¼Ó')}closeModal();await loadAll()}
+async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('è¯·è¾“å…¥å•†å“åç§°');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null};if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('æ›´æ–°å¤±è´¥: '+r.error);return}toast('å·²æ›´æ–°')}else{const r=await api('POST',data);if(r&&r.error){alert('æ·»åŠ å¤±è´¥: '+r.error);return}toast('å·²æ·»åŠ ')}closeModal();await loadAll()}
 
-async function delItem(id){if(!confirm('È·¶¨É¾³ı£¿'))return;items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('É¾³ıÊ§°Ü: '+r.error);await loadAll();return}toast('ÒÑÉ¾³ı');await loadAll()}
+async function delItem(id){if(!confirm('ç¡®å®šåˆ é™¤ï¼Ÿ'))return;items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('åˆ é™¤å¤±è´¥: '+r.error);await loadAll();return}toast('å·²åˆ é™¤');await loadAll()}
 
-// ===== ÉóÅúÁ÷²Ù×÷ =====
-const NEXT_STATUS={'´ıÆÀ¹À':'´ıÉóÅú','´ıÉóÅú':'ÒÑÉóÅú','ÒÑÉóÅú':'ÒÑÏÂµ¥','ÒÑÏÂµ¥':'ÒÑµ½'};
-const APPROVAL_TITLES={'´ıÉóÅú':'? ÉóÅúÈ·ÈÏ','ÒÑÉóÅú':'?? È·ÈÏÏÂµ¥','ÒÑÏÂµ¥':'?? È·ÈÏÊÕ»õ'};
-const APPROVAL_TEXTS={'´ıÉóÅú':'È·ÈÏÉóÅúÍ¨¹ı£¿Í¨¹ıºó×´Ì¬±äÎª¡°ÒÑÉóÅú¡±','ÒÑÉóÅú':'È·ÈÏÏÂµ¥£¿Í¨¹ıºó×´Ì¬±äÎª¡°ÒÑÏÂµ¥¡±','ÒÑÏÂµ¥':'È·ÈÏÊÕ»õ£¿Í¨¹ıºó×´Ì¬±äÎª¡°ÒÑµ½¡±'};
+// ===== å®¡æ‰¹æµæ“ä½œ =====
+const NEXT_STATUS={'å¾…è¯„ä¼°':'å¾…å®¡æ‰¹','å¾…å®¡æ‰¹':'å·²å®¡æ‰¹','å·²å®¡æ‰¹':'å·²ä¸‹å•','å·²ä¸‹å•':'å·²åˆ°'};
+const APPROVAL_TITLES={'å¾…å®¡æ‰¹':'? å®¡æ‰¹ç¡®è®¤','å·²å®¡æ‰¹':'?? ç¡®è®¤ä¸‹å•','å·²ä¸‹å•':'?? ç¡®è®¤æ”¶è´§'};
+const APPROVAL_TEXTS={'å¾…å®¡æ‰¹':'ç¡®è®¤å®¡æ‰¹é€šè¿‡ï¼Ÿé€šè¿‡åçŠ¶æ€å˜ä¸ºâ€œå·²å®¡æ‰¹â€','å·²å®¡æ‰¹':'ç¡®è®¤ä¸‹å•ï¼Ÿé€šè¿‡åçŠ¶æ€å˜ä¸ºâ€œå·²ä¸‹å•â€','å·²ä¸‹å•':'ç¡®è®¤æ”¶è´§ï¼Ÿé€šè¿‡åçŠ¶æ€å˜ä¸ºâ€œå·²åˆ°â€'};
 function showApprovalModal(id){
   const item=items.find(x=>x.id===id);
   if(!item)return;
-  const status=item['×´Ì¬']||'´ıÉóÅú';
+  const status=item['çŠ¶æ€']||'å¾…å®¡æ‰¹';
   const next=NEXT_STATUS[status];
   if(!next)return;
-  const qty=Number(item['ÊıÁ¿'])||1;
-  const price=Number(item['µ¥¼Û'])||0;
+  const qty=Number(item['æ•°é‡'])||1;
+  const price=Number(item['å•ä»·'])||0;
   const total=price*qty;
-  document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'È·ÈÏ²Ù×÷';
+  document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'ç¡®è®¤æ“ä½œ';
   document.getElementById('approvalContent').innerHTML=`
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${esc(item['ÉÌÆ·Ãû³Æ']||'')}</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">µ¥¼Û £¤${price.toFixed(2)} ¡Á ${qty}</div>
-    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">×Ü¼Û £¤${total.toFixed(2)}</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${esc(item['å•†å“åç§°']||'')}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">å•ä»· ï¿¥${price.toFixed(2)} Ã— ${qty}</div>
+    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">æ€»ä»· ï¿¥${total.toFixed(2)}</div>
     <div style="font-size:14px;font-weight:600;color:var(--orange)">${APPROVAL_TEXTS[status]}</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">${status} ¡ú ${next}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">${status} â†’ ${next}</div>
   `;
   const btn=document.getElementById('approvalConfirmBtn');
   btn.onclick=async function(){
     await api('PATCH',{ids:[id],status:next});
-    toast(`ÒÑ¸üĞÂÎª¡°${next}¡±`);
+    toast(`å·²æ›´æ–°ä¸ºâ€œ${next}â€`);
     closeApprovalModal();
     await loadAll();
   };
@@ -1235,23 +1235,23 @@ function showApprovalModal(id){
 }
 function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
 
-// ===== ¼ÇÕË²Ù×÷ =====
+// ===== è®°è´¦æ“ä½œ =====
 
 // ============================================================
-// ¼ÇÕË Modal
+// è®°è´¦ Modal
 // ============================================================
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='?? ±à¼­¼ÇÕË';eid.value=id;document.getElementById('eAmount').value=Number(e['½ğ¶î']||0);document.getElementById('eNote').value=e['±¸×¢']||'';document.getElementById('eType').value=e['ÀàĞÍ']||'Ö§³ö';document.getElementById('eCategory').value=e['·ÖÀà']||'²ÍÒû';let d='';if(e['ÈÕÆÚ']){try{const dt=new Date(e['ÈÕÆÚ'].includes('T')?e['ÈÕÆÚ']:e['ÈÕÆÚ']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['Í¼Æ¬']&&e['Í¼Æ¬'].startsWith('kv:')){const k=e['Í¼Æ¬'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin())}else if(e['Í¼Æ¬']){currentImageData=e['Í¼Æ¬'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['Í¼Æ¬']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='?? ¼ÇÒ»±Ê';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='Ö§³ö';document.getElementById('eCategory').value='²ÍÒû';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='?? ç¼–è¾‘è®°è´¦';eid.value=id;document.getElementById('eAmount').value=Number(e['é‡‘é¢']||0);document.getElementById('eNote').value=e['å¤‡æ³¨']||'';document.getElementById('eType').value=e['ç±»å‹']||'æ”¯å‡º';document.getElementById('eCategory').value=e['åˆ†ç±»']||'é¤é¥®';let d='';if(e['æ—¥æœŸ']){try{const dt=new Date(e['æ—¥æœŸ'].includes('T')?e['æ—¥æœŸ']:e['æ—¥æœŸ']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['å›¾ç‰‡']&&e['å›¾ç‰‡'].startsWith('kv:')){const k=e['å›¾ç‰‡'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin())}else if(e['å›¾ç‰‡']){currentImageData=e['å›¾ç‰‡'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['å›¾ç‰‡']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='?? è®°ä¸€ç¬”';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='æ”¯å‡º';document.getElementById('eCategory').value='é¤é¥®';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
-function exportExpenses(){showExportDialog('¼ÇÕË',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['ÈÕÆÚ'+sep+'Ê±¼ä'+sep+'ÀàĞÍ'+sep+'·ÖÀà'+sep+'½ğ¶î'+sep+'±¸×¢'];expenses.forEach(e=>{const ds=e['ÈÕÆÚ']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['½ğ¶î']||0).toFixed(2);const note=(e['±¸×¢']||'').includes(sep)?'"'+(e['±¸×¢']||'').replace(/"/g,'""')+'"':(e['±¸×¢']||'');lines.push(datePart+sep+timePart+sep+(e['ÀàĞÍ']||'')+sep+(e['·ÖÀà']||'')+sep+'£¤'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='¼ÇÕË_'+getThisMonth()+ext;a.click()})}
-// Í¼Æ¬: kv:Ç°×º=KV key´æ·ÉÊéÍ¼Æ¬×Ö¶Î; ÎŞÇ°×º=base64£¨»ØÍË£©
-async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('È·¶¨É¾³ıÍ¼Æ¬£¿'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['Í¼Æ¬']&&e['Í¼Æ¬'].startsWith('kv:')){const k=e['Í¼Æ¬'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('Í¼Æ¬ÒÑÉ¾³ı');await loadAll()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('ÇëÊäÈë½ğ¶î');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('ÕıÔÚÉÏ´«Í¼Æ¬...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('¸üĞÂÊ§°Ü: '+res.error);return}toast('ÒÑ¸üĞÂ')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('¼ÇÂ¼Ê§°Ü: '+res.error);return}toast('ÒÑ¼ÇÂ¼')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
-async function delExpense(id){if(!confirm('È·¶¨É¾³ı£¿'))return;const r=await expenseApi('DELETE',null,id);if(r&&r.error){alert('É¾³ıÊ§°Ü: '+r.error);return}toast('ÒÑÉ¾³ı');await loadAll()}
+function exportExpenses(){showExportDialog('è®°è´¦',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['æ—¥æœŸ'+sep+'æ—¶é—´'+sep+'ç±»å‹'+sep+'åˆ†ç±»'+sep+'é‡‘é¢'+sep+'å¤‡æ³¨'];expenses.forEach(e=>{const ds=e['æ—¥æœŸ']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['é‡‘é¢']||0).toFixed(2);const note=(e['å¤‡æ³¨']||'').includes(sep)?'"'+(e['å¤‡æ³¨']||'').replace(/"/g,'""')+'"':(e['å¤‡æ³¨']||'');lines.push(datePart+sep+timePart+sep+(e['ç±»å‹']||'')+sep+(e['åˆ†ç±»']||'')+sep+'ï¿¥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='è®°è´¦_'+getThisMonth()+ext;a.click()})}
+// å›¾ç‰‡: kv:å‰ç¼€=KV keyå­˜é£ä¹¦å›¾ç‰‡å­—æ®µ; æ— å‰ç¼€=base64ï¼ˆå›é€€ï¼‰
+async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('ç¡®å®šåˆ é™¤å›¾ç‰‡ï¼Ÿ'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['å›¾ç‰‡']&&e['å›¾ç‰‡'].startsWith('kv:')){const k=e['å›¾ç‰‡'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('å›¾ç‰‡å·²åˆ é™¤');await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('è¯·è¾“å…¥é‡‘é¢');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('æ­£åœ¨ä¸Šä¼ å›¾ç‰‡...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('æ›´æ–°å¤±è´¥: '+res.error);return}toast('å·²æ›´æ–°')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('è®°å½•å¤±è´¥: '+res.error);return}toast('å·²è®°å½•')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
+async function delExpense(id){if(!confirm('ç¡®å®šåˆ é™¤ï¼Ÿ'))return;const r=await expenseApi('DELETE',null,id);if(r&&r.error){alert('åˆ é™¤å¤±è´¥: '+r.error);return}toast('å·²åˆ é™¤');await loadAll()}
 
-// ===== AI ÖúÊÖ =====
+// ===== AI åŠ©æ‰‹ =====
 
 // ============================================================
-// AI ¹¦ÄÜ
+// AI åŠŸèƒ½
 // ============================================================
 const AI_API='/api/ai';
 async function aiRequest(action,data){
@@ -1261,7 +1261,7 @@ async function aiRequest(action,data){
   return res;
 }
 
-// --- ×ÔÈ»ÓïÑÔ¼ÇÕË ---
+// --- è‡ªç„¶è¯­è¨€è®°è´¦ ---
 let pendingAI=null;
 async function sendAI(){
   const input=document.getElementById('aiInput');
@@ -1271,7 +1271,7 @@ async function sendAI(){
   const resultEl=document.getElementById('aiResult');
   btn.disabled=true;
   btn.textContent='?';
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>½âÎöÖĞ...</span></div>`;
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>è§£æä¸­...</span></div>`;
   try{
     const now=new Date(Date.now()+8*3600*1000);
     const currentDate=now.toISOString().slice(0,10);
@@ -1280,19 +1280,19 @@ async function sendAI(){
       pendingAI=res.data;
       const d=res.data;
       resultEl.innerHTML=`<div class="ai-result">
-        <div class="ai-result-header"><span class="ai-result-tag">?? AI ½âÎö</span><span style="font-size:10px;color:var(--muted)">ÖÃĞÅ¶È ${((d.confidence||0)*100).toFixed(0)}%</span></div>
-        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> £¤${d.amount.toFixed(2)} ¡¤ ${d.category}${d.note?' ¡¤ '+d.note:''}</div>
+        <div class="ai-result-header"><span class="ai-result-tag">?? AI è§£æ</span><span style="font-size:10px;color:var(--muted)">ç½®ä¿¡åº¦ ${((d.confidence||0)*100).toFixed(0)}%</span></div>
+        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> ï¿¥${d.amount.toFixed(2)} Â· ${d.category}${d.note?' Â· '+d.note:''}</div>
         <div style="display:flex;gap:6px">
-          <button class="ai-confirm-btn primary" onclick="confirmAI()">? ¼ÇÒ»±Ê</button>
-          <button class="ai-confirm-btn secondary" onclick="editAI()">?? ĞŞ¸Ä</button>
-          <button class="ai-confirm-btn secondary" onclick="cancelAI()">? È¡Ïû</button>
+          <button class="ai-confirm-btn primary" onclick="confirmAI()">? è®°ä¸€ç¬”</button>
+          <button class="ai-confirm-btn secondary" onclick="editAI()">?? ä¿®æ”¹</button>
+          <button class="ai-confirm-btn secondary" onclick="cancelAI()">? å–æ¶ˆ</button>
         </div>
       </div>`;
     }else{
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? Ã»ÌıÇå</span></div><div style="font-size:12px;color:var(--muted)">Ã»Ê¶±ğµ½½ğ¶î£¬ÊÔÊÔ: Îç·¹35¡¢´ò³µ28È¥¹«Ë¾</div></div>`;
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? æ²¡å¬æ¸…</span></div><div style="font-size:12px;color:var(--muted)">æ²¡è¯†åˆ«åˆ°é‡‘é¢ï¼Œè¯•è¯•: åˆé¥­35ã€æ‰“è½¦28å»å…¬å¸</div></div>`;
     }
   }catch(e){
-    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">?? ${e.message||'Î´Öª´íÎó'}</div></div>`;
+    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">?? ${e.message||'æœªçŸ¥é”™è¯¯'}</div></div>`;
   }
   btn.disabled=false;
   btn.textContent='?';
@@ -1306,9 +1306,9 @@ function confirmAI(){
   const pad=n=>String(n).padStart(2,'0');
   const dateStr=d.date||(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes()));
   openExpenseModal();
-  document.getElementById('eType').value=d.type||'Ö§³ö';
+  document.getElementById('eType').value=d.type||'æ”¯å‡º';
   document.getElementById('eAmount').value=d.amount||'';
-  document.getElementById('eCategory').value=d.category||'ÆäËû';
+  document.getElementById('eCategory').value=d.category||'å…¶ä»–';
   document.getElementById('eDate').value=dateStr;
   document.getElementById('eNote').value=d.note||'';
   document.getElementById('aiResult').innerHTML='';
@@ -1329,10 +1329,10 @@ function cancelAI(){
 
 
 
-// Ìø¹ıÆÀ¹À£¬Ö±½Ó½øÈëĞèÇóÌîĞ´
+// è·³è¿‡è¯„ä¼°ï¼Œç›´æ¥è¿›å…¥éœ€æ±‚å¡«å†™
 function skipToDetail() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('ÇëÏÈÊäÈëÉÌÆ·Ãû³Æ'); return; }
+  if (!name) { alert('è¯·å…ˆè¾“å…¥å•†å“åç§°'); return; }
   document.getElementById('evalPhase').style.display = 'none';
   document.getElementById('chatArea').style.display = 'none';
   document.getElementById('detailPhase').style.display = '';
@@ -1340,25 +1340,25 @@ function skipToDetail() {
   document.getElementById('fPrice').value = '';
   document.getElementById('fQty').value = '1';
   document.getElementById('fNote').value = '';
-  document.getElementById('fPlatform').value = 'Æ´¶à¶à';
-  document.getElementById('fCategory').value = 'ÈÕÓÃ';
+  document.getElementById('fPlatform').value = 'æ‹¼å¤šå¤š';
+  document.getElementById('fCategory').value = 'æ—¥ç”¨';
 }
 
-// --- AI ĞèÇóÆÀ¹À£¨Ç¶Èë²É¹º´´½¨Á÷³Ì£© ---
+// --- AI éœ€æ±‚è¯„ä¼°ï¼ˆåµŒå…¥é‡‡è´­åˆ›å»ºæµç¨‹ï¼‰ ---
 async function runPurchaseEval() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('ÇëÏÈÊäÈëÉÌÆ·Ãû³Æ'); return; }
+  if (!name) { alert('è¯·å…ˆè¾“å…¥å•†å“åç§°'); return; }
   const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
   const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
   
   const resultEl = document.getElementById('aiEvalResult');
   const btn = document.getElementById('aiEvalBtn');
   resultEl.style.display = 'block';
-  resultEl.textContent = '?? AI ·ÖÎöÖĞ...';
+  resultEl.textContent = '?? AI åˆ†æä¸­...';
   btn.disabled = true;
-  btn.textContent = '·ÖÎöÖĞ...';
+  btn.textContent = 'åˆ†æä¸­...';
   
-  // »ñÈ¡¹ºÂòÀíÓÉ
+  // è·å–è´­ä¹°ç†ç”±
   const reason = (document.getElementById('fReason') ? document.getElementById('fReason').value : '').trim();
   
   try {
@@ -1368,20 +1368,20 @@ async function runPurchaseEval() {
       body: JSON.stringify({ action: 'evaluate', data: { productName: name, expectedPrice: null, platform: null, category: null, budgetMin, budgetMax, reason: reason || null } }),
     });
     const d = await r.json();
-    if (!d.ok) { resultEl.textContent = '? ' + (d.error || 'ÆÀ¹ÀÊ§°Ü'); return; }
+    if (!d.ok) { resultEl.textContent = '? ' + (d.error || 'è¯„ä¼°å¤±è´¥'); return; }
     
-    // ÌáÈ¡ÕªÒª£ºµÚÒ»¶Î+½¨ÒéĞĞ
+    // æå–æ‘˜è¦ï¼šç¬¬ä¸€æ®µ+å»ºè®®è¡Œ
     const lines = d.data.split('\n').filter(l => l.trim());
     const summary = lines.slice(0, 3).join(' ').replace(/[\*#]/g, '').slice(0, 150);
     resultEl.innerHTML = '<div style="margin-bottom:10px;line-height:1.6">' + stripMd(esc(summary)) + '</div>'
-      + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">? Ìá½»ÆÀ¹À</button>'
-      + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">? È¡Ïû</button>';
+      + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">? æäº¤è¯„ä¼°</button>'
+      + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">? å–æ¶ˆ</button>';
     purchaseEvalContext = d.data;
     purchaseChatHistory = [{role:'assistant', content:d.data}];
     document.getElementById('chatArea').style.display = 'block';
     renderChatMessages();
-  } catch(e) { resultEl.textContent = '? ÍøÂç´íÎó'; }
-  finally { btn.disabled = false; btn.textContent = '?? AIĞèÇóÆÀ¹À'; }
+  } catch(e) { resultEl.textContent = '? ç½‘ç»œé”™è¯¯'; }
+  finally { btn.disabled = false; btn.textContent = '?? AIéœ€æ±‚è¯„ä¼°'; }
 }
 function switchToDetailPhase(name, aiData) {
   document.getElementById('evalPhase').style.display = 'none';
@@ -1391,8 +1391,8 @@ function switchToDetailPhase(name, aiData) {
   document.getElementById('fPrice').value = '';
   document.getElementById('fQty').value = '1';
   document.getElementById('fNote').value = '';
-  document.getElementById('fPlatform').value = 'Æ´¶à¶à';
-  document.getElementById('fCategory').value = 'ÈÕÓÃ';
+  document.getElementById('fPlatform').value = 'æ‹¼å¤šå¤š';
+  document.getElementById('fCategory').value = 'æ—¥ç”¨';
 }
 
 let purchaseEvalContext = '';
@@ -1438,14 +1438,14 @@ async function sendPurchaseChat() {
       purchaseChatHistory.push({role: 'assistant', content: d.data});
       renderChatMessages();
     } else {
-      purchaseChatHistory.push({role: 'assistant', content: '? ' + (d.error || '»Ø¸´Ê§°Ü')});
+      purchaseChatHistory.push({role: 'assistant', content: '? ' + (d.error || 'å›å¤å¤±è´¥')});
       renderChatMessages();
     }
   } catch(e) {
-    purchaseChatHistory.push({role: 'assistant', content: '? ÍøÂç´íÎó'});
+    purchaseChatHistory.push({role: 'assistant', content: '? ç½‘ç»œé”™è¯¯'});
     renderChatMessages();
   } finally {
-    btn.disabled = false; btn.textContent = '·¢ËÍ';
+    btn.disabled = false; btn.textContent = 'å‘é€';
   }
 }
 
@@ -1465,28 +1465,28 @@ function cancelPurchaseEval() {
   purchaseEvalContext = '';
 }
 
-// ===== È¡Ïû²É¹º£¨¹éµµ£© =====
+// ===== å–æ¶ˆé‡‡è´­ï¼ˆå½’æ¡£ï¼‰ =====
 async function cancelPurchase(id) {
   const item = items.find(x => x.id === id);
   if (!item) return;
-  const reason = prompt('È¡ÏûÀíÓÉ£¨Ñ¡Ìî£©£º');
-  if (reason === null) return; // ÓÃ»§µãÁËÈ¡Ïû
+  const reason = prompt('å–æ¶ˆç†ç”±ï¼ˆé€‰å¡«ï¼‰ï¼š');
+  if (reason === null) return; // ç”¨æˆ·ç‚¹äº†å–æ¶ˆ
   
-  // ÔÚ±¸×¢ÖĞ×·¼ÓÈ¡ÏûÀíÓÉ
-  let note = item['±¸×¢'] || '';
+  // åœ¨å¤‡æ³¨ä¸­è¿½åŠ å–æ¶ˆç†ç”±
+  let note = item['å¤‡æ³¨'] || '';
   if (reason) note += '\n===CANCEL_REASON===' + reason;
   
-  const r = await api('PATCH', { ids: [id], status: 'ÒÑÈ¡Ïû', note: note });
-  if (r && r.error) { alert('²Ù×÷Ê§°Ü: ' + r.error); return; }
-  toast('ÒÑÈ¡Ïû²É¹º');
+  const r = await api('PATCH', { ids: [id], status: 'å·²å–æ¶ˆ', note: note });
+  if (r && r.error) { alert('æ“ä½œå¤±è´¥: ' + r.error); return; }
+  toast('å·²å–æ¶ˆé‡‡è´­');
   await loadAll();
 }
 
-// Ìá½»ÆÀ¹À£ºÇĞ»»µ½ÏêÇéÒ³£¬ÏÔÊ¾Ô¤ËãÇø¼äºÍAIÕªÒª
+// æäº¤è¯„ä¼°ï¼šåˆ‡æ¢åˆ°è¯¦æƒ…é¡µï¼Œæ˜¾ç¤ºé¢„ç®—åŒºé—´å’ŒAIæ‘˜è¦
 async function submitEvaluation() {
   const name = document.getElementById('fName').value.trim();
-  if (!name) { alert('ÉÌÆ·Ãû³Æ¶ªÊ§'); return; }
-  if (purchaseChatHistory.length < 1) { alert('ÇëÏÈ½øĞĞAIÆÀ¹À'); return; }
+  if (!name) { alert('å•†å“åç§°ä¸¢å¤±'); return; }
+  if (purchaseChatHistory.length < 1) { alert('è¯·å…ˆè¿›è¡ŒAIè¯„ä¼°'); return; }
 
   const reason = (document.getElementById('fReason').value || '').trim();
 
@@ -1503,16 +1503,16 @@ async function submitEvaluation() {
   else if (budgetMax > 0) budgetText = budgetMax + '-';
 
   const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
-  if (btn) { btn.disabled = true; btn.textContent = 'Ìá½»ÖĞ...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'æäº¤ä¸­...'; }
 
   try {
     const data = {
       name,
-      platform: '´ı¶¨',
-      category: 'ÈÕÓÃ',
+      platform: 'å¾…å®š',
+      category: 'æ—¥ç”¨',
       price: 0,
       qty: 1,
-      status: '´ıÆÀ¹À',
+      status: 'å¾…è¯„ä¼°',
       date: new Date().toISOString().slice(0,10),
       note: '',
       evalSummary: aiSummary,
@@ -1520,12 +1520,12 @@ async function submitEvaluation() {
       budgetRange: budgetText
     };
     const r = await api('POST', data);
-    if (r && r.error) { alert('Ìá½»Ê§°Ü: ' + r.error); return; }
-    toast('ÆÀ¹ÀÒÑÌá½»');
+    if (r && r.error) { alert('æäº¤å¤±è´¥: ' + r.error); return; }
+    toast('è¯„ä¼°å·²æäº¤');
     closeModal();
     await loadAll();
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '? Ìá½»ÆÀ¹À'; }
+    if (btn) { btn.disabled = false; btn.textContent = '? æäº¤è¯„ä¼°'; }
   }
 }
 
@@ -1536,7 +1536,7 @@ function backToEval() {
   document.getElementById('chatArea').style.display = 'block';
 }
 
-// ===== ÆÀ¹ÀĞøÁÄµ¯´° =====
+// ===== è¯„ä¼°ç»­èŠå¼¹çª— =====
 let evalModalChatHistory = [];
 let evalModalItemId = '';
 let evalModalItem = null;
@@ -1546,11 +1546,11 @@ function openEvalModal(id) {
   if (!item) return;
   evalModalItemId = id;
   evalModalItem = item;
-  const ev = parseEvalNote(item['±¸×¢']);
+  const ev = parseEvalNote(item['å¤‡æ³¨']);
   evalModalChatHistory = ev && ev.chat ? ev.chat : [];
   if (evalModalChatHistory.length === 0) {
-    // fallback: Ö»ÓĞÕªÒª
-    const summary = ev ? ev.summary : (item['±¸×¢'] || 'ÔİÎŞÆÀ¹À¼ÇÂ¼');
+    // fallback: åªæœ‰æ‘˜è¦
+    const summary = ev ? ev.summary : (item['å¤‡æ³¨'] || 'æš‚æ— è¯„ä¼°è®°å½•');
     evalModalChatHistory = [{ role: 'assistant', content: summary }];
   }
   renderEvalModal();
@@ -1563,66 +1563,66 @@ function closeEvalModal() {
 
 async function cancelFromEval() {
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
-  if (!confirm(reason ? 'È·¶¨²»ÂòÁË£¿' + String.fromCharCode(10) + 'ÀíÓÉ: ' + reason : 'È·¶¨²»ÂòÁË£¿')) return;
+  if (!confirm(reason ? 'ç¡®å®šä¸ä¹°äº†ï¼Ÿ' + String.fromCharCode(10) + 'ç†ç”±: ' + reason : 'ç¡®å®šä¸ä¹°äº†ï¼Ÿ')) return;
   try {
-    const r = await api('PUT', { id: evalModalItemId, status: 'ÒÑÈ¡Ïû', cancelReason: reason || '', setDate: true });
-    if (r && r.error) { alert('²Ù×÷Ê§°Ü: ' + r.error); return; }
-    toast('ÒÑÈ¡Ïû²É¹º');
+    const r = await api('PUT', { id: evalModalItemId, status: 'å·²å–æ¶ˆ', cancelReason: reason || '', setDate: true });
+    if (r && r.error) { alert('æ“ä½œå¤±è´¥: ' + r.error); return; }
+    toast('å·²å–æ¶ˆé‡‡è´­');
     document.getElementById('evalOverlay').classList.remove('active');
     await loadAll();
-  } catch (e) { toast('²Ù×÷Ê§°Ü'); }
+  } catch (e) { toast('æ“ä½œå¤±è´¥'); }
 }
 
 function renderEvalModal() {
   const item = evalModalItem;
   if (!item) return;
-  const ev = parseEvalNote(item['±¸×¢']);
-  const budget = item['Ô¤ËãÇø¼ä'] || (ev ? ev.budget : 'Î´ÉèÖÃ');
-  const summary = item['ÆÀ¹ÀÕªÒª'] || (ev ? ev.summary : '');
-  const reason = item['¹ºÂòÀíÓÉ'] || (ev ? ev.reason : '');
-  const cancelText = item['È¡ÏûÔ­Òò'] || '';
+  const ev = parseEvalNote(item['å¤‡æ³¨']);
+  const budget = item['é¢„ç®—åŒºé—´'] || (ev ? ev.budget : 'æœªè®¾ç½®');
+  const summary = item['è¯„ä¼°æ‘˜è¦'] || (ev ? ev.summary : '');
+  const reason = item['è´­ä¹°ç†ç”±'] || (ev ? ev.reason : '');
+  const cancelText = item['å–æ¶ˆåŸå› '] || '';
   
   let html = `<div style="margin-bottom:12px">
-    <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(item['ÉÌÆ·Ãû³Æ']||'')}</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(item['å•†å“åç§°']||'')}</div>
   </div>`;
   
-  // ¹ºÂòÀíÓÉ
+  // è´­ä¹°ç†ç”±
   if (reason) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--orange)">
-      <div style="font-weight:600;margin-bottom:4px">?? ¹ºÂòÀíÓÉ</div>
+      <div style="font-weight:600;margin-bottom:4px">?? è´­ä¹°ç†ç”±</div>
       <div style="color:var(--muted)">${esc(reason)}</div>
     </div>`;
   }
   
-  // È¡ÏûÀíÓÉ£¨Èç¹ûÓĞ£©
+  // å–æ¶ˆç†ç”±ï¼ˆå¦‚æœæœ‰ï¼‰
   if (cancelText) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--red)">
-      <div style="font-weight:600;margin-bottom:4px">? È¡ÏûÀíÓÉ</div>
+      <div style="font-weight:600;margin-bottom:4px">? å–æ¶ˆç†ç”±</div>
       <div style="color:var(--muted)">${esc(cancelText)}</div>
     </div>`;
   }
   
-  // AI ÕªÒª
+  // AI æ‘˜è¦
   if (summary) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)">
-      <div style="font-weight:600;margin-bottom:4px">?? AI ÆÀ¹ÀÕªÒª</div>
+      <div style="font-weight:600;margin-bottom:4px">?? AI è¯„ä¼°æ‘˜è¦</div>
       <div style="color:var(--muted)">${stripMd(esc(summary))}</div>
     </div>`;
   }
   
-  // Ô¤ËãÇø¼ä£¨¿É±à¼­£©
+  // é¢„ç®—åŒºé—´ï¼ˆå¯ç¼–è¾‘ï¼‰
   const budgetParts = budget.includes('~') ? budget.split('~') : [budget, ''];
   const bMin = budgetParts[0].replace(/[^\d.]/g, '');
   const bMax = (budgetParts[1] || '').replace(/[^\d.]/g, '');
   html += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-    <span style="font-weight:600;font-size:13px">?? Ô¤ËãÇø¼ä£º</span>
-    <input id="evalBudgetMin" type="number" value="${bMin}" placeholder="×îµÍ" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+    <span style="font-weight:600;font-size:13px">?? é¢„ç®—åŒºé—´ï¼š</span>
+    <input id="evalBudgetMin" type="number" value="${bMin}" placeholder="æœ€ä½" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
     <span style="color:var(--muted)">~</span>
-    <input id="evalBudgetMax" type="number" value="${bMax}" placeholder="×î¸ß" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
-    <span style="font-size:12px;color:var(--muted)">Ôª</span>
+    <input id="evalBudgetMax" type="number" value="${bMax}" placeholder="æœ€é«˜" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+    <span style="font-size:12px;color:var(--muted)">å…ƒ</span>
   </div>`;
   
-  // ¶Ô»°¼ÇÂ¼
+  // å¯¹è¯è®°å½•
   html += `<div id="evalModalChat" style="max-height:300px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:10px;margin-bottom:10px;font-size:13px;line-height:1.6">`;
   evalModalChatHistory.forEach(m => {
     if (m.role === 'user') {
@@ -1633,33 +1633,33 @@ function renderEvalModal() {
   });
   html += '</div>';
   
-  // ÊäÈëÇø
+  // è¾“å…¥åŒº
   html += `<div style="display:flex;gap:6px;margin-bottom:10px">
-    <input id="evalModalInput" placeholder="¼ÌĞøÆÀ¹À£¬Èç£º»»¸öÆ½Ì¨ÄØ£¿" onkeydown="if(event.key==='Enter'&&!this.disabled)sendEvalChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
-    <button id="evalModalSendBtn" onclick="sendEvalChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">·¢ËÍ</button>
+    <input id="evalModalInput" placeholder="ç»§ç»­è¯„ä¼°ï¼Œå¦‚ï¼šæ¢ä¸ªå¹³å°å‘¢ï¼Ÿ" onkeydown="if(event.key==='Enter'&&!this.disabled)sendEvalChat()" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px">
+    <button id="evalModalSendBtn" onclick="sendEvalChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">å‘é€</button>
   </div>`;
   
-  // ¿ì½İÎÊÌâ
+  // å¿«æ·é—®é¢˜
   html += `<div style="display:flex;gap:6px;margin-bottom:12px">
-    <button onclick="sendEvalQuickChat('ÓĞÃ»ÓĞ¸ü±ãÒËµÄÆ½Ì¨£¿')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? ¸ü±ãÒËµÄ</button>
-    <button onclick="sendEvalQuickChat('»»¸öÆ·ÅÆÍÆ¼ö£¿')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? »»ÍÆ¼ö</button>
-    <button onclick="sendEvalQuickChat('µÈµÈÔÙÂò¿ÉÒÔÂğ£¿')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">? µÈµÈ</button>
+    <button onclick="sendEvalQuickChat('æœ‰æ²¡æœ‰æ›´ä¾¿å®œçš„å¹³å°ï¼Ÿ')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? æ›´ä¾¿å®œçš„</button>
+    <button onclick="sendEvalQuickChat('æ¢ä¸ªå“ç‰Œæ¨èï¼Ÿ')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? æ¢æ¨è</button>
+    <button onclick="sendEvalQuickChat('ç­‰ç­‰å†ä¹°å¯ä»¥å—ï¼Ÿ')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">? ç­‰ç­‰</button>
   </div>`;
   
   // reason input
   html += `<div style="margin-bottom:10px">
-    <div style="font-weight:600;font-size:13px;margin-bottom:4px">¹ºÂòÀíÓÉ£¨¿ÉÑ¡£©</div>
-    <textarea id="evalReasonInput" rows="2" placeholder="ÎªÊ²Ã´ÏëÂòÕâ¸ö£¿" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;resize:vertical;box-sizing:border-box">${esc(reason)}</textarea>
+    <div style="font-weight:600;font-size:13px;margin-bottom:4px">è´­ä¹°ç†ç”±ï¼ˆå¯é€‰ï¼‰</div>
+    <textarea id="evalReasonInput" rows="2" placeholder="ä¸ºä»€ä¹ˆæƒ³ä¹°è¿™ä¸ªï¼Ÿ" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;resize:vertical;box-sizing:border-box">${esc(reason)}</textarea>
   </div>`;
 
   // action buttons
   html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">¹Ø±Õ</button>
-    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">?? ¼ÌĞø²É¹º</button>
-    <button onclick="cancelFromEval()" style="flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">²»ÂòÁË</button>
+    <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">å…³é—­</button>
+    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">?? ç»§ç»­é‡‡è´­</button>
+    <button onclick="cancelFromEval()" style="flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">ä¸ä¹°äº†</button>
   </div>`;
   document.getElementById('evalContent').innerHTML = html;
-  // ¹ö¶¯µ½µ×²¿
+  // æ»šåŠ¨åˆ°åº•éƒ¨
   const chatEl = document.getElementById('evalModalChat');
   if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
 }
@@ -1680,7 +1680,7 @@ async function sendEvalChat() {
       body: JSON.stringify({
         action: 'purchase-chat',
         data: {
-          productName: evalModalItem['ÉÌÆ·Ãû³Æ'],
+          productName: evalModalItem['å•†å“åç§°'],
           messages: evalModalChatHistory,
           evalContext: evalModalChatHistory[0]?.content || ''
         }
@@ -1690,12 +1690,12 @@ async function sendEvalChat() {
     if (d.ok) {
       evalModalChatHistory.push({ role: 'assistant', content: d.data });
     } else {
-      evalModalChatHistory.push({ role: 'assistant', content: '? ' + (d.error || '»Ø¸´Ê§°Ü') });
+      evalModalChatHistory.push({ role: 'assistant', content: '? ' + (d.error || 'å›å¤å¤±è´¥') });
     }
   } catch(e) {
-    evalModalChatHistory.push({ role: 'assistant', content: '? ÍøÂç´íÎó' });
+    evalModalChatHistory.push({ role: 'assistant', content: '? ç½‘ç»œé”™è¯¯' });
   } finally {
-    btn.disabled = false; btn.textContent = '·¢ËÍ';
+    btn.disabled = false; btn.textContent = 'å‘é€';
     renderEvalModal();
   }
 }
@@ -1705,7 +1705,7 @@ function sendEvalQuickChat(text) {
   sendEvalChat();
 }
 
-// ±£´æÆÀ¹À½ø¶È£¨¸üĞÂ±¸×¢£¬±£Áô¶Ô»°¼ÇÂ¼£©
+// ä¿å­˜è¯„ä¼°è¿›åº¦ï¼ˆæ›´æ–°å¤‡æ³¨ï¼Œä¿ç•™å¯¹è¯è®°å½•ï¼‰
 async function saveEvalProgress() {
   if (!evalModalItemId) return;
   const bMin = document.getElementById('evalBudgetMin') ? document.getElementById('evalBudgetMin').value : '';
@@ -1715,13 +1715,13 @@ async function saveEvalProgress() {
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
   try {
     const r = await api('PUT', { id: evalModalItemId, evalSummary: aiSummary, buyReason: reason, budgetRange: budgetText });
-    if (r && r.error) { alert('±£´æÊ§°Ü: ' + r.error); return; }
-    toast('ÆÀ¹ÀÒÑ±£´æ');
+    if (r && r.error) { alert('ä¿å­˜å¤±è´¥: ' + r.error); return; }
+    toast('è¯„ä¼°å·²ä¿å­˜');
     await loadAll();
-  } catch (e) { toast('±£´æÊ§°Ü'); }
+  } catch (e) { toast('ä¿å­˜å¤±è´¥'); }
 }
 
-// ½øÈëĞèÇóÌîĞ´£º¹Ø±ÕÆÀ¹Àµ¯´°£¬´ò¿ªÏêÇé±à¼­£¨ÏÈ±£´æÔ¤ËãĞŞ¸Ä£©
+// è¿›å…¥éœ€æ±‚å¡«å†™ï¼šå…³é—­è¯„ä¼°å¼¹çª—ï¼Œæ‰“å¼€è¯¦æƒ…ç¼–è¾‘ï¼ˆå…ˆä¿å­˜é¢„ç®—ä¿®æ”¹ï¼‰
 async function submitEvalToDetail() {
   if (!evalModalItem) return;
   const bMin = document.getElementById('evalBudgetMin') ? document.getElementById('evalBudgetMin').value : '';
@@ -1730,32 +1730,32 @@ async function submitEvalToDetail() {
   const aiSummary = evalModalChatHistory.filter(m => m.role === 'assistant').map(m => m.content.replace(/\\n+/g, ' ').slice(0, 200)).join(' | ');
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
   try { await api('PUT', { id: evalModalItemId, evalSummary: aiSummary, buyReason: reason, budgetRange: budgetText }); } catch {}
-  switchToDetailPhase(evalModalItem['ÉÌÆ·Ãû³Æ'], '');
+  switchToDetailPhase(evalModalItem['å•†å“åç§°'], '');
   document.getElementById('evalOverlay').classList.remove('active');
 }
 
 
 async function submitPurchase() {
   const name = document.getElementById('fNameDisplay').value.trim();
-  if (!name) { alert('ÉÌÆ·Ãû³Æ¶ªÊ§'); return; }
+  if (!name) { alert('å•†å“åç§°ä¸¢å¤±'); return; }
   const data = {
     name,
     platform: document.getElementById('fPlatform').value,
     category: document.getElementById('fCategory').value,
     price: parseFloat(document.getElementById('fPrice').value) || 0,
     qty: parseInt(document.getElementById('fQty').value) || 1,
-    status: '´ıÆÀ¹À',
+    status: 'å¾…è¯„ä¼°',
     date: null,
     note: document.getElementById('fNote').value.trim() || null
   };
   const r = await api('POST', data);
-  if (r && r.error) { alert('Ìí¼ÓÊ§°Ü: ' + r.error); return; }
-  toast('ÆÀ¹ÀÒÑÌá½»£¬½øÈë´ıÆÀ¹À×´Ì¬');
+  if (r && r.error) { alert('æ·»åŠ å¤±è´¥: ' + r.error); return; }
+  toast('è¯„ä¼°å·²æäº¤ï¼Œè¿›å…¥å¾…è¯„ä¼°çŠ¶æ€');
   closeModal();
   await loadAll();
 }
-// --- AI ·ÖÎö ---
-// --- AI ×ÔÈ»ÓïÑÔ²éÑ¯ ---
+// --- AI åˆ†æ ---
+// --- AI è‡ªç„¶è¯­è¨€æŸ¥è¯¢ ---
 async function queryAI(){
   const input=document.getElementById('statsAIInput');
   const q=input.value.trim();
@@ -1765,66 +1765,66 @@ async function queryAI(){
   input.value='';
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['ÈÕÆÚ'])return false;try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}});
+    const monthExpenses=expenses.filter(e=>{if(!e['æ—¥æœŸ'])return false;try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}});
     const res=await aiRequest('query',{question:q,expenses:monthExpenses});
-    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? »Ø´ğ</span></div><div>${esc(res.data)}</div></div>`}
-    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">·ÖÎöÊ§°Ü</div>`}
+    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? å›ç­”</span></div><div>${esc(res.data)}</div></div>`}
+    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">åˆ†æå¤±è´¥</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
 
-// --- ²ÆÎñ·ÖÎö ---
+// --- è´¢åŠ¡åˆ†æ ---
 async function runAIAnalysis(){
   const resultEl=document.getElementById('statsAIResult');
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>·ÖÎöÖĞ...</span></div>`;
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>åˆ†æä¸­...</span></div>`;
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['ÈÕÆÚ'])return false;try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}});
-    const monthItems=items.filter(i=>getMonth(i['ÈÕÆÚ'])===thisMonth);
+    const monthExpenses=expenses.filter(e=>{if(!e['æ—¥æœŸ'])return false;try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}});
+    const monthItems=items.filter(i=>getMonth(i['æ—¥æœŸ'])===thisMonth);
     const res=await aiRequest('analyze',{expenses:monthExpenses,items:monthItems,month:thisMonth});
     if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
-    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">·ÖÎöÊ§°Ü</div>`}
+    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">åˆ†æå¤±è´¥</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
 
-// --- Ïû·Ñ»­Ïñ ---
+// --- æ¶ˆè´¹ç”»åƒ ---
 async function runAIProfile(){
   const resultEl=document.getElementById('statsAIResult');
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>Éî¶È·ÖÎöÖĞ...</span></div>`;
+  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>æ·±åº¦åˆ†æä¸­...</span></div>`;
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['ÈÕÆÚ'])return false;try{return getMonth(e['ÈÕÆÚ'])===thisMonth}catch{return false}});
+    const monthExpenses=expenses.filter(e=>{if(!e['æ—¥æœŸ'])return false;try{return getMonth(e['æ—¥æœŸ'])===thisMonth}catch{return false}});
     const res=await aiRequest('profile',{expenses:monthExpenses});
     if(res.ok&&res.data){
       const d=res.data;
       let html='';
-      // ×Ü½á
+      // æ€»ç»“
       if(d.summary) html+=`<div style="margin-bottom:12px;padding:10px;background:var(--pri-light);border-radius:10px;font-size:13px;line-height:1.7">${esc(d.summary)}</div>`;
-      // »­Ïñ
+      // ç”»åƒ
       if(d.profile){
         const p=d.profile;
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">`;
-        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? ÒûÊ³·ç¸ñ</div>${esc(p.diningStyle)}</div>`;
-        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? Éú»î·½Ê½</div>${esc(p.lifestyle)}</div>`;
-        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? Ïû·ÑÄ£Ê½</div>${esc(p.spendingPattern)}</div>`;
-        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? Ö÷Òª¿ªÏú</div>${p.topItems.map(i=>esc(i)).join('¡¢')}</div>`;
+        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? é¥®é£Ÿé£æ ¼</div>${esc(p.diningStyle)}</div>`;
+        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? ç”Ÿæ´»æ–¹å¼</div>${esc(p.lifestyle)}</div>`;
+        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? æ¶ˆè´¹æ¨¡å¼</div>${esc(p.spendingPattern)}</div>`;
+        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? ä¸»è¦å¼€é”€</div>${p.topItems.map(i=>esc(i)).join('ã€')}</div>`;
         html+=`</div>`;
       }
-      // Ï°¹ß
+      // ä¹ æƒ¯
       if(d.habits&&d.habits.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">?? Ïû·ÑÏ°¹ß</div>`;
+        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">?? æ¶ˆè´¹ä¹ æƒ¯</div>`;
         d.habits.forEach(h=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${h.emoji||'??'} ${esc(h.title)}</b><br>${esc(h.detail)}</div>`});
       }
-      // ¶´²ì
+      // æ´å¯Ÿ
       if(d.insights&&d.insights.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">?? Éî¶È¶´²ì</div>`;
+        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">?? æ·±åº¦æ´å¯Ÿ</div>`;
         d.insights.forEach(i=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${i.emoji||'??'} ${esc(i.title)}</b><br>${esc(i.detail)}</div>`});
       }
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? Ïû·Ñ»­Ïñ</span></div>${html}</div>`;
-    }else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">Éú³ÉÊ§°Ü</div>`}
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? æ¶ˆè´¹ç”»åƒ</span></div>${html}</div>`;
+    }else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">ç”Ÿæˆå¤±è´¥</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
 
-// ===== Ô¤Ëã =====
+// ===== é¢„ç®— =====
 let catDebounce=null;let lastAICat=null;
 function onNoteInput(){
   clearTimeout(catDebounce);
@@ -1842,7 +1842,7 @@ async function suggestCategory(note){
       const d=res.data;
       lastAICat=d;
       const tags=d.tags&&d.tags.length?d.tags.map(t=>`<span style="background:var(--card);padding:1px 6px;border-radius:4px;margin-left:4px;font-size:10px">${t}</span>`).join(''):'';
-      textEl.innerHTML=`?? ½¨Òé: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% ¡¤ µã»÷²ÉÄÉ</span>`;
+      textEl.innerHTML=`?? å»ºè®®: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% Â· ç‚¹å‡»é‡‡çº³</span>`;
       suggestEl.style.display='block';
     }
   }catch{suggestEl.style.display='none';lastAICat=null}
@@ -1850,25 +1850,25 @@ async function suggestCategory(note){
 function applyAICat(){
   if(!lastAICat)return;
   document.getElementById('eCategory').value=lastAICat.category;
-  toast(`ÒÑÇĞ»»Îª¡¸${lastAICat.category}¡¹`);
+  toast(`å·²åˆ‡æ¢ä¸ºã€Œ${lastAICat.category}ã€`);
   document.getElementById('aiCatSuggest').style.display='none';
   lastAICat=null;
 }
 
 
 
-// ===== Ô¤Ëã =====
+// ===== é¢„ç®— =====
 function closeBudgetModal(){document.getElementById('budgetOverlay').classList.remove('active')}
-// ===== µ¼³ö¸ñÊ½Ñ¡Ôñµ¯´° =====
-function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>?? µ¼³ö${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">Ñ¡Ôñµ¼³ö¸ñÊ½</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">?? CSV£¨¶ººÅ·Ö¸ô£©</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">?? TSV£¨Tab·Ö¸ô£©</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">È¡Ïû</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
+// ===== å¯¼å‡ºæ ¼å¼é€‰æ‹©å¼¹çª— =====
+function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>?? å¯¼å‡º${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">é€‰æ‹©å¯¼å‡ºæ ¼å¼</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">?? CSVï¼ˆé€—å·åˆ†éš”ï¼‰</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">?? TSVï¼ˆTabåˆ†éš”ï¼‰</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">å–æ¶ˆ</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
 function saveBudget(){
   const month=document.getElementById('budgetMonth').value;
   const val=parseFloat(document.getElementById('budgetInput').value)||0;
   const weekVal=parseFloat(document.getElementById('weekBudgetInput').value)||0;
-  if(!month)return alert('ÇëÑ¡ÔñÔÂ·İ');
+  if(!month)return alert('è¯·é€‰æ‹©æœˆä»½');
   const b=getBudgets();
   if(weekVal>0){
-    // °´ÖÜÔ¤Ëã
+    // æŒ‰å‘¨é¢„ç®—
     const weeks=getMonthWeeks(month);
     const weekObj={};
     weeks.forEach((w,i)=>{weekObj[i]=weekVal});
@@ -1877,7 +1877,7 @@ function saveBudget(){
     b[month]=val;
   }
   setBudgets(b);
-  toast(`ÒÑÉèÖÃ ${month} Ô¤Ëã ${weekVal>0?'Ã¿ÖÜ£¤'+weekVal:'Ã¿ÔÂ£¤'+val}`);
+  toast(`å·²è®¾ç½® ${month} é¢„ç®— ${weekVal>0?'æ¯å‘¨ï¿¥'+weekVal:'æ¯æœˆï¿¥'+val}`);
   closeBudgetModal();
   render();
 }
@@ -1891,90 +1891,90 @@ function openBudgetModal(){
   document.getElementById('budgetOverlay').classList.add('active');
 }
 
-// ===== FAB µã»÷ =====
+// ===== FAB ç‚¹å‡» =====
 document.getElementById('fabBtn').addEventListener('click',()=>{
   if(currentTab==='purchase') openModal();
   else if(currentTab==='expense') openExpenseModal();
 });
 
-// ===== µ¼³ö =====
+// ===== å¯¼å‡º =====
 function exportData(){exportPurchases()}
-function exportPurchases(){showExportDialog('²É¹º',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['ÉÌÆ·Ãû³Æ'+sep+'Æ½Ì¨'+sep+'·ÖÀà'+sep+'µ¥¼Û'+sep+'ÊıÁ¿'+sep+'×Ü¼Û'+sep+'×´Ì¬'+sep+'ÈÕÆÚ'+sep+'±¸×¢'];items.forEach(i=>{const qty=i['ÊıÁ¿']||1;const price=i['µ¥¼Û']||0;let ds='';if(i['ÈÕÆÚ']){try{ds=new Date(i['ÈÕÆÚ']).toISOString().slice(0,10)}catch{}}const note=(i['±¸×¢']||'').includes(sep)?'"'+(i['±¸×¢']||'').replace(/"/g,'""')+'"':(i['±¸×¢']||'');lines.push((i['ÉÌÆ·Ãû³Æ']||'')+sep+(i['Æ½Ì¨']||'')+sep+(i['·ÖÀà']||'')+sep+'£¤'+price+sep+qty+sep+'£¤'+(price*qty).toFixed(2)+sep+(i['×´Ì¬']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='²É¹º_'+getThisMonth()+ext;a.click()})}
+function exportPurchases(){showExportDialog('é‡‡è´­',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['å•†å“åç§°'+sep+'å¹³å°'+sep+'åˆ†ç±»'+sep+'å•ä»·'+sep+'æ•°é‡'+sep+'æ€»ä»·'+sep+'çŠ¶æ€'+sep+'æ—¥æœŸ'+sep+'å¤‡æ³¨'];items.forEach(i=>{const qty=i['æ•°é‡']||1;const price=i['å•ä»·']||0;let ds='';if(i['æ—¥æœŸ']){try{ds=new Date(i['æ—¥æœŸ']).toISOString().slice(0,10)}catch{}}const note=(i['å¤‡æ³¨']||'').includes(sep)?'"'+(i['å¤‡æ³¨']||'').replace(/"/g,'""')+'"':(i['å¤‡æ³¨']||'');lines.push((i['å•†å“åç§°']||'')+sep+(i['å¹³å°']||'')+sep+(i['åˆ†ç±»']||'')+sep+'ï¿¥'+price+sep+qty+sep+'ï¿¥'+(price*qty).toFixed(2)+sep+(i['çŠ¶æ€']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='é‡‡è´­_'+getThisMonth()+ext;a.click()})}
 
-// ===== ÏêÇéµ¯´° =====
-const STEPPER_STEPS=['´ıÆÀ¹À','´ıÉóÅú','ÒÑÉóÅú','ÒÑÏÂµ¥'];
-const STEPPER_ICONS={'´ıÆÀ¹À':'??','´ıÉóÅú':'??','ÒÑÉóÅú':'?','ÒÑÏÂµ¥':'??','ÒÑµ½':'??','ÒÑÍË':'??','ÒÑ¹éµµ':'???'};
-const STEP_TIME_FIELDS={'´ıÆÀ¹À':'´´½¨Ê±¼ä','´ıÉóÅú':'´´½¨Ê±¼ä','ÒÑÉóÅú':'ÉóÅúÊ±¼ä','ÒÑÏÂµ¥':'ÏÂµ¥Ê±¼ä','ÒÑµ½':'µ½»õÊ±¼ä','ÒÑÍË':'µ½»õÊ±¼ä','ÒÑ¹éµµ':'¹éµµÊ±¼ä'};
+// ===== è¯¦æƒ…å¼¹çª— =====
+const STEPPER_STEPS=['å¾…è¯„ä¼°','å¾…å®¡æ‰¹','å·²å®¡æ‰¹','å·²ä¸‹å•'];
+const STEPPER_ICONS={'å¾…è¯„ä¼°':'??','å¾…å®¡æ‰¹':'??','å·²å®¡æ‰¹':'?','å·²ä¸‹å•':'??','å·²åˆ°':'??','å·²é€€':'??','å·²å½’æ¡£':'???'};
+const STEP_TIME_FIELDS={'å¾…è¯„ä¼°':'åˆ›å»ºæ—¶é—´','å¾…å®¡æ‰¹':'åˆ›å»ºæ—¶é—´','å·²å®¡æ‰¹':'å®¡æ‰¹æ—¶é—´','å·²ä¸‹å•':'ä¸‹å•æ—¶é—´','å·²åˆ°':'åˆ°è´§æ—¶é—´','å·²é€€':'åˆ°è´§æ—¶é—´','å·²å½’æ¡£':'å½’æ¡£æ—¶é—´'};
 const STEP_BTN_CONFIG={
-  '´ıÆÀ¹À':{color:'var(--green)',label:'?? Ìá½»ÉóÅú',next:'´ıÉóÅú'},
-  '´ıÉóÅú':{color:'var(--green)',label:'? ÉóÅúÍ¨¹ı',next:'ÒÑÉóÅú'},
-  'ÒÑÉóÅú':{color:'var(--blue)',label:'?? È·ÈÏÏÂµ¥',next:'ÒÑÏÂµ¥'}
+  'å¾…è¯„ä¼°':{color:'var(--green)',label:'?? æäº¤å®¡æ‰¹',next:'å¾…å®¡æ‰¹'},
+  'å¾…å®¡æ‰¹':{color:'var(--green)',label:'? å®¡æ‰¹é€šè¿‡',next:'å·²å®¡æ‰¹'},
+  'å·²å®¡æ‰¹':{color:'var(--blue)',label:'?? ç¡®è®¤ä¸‹å•',next:'å·²ä¸‹å•'}
 };
-const CANCELABLE_STATUSES = ['´ıÆÀ¹À','´ıÉóÅú','ÒÑÉóÅú'];
+const CANCELABLE_STATUSES = ['å¾…è¯„ä¼°','å¾…å®¡æ‰¹','å·²å®¡æ‰¹'];
 function openDetailModal(id){
   const item=items.find(x=>x.id===id);
   if(!item)return;
-  const qty=Number(item['ÊıÁ¿'])||1;
-  const price=Number(item['µ¥¼Û'])||0;
+  const qty=Number(item['æ•°é‡'])||1;
+  const price=Number(item['å•ä»·'])||0;
   const total=price*qty;
-  const status=item['×´Ì¬']||'´ıÉóÅú';
+  const status=item['çŠ¶æ€']||'å¾…å®¡æ‰¹';
   const statusIdx=STEPPER_STEPS.indexOf(status);
   let ds='';
-  if(item['ÈÕÆÚ']){try{ds=new Date(item['ÈÕÆÚ']).toISOString().slice(0,10)}catch{}}
+  if(item['æ—¥æœŸ']){try{ds=new Date(item['æ—¥æœŸ']).toISOString().slice(0,10)}catch{}}
 
   let html=`<div class="detail-header">
-    <div class="detail-title">${esc(item['ÉÌÆ·Ãû³Æ']||'')}</div>
-    <div class="detail-price">£¤${price.toFixed(2)}${qty>1?` ¡Á ${qty} = £¤${total.toFixed(2)}`:''}</div>
+    <div class="detail-title">${esc(item['å•†å“åç§°']||'')}</div>
+    <div class="detail-price">ï¿¥${price.toFixed(2)}${qty>1?` Ã— ${qty} = ï¿¥${total.toFixed(2)}`:''}</div>
     <div class="detail-meta">
-      <span>?? ${esc(item['Æ½Ì¨']||'')}</span>
+      <span>?? ${esc(item['å¹³å°']||'')}</span>
       <span class="badge badge-${status}">${status}</span>
-      <span class="cat-badge">${item['·ÖÀà']||'ÆäËû'}</span>
+      <span class="cat-badge">${item['åˆ†ç±»']||'å…¶ä»–'}</span>
       ${ds?`<span>?? ${ds}</span>`:''}
     </div>
-    ${item['±¸×¢']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">?? ${esc(item['±¸×¢'])}</div>`:''}
-  ${item['ÆÀ¹ÀÕªÒª']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">?? AIÆÀ¹ÀÕªÒª</div><div style="color:var(--muted)">${stripMd(esc(item['ÆÀ¹ÀÕªÒª']))}</div></div>`:''}
-  ${item['¹ºÂòÀíÓÉ']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">?? ¹ºÂòÀíÓÉ</div><div style="color:var(--muted)">${esc(item['¹ºÂòÀíÓÉ'])}</div></div>`:''}
-  ${item['Ô¤ËãÇø¼ä']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">?? Ô¤Ëã: £¤${esc(item['Ô¤ËãÇø¼ä'])}</div>`:''}
-  ${item['È¡ÏûÔ­Òò']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">? È¡ÏûÀíÓÉ</div><div style="color:var(--muted)">${esc(item['È¡ÏûÔ­Òò'])}</div></div>`:''}
+    ${item['å¤‡æ³¨']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">?? ${esc(item['å¤‡æ³¨'])}</div>`:''}
+  ${item['è¯„ä¼°æ‘˜è¦']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">?? AIè¯„ä¼°æ‘˜è¦</div><div style="color:var(--muted)">${stripMd(esc(item['è¯„ä¼°æ‘˜è¦']))}</div></div>`:''}
+  ${item['è´­ä¹°ç†ç”±']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">?? è´­ä¹°ç†ç”±</div><div style="color:var(--muted)">${esc(item['è´­ä¹°ç†ç”±'])}</div></div>`:''}
+  ${item['é¢„ç®—åŒºé—´']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">?? é¢„ç®—: ï¿¥${esc(item['é¢„ç®—åŒºé—´'])}</div>`:''}
+  ${item['å–æ¶ˆåŸå› ']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">? å–æ¶ˆç†ç”±</div><div style="color:var(--muted)">${esc(item['å–æ¶ˆåŸå› '])}</div></div>`:''}
   </div>`;
 
-  // Stepper: always show full flow ´ıÉóÅú¡úÒÑÉóÅú¡úÒÑÏÂµ¥¡úÒÑµ½/ÒÑÍË¡úÒÑ¹éµµ
-  const branchLabel = status==='ÒÑÍË' ? 'ÒÑÍË' : 'ÒÑµ½';
-  const mainSteps = ['´ıÉóÅú','ÒÑÉóÅú','ÒÑÏÂµ¥'];
-  const branchDone = status==='ÒÑµ½' || status==='ÒÑÍË' || status==='ÒÑ¹éµµ';
-  const archiveDone = status==='ÒÑ¹éµµ';
+  // Stepper: always show full flow å¾…å®¡æ‰¹â†’å·²å®¡æ‰¹â†’å·²ä¸‹å•â†’å·²åˆ°/å·²é€€â†’å·²å½’æ¡£
+  const branchLabel = status==='å·²é€€' ? 'å·²é€€' : 'å·²åˆ°';
+  const mainSteps = ['å¾…å®¡æ‰¹','å·²å®¡æ‰¹','å·²ä¸‹å•'];
+  const branchDone = status==='å·²åˆ°' || status==='å·²é€€' || status==='å·²å½’æ¡£';
+  const archiveDone = status==='å·²å½’æ¡£';
 
   // Build full step list
   const allSteps = [];
   mainSteps.forEach(s => {
-    const isDone = status==='ÒÑµ½'||status==='ÒÑÍË'||status==='ÒÑ¹éµµ' || mainSteps.indexOf(s) < mainSteps.indexOf(status);
+    const isDone = status==='å·²åˆ°'||status==='å·²é€€'||status==='å·²å½’æ¡£' || mainSteps.indexOf(s) < mainSteps.indexOf(status);
     const isCur = s===status;
     allSteps.push({ key:s, done:isDone, active:isCur });
   });
   // Branch step
   allSteps.push({ key:branchLabel, done:branchDone, active:status===branchLabel });
   // Archive step
-  allSteps.push({ key:'ÒÑ¹éµµ', done:archiveDone, active:status==='ÒÑ¹éµµ' });
+  allSteps.push({ key:'å·²å½’æ¡£', done:archiveDone, active:status==='å·²å½’æ¡£' });
 
-  html+=`<div class="detail-section-title">?? ÉóÅúÁ÷³Ì</div><div class="stepper">`;
+  html+=`<div class="detail-section-title">?? å®¡æ‰¹æµç¨‹</div><div class="stepper">`;
   allSteps.forEach((s, idx) => {
     const isLast = idx === allSteps.length - 1;
     let stepClass = 'step-pending';
     let dotContent = '?';
-    let timeText = '¡ª';
+    let timeText = 'â€”';
     if (s.done) {
       stepClass = 'step-done';
       dotContent = '?';
       const tf = STEP_TIME_FIELDS[s.key];
       if (tf && item[tf]) timeText = item[tf];
-      else if (s.key==='´ıÉóÅú' && item['´´½¨Ê±¼ä']) timeText = item['´´½¨Ê±¼ä'];
+      else if (s.key==='å¾…å®¡æ‰¹' && item['åˆ›å»ºæ—¶é—´']) timeText = item['åˆ›å»ºæ—¶é—´'];
     } else if (s.active) {
       stepClass = 'step-active';
       dotContent = STEPPER_ICONS[s.key] || '??';
       const tf = STEP_TIME_FIELDS[s.key];
       if (tf && item[tf]) timeText = item[tf];
-      else if (s.key==='´ıÉóÅú' && item['´´½¨Ê±¼ä']) timeText = item['´´½¨Ê±¼ä'];
-      else timeText = '½øĞĞÖĞ...';
+      else if (s.key==='å¾…å®¡æ‰¹' && item['åˆ›å»ºæ—¶é—´']) timeText = item['åˆ›å»ºæ—¶é—´'];
+      else timeText = 'è¿›è¡Œä¸­...';
     }
     html+=`<div class="step-item ${stepClass}">
       <div class="step-dot-wrap">
@@ -1989,17 +1989,17 @@ function openDetailModal(id){
   });
   html+='</div>';
 
-  // ²Ù×÷°´Å¥
+  // æ“ä½œæŒ‰é’®
   if(CANCELABLE_STATUSES.includes(status)){
     const btnCfg=STEP_BTN_CONFIG[status];
-    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">? È¡Ïû</button></div>`;
-  }else if(status==='ÒÑÏÂµ¥'){
+    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">? å–æ¶ˆ</button></div>`;
+  }else if(status==='å·²ä¸‹å•'){
     html+=`<div style="margin-top:16px;display:flex;gap:10px">
-      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','ÒÑµ½')">?? È·ÈÏÊÕ»õ</button>
-      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','ÒÑÍË')">?? ÍË»õ¹éµµ</button>
+      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','å·²åˆ°')">?? ç¡®è®¤æ”¶è´§</button>
+      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','å·²é€€')">?? é€€è´§å½’æ¡£</button>
     </div>`;
-  }else if(status==='ÒÑµ½'||status==='ÒÑÍË'){
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','ÒÑ¹éµµ')">??? È·ÈÏ¹éµµ</button></div>`;
+  }else if(status==='å·²åˆ°'||status==='å·²é€€'){
+    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','å·²å½’æ¡£')">??? ç¡®è®¤å½’æ¡£</button></div>`;
   }
 
   document.getElementById('detailContent').innerHTML=html;
@@ -2007,31 +2007,31 @@ function openDetailModal(id){
 }
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
 function doDetailModalAction(id,nextStatus){
-  if(!confirm('È·ÈÏÖ´ĞĞ´Ë²Ù×÷£¿'))return;
+  if(!confirm('ç¡®è®¤æ‰§è¡Œæ­¤æ“ä½œï¼Ÿ'))return;
   // Optimistic update: update local state immediately
   const item=items.find(x=>x.id===id);
   if(item){
-    item['×´Ì¬']=nextStatus;
+    item['çŠ¶æ€']=nextStatus;
     const now=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,16).replace('T',' ');
-    if(nextStatus==='ÒÑÉóÅú')item['ÉóÅúÊ±¼ä']=now;
-    else if(nextStatus==='ÒÑÏÂµ¥')item['ÏÂµ¥Ê±¼ä']=now;
-    else if(nextStatus==='ÒÑµ½'||nextStatus==='ÒÑÍË')item['µ½»õÊ±¼ä']=now;
-    else if(nextStatus==='ÒÑ¹éµµ')item['¹éµµÊ±¼ä']=now;
-    toast(`ÒÑ¸üĞÂÎª"${nextStatus}"`);
+    if(nextStatus==='å·²å®¡æ‰¹')item['å®¡æ‰¹æ—¶é—´']=now;
+    else if(nextStatus==='å·²ä¸‹å•')item['ä¸‹å•æ—¶é—´']=now;
+    else if(nextStatus==='å·²åˆ°'||nextStatus==='å·²é€€')item['åˆ°è´§æ—¶é—´']=now;
+    else if(nextStatus==='å·²å½’æ¡£')item['å½’æ¡£æ—¶é—´']=now;
+    toast(`å·²æ›´æ–°ä¸º"${nextStatus}"`);
     closeDetailModal();
     render();
   }
   // Fire PATCH in background, don't block UI
   api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
-    if(r&&r.error){toast('Í¬²½Ê§°Ü£¬ÇëË¢ĞÂ');loadAll();}
-  }).catch(()=>{toast('ÍøÂç´íÎó£¬ÇëË¢ĞÂ');loadAll();});
+    if(r&&r.error){toast('åŒæ­¥å¤±è´¥ï¼Œè¯·åˆ·æ–°');loadAll();}
+  }).catch(()=>{toast('ç½‘ç»œé”™è¯¯ï¼Œè¯·åˆ·æ–°');loadAll();});
 }
 
 setupPullToRefresh();
 setupSwipe();
 
 
-// ===== ²Ù×÷ÈÕÖ¾ =====
+// ===== æ“ä½œæ—¥å¿— =====
 let logDateState = new Date().toISOString().slice(0, 10);
 
 function changeLogDate(delta) {
@@ -2048,27 +2048,27 @@ async function loadLogs(date) {
   if (date) logDateState = date;
   const el = document.getElementById('logList');
   const dateEl = document.getElementById('logDate');
-  el.textContent = '¼ÓÔØÖĞ...';
+  el.textContent = 'åŠ è½½ä¸­...';
   dateEl.textContent = logDateState;
   try {
     const r = await fetch('/api/auth?action=list-logs&date=' + logDateState, {
       headers: { 'Authorization': 'Bearer ' + getPin() }
     });
     const d = await r.json();
-    if (!d.ok) { el.textContent = d.error || '¼ÓÔØÊ§°Ü'; return; }
-    if (!d.logs.length) { el.textContent = 'ÔİÎŞÈÕÖ¾'; return; }
+    if (!d.ok) { el.textContent = d.error || 'åŠ è½½å¤±è´¥'; return; }
+    if (!d.logs.length) { el.textContent = 'æš‚æ— æ—¥å¿—'; return; }
 
     const actionLabels = {
-      'login': '?? µÇÂ¼',
-      'register': '?? ×¢²á',
-      'logout': '?? ÍË³öµÇÂ¼',
-      'delete_user': '?? É¾³ıÓÃ»§',
-      'create_invite': '?? ´´½¨ÑûÇëÂë',
-      'status_change': '?? ×´Ì¬±ä¸ü',
-      'export': '?? µ¼³ö',
+      'login': '?? ç™»å½•',
+      'register': '?? æ³¨å†Œ',
+      'logout': '?? é€€å‡ºç™»å½•',
+      'delete_user': '?? åˆ é™¤ç”¨æˆ·',
+      'create_invite': '?? åˆ›å»ºé‚€è¯·ç ',
+      'status_change': '?? çŠ¶æ€å˜æ›´',
+      'export': '?? å¯¼å‡º',
     };
 
-    // Èç¹ûÊÇ¹ÜÀíÔ±£¬ÏÔÊ¾ËùÓĞÓÃ»§µÄÈÕÖ¾£»·ñÔòÖ»ÏÔÊ¾×Ô¼ºµÄ
+    // å¦‚æœæ˜¯ç®¡ç†å‘˜ï¼Œæ˜¾ç¤ºæ‰€æœ‰ç”¨æˆ·çš„æ—¥å¿—ï¼›å¦åˆ™åªæ˜¾ç¤ºè‡ªå·±çš„
     const isAdmin = d.isAdmin;
     const showUsername = isAdmin;
 
@@ -2090,7 +2090,7 @@ async function loadLogs(date) {
     }).join('');
 
     dateEl.textContent = d.date;
-  } catch(e) { el.textContent = '¼ÓÔØÊ§°Ü'; }
+  } catch(e) { el.textContent = 'åŠ è½½å¤±è´¥'; }
 }
 
 function openLogsPanel() {
@@ -2104,11 +2104,11 @@ function closeLogsPanel() {
 
 
 
-// ===== Event Delegation (Ìæ´úÄÚÁª onclick£¬·ÀÖ¹ XSS) =====
+// ===== Event Delegation (æ›¿ä»£å†…è” onclickï¼Œé˜²æ­¢ XSS) =====
 document.addEventListener('click', function(e) {
   // Category filter chips
   const catChip = e.target.closest('[data-cat]');
-  if (catChip) { currentStatusFilter = currentStatusFilter || 'È«²¿'; currentCatFilter = catChip.dataset.cat; render(); return; }
+  if (catChip) { currentStatusFilter = currentStatusFilter || 'å…¨éƒ¨'; currentCatFilter = catChip.dataset.cat; render(); return; }
 
   // Expense edit
   const expEdit = e.target.closest('[data-expense-edit]');
@@ -2131,12 +2131,12 @@ document.addEventListener('click', function(e) {
   if (actionBtn) { doDetailModalAction(actionBtn.dataset.actionId, actionBtn.dataset.actionNext); return; }
 });
 
-// ===== ÀëÏß¼ì²âºá·ù =====
+// ===== ç¦»çº¿æ£€æµ‹æ¨ªå¹… =====
 (function(){
   const banner=document.createElement('div');
   banner.id='offlineBanner';
   banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:10px 16px;background:#f59e0b;color:#000;text-align:center;font-size:13px;font-weight:700;display:none;transition:transform .3s ease;transform:translateY(-100%)';
-  banner.textContent='?? ÀëÏßÄ£Ê½ - Êı¾İ½«ÔÚÁªÍøºóÍ¬²½';
+  banner.textContent='?? ç¦»çº¿æ¨¡å¼ - æ•°æ®å°†åœ¨è”ç½‘ååŒæ­¥';
   document.body.appendChild(banner);
   function updateOnlineStatus(){
     if(!navigator.onLine){
@@ -2145,7 +2145,7 @@ document.addEventListener('click', function(e) {
     }else{
       banner.style.transform='translateY(-100%)';
       setTimeout(()=>banner.style.display='none',300);
-      // ÁªÍøºó×Ô¶¯Ë¢ĞÂÊı¾İ
+      // è”ç½‘åè‡ªåŠ¨åˆ·æ–°æ•°æ®
       if(typeof loadAll==='function')loadAll();
     }
   }
@@ -2154,7 +2154,7 @@ document.addEventListener('click', function(e) {
   if(!navigator.onLine)updateOnlineStatus();
 })();
 
-// ===== ÉèÖÃÃæ°å =====
+// ===== è®¾ç½®é¢æ¿ =====
 function openSettings(){
   document.getElementById('settingsOverlay').classList.add('active');
 }
@@ -2180,4 +2180,4 @@ function settingsAction(action){
   }
 }
 
-// ===== ÉèÖÃÃæ°å =====
+// ===== è®¾ç½®é¢æ¿ =====
