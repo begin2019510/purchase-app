@@ -1,4 +1,4 @@
-
+﻿
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
@@ -1024,8 +1024,8 @@ function renderStats() {
     try { return getMonth(e['日期']) === thisMonth } catch { return false }
   });
   const totalOut = monthExpenses.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
-  const totalIn = monthExpenses.filter(e => e['类型'] === '收入').reduce((s, e) => s + Number(e['金额'] || 0), 0);
-  const balance = totalIn - totalOut;
+  // Income removed - only track expenses
+  const balance = budget - totalOut;
 
   // 分类/平台数据
   const pCatMap = {};
@@ -1115,7 +1115,7 @@ function renderStats() {
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}结余</div>
     <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">¥${balance.toFixed(0)}</div>
-    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ¥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">收入 ¥${totalIn.toFixed(0)}</span></div>
+    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ¥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">预算 ¥${budget.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势
