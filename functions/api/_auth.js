@@ -1,3 +1,4 @@
+﻿// Deploy: 2026-06-01 15:38:48
 // 共享认证模块 - 被所有 API 函数引用
 export const CORS_ORIGINS = ['https://121212121.top', 'http://121212121.top'];
 
