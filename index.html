@@ -424,9 +424,11 @@
 <!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
-    <h2>💰 月度预算</h2>
-    <div class="form-group"><label>月预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="输入每月预算"></div>
-    <div class="form-row"><div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div></div>
+    <h2>🎯 预算设置</h2>
+    <div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div>
+    <div class="form-group"><label>月总预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="每月总预算"></div>
+    <div id="weekBudgetSection"></div>
+    <p style="font-size:11px;color:var(--muted);margin:8px 0">各周预算之和不能超过月总预算</p>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
       <button class="btn btn-primary" onclick="saveBudget()">保存</button>
