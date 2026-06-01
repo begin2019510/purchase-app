@@ -33,6 +33,7 @@
       <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="操作日志">📋</button>
       <button class="icon-btn desktop-only" onclick="window.open('/help','_blank')" title="帮助">❓</button>
       <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
+      <button class="icon-btn desktop-only" onclick="openBudgetModal()" title="预算设置">🎯</button>
       <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">⚙️</button>
     </div>
   </div>
@@ -434,6 +435,8 @@
     <div class="form-group"><label>月总预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="每月总预算"></div>
     <div id="weekBudgetSection"></div>
     <p style="font-size:11px;color:var(--muted);margin:8px 0">各周预算之和不能超过月总预算</p>
+    <div id="budgetAiResult" style="display:none;margin:8px 0;padding:12px;background:var(--bg);border-radius:12px;font-size:13px;line-height:1.6"></div>
+    <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">🤖 AI 智能分析预算</button>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
       <button class="btn btn-primary" onclick="saveBudget()">保存</button>

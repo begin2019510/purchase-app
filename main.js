@@ -294,6 +294,28 @@ function renderWeekBudgetInputs(m,total){
   html+='</div>';
   document.getElementById('weekBudgetSection').innerHTML=html;
 }
+async function analyzeBudget(){
+  const m=document.getElementById('budgetMonth').value||getThisMonth();
+  const total=parseFloat(document.getElementById('budgetInput').value)||0;
+  const weeks=getMonthWeeks(m);
+  const wo={};
+  weeks.forEach((w,i)=>{const el=document.getElementById('weekBudget_'+i);wo[i]=el?parseFloat(el.value)||0:0});
+  const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===m}catch{return false}});
+  const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const catMap={};
+  monthExpenses.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
+  const catStr=Object.entries(catMap).map(([k,v])=>k+':¥'+v.toFixed(0)).join(', ');
+  const weekStr=weeks.map((w,i)=>'第'+w.num+'周:¥'+(wo[i]||0)).join(', ');
+  const prompt='你是一个财务预算顾问。请帮我分析预算并给出建议。\n月份:'+m+'\n月总预算:¥'+total+'\n每周预算:'+weekStr+'\n本月已支出:¥'+totalOut.toFixed(0)+'\n支出分类:'+catStr+'\n请分析预算分配是否合理，给出优化建议。';
+  const el=document.getElementById('budgetAiResult');
+  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">🤖 AI 分析中...</div>';
+  try{
+    const r=await api('POST',{prompt,type:'chat'});
+    if(r&&r.reply){el.innerHTML='<div style="white-space:pre-wrap">'+esc(r.reply)+'</div>'}
+    else{el.innerHTML='<div style="color:var(--red)">分析失败</div>'}
+  }catch(e){el.innerHTML='<div style="color:var(--red)">请求失败</div>'}
+}
+
 
 
 
