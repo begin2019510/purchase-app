@@ -319,17 +319,39 @@ async function analyzeBudget(){
   const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
   const catMap={};
   monthExpenses.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
-  const catStr=Object.entries(catMap).map(([k,v])=>k+':¥'+v.toFixed(0)).join(', ');
-  const weekStr=weeks.map((w,i)=>'第'+w.num+'周:¥'+(wo[i]||0)).join(', ');
-  const prompt='你是一个财务预算顾问。请帮我分析预算并给出建议。\n月份:'+m+'\n月总预算:¥'+total+'\n每周预算:'+weekStr+'\n本月已支出:¥'+totalOut.toFixed(0)+'\n支出分类:'+catStr+'\n请分析预算分配是否合理，给出优化建议。';
+  const catStr=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+':'+v.toFixed(0)+'元').join(', ');
+  let histStr='';
+  for(let off=1;off<=3;off++){
+    const d=new Date();d.setMonth(d.getMonth()-off);
+    const hm=d.toISOString().slice(0,7);
+    const he=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===hm}catch{return false}});
+    const ht=he.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+    if(ht>0)histStr+=hm+':'+ht.toFixed(0)+'元 ';
+  }
+  const weekStr=weeks.map((w,i)=>'第'+w.num+'周('+w.start+'-'+w.end+'日):'+(wo[i]||0)+'元').join(', ');
+  const prompt='请分析我的预算并给出建议。\n\n【月份】'+m+'\n【月总预算】'+total+'元\n【每周预算】'+weekStr+'\n【本月已支出】'+totalOut.toFixed(0)+'元\n【支出分类】'+(catStr||'无')+'\n【历史数据】'+(histStr||'无')+'\n\n必须包含以下格式（严格遵守）：\n建议月预算：XXXX元\n第1周：XXX元\n第2周：XXX元\n第3周：XXX元\n第4周：XXX元\n\n其他分析和建议。';
   const el=document.getElementById('budgetAiResult');
-  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">🤖 AI 分析中...</div>';
+  el.style.display='block';
+  el.innerHTML='<div style="color:var(--muted)">AI 分析中...</div>';
   try{
-    const r=await api('POST',{prompt,type:'chat'});
-    if(r&&r.reply){el.innerHTML='<div style="white-space:pre-wrap">'+esc(r.reply)+'</div>'}
-    else{el.innerHTML='<div style="color:var(--red)">分析失败</div>'}
-  }catch(e){el.innerHTML='<div style="color:var(--red)">请求失败</div>'}
+    const r=await (await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action:'budget-analyze',data:{prompt,month:m,totalBudget:total,weekBudgets:wo,expenses:expenses}})})).json();
+    if(r&&r.reply){
+      const reply=r.data||r.reply||r.result||'';el.innerHTML='<div style="white-space:pre-wrap;line-height:1.6">'+esc(reply)+'</div>';
+      const btn=document.createElement('button');
+      btn.textContent='一键采用建议预算';
+      btn.style.cssText='width:100%;margin-top:12px;padding:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer';
+      btn.onclick=function(){
+        const mMatch=reply.match(/月预算[：:]\s*(\d[\d,.]*)/);
+        if(mMatch){document.getElementById('budgetInput').value=parseFloat(mMatch[1].replace(/,/g,''))}
+        const wMatches=[...reply.matchAll(/第(\d)周[：:]\s*(\d[\d,.]*)/g)];
+        wMatches.forEach(function(wm){const idx=parseInt(wm[1])-1;const el=document.getElementById('weekBudget_'+idx);if(el)el.value=parseFloat(wm[2].replace(/,/g,''))});
+        toast('已采用建议预算');
+      };
+      el.appendChild(btn);
+    }else{el.innerHTML='<div style="color:var(--red)">分析失败</div>'}
+  }catch(e){el.innerHTML='<div style="color:var(--red)">请求失败: '+e.message+'</div>'}
 }
+
 
 
 

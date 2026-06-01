@@ -31,6 +31,7 @@ export async function onRequest(context) {
       case 'query': return await handleQuery(apiKey, data, corsHeaders);
       case 'evaluate': return await handleEvaluate(apiKey, data, user, env, corsHeaders);
       case 'purchase-chat': return await handlePurchaseChat(apiKey, data, corsHeaders);
+      case 'budget-analyze': return await handleBudgetAnalyze(apiKey, data, corsHeaders);
       default: return jsonResponse({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
@@ -344,6 +345,55 @@ ${lines}
   const m = result.match(/\{[\s\S]*\}/);
   if (m) { try { return json({ ok: true, data: JSON.parse(m[0]) }, 200, corsHeaders); } catch {} }
   return json({ ok: true, data: { summary: result, habits: [], insights: [], profile: {} } }, 200, corsHeaders);
+}
+
+// ===== 预算AI分析 =====
+async function handleBudgetAnalyze(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
+  const { prompt, month, totalBudget, weekBudgets, expenses } = data;
+
+  // Build historical expense summary (3 months)
+  const monthMap = {};
+  (expenses || []).forEach(e => {
+    if (!e['日期']) return;
+    try {
+      const m = e['日期'].slice(0, 7);
+      if (!monthMap[m]) monthMap[m] = { total: 0, cats: {} };
+      if (e['类型'] === '支出') {
+        const amt = Number(e['金额'] || 0);
+        monthMap[m].total += amt;
+        const cat = e['分类'] || '其他';
+        monthMap[m].cats[cat] = (monthMap[m].cats[cat] || 0) + amt;
+      }
+    } catch {}
+  });
+
+  const monthKeys = Object.keys(monthMap).sort().slice(-4);
+  const histLines = monthKeys.map(m => {
+    const d = monthMap[m];
+    const cats = Object.entries(d.cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ':' + v.toFixed(0)).join(', ');
+    return m + ' | 总支出:' + d.total.toFixed(0) + '元 | 分类:' + (cats || '无');
+  }).join('\n');
+
+  const systemPrompt = `你是专业的个人财务顾问。用户要求分析预算并给出建议。
+
+回复格式要求（严格遵守）：
+1. 分析当前预算分配是否合理
+2. 根据历史消费数据，给出建议的月预算区间（格式：月预算：XXXX元）
+3. 给出每周预算分配建议（格式：第1周：XXX元、第2周：XXX元、第3周：XXX元、第4周：XXX元）
+4. 给出省钱建议
+5. 周预算之和不能超过月预算
+
+回答要简洁、实用，用分点列出，每点不超过2句话。用emoji让回答生动。`;
+
+  const userMsg = (prompt || '') + '\n\n[历史消费数据]\n' + (histLines || '暂无历史数据');
+
+  try {
+    const result = await callAI(apiKey, systemPrompt, userMsg, 800);
+    return json({ ok: true, data: result });
+  } catch (e) {
+    return json({ error: e.message }, 500, corsHeaders);
+  }
 }
 
 // ===== 自然语言查询 =====
