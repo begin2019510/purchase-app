@@ -596,23 +596,8 @@ function render(){
   // 延迟检测：3秒后再检查一次
 }
 function updateHeader(){
-  const total=totalCost(items);
-  const thisMonth=getThisMonth();
-  const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
-  const returnedCost=monthItems.filter(i=>i['状态']==='已退').reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0);
-  const monthTotal=totalCost(monthItems)-returnedCost;
-  const expThisMonth=expenses.filter(e=>{
-    if(!e['日期'])return false;
-    try{return getMonth(e['日期'])===thisMonth}catch{return false}
-  });
-  const expTotal=expThisMonth.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
-  const budgetRaw=getBudget(thisMonth);const budgetTotal=(budgetRaw&&typeof budgetRaw==='object')?(budgetRaw.total||0):(typeof budgetRaw==='number'?budgetRaw:0);
-  document.getElementById('headerStats').innerHTML=`
-    <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">采购</span></div>
-    <div class="stat"><span class="stat-val">¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月采购</span></div>
-    <div class="stat"><span class="stat-val" style="color:#fca5a5">¥${expTotal.toFixed(0)}</span><span class="stat-lbl">本月支出</span></div>
-    <div class="stat"><span class="stat-val" style="color:#86efac">¥${budgetTotal.toFixed(0)}</span><span class="stat-lbl">月预算</span></div>
-  `;
+  var el=document.getElementById('headerStats');
+  if(el) el.innerHTML='';
 }
 function renderPurchase(){
   const q=document.getElementById('searchInput').value.toLowerCase();
@@ -688,7 +673,34 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
     <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
     ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
   </div>`;
-  if(wb>0){const pct=Math.min(totalOut/wb*100,100);const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';html+='<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 16px 6px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px"></div></div>'}
+  // Budget dashboard
+  if(wb>0){
+    const pct=Math.min(totalOut/wb*100,100);
+    const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
+    const rem=Math.max(wb-totalOut,0);
+    html+=`<div class="ex-budget" style="margin:0 0 10px;border-radius:14px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700">${pl}预算</span>
+        <span style="font-size:12px;color:var(--muted)">剩余 <b style="color:${bc}">¥${rem.toFixed(0)}</b></span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
+        <span style="font-size:28px;font-weight:900;color:var(--pri)">¥${wb.toFixed(0)}</span>
+        <span style="font-size:12px;color:var(--muted)">已用 ¥${totalOut.toFixed(0)}</span>
+      </div>
+      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:6px">
+        <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .5s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+        <span>${pct.toFixed(0)}% 已用</span>
+        <span>${currentWeekFilter>=0?'第'+(currentWeekFilter+1)+'周':'月度'}预算</span>
+      </div>
+    </div>`;
+  } else {
+    html+=`<div style="text-align:center;padding:12px;margin:0 0 10px;background:var(--card);border-radius:14px;border:1.5px dashed var(--border)">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px">💡 未设置预算</div>
+      <button onclick="openBudgetModal()" style="padding:8px 20px;border:none;background:var(--pri-g);color:#fff;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">🎯 设置预算</button>
+    </div>`;
+  }
   
   if(catEntries.length){
     html+=`<div class="ex-section"><div class="ex-section-title">📂 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
@@ -1192,8 +1204,8 @@ function renderStats() { console.log('renderStats START');
 function switchStatsTab(tab) {
   document.getElementById('statsSectionPurchase').style.display = tab === 'purchase' ? '' : 'none';
   document.getElementById('statsSectionExpense').style.display = tab === 'expense' ? '' : 'none';
-  document.getElementById('statsTabPurchase').className = tab === 'purchase' ? 'chip active' : 'chip';
-  document.getElementById('statsTabExpense').className = tab === 'expense' ? 'chip active' : 'chip';
+  document.getElementById('statsTabPurchase').className = tab === 'purchase' ? 'stats-tab active' : 'stats-tab';
+  document.getElementById('statsTabExpense').className = tab === 'expense' ? 'stats-tab active' : 'stats-tab';
 }
 
 // ===== Tab 切换 =====
