@@ -1,4 +1,4 @@
-
+﻿
 // ============================================================
 // 版本 & 更新日志
 // ============================================================
@@ -21,7 +21,7 @@ const CHANGELOG=[
   {v:'2.5.4',date:'2026-05-22',items:['图片API返回二进制数据+pin认证','采购统计getMonth时间戳修复','退货金额减法修复','审批流已到打钩修复','记账删图功能','Cron Worker部署']},
   {v:'2.5.3',date:'2026-05-21',items:['图片上传分为拍照+相册两个按钮','拍照用capture=environment，相册无限制','兼容所有手机浏览器']},
   {v:'2.5.2',date:'2026-05-21',items:['图片存储升级：改用Cloudflare KV，告别32KB限制','图片压缩上限提升至800px/500KB','旧图片自动兼容，新图片存KV']},
-  {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：??前缀+正常可见','点击版本号查看更新日志']},
+  {v:'2.5.1',date:'2026-05-21',items:['记账精确时间戳：新建/编辑均支持选择具体时间','导出CSV增加独立时间列','卡片时间显示优化：🕐前缀+正常可见','点击版本号查看更新日志']},
   {v:'2.5.0',date:'2026-05-20',items:['归档功能：已到/已退3天后自动提醒归档','审批流完整流程：待审批→已审批→已下单→已到/已退→已归档','新增archive-check定时任务','Bitable新增归档时间字段']},
   {v:'2.4.2',date:'2026-05-20',items:['审批流分支结构修复：已到和已退是分支而非线性','详情弹窗改版：stepper流程展示+操作按钮','已到/已退终态显示归档按钮']},
   {v:'2.4.1',date:'2026-05-20',items:['详情弹窗重做：飞书审批流风格','竖向stepper时间线','卡片只显示状态+最新时间']},
@@ -32,8 +32,8 @@ function openChangelog(){const c=document.getElementById('changelogContent');let
 function closeChangelog(){document.getElementById('changelogOverlay').classList.remove('active')}
 document.getElementById('versionBadge').addEventListener('click',openChangelog);
 let currentImageData='';let currentImageKey='';
-function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'??':'??'}
-(function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='??'}})();
+function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');document.getElementById('darkModeBtn').textContent=isDark?'☀️':'🌙'}
+(function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='☀️'}})();
 function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement("canvas");const MAX=800;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);let q=0.7;let dataUrl=canvas.toDataURL("image/jpeg",q);while(dataUrl.length>500000&&q>0.2){q-=0.1;dataUrl=canvas.toDataURL("image/jpeg",q)}currentImageData=dataUrl;currentImageKey="";const preview=document.getElementById("eImagePreview");preview.src=dataUrl;preview.style.display="block";const info=document.getElementById("imageSizeInfo");info.textContent="[Compressed: "+String((dataUrl.length/1024).toFixed(0))+"KB]";info.style.display="block";};img.src=e.target.result;};reader.readAsDataURL(file)}
 function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
 const API='/api/items';
@@ -148,9 +148,9 @@ async function createInviteCodes(){
   try{
     const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='? 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
-    else{el.textContent='? '+d.error}
-  }catch{el.textContent='? 网络错误'}
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    else{el.textContent='❌ '+d.error}
+  }catch{el.textContent='❌ 网络错误'}
 }
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
@@ -289,7 +289,7 @@ function renderWeekBudgetInputs(m,total){
   let html='<div style="margin-top:12px"><label style="font-size:13px;font-weight:700;display:block;margin-bottom:8px">每周预算</label>';
   weeks.forEach((w,i)=>{
     const val=wb.weeks[i]||'';
-    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">第'+w.num+'周 ('+w.start+'-'+w.end+'日)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="￥" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
+    html+='<div class="form-group" style="margin-bottom:8px"><label style="font-size:12px">第'+w.num+'周 ('+w.start+'-'+w.end+'日)</label><input id="weekBudget_'+i+'" type="number" step="1" placeholder="¥" value="'+val+'" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px"></div>';
   });
   html+='</div>';
   document.getElementById('weekBudgetSection').innerHTML=html;
@@ -304,11 +304,11 @@ async function analyzeBudget(){
   const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
   const catMap={};
   monthExpenses.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
-  const catStr=Object.entries(catMap).map(([k,v])=>k+':￥'+v.toFixed(0)).join(', ');
-  const weekStr=weeks.map((w,i)=>'第'+w.num+'周:￥'+(wo[i]||0)).join(', ');
-  const prompt='你是一个财务预算顾问。请帮我分析预算并给出建议。\n月份:'+m+'\n月总预算:￥'+total+'\n每周预算:'+weekStr+'\n本月已支出:￥'+totalOut.toFixed(0)+'\n支出分类:'+catStr+'\n请分析预算分配是否合理，给出优化建议。';
+  const catStr=Object.entries(catMap).map(([k,v])=>k+':¥'+v.toFixed(0)).join(', ');
+  const weekStr=weeks.map((w,i)=>'第'+w.num+'周:¥'+(wo[i]||0)).join(', ');
+  const prompt='你是一个财务预算顾问。请帮我分析预算并给出建议。\n月份:'+m+'\n月总预算:¥'+total+'\n每周预算:'+weekStr+'\n本月已支出:¥'+totalOut.toFixed(0)+'\n支出分类:'+catStr+'\n请分析预算分配是否合理，给出优化建议。';
   const el=document.getElementById('budgetAiResult');
-  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">?? AI 分析中...</div>';
+  el.style.display='block';el.innerHTML='<div style="color:var(--muted)">🤖 AI 分析中...</div>';
   try{
     const r=await api('POST',{prompt,type:'chat'});
     if(r&&r.reply){el.innerHTML='<div style="white-space:pre-wrap">'+esc(r.reply)+'</div>'}
@@ -572,9 +572,9 @@ function updateHeader(){
   const incTotal=expThisMonth.filter(e=>e['类型']==='收入').reduce((s,e)=>s+Number(e['金额']||0),0);
   document.getElementById('headerStats').innerHTML=`
     <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">采购</span></div>
-    <div class="stat"><span class="stat-val">￥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月采购</span></div>
-    <div class="stat"><span class="stat-val" style="color:#fca5a5">￥${expTotal.toFixed(0)}</span><span class="stat-lbl">本月支出</span></div>
-    <div class="stat"><span class="stat-val" style="color:#86efac">￥${incTotal.toFixed(0)}</span><span class="stat-lbl">本月收入</span></div>
+    <div class="stat"><span class="stat-val">¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月采购</span></div>
+    <div class="stat"><span class="stat-val" style="color:#fca5a5">¥${expTotal.toFixed(0)}</span><span class="stat-lbl">本月支出</span></div>
+    <div class="stat"><span class="stat-val" style="color:#86efac">¥${incTotal.toFixed(0)}</span><span class="stat-lbl">本月收入</span></div>
   `;
 }
 function renderPurchase(){
@@ -589,27 +589,27 @@ function renderPurchase(){
   document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${c}</div>`}).join('');
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">??</div>暂无采购记录<br>点右下角 + 添加</div>';return}
+  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
   const groups={};sorted.forEach(i=>{const isEval=i['状态']==='待评估';const m=isEval?'待评估':(getMonth(i['日期'])||'未设置日期');if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
-    const mt=totalCost(list);const dm=month==='待评估'?'?? 待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
-    html+=`<div class="section-title"><span>${dm}</span><span>￥${mt.toFixed(2)}</span></div>`;
-    const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};const catColors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444'};const catEmoji={'日常护理':'??','生活用品':'??','食品饮料':'??','电子产品':'??','运动装备':'??','其他':'??'};
+    const mt=totalCost(list);const dm=month==='待评估'?'📋 待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
+    html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
+    const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};const catColors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444'};const catEmoji={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','其他':'📦'};
     list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
-    let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">? 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
+    let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
     // 待评估卡片：显示预算+AI摘要
-    if(status==='待评估'){const budgetLine=i['预算区间']?'￥'+i['预算区间']:'预算未知';const summaryLine=i['评估摘要']?i['评估摘要'].slice(0,80)+'...':'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>??? 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['商品名称']||'')}</div><div class="price" style="color:#f97316">?? ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">?? ${esc(summaryLine)}</div>`:''}</div></div></div>`}
+    if(status==='待评估'){const budgetLine=i['预算区间']?'¥'+i['预算区间']:'预算未知';const summaryLine=i['评估摘要']?i['评估摘要'].slice(0,80)+'...':'';
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div><div class="price" style="color:#f97316">💰 ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">🤖 ${esc(summaryLine)}</div>`:''}</div></div></div>`}
     else{
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>??? 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'?':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">??</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">???</button></div><div class="top"><div class="name">${catEmoji[cat]||'??'} ${esc(i['商品名称']||'')}</div>${price?`<div class="price">￥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>?? ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>?? ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">?? ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`}
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`}
     });
   }
   listEl.innerHTML=html;
 }
 
 // ===== 记账渲染 =====
-const CAT_ICONS={'餐饮':'??','交通':'??','购物':'???','娱乐':'??','居住':'??','医疗':'??','教育':'??','其他':'??'};
+const CAT_ICONS={'餐饮':'🍜','交通':'🚗','购物':'🛍️','娱乐':'🎮','居住':'🏠','医疗':'🏥','教育':'📚','其他':'📌'};
 const CAT_COLORS = {'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8','餐饮':'#ef4444','购物':'#ec4899','娱乐':'#8b5cf6','居住':'#10b981','医疗':'#f59e0b','教育':'#3b82f6'};
 const WEEKDAYS=['日','一','二','三','四','五','六'];
 function formatDay(dayStr) {
@@ -648,23 +648,23 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudget(thisMonth);
   const br=Math.max(wb-totalOut,0);
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">￥${totalOut.toFixed(2)}</div></div></div>
-    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">￥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'?':'??'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">￥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
   </div>`;
   if(wb>0){const pct=Math.min(totalOut/wb*100,100);const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';html+='<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 16px 6px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px"></div></div>'}
   
   if(catEntries.length){
-    html+=`<div class="ex-section"><div class="ex-section-title">?? 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
+    html+=`<div class="ex-section"><div class="ex-section-title">📂 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
   }
   const dayGroups={};
   searched.forEach(e=>{let day='未知日期';if(e['日期']){try{day=e['日期'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
-  html+=`<div class="ex-section"><div class="ex-section-title">?? 消费记录</div><div class="ex-timeline">`;
-  if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">??</div><div class="ex-empty-text">本月暂无记账</div><div class="ex-empty-hint">点右下角 + 记一笔</div></div>`;
+  html+=`<div class="ex-section"><div class="ex-section-title">📅 消费记录</div><div class="ex-timeline">`;
+  if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">💰</div><div class="ex-empty-text">本月暂无记账</div><div class="ex-empty-hint">点右下角 + 记一笔</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
     const dayTotal=list.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
     const {date,weekday,day:dayNum}=formatDay(day);
     html+=`<div class="ex-day"><div class="ex-day-marker"><div class="ex-day-circle">${dayNum||'?'}</div><div class="ex-day-line"></div></div>
-      <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-￥${dayTotal.toFixed(2)}</span></div>`;
+      <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
       const isOut=e['类型']==='支出';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
@@ -673,10 +673,10 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'??'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
-        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}￥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">???</button></div></div>`;
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
     });
     html+=`</div></div>`;
   }
@@ -690,7 +690,7 @@ function barChart(entries, maxVal, colorFn) {
   return entries.map(([label, val]) => {
     const pct = max > 0 ? (val / max * 100) : 0;
     const color = colorFn ? colorFn(label) : 'var(--pri)';
-    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">￥${val.toFixed(0)}</span></div>`;
+    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
   }).join('');
 }
 function donutChart(entries, size, label) {
@@ -714,14 +714,14 @@ function donutChart(entries, size, label) {
   return `<div class="donut-wrap"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${t}"/>
     ${segs}
-    <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">￥${total.toFixed(0)}</text>
+    <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text>
     <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'总计'}</text>
   </svg></div>`;
 }
 function donutLegend(entries, total) {
   return `<div class="donut-legend">${entries.map(([l, v]) => {
     const pct = total ? (v / total * 100).toFixed(1) : 0;
-    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">￥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
+    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
   }).join('')}</div>`;
 }
 function miniCards(items) {
@@ -759,7 +759,7 @@ function lineChart(data, opts={}){
     const y=pad.t+ch*i/gridLines;
     const v=maxV-range*i/gridLines;
     grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
-    grid+=`<text x="${pad.l-4}" y="${y+3}" class="trend-val" style="text-anchor:end;font-size:8px">￥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+    grid+=`<text x="${pad.l-4}" y="${y+3}" class="trend-val" style="text-anchor:end;font-size:8px">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
   }
   // X轴标签（每隔几个显示）
   const labelStep=data.length<=7?1:data.length<=14?2:Math.ceil(data.length/7);
@@ -800,7 +800,7 @@ function barChartV(data, opts={}){
     const y=pad.t+ch*i/gridLines;
     const v=maxV-maxV*i/gridLines;
     grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" class="trend-grid"/>`;
-    grid+=`<text x="${pad.l}" y="${y-3}" class="trend-val" style="font-size:8px">￥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
+    grid+=`<text x="${pad.l}" y="${y-3}" class="trend-val" style="font-size:8px">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</text>`;
   }
   let bars='';
   data.forEach((d,i)=>{
@@ -814,7 +814,7 @@ function barChartV(data, opts={}){
     </rect>`;
     bars+=`<text x="${x+barW/2}" y="${H-8}" class="trend-label">${d.label}</text>`;
     if(d.value>0){
-      bars+=`<text x="${x+barW/2}" y="${y-4}" class="trend-tooltip">￥${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value.toFixed(0)}</text>`;
+      bars+=`<text x="${x+barW/2}" y="${y-4}" class="trend-tooltip">¥${d.value>=1000?(d.value/1000).toFixed(1)+'k':d.value.toFixed(0)}</text>`;
     }
   });
   return `<div class="trend-chart"><svg class="trend-svg" viewBox="0 0 ${W} ${H}">
@@ -926,16 +926,16 @@ function renderExpenseCalendar(){
   let html='';
   // 顶部统计（精简）
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}支出</div><div class="ex-total-val">￥${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">??</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}收入</div><div class="ex-total-val">￥${totalIn.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel2}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
   </div>`;
 
   // 日历头部
   const monthNames=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   html+=`<div class="ex-section"><div class="cal-header">
-    <div class="cal-nav"><button onclick="calNav(-1)">?</button></div>
+    <div class="cal-nav"><button onclick="calNav(-1)">◀</button></div>
     <div class="cal-title">${calYear}年 ${monthNames[calMonth]}</div>
-    <div class="cal-nav"><button onclick="calNav(1)">?</button></div>
+    <div class="cal-nav"><button onclick="calNav(1)">▶</button></div>
   </div>`;
 
   // 星期头
@@ -960,8 +960,8 @@ function renderExpenseCalendar(){
     let amtHtml='';
     if(dayData){
       const net=dayData.in-dayData.out;
-      if(dayData.out>0)amtHtml+=`<div class="cal-day-amt">-￥${dayData.out.toFixed(0)}</div>`;
-      if(dayData.in>0)amtHtml+=`<div class="cal-day-amt cal-day-in">+￥${dayData.in.toFixed(0)}</div>`;
+      if(dayData.out>0)amtHtml+=`<div class="cal-day-amt">-¥${dayData.out.toFixed(0)}</div>`;
+      if(dayData.in>0)amtHtml+=`<div class="cal-day-amt cal-day-in">+¥${dayData.in.toFixed(0)}</div>`;
     }
     html+=`<div class="${classes}" data-cal-day="${ds}">
       <div class="cal-day-num">${d}</div>${amtHtml}${dayData?`<div class="cal-day-count">${dayData.count}笔</div>`:''}</div>`;
@@ -974,13 +974,13 @@ function renderExpenseCalendar(){
     const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
     const dateLabel=(selDate.getMonth()+1)+'月'+selDate.getDate()+'日 周'+WEEKDAYS[selDate.getDay()];
     html+=`<div class="cal-day-detail"><div class="cal-detail-header">
-      <div class="cal-detail-date">?? ${dateLabel}</div>
+      <div class="cal-detail-date">📅 ${dateLabel}</div>
       <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ 记一笔</button>
     </div>`;
     if(dd.out>0||dd.in>0){
       html+=`<div style="display:flex;gap:12px;margin-bottom:8px;font-size:13px;font-weight:700">`;
-      if(dd.out>0)html+=`<span style="color:var(--red)">?? 支出 ￥${dd.out.toFixed(2)}</span>`;
-      if(dd.in>0)html+=`<span style="color:var(--green)">?? 收入 ￥${dd.in.toFixed(2)}</span>`;
+      if(dd.out>0)html+=`<span style="color:var(--red)">💸 支出 ¥${dd.out.toFixed(2)}</span>`;
+      if(dd.in>0)html+=`<span style="color:var(--green)">💰 收入 ¥${dd.in.toFixed(2)}</span>`;
       html+=`</div>`;
     }
     dd.entries.forEach(e=>{
@@ -988,10 +988,10 @@ function renderExpenseCalendar(){
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>??? 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'??'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">?? ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
-        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}￥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">??</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">???</button></div></div>`;
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
     });
     html+=`</div>`;
   } else if(calSelectedDate){
@@ -999,7 +999,7 @@ function renderExpenseCalendar(){
     const selDate=new Date(calSelectedDate+'T00:00:00+08:00');
     const dateLabel=(selDate.getMonth()+1)+'月'+selDate.getDate()+'日 周'+WEEKDAYS[selDate.getDay()];
     html+=`<div class="cal-day-detail"><div class="cal-detail-header">
-      <div class="cal-detail-date">?? ${dateLabel}</div>
+      <div class="cal-detail-date">📅 ${dateLabel}</div>
       <button class="cal-detail-add" data-add-expense="${calSelectedDate}">+ 记一笔</button>
     </div><div class="ex-empty" style="padding:20px"><div class="ex-empty-hint">当天暂无记账</div></div></div>`;
   }
@@ -1042,8 +1042,8 @@ function renderStats() {
 
   // Tab 切换
   html += `<div class="stats-tabs">
-    <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">?? 采购</div>
-    <div class="stats-tab" id="statsTabExpense" onclick="switchStatsTab('expense')">?? 记账</div>
+    <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">🛒 采购</div>
+    <div class="stats-tab" id="statsTabExpense" onclick="switchStatsTab('expense')">💰 记账</div>
   </div>`;
 
   // ===== 采购 =====
@@ -1052,8 +1052,8 @@ function renderStats() {
   // 本月采购总额 - hero number
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}采购总额</div>
-    <div class="stats-hero-num">￥${monthTotal.toFixed(0)}</div>
-    <div class="stats-hero-sub">${monthItems.length}件商品 · 累计 ￥${totalAll.toFixed(0)}</div>
+    <div class="stats-hero-num">¥${monthTotal.toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}件商品 · 累计 ¥${totalAll.toFixed(0)}</div>
   </div>`;
 
   // 预算进度
@@ -1061,9 +1061,9 @@ function renderStats() {
     const pct = Math.min(monthTotal / budget * 100, 100);
     const color = monthTotal > budget ? 'var(--red)' : monthTotal > budget * 0.8 ? 'var(--orange)' : 'var(--green)';
     html += `<div class="stats-section">
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>预算</span><span style="color:${color}">￥${monthTotal.toFixed(0)} / ￥${budget}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>预算</span><span style="color:${color}">¥${monthTotal.toFixed(0)} / ¥${budget}</span></div>
       <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ￥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
     </div>`;
   }
 
@@ -1071,20 +1071,20 @@ function renderStats() {
   if (pCatEntries.length || pPlatEntries.length) {
     html += `<div class="stats-row">`;
     if (pCatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? 分类</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">📂 分类</div>`;
       const maxVal = pCatEntries[0][1];
       pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">￥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (pPlatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? 平台</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">🏪 平台</div>`;
       const maxVal = pPlatEntries[0][1];
       pPlatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">￥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -1095,7 +1095,7 @@ function renderStats() {
   if (items.length) {
     const colors = { '待审批': 'var(--orange)', '已审批': 'var(--blue)', '已下单': '#8b5cf6', '已到': 'var(--green)', '已退': 'var(--red)', '已归档': '#6b7280' };
     const totalItems = items.length;
-    html += `<div class="stats-section"><div class="stats-section-title">?? 状态分布</div>`;
+    html += `<div class="stats-section"><div class="stats-section-title">📋 状态分布</div>`;
     html += `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:10px">`;
     Object.entries(statusMap).forEach(([s, n]) => {
       html += `<div style="width:${(n/totalItems*100).toFixed(1)}%;background:${colors[s]||'var(--muted)'}" title="${s}: ${n}件"></div>`;
@@ -1114,8 +1114,8 @@ function renderStats() {
   // 结余 - hero number
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}结余</div>
-    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">￥${balance.toFixed(0)}</div>
-    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ￥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">收入 ￥${totalIn.toFixed(0)}</span></div>
+    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">¥${balance.toFixed(0)}</div>
+    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ¥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">收入 ¥${totalIn.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势
@@ -1124,7 +1124,7 @@ function renderStats() {
     const dayMax = Math.max(...dailyData.map(d => d.value));
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / Math.max(dailyData.filter(d => d.value > 0).length, 1);
     html += `<div class="stats-section">
-      <div class="stats-section-title">?? 每日支出 <span style="float:right;font-weight:400;font-size:11px">最高 ￥${dayMax.toFixed(0)} · 日均 ￥${dayAvg.toFixed(0)}</span></div>
+      <div class="stats-section-title">📉 每日支出 <span style="float:right;font-weight:400;font-size:11px">最高 ¥${dayMax.toFixed(0)} · 日均 ¥${dayAvg.toFixed(0)}</span></div>
       ${lineChart(dailyData, { color: '#ef4444', height: 140 })}
     </div>`;
   }
@@ -1134,16 +1134,16 @@ function renderStats() {
   if (eCatEntries.length || weekData.some(d => d.value > 0)) {
     html += `<div class="stats-row">`;
     if (eCatEntries.length) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? 支出分类</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">📂 支出分类</div>`;
       const maxCat = eCatEntries[0][1];
       eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">￥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
     if (weekData.some(d => d.value > 0)) {
-      html += `<div class="stats-section"><div class="stats-section-title">?? 每周</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 })}</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">📊 每周</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: 120 })}</div>`;
     }
     html += `</div>`;
   }
@@ -1205,7 +1205,7 @@ async function delItem(id){if(!confirm('确定删除？'))return;items=items.fil
 
 // ===== 审批流操作 =====
 const NEXT_STATUS={'待评估':'待审批','待审批':'已审批','已审批':'已下单','已下单':'已到'};
-const APPROVAL_TITLES={'待审批':'? 审批确认','已审批':'?? 确认下单','已下单':'?? 确认收货'};
+const APPROVAL_TITLES={'待审批':'✅ 审批确认','已审批':'🛒 确认下单','已下单':'📦 确认收货'};
 const APPROVAL_TEXTS={'待审批':'确认审批通过？通过后状态变为“已审批”','已审批':'确认下单？通过后状态变为“已下单”','已下单':'确认收货？通过后状态变为“已到”'};
 function showApprovalModal(id){
   const item=items.find(x=>x.id===id);
@@ -1219,8 +1219,8 @@ function showApprovalModal(id){
   document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'确认操作';
   document.getElementById('approvalContent').innerHTML=`
     <div style="font-size:15px;font-weight:700;margin-bottom:12px">${esc(item['商品名称']||'')}</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">单价 ￥${price.toFixed(2)} × ${qty}</div>
-    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">总价 ￥${total.toFixed(2)}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">单价 ¥${price.toFixed(2)} × ${qty}</div>
+    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">总价 ¥${total.toFixed(2)}</div>
     <div style="font-size:14px;font-weight:600;color:var(--orange)">${APPROVAL_TEXTS[status]}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:6px">${status} → ${next}</div>
   `;
@@ -1240,9 +1240,9 @@ function closeApprovalModal(){document.getElementById('approvalOverlay').classLi
 // ============================================================
 // 记账 Modal
 // ============================================================
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='?? 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin())}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['图片']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='?? 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin())}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['图片']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
-function exportExpenses(){showExportDialog('记账',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['日期'+sep+'时间'+sep+'类型'+sep+'分类'+sep+'金额'+sep+'备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['金额']||0).toFixed(2);const note=(e['备注']||'').includes(sep)?'"'+(e['备注']||'').replace(/"/g,'""')+'"':(e['备注']||'');lines.push(datePart+sep+timePart+sep+(e['类型']||'')+sep+(e['分类']||'')+sep+'￥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+ext;a.click()})}
+function exportExpenses(){showExportDialog('记账',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['日期'+sep+'时间'+sep+'类型'+sep+'分类'+sep+'金额'+sep+'备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['金额']||0).toFixed(2);const note=(e['备注']||'').includes(sep)?'"'+(e['备注']||'').replace(/"/g,'""')+'"':(e['备注']||'');lines.push(datePart+sep+timePart+sep+(e['类型']||'')+sep+(e['分类']||'')+sep+'¥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+ext;a.click()})}
 // 图片: kv:前缀=KV key存飞书图片字段; 无前缀=base64（回退）
 async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');await loadAll()}
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
@@ -1270,7 +1270,7 @@ async function sendAI(){
   const btn=document.getElementById('aiSendBtn');
   const resultEl=document.getElementById('aiResult');
   btn.disabled=true;
-  btn.textContent='?';
+  btn.textContent='⏳';
   resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>解析中...</span></div>`;
   try{
     const now=new Date(Date.now()+8*3600*1000);
@@ -1280,22 +1280,22 @@ async function sendAI(){
       pendingAI=res.data;
       const d=res.data;
       resultEl.innerHTML=`<div class="ai-result">
-        <div class="ai-result-header"><span class="ai-result-tag">?? AI 解析</span><span style="font-size:10px;color:var(--muted)">置信度 ${((d.confidence||0)*100).toFixed(0)}%</span></div>
-        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> ￥${d.amount.toFixed(2)} · ${d.category}${d.note?' · '+d.note:''}</div>
+        <div class="ai-result-header"><span class="ai-result-tag">🤖 AI 解析</span><span style="font-size:10px;color:var(--muted)">置信度 ${((d.confidence||0)*100).toFixed(0)}%</span></div>
+        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> ¥${d.amount.toFixed(2)} · ${d.category}${d.note?' · '+d.note:''}</div>
         <div style="display:flex;gap:6px">
-          <button class="ai-confirm-btn primary" onclick="confirmAI()">? 记一笔</button>
-          <button class="ai-confirm-btn secondary" onclick="editAI()">?? 修改</button>
-          <button class="ai-confirm-btn secondary" onclick="cancelAI()">? 取消</button>
+          <button class="ai-confirm-btn primary" onclick="confirmAI()">✓ 记一笔</button>
+          <button class="ai-confirm-btn secondary" onclick="editAI()">✏️ 修改</button>
+          <button class="ai-confirm-btn secondary" onclick="cancelAI()">✕ 取消</button>
         </div>
       </div>`;
     }else{
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>`;
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤔 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>`;
     }
   }catch(e){
-    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">?? ${e.message||'未知错误'}</div></div>`;
+    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ ${e.message||'未知错误'}</div></div>`;
   }
   btn.disabled=false;
-  btn.textContent='?';
+  btn.textContent='✨';
   input.value='';
 }
 
@@ -1354,7 +1354,7 @@ async function runPurchaseEval() {
   const resultEl = document.getElementById('aiEvalResult');
   const btn = document.getElementById('aiEvalBtn');
   resultEl.style.display = 'block';
-  resultEl.textContent = '?? AI 分析中...';
+  resultEl.textContent = '🤖 AI 分析中...';
   btn.disabled = true;
   btn.textContent = '分析中...';
   
@@ -1368,20 +1368,20 @@ async function runPurchaseEval() {
       body: JSON.stringify({ action: 'evaluate', data: { productName: name, expectedPrice: null, platform: null, category: null, budgetMin, budgetMax, reason: reason || null } }),
     });
     const d = await r.json();
-    if (!d.ok) { resultEl.textContent = '? ' + (d.error || '评估失败'); return; }
+    if (!d.ok) { resultEl.textContent = '❌ ' + (d.error || '评估失败'); return; }
     
     // 提取摘要：第一段+建议行
     const lines = d.data.split('\n').filter(l => l.trim());
     const summary = lines.slice(0, 3).join(' ').replace(/[\*#]/g, '').slice(0, 150);
     resultEl.innerHTML = '<div style="margin-bottom:10px;line-height:1.6">' + stripMd(esc(summary)) + '</div>'
-      + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">? 提交评估</button>'
-      + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">? 取消</button>';
+      + '<button class="ai-confirm-btn primary" onclick="submitEvaluation()">✔ 提交评估</button>'
+      + '<button class="ai-confirm-btn secondary" onclick="cancelPurchaseEval()">✖ 取消</button>';
     purchaseEvalContext = d.data;
     purchaseChatHistory = [{role:'assistant', content:d.data}];
     document.getElementById('chatArea').style.display = 'block';
     renderChatMessages();
-  } catch(e) { resultEl.textContent = '? 网络错误'; }
-  finally { btn.disabled = false; btn.textContent = '?? AI需求评估'; }
+  } catch(e) { resultEl.textContent = '❌ 网络错误'; }
+  finally { btn.disabled = false; btn.textContent = '🤖 AI需求评估'; }
 }
 function switchToDetailPhase(name, aiData) {
   document.getElementById('evalPhase').style.display = 'none';
@@ -1438,11 +1438,11 @@ async function sendPurchaseChat() {
       purchaseChatHistory.push({role: 'assistant', content: d.data});
       renderChatMessages();
     } else {
-      purchaseChatHistory.push({role: 'assistant', content: '? ' + (d.error || '回复失败')});
+      purchaseChatHistory.push({role: 'assistant', content: '❌ ' + (d.error || '回复失败')});
       renderChatMessages();
     }
   } catch(e) {
-    purchaseChatHistory.push({role: 'assistant', content: '? 网络错误'});
+    purchaseChatHistory.push({role: 'assistant', content: '❌ 网络错误'});
     renderChatMessages();
   } finally {
     btn.disabled = false; btn.textContent = '发送';
@@ -1525,7 +1525,7 @@ async function submitEvaluation() {
     closeModal();
     await loadAll();
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '? 提交评估'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✔ 提交评估'; }
   }
 }
 
@@ -1589,7 +1589,7 @@ function renderEvalModal() {
   // 购买理由
   if (reason) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--orange)">
-      <div style="font-weight:600;margin-bottom:4px">?? 购买理由</div>
+      <div style="font-weight:600;margin-bottom:4px">💡 购买理由</div>
       <div style="color:var(--muted)">${esc(reason)}</div>
     </div>`;
   }
@@ -1597,7 +1597,7 @@ function renderEvalModal() {
   // 取消理由（如果有）
   if (cancelText) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--red)">
-      <div style="font-weight:600;margin-bottom:4px">? 取消理由</div>
+      <div style="font-weight:600;margin-bottom:4px">❌ 取消理由</div>
       <div style="color:var(--muted)">${esc(cancelText)}</div>
     </div>`;
   }
@@ -1605,7 +1605,7 @@ function renderEvalModal() {
   // AI 摘要
   if (summary) {
     html += `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)">
-      <div style="font-weight:600;margin-bottom:4px">?? AI 评估摘要</div>
+      <div style="font-weight:600;margin-bottom:4px">🤖 AI 评估摘要</div>
       <div style="color:var(--muted)">${stripMd(esc(summary))}</div>
     </div>`;
   }
@@ -1615,7 +1615,7 @@ function renderEvalModal() {
   const bMin = budgetParts[0].replace(/[^\d.]/g, '');
   const bMax = (budgetParts[1] || '').replace(/[^\d.]/g, '');
   html += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-    <span style="font-weight:600;font-size:13px">?? 预算区间：</span>
+    <span style="font-weight:600;font-size:13px">💰 预算区间：</span>
     <input id="evalBudgetMin" type="number" value="${bMin}" placeholder="最低" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
     <span style="color:var(--muted)">~</span>
     <input id="evalBudgetMax" type="number" value="${bMax}" placeholder="最高" min="0" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
@@ -1641,9 +1641,9 @@ function renderEvalModal() {
   
   // 快捷问题
   html += `<div style="display:flex;gap:6px;margin-bottom:12px">
-    <button onclick="sendEvalQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? 更便宜的</button>
-    <button onclick="sendEvalQuickChat('换个品牌推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? 换推荐</button>
-    <button onclick="sendEvalQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">? 等等</button>
+    <button onclick="sendEvalQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">💰 更便宜的</button>
+    <button onclick="sendEvalQuickChat('换个品牌推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">🔄 换推荐</button>
+    <button onclick="sendEvalQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等</button>
   </div>`;
   
   // reason input
@@ -1655,7 +1655,7 @@ function renderEvalModal() {
   // action buttons
   html += `<div style="display:flex;gap:8px;flex-wrap:wrap">
     <button onclick="closeEvalModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">关闭</button>
-    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">?? 继续采购</button>
+    <button onclick="submitEvalToDetail()" style="flex:1;padding:12px;background:var(--green);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">📝 继续采购</button>
     <button onclick="cancelFromEval()" style="flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">不买了</button>
   </div>`;
   document.getElementById('evalContent').innerHTML = html;
@@ -1690,10 +1690,10 @@ async function sendEvalChat() {
     if (d.ok) {
       evalModalChatHistory.push({ role: 'assistant', content: d.data });
     } else {
-      evalModalChatHistory.push({ role: 'assistant', content: '? ' + (d.error || '回复失败') });
+      evalModalChatHistory.push({ role: 'assistant', content: '❌ ' + (d.error || '回复失败') });
     }
   } catch(e) {
-    evalModalChatHistory.push({ role: 'assistant', content: '? 网络错误' });
+    evalModalChatHistory.push({ role: 'assistant', content: '❌ 网络错误' });
   } finally {
     btn.disabled = false; btn.textContent = '发送';
     renderEvalModal();
@@ -1767,7 +1767,7 @@ async function queryAI(){
     const thisMonth=getThisMonth();
     const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
     const res=await aiRequest('query',{question:q,expenses:monthExpenses});
-    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? 回答</span></div><div>${esc(res.data)}</div></div>`}
+    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤖 回答</span></div><div>${esc(res.data)}</div></div>`}
     else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
@@ -1803,23 +1803,23 @@ async function runAIProfile(){
       if(d.profile){
         const p=d.profile;
         html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">`;
-        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? 饮食风格</div>${esc(p.diningStyle)}</div>`;
-        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? 生活方式</div>${esc(p.lifestyle)}</div>`;
-        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? 消费模式</div>${esc(p.spendingPattern)}</div>`;
-        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">?? 主要开销</div>${p.topItems.map(i=>esc(i)).join('、')}</div>`;
+        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🍜 饮食风格</div>${esc(p.diningStyle)}</div>`;
+        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🎭 生活方式</div>${esc(p.lifestyle)}</div>`;
+        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">💡 消费模式</div>${esc(p.spendingPattern)}</div>`;
+        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🏆 主要开销</div>${p.topItems.map(i=>esc(i)).join('、')}</div>`;
         html+=`</div>`;
       }
       // 习惯
       if(d.habits&&d.habits.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">?? 消费习惯</div>`;
-        d.habits.forEach(h=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${h.emoji||'??'} ${esc(h.title)}</b><br>${esc(h.detail)}</div>`});
+        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">📊 消费习惯</div>`;
+        d.habits.forEach(h=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${h.emoji||'📌'} ${esc(h.title)}</b><br>${esc(h.detail)}</div>`});
       }
       // 洞察
       if(d.insights&&d.insights.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">?? 深度洞察</div>`;
-        d.insights.forEach(i=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${i.emoji||'??'} ${esc(i.title)}</b><br>${esc(i.detail)}</div>`});
+        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">💡 深度洞察</div>`;
+        d.insights.forEach(i=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${i.emoji||'💡'} ${esc(i.title)}</b><br>${esc(i.detail)}</div>`});
       }
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">?? 消费画像</span></div>${html}</div>`;
+      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🧠 消费画像</span></div>${html}</div>`;
     }else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">生成失败</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
@@ -1842,7 +1842,7 @@ async function suggestCategory(note){
       const d=res.data;
       lastAICat=d;
       const tags=d.tags&&d.tags.length?d.tags.map(t=>`<span style="background:var(--card);padding:1px 6px;border-radius:4px;margin-left:4px;font-size:10px">${t}</span>`).join(''):'';
-      textEl.innerHTML=`?? 建议: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% · 点击采纳</span>`;
+      textEl.innerHTML=`🤖 建议: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% · 点击采纳</span>`;
       suggestEl.style.display='block';
     }
   }catch{suggestEl.style.display='none';lastAICat=null}
@@ -1860,7 +1860,7 @@ function applyAICat(){
 // ===== 预算 =====
 function closeBudgetModal(){document.getElementById('budgetOverlay').classList.remove('active')}
 // ===== 导出格式选择弹窗 =====
-function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>?? 导出${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">选择导出格式</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">?? CSV（逗号分隔）</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">?? TSV（Tab分隔）</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">取消</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
+function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>📤 导出${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">选择导出格式</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">📄 CSV（逗号分隔）</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">📋 TSV（Tab分隔）</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">取消</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
 function saveBudget(){
   const month=document.getElementById('budgetMonth').value;
   const val=parseFloat(document.getElementById('budgetInput').value)||0;
@@ -1877,7 +1877,7 @@ function saveBudget(){
     b[month]=val;
   }
   setBudgets(b);
-  toast(`已设置 ${month} 预算 ${weekVal>0?'每周￥'+weekVal:'每月￥'+val}`);
+  toast(`已设置 ${month} 预算 ${weekVal>0?'每周¥'+weekVal:'每月¥'+val}`);
   closeBudgetModal();
   render();
 }
@@ -1899,16 +1899,16 @@ document.getElementById('fabBtn').addEventListener('click',()=>{
 
 // ===== 导出 =====
 function exportData(){exportPurchases()}
-function exportPurchases(){showExportDialog('采购',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['商品名称'+sep+'平台'+sep+'分类'+sep+'单价'+sep+'数量'+sep+'总价'+sep+'状态'+sep+'日期'+sep+'备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const note=(i['备注']||'').includes(sep)?'"'+(i['备注']||'').replace(/"/g,'""')+'"':(i['备注']||'');lines.push((i['商品名称']||'')+sep+(i['平台']||'')+sep+(i['分类']||'')+sep+'￥'+price+sep+qty+sep+'￥'+(price*qty).toFixed(2)+sep+(i['状态']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='采购_'+getThisMonth()+ext;a.click()})}
+function exportPurchases(){showExportDialog('采购',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['商品名称'+sep+'平台'+sep+'分类'+sep+'单价'+sep+'数量'+sep+'总价'+sep+'状态'+sep+'日期'+sep+'备注'];items.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch{}}const note=(i['备注']||'').includes(sep)?'"'+(i['备注']||'').replace(/"/g,'""')+'"':(i['备注']||'');lines.push((i['商品名称']||'')+sep+(i['平台']||'')+sep+(i['分类']||'')+sep+'¥'+price+sep+qty+sep+'¥'+(price*qty).toFixed(2)+sep+(i['状态']||'')+sep+ds+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='采购_'+getThisMonth()+ext;a.click()})}
 
 // ===== 详情弹窗 =====
 const STEPPER_STEPS=['待评估','待审批','已审批','已下单'];
-const STEPPER_ICONS={'待评估':'??','待审批':'??','已审批':'?','已下单':'??','已到':'??','已退':'??','已归档':'???'};
+const STEPPER_ICONS={'待评估':'🤔','待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
 const STEP_TIME_FIELDS={'待评估':'创建时间','待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};
 const STEP_BTN_CONFIG={
-  '待评估':{color:'var(--green)',label:'?? 提交审批',next:'待审批'},
-  '待审批':{color:'var(--green)',label:'? 审批通过',next:'已审批'},
-  '已审批':{color:'var(--blue)',label:'?? 确认下单',next:'已下单'}
+  '待评估':{color:'var(--green)',label:'📋 提交审批',next:'待审批'},
+  '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
+  '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
 };
 const CANCELABLE_STATUSES = ['待评估','待审批','已审批'];
 function openDetailModal(id){
@@ -1924,18 +1924,18 @@ function openDetailModal(id){
 
   let html=`<div class="detail-header">
     <div class="detail-title">${esc(item['商品名称']||'')}</div>
-    <div class="detail-price">￥${price.toFixed(2)}${qty>1?` × ${qty} = ￥${total.toFixed(2)}`:''}</div>
+    <div class="detail-price">¥${price.toFixed(2)}${qty>1?` × ${qty} = ¥${total.toFixed(2)}`:''}</div>
     <div class="detail-meta">
-      <span>?? ${esc(item['平台']||'')}</span>
+      <span>🏪 ${esc(item['平台']||'')}</span>
       <span class="badge badge-${status}">${status}</span>
       <span class="cat-badge">${item['分类']||'其他'}</span>
-      ${ds?`<span>?? ${ds}</span>`:''}
+      ${ds?`<span>📅 ${ds}</span>`:''}
     </div>
-    ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">?? ${esc(item['备注'])}</div>`:''}
-  ${item['评估摘要']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">?? AI评估摘要</div><div style="color:var(--muted)">${stripMd(esc(item['评估摘要']))}</div></div>`:''}
-  ${item['购买理由']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">?? 购买理由</div><div style="color:var(--muted)">${esc(item['购买理由'])}</div></div>`:''}
-  ${item['预算区间']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">?? 预算: ￥${esc(item['预算区间'])}</div>`:''}
-  ${item['取消原因']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">? 取消理由</div><div style="color:var(--muted)">${esc(item['取消原因'])}</div></div>`:''}
+    ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">💬 ${esc(item['备注'])}</div>`:''}
+  ${item['评估摘要']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">🤖 AI评估摘要</div><div style="color:var(--muted)">${stripMd(esc(item['评估摘要']))}</div></div>`:''}
+  ${item['购买理由']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">💡 购买理由</div><div style="color:var(--muted)">${esc(item['购买理由'])}</div></div>`:''}
+  ${item['预算区间']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">💰 预算: ¥${esc(item['预算区间'])}</div>`:''}
+  ${item['取消原因']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">❌ 取消理由</div><div style="color:var(--muted)">${esc(item['取消原因'])}</div></div>`:''}
   </div>`;
 
   // Stepper: always show full flow 待审批→已审批→已下单→已到/已退→已归档
@@ -1956,21 +1956,21 @@ function openDetailModal(id){
   // Archive step
   allSteps.push({ key:'已归档', done:archiveDone, active:status==='已归档' });
 
-  html+=`<div class="detail-section-title">?? 审批流程</div><div class="stepper">`;
+  html+=`<div class="detail-section-title">📋 审批流程</div><div class="stepper">`;
   allSteps.forEach((s, idx) => {
     const isLast = idx === allSteps.length - 1;
     let stepClass = 'step-pending';
-    let dotContent = '?';
+    let dotContent = '⚪';
     let timeText = '—';
     if (s.done) {
       stepClass = 'step-done';
-      dotContent = '?';
+      dotContent = '✓';
       const tf = STEP_TIME_FIELDS[s.key];
       if (tf && item[tf]) timeText = item[tf];
       else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
     } else if (s.active) {
       stepClass = 'step-active';
-      dotContent = STEPPER_ICONS[s.key] || '??';
+      dotContent = STEPPER_ICONS[s.key] || '🔵';
       const tf = STEP_TIME_FIELDS[s.key];
       if (tf && item[tf]) timeText = item[tf];
       else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
@@ -1992,14 +1992,14 @@ function openDetailModal(id){
   // 操作按钮
   if(CANCELABLE_STATUSES.includes(status)){
     const btnCfg=STEP_BTN_CONFIG[status];
-    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">? 取消</button></div>`;
+    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" data-action-id="${id}" data-action-next="${btnCfg.next}">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">❌ 取消</button></div>`;
   }else if(status==='已下单'){
     html+=`<div style="margin-top:16px;display:flex;gap:10px">
-      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">?? 确认收货</button>
-      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">?? 退货归档</button>
+      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">📦 确认收货</button>
+      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货归档</button>
     </div>`;
   }else if(status==='已到'||status==='已退'){
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','已归档')">??? 确认归档</button></div>`;
+    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button></div>`;
   }
 
   document.getElementById('detailContent').innerHTML=html;
@@ -2059,13 +2059,13 @@ async function loadLogs(date) {
     if (!d.logs.length) { el.textContent = '暂无日志'; return; }
 
     const actionLabels = {
-      'login': '?? 登录',
-      'register': '?? 注册',
-      'logout': '?? 退出登录',
-      'delete_user': '?? 删除用户',
-      'create_invite': '?? 创建邀请码',
-      'status_change': '?? 状态变更',
-      'export': '?? 导出',
+      'login': '🟢 登录',
+      'register': '🆕 注册',
+      'logout': '🔴 退出登录',
+      'delete_user': '🔴 删除用户',
+      'create_invite': '📧 创建邀请码',
+      'status_change': '📋 状态变更',
+      'export': '📤 导出',
     };
 
     // 如果是管理员，显示所有用户的日志；否则只显示自己的
@@ -2136,7 +2136,7 @@ document.addEventListener('click', function(e) {
   const banner=document.createElement('div');
   banner.id='offlineBanner';
   banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:10px 16px;background:#f59e0b;color:#000;text-align:center;font-size:13px;font-weight:700;display:none;transition:transform .3s ease;transform:translateY(-100%)';
-  banner.textContent='?? 离线模式 - 数据将在联网后同步';
+  banner.textContent='📡 离线模式 - 数据将在联网后同步';
   document.body.appendChild(banner);
   function updateOnlineStatus(){
     if(!navigator.onLine){

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#6366f1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=1780323732">
+<link rel="stylesheet" href="theme.css?v=1780326995">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -20,17 +20,17 @@
 <div class="header">
   <div class="header-top">
     <div class="app-logo">
-      <div class="logo-icon">??</div>
+      <div class="logo-icon">🏠</div>
       <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780018527</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">? 批量</button><button class="action-btn" onclick="exportData()">?? 导出</button><button class="action-btn" onclick="openBudgetModal()">?? 预算</button></span>
-      <span id="actionExpense" class="desktop-only hidden"><button class="action-btn" onclick="openBudgetModal()">?? 预算</button><button class="action-btn" onclick="exportExpenses()">?? 导出</button></span>
+      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
+      <span id="actionExpense" class="desktop-only hidden"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
       <span id="actionStats" class="desktop-only hidden"></span>
-      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">??</button>
-      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="日志">??</button>
-      <button class="icon-btn desktop-only" onclick="logout()" title="退出">??</button>
-      <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">??</button>
+      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
+      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="日志">📋</button>
+      <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
+      <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">⚙️</button>
     </div>
   </div>
   <div class="header-stats" id="headerStats"></div>
@@ -38,75 +38,75 @@
 
 <!-- Tabs - Desktop top nav -->
 <div class="tabs desktop-only" id="mainTabs">
-  <div class="tab active" onclick="switchTab('purchase')">?? 采购</div>
-  <div class="tab" onclick="switchTab('expense')">?? 记账</div>
-  <div class="tab" onclick="switchTab('stats')">?? 统计</div>
+  <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
+  <div class="tab" onclick="switchTab('expense')">💰 记账</div>
+  <div class="tab" onclick="switchTab('stats')">📊 统计</div>
 </div>
 
 <!-- Settings Overlay - Mobile only -->
 <div class="settings-overlay mobile-only" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
   <div class="settings-panel">
     <div class="settings-header">
-      <h2>?? 设置</h2>
-      <button class="settings-close" onclick="closeSettings()">?</button>
+      <h2>⚙️ 设置</h2>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-group">
       <div class="settings-group-title">通用</div>
       <div class="settings-item" onclick="settingsAction('darkMode')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">🌙</div>
         <div class="settings-label">暗色模式</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('export')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">📤</div>
         <div class="settings-label">导出数据</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('batch')">
-        <div class="settings-icon">?</div>
+        <div class="settings-icon">☑</div>
         <div class="settings-label">批量操作</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('budget')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">🎯</div>
         <div class="settings-label">预算设置</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('push')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">🤖</div>
         <div class="settings-label">推送通知</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
     </div>
     <div class="settings-group">
       <div class="settings-group-title">工具</div>
       <div class="settings-item" onclick="settingsAction('logs')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">📋</div>
         <div class="settings-label">操作日志</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('changelog')">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">🔔</div>
         <div class="settings-label">更新日志</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('help')">
-        <div class="settings-icon">?</div>
+        <div class="settings-icon">❓</div>
         <div class="settings-label">帮助</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('admin')" id="settingsAdmin" style="display:none">
-        <div class="settings-icon">??</div>
+        <div class="settings-icon">👑</div>
         <div class="settings-label">管理面板</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
     </div>
     <div class="settings-group">
       <div class="settings-group-title">账户</div>
       <div class="settings-item" onclick="settingsAction('logout')" style="color:var(--red)">
-        <div class="settings-icon" style="background:rgba(239,68,68,.1)">??</div>
+        <div class="settings-icon" style="background:rgba(239,68,68,.1)">🚪</div>
         <div class="settings-label">退出登录</div>
-        <div class="settings-arrow">?</div>
+        <div class="settings-arrow">›</div>
       </div>
     </div>
   </div>
@@ -115,15 +115,15 @@
 <!-- Bottom Nav - Mobile only -->
 <nav class="bottom-nav mobile-only" id="bottomNav">
   <div class="nav-item active" onclick="switchTab('purchase')" data-tab="purchase">
-    <span class="nav-icon">??</span>
+    <span class="nav-icon">🛒</span>
     <span class="nav-label">采购</span>
   </div>
   <div class="nav-item" onclick="switchTab('expense')" data-tab="expense">
-    <span class="nav-icon">??</span>
+    <span class="nav-icon">📝</span>
     <span class="nav-label">记账</span>
   </div>
   <div class="nav-item" onclick="switchTab('stats')" data-tab="stats">
-    <span class="nav-icon">??</span>
+    <span class="nav-icon">📊</span>
     <span class="nav-label">统计</span>
   </div>
 </nav>
@@ -143,13 +143,13 @@
   <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
   <div class="container">
       <div class="ex-view-toggle" style="margin:0">
-        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">?? 列表</button>
-        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">?? 日历</button>
+        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
+        <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
       </div>
     <div class="ai-bar" id="aiBar">
       <div class="ai-input-row">
         <input class="ai-input" id="aiInput" placeholder="说句话就能记账: 午饭35、打车28..." onkeydown="if(event.key==='Enter')sendAI()">
-        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">?</button>
+        <button class="ai-send" id="aiSendBtn" onclick="sendAI()">✨</button>
       </div>
       <div id="aiResult"></div>
     </div>
@@ -167,21 +167,21 @@
     <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
     <div class="container stats-page">
       <div class="ai-analysis" id="aiAnalysis">
-        <h3>?? AI 助手</h3>
+        <h3>🤖 AI 助手</h3>
         <div class="ai-input-row" style="margin-bottom:8px">
           <input class="ai-input" id="statsAIInput" placeholder="问我任何问题: 这个月奶茶花了多少..." onkeydown="if(event.key==='Enter')queryAI()">
-          <button class="ai-send" onclick="queryAI()">??</button>
+          <button class="ai-send" onclick="queryAI()">💬</button>
         </div>
         <div id="statsAIResult"></div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">?? 财务分析</button>
-          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">?? 消费画像</button>
+          <button class="ai-confirm-btn primary" onclick="runAIAnalysis()" style="flex:1">📊 财务分析</button>
+          <button class="ai-confirm-btn primary" onclick="runAIProfile()" style="flex:1">🧠 消费画像</button>
         </div>
       </div>
       <div id="statsContent"></div>
       <div style="margin-top:16px;padding:12px;background:var(--card);border-radius:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--muted)">?? 账号调试</span>
+          <span style="font-size:12px;color:var(--muted)">🔍 账号调试</span>
           <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查认证状态</button>
         </div>
         <div id="debugResultStats" style="font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px"></div>
@@ -194,12 +194,12 @@
 <div id="adminPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:18px;font-weight:800">?? 管理面板</h2>
+      <h2 style="font-size:18px;font-weight:800">👑 管理面板</h2>
       <button onclick="closeAdminPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">← 返回</button>
     </div>
     <!-- 创建邀请码 -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">??? 创建邀请码</h3>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">🎟️ 创建邀请码</h3>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input id="inviteCount" type="number" value="1" min="1" max="10" style="width:60px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text)">
         <span style="line-height:40px;font-size:13px;color:var(--muted)">个</span>
@@ -210,7 +210,7 @@
     <!-- 邀请码列表 -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">?? 邀请码列表</h3>
+        <h3 style="font-size:14px;font-weight:700">📋 邀请码列表</h3>
         <button onclick="loadInviteList()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
       </div>
       <div id="inviteList" style="font-size:12px;color:var(--muted)">加载中...</div>
@@ -218,14 +218,14 @@
     <!-- 调试 -->
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">?? 调试</h3>
+        <h3 style="font-size:14px;font-weight:700">🔍 调试</h3>
         <button onclick="debugMyAuth()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查我的认证</button>
       </div>
       <div id="debugResult" style="font-size:11px;color:var(--muted);word-break:break-all"></div>
     </div>
     <!-- 用户管理 -->
     <div style="background:var(--card);border-radius:14px;padding:16px">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">?? 用户管理</h3>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:10px">👥 用户管理</h3>
       <div id="userList" style="font-size:12px;color:var(--muted)">加载中...</div>
     </div>
   </div>
@@ -235,18 +235,18 @@
 <div id="logsPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="font-size:18px;font-weight:800">?? 操作日志</h2>
+      <h2 style="font-size:18px;font-weight:800">📋 操作日志</h2>
       <button onclick="closeLogsPanel()" style="padding:6px 14px;background:var(--border);border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600">← 返回</button>
     </div>
     <div style="background:var(--card);border-radius:14px;padding:16px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="font-size:14px;font-weight:700">?? 操作日志</h3>
+        <h3 style="font-size:14px;font-weight:700">📋 操作日志</h3>
         <button onclick="loadLogs()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">刷新</button>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <button onclick="changeLogDate(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">?</button>
+        <button onclick="changeLogDate(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">◀</button>
         <span id="logDate" style="font-size:13px;font-weight:600"></span>
-        <button onclick="changeLogDate(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">?</button>
+        <button onclick="changeLogDate(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">▶</button>
       </div>
       <div id="logList" style="font-size:12px;color:var(--muted)">点击刷新加载日志</div>
     </div>
@@ -296,15 +296,15 @@
           <button id="chatSendBtn" onclick="sendPurchaseChat()" style="padding:10px 16px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">发送</button>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px">
-          <button onclick="sendQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? 更便宜的平台</button>
-          <button onclick="sendQuickChat('换个品牌/型号推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">?? 换个推荐</button>
-          <button onclick="sendQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">? 等等再买</button>
+          <button onclick="sendQuickChat('有没有更便宜的平台？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">💰 更便宜的平台</button>
+          <button onclick="sendQuickChat('换个品牌/型号推荐？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">🔄 换个推荐</button>
+          <button onclick="sendQuickChat('等等再买可以吗？')" style="flex:1;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer">⏳ 等等再买</button>
         </div>
       </div>
       <div style="display:flex;gap:8px">
         <button onclick="closeModal()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">取消</button>
-        <button onclick="skipToDetail()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:12px">?? 直接填写</button>
-        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">?? AI需求评估</button>
+        <button onclick="skipToDetail()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer;font-size:12px">📝 直接填写</button>
+        <button id="aiEvalBtn" onclick="runPurchaseEval()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">🤖 AI需求评估</button>
       </div>
     </div>
 
@@ -329,7 +329,7 @@
       <div class="form-group"><label>备注</label><textarea id="fNote" placeholder="可选"></textarea></div>
       <div style="display:flex;gap:8px">
         <button onclick="backToEval()" style="flex:1;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;font-weight:600;cursor:pointer">← 返回</button>
-        <button onclick="submitPurchase()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">? 确认提交</button>
+        <button onclick="submitPurchase()" style="flex:2;padding:12px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">✅ 确认提交</button>
       </div>
     </div>
 
@@ -362,7 +362,7 @@
 <div class="modal-overlay" id="expenseOverlay" onclick="if(event.target===this)closeExpenseModal()">
   <div class="modal">
     <input type="hidden" id="eEditId">
-    <h2 id="expenseModalTitle">?? 记一笔</h2>
+    <h2 id="expenseModalTitle">💰 记一笔</h2>
     <div class="form-row">
       <input type="hidden" id="eType" value="支出">
       <div class="form-group"><label>金额 *</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
@@ -373,15 +373,15 @@
     </div>
     <div class="form-group"><label>备注</label><input id="eNote" placeholder="可选" oninput="onNoteInput()"><div id="aiCatSuggest" style="display:none;margin-top:6px;padding:8px 10px;background:var(--pri-light);border-radius:8px;font-size:12px;cursor:pointer;transition:.15s" onclick="applyAICat()"><span id="aiCatText"></span></div></div>
     <div class="form-group"><label>图片</label>
-      <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">??? 删除图片</button></div>
+      <div style="display:none;margin-bottom:8px" id="eImageWrap"><img id="eImagePreview" class="img-preview" style="max-width:200px;max-height:200px;border-radius:8px"><button onclick="deleteExpenseImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
       <div id="imageSizeInfo" style="font-size:11px;color:var(--muted);margin-bottom:8px;display:none"></div>
       <div style="display:flex;gap:8px">
         <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eCameraInput').click()">
-          <div class="upload-icon">??</div>
+          <div class="upload-icon">📷</div>
           <div class="upload-text">拍照</div>
         </div>
         <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('eGalleryInput').click()">
-          <div class="upload-icon">???</div>
+          <div class="upload-icon">🖼️</div>
           <div class="upload-text">相册</div>
         </div>
       </div>
@@ -426,13 +426,13 @@
 <!-- 预算 Modal -->
 <div class="modal-overlay" id="budgetOverlay" onclick="if(event.target===this)closeBudgetModal()">
   <div class="modal">
-    <h2>?? 预算设置</h2>
+    <h2>🎯 预算设置</h2>
     <div class="form-group"><label>月份</label><input id="budgetMonth" type="month"></div>
     <div class="form-group"><label>月总预算（元）</label><input id="budgetInput" type="number" step="1" placeholder="每月总预算"></div>
     <div id="weekBudgetSection"></div>
     <p style="font-size:11px;color:var(--muted);margin:8px 0">各周预算之和不能超过月总预算</p>
     <div id="budgetAiResult" style="display:none;margin:8px 0;padding:12px;background:var(--bg);border-radius:12px;font-size:13px;line-height:1.6"></div>
-    <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">?? AI 智能分析预算</button>
+    <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">🤖 AI 智能分析预算</button>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
       <button class="btn btn-primary" onclick="saveBudget()">保存</button>
@@ -443,7 +443,7 @@
 <!-- 更新日志 -->
 <div class="modal-overlay" id="changelogOverlay" onclick="if(event.target===this)closeChangelog()">
   <div class="modal">
-    <h2>?? 更新日志</h2>
+    <h2>📋 更新日志</h2>
     <div id="changelogContent"></div>
     <div class="btn-row" style="margin-top:16px">
       <button class="btn btn-primary" onclick="closeChangelog()">关闭</button>
@@ -454,7 +454,7 @@
 <!-- PIN 锁屏 -->
 <div id="authScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center;overflow-y:auto">
   <div style="text-align:center;padding:20px;width:100%;max-width:320px">
-    <div style="font-size:56px;margin-bottom:16px">??</div>
+    <div style="font-size:56px;margin-bottom:16px">🔐</div>
     <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
     <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">请登录</p>
     <div id="loginForm">
@@ -475,7 +475,7 @@
   </div>
 </div>
 
-<script src="main.js?v=1780323732"></script>
+<script src="main.js?v=1780326995"></script>
 
 </body>
 </html>
