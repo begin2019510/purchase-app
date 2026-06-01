@@ -24,16 +24,12 @@
       <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780018527</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button></span>
+      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
       <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
       <span id="actionStats" style="display:none"></span>
-      <button class="action-btn desktop-only" id="pushBtn" onclick="setupPush()" style="display:none">🤖 推送</button>
       <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
-      <button class="icon-btn desktop-only" id="adminBtn" onclick="openAdminPanel()" title="管理面板" style="display:none">👑</button>
-      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="操作日志">📋</button>
-      <button class="icon-btn desktop-only" onclick="window.open('/help','_blank')" title="帮助">❓</button>
+      <button class="icon-btn desktop-only" onclick="openLogsPanel()" title="日志">📋</button>
       <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
-      <button class="icon-btn desktop-only" onclick="openBudgetModal()" title="预算设置">🎯</button>
       <button class="settings-btn mobile-only" onclick="openSettings()" title="设置">⚙️</button>
     </div>
   </div>
