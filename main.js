@@ -42,7 +42,8 @@ let items=[], expenses=[];
 let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
-let expenseViewMode='list'; // 'list' | 'calendar'
+let expenseViewMode='list';
+let currentWeekFilter=-1; // 'list' | 'calendar'
 let currentWeekFilter=-1; // -1=本月全部, 0=第1周, 1=第2周...
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
@@ -277,6 +278,13 @@ async function setupPush(){
 function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{return{}}}
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
+// === 周预算系统 ===
+function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const w=[];let s=1,n=1;while(s<=ld){let e=s;const d=new Date(y,m-1,s).getDay();e=Math.min(s+(d===0?0:7-d),ld);w.push({num:n,start:s,end:e});s=e+1;n++}return w}
+function getWeekForDate(ds,ym){if(!ds)return-1;const d=parseInt(ds.slice(8,10));const w=getMonthWeeks(ym);for(let i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}return-1}
+function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
+function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
+function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
+
 
 // ===== API =====
 async function api(method,body,id){
@@ -613,10 +621,18 @@ function getWeekForDate(dateStr, yearMonth) {
 function renderExpense(){
   if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
   const thisMonth=getThisMonth();
-  const monthExpenses=expenses.filter(e=>{
+  const monthWeeks=getMonthWeeks(thisMonth);
+  const chipsEl=document.getElementById('expenseChips');
+  if(chipsEl){
+    let ch='<div class="chip '+(currentWeekFilter===-1?'active':'')+'" onclick="currentWeekFilter=-1;render()">本月</div>';
+    monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</div>'});
+    chipsEl.innerHTML=ch;
+  }
+  let monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   }).sort((a,b)=>(b['日期']||'')>(a['日期']||'')?1:-1);
+  if(currentWeekFilter>=0){monthExpenses=monthExpenses.filter(e=>getWeekForDate(e['日期'],thisMonth)===currentWeekFilter)}
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
 const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
   const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
@@ -629,20 +645,15 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   searched.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
+  const pl=currentWeekFilter>=0?'本周':'本月';
+  const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudget(thisMonth);
+  const br=Math.max(wb-totalOut,0);
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-in"><div class="ex-total-icon">💰</div><div class="ex-total-info"><div class="ex-total-label">${periodLabel}收入</div><div class="ex-total-val">¥${totalIn.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-net ${net>=0?'ex-surplus':'ex-deficit'}"><div class="ex-total-icon">📊</div><div class="ex-total-info"><div class="ex-total-label">净收支</div><div class="ex-total-val">¥${net.toFixed(2)}</div></div></div>
-    <div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
   </div>`;
-  if(budget){
-    const used=totalOut;const pct=Math.min(used/budget*100,100);
-    const color=used>budget?'var(--red)':used>budget*0.8?'var(--orange)':'var(--green)';
-    html+=`<div class="ex-section"><div class="ex-section-title">💰 预算</div>
-      <div class="ex-budget"><div class="ex-budget-header"><span>已用 ¥${used.toFixed(0)}</span><span>预算 ¥${budget}</span></div>
-      <div class="ex-budget-bar"><div class="ex-budget-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="ex-budget-footer"><span>${pct.toFixed(0)}%</span><span style="color:${color}">剩余 ¥${Math.max(budget-used,0).toFixed(0)}</span></div></div></div>`;
-  }
+  if(wb>0){const pct=Math.min(totalOut/wb*100,100);const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';html+='<div style="height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin:0 16px 6px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px"></div></div>'}
+  
   if(catEntries.length){
     html+=`<div class="ex-section"><div class="ex-section-title">📂 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
   }
