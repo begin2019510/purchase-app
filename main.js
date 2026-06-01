@@ -584,7 +584,7 @@ function updateHeader(){
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
   const expTotal=expThisMonth.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
-  const budgetTotal=getBudget(thisMonth);
+  const budgetRaw=getBudget(thisMonth);const budgetTotal=(budgetRaw&&typeof budgetRaw==='object')?(budgetRaw.total||0):(typeof budgetRaw==='number'?budgetRaw:0);
   document.getElementById('headerStats').innerHTML=`
     <div class="stat"><span class="stat-val">${items.length}</span><span class="stat-lbl">采购</span></div>
     <div class="stat"><span class="stat-val">¥${monthTotal.toFixed(0)}</span><span class="stat-lbl">本月采购</span></div>
