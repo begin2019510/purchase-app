@@ -165,7 +165,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .stats-section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:12px}
 .stats-section-title{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:12px}
 .stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.stats-bar-label{width:48px;font-size:13px}.stats-bar-val{width:56px;font-size:13px}.stats-bar-track{height:12px}}
+.stats-bar-label{width:48px;font-size:13px}.stats-bar-val{width:56px;font-size:13px}.stats-bar-track{height:12px}
 .stats-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .stats-bar-label{font-size:12px;width:36px;text-align:right;color:var(--muted);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stats-bar-track{flex:1;height:10px;background:var(--bg);border-radius:5px;overflow:hidden}
@@ -800,7 +800,6 @@ span.desktop-only.hidden { display: none !important; }
   .form-group label { font-size: 12px; margin-bottom: 4px; }
   .form-group input, .form-group select, .form-group textarea { padding: 9px 12px; font-size: 14px; border-radius: 12px; }
   .btn { padding: 10px 16px; font-size: 14px; border-radius: 12px; }
-}
 }
 
 /* ===== Logo ===== */
