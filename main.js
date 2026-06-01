@@ -1022,7 +1022,7 @@ function renderExpenseCalendar(){
   html+=`</div>`;
   document.getElementById('expenseContent').innerHTML=html;
 }
-function renderStats() {
+function renderStats() { console.log('renderStats START');
   const thisMonth = getThisMonth();
   const budget = getBudget(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
@@ -1164,7 +1164,7 @@ function renderStats() {
   }
   html += '</div>';
 
-  document.getElementById('statsContent').innerHTML = html;
+  document.getElementById('statsContent').innerHTML = html; console.log('renderStats DONE html_len='+html.length);
 }
 
 function switchStatsTab(tab) {
