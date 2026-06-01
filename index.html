@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -471,5 +471,29 @@
 
 <script src="main.js?v=1780328621"></script>
 
+
+
+
+
+<!-- Export buttons -->
+<button id="exportCsvBtn" style="display:none"></button>
+<button id="exportTsvBtn" style="display:none"></button>
+<!-- Eval modal missing elements -->
+<div id="evalModalChat" style="display:none"></div>
+<input id="evalModalInput" type="text" style="display:none">
+<button id="evalModalSendBtn" style="display:none"></button>
+<input id="evalReasonInput" type="text" style="display:none">
+<input id="evalBudgetMin" type="number" style="display:none">
+<input id="evalBudgetMax" type="number" style="display:none">
+<!-- Budget modal missing elements -->
+<div id="weekBudgetSection" style="display:none"></div>
+<input id="weekBudgetInput" type="number" style="display:none">
+<div id="budgetAiResult" style="display:none"></div>
+<!-- Missing modal/overlay elements (added for JS compatibility) -->
+<div class="modal-overlay" id="exportOverlay" style="display:none"></div>
+<div id="statsTabPurchase" style="display:none"></div>
+<div id="statsTabExpense" style="display:none"></div>
+<div id="statsSectionPurchase" style="display:none"></div>
+<div id="statsSectionExpense" style="display:none"></div>
 </body>
 </html>
