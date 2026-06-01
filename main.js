@@ -2151,6 +2151,7 @@ function settingsAction(action){
       else if(currentTab==='expense') exportExpenses();
       break;
     case 'batch': toggleBatch(); break;
+    case 'budget': openBudgetModal(); break;
     case 'push': setupPush(); break;
     case 'changelog': openChangelog(); break;
     case 'logout': logout(); break;
