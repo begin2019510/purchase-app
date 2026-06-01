@@ -1058,7 +1058,7 @@ function renderExpenseCalendar(){
 }
 function renderStats() { console.log('renderStats START');
   const thisMonth = getThisMonth();
-  const budget = getBudget(thisMonth);
+  const budgetRaw = getBudget(thisMonth); const budget = (budgetRaw && typeof budgetRaw === 'object') ? (budgetRaw.total || 0) : (typeof budgetRaw === 'number' ? budgetRaw : 0);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
   // 数据
