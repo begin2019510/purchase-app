@@ -1848,11 +1848,42 @@ function applyAICat(){
 
 
 // ===== 预算 =====
-function openBudgetModal(){const m=getThisMonth();document.getElementById('budgetMonth').value=m;document.getElementById('budgetInput').value=getBudget(m)||'';document.getElementById('budgetOverlay').classList.add('active')}
 function closeBudgetModal(){document.getElementById('budgetOverlay').classList.remove('active')}
 // ===== 导出格式选择弹窗 =====
 function showExportDialog(type,callback){let overlay=document.getElementById('exportOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='exportOverlay';overlay.className='modal-overlay';overlay.onclick=function(e){if(e.target===overlay)overlay.classList.remove('active')};overlay.innerHTML=`<div class="modal"><h2>📤 导出${type}</h2><div style="padding:10px 0"><div style="font-size:14px;margin-bottom:12px;color:var(--muted)">选择导出格式</div><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1" id="exportCsvBtn">📄 CSV（逗号分隔）</button><button class="btn btn-primary" style="flex:1" id="exportTsvBtn">📋 TSV（Tab分隔）</button></div></div><div class="btn-row"><button class="btn btn-secondary" onclick="document.getElementById('exportOverlay').classList.remove('active')">取消</button></div></div>`;document.body.appendChild(overlay)}document.getElementById('exportCsvBtn').onclick=function(){overlay.classList.remove('active');callback('csv')};document.getElementById('exportTsvBtn').onclick=function(){overlay.classList.remove('active');callback('tsv')};overlay.classList.add('active')}
-function saveBudget(){const month=document.getElementById('budgetMonth').value;const val=parseFloat(document.getElementById('budgetInput').value)||0;if(!month)return alert('请选择月份');const b=getBudgets();b[month]=val;setBudgets(b);toast(`已设置 ${month} 预算 ¥${val}`);closeBudgetModal();render()}
+function saveBudget(){
+  const month=document.getElementById('budgetMonth').value;
+  const val=parseFloat(document.getElementById('budgetInput').value)||0;
+  const weekVal=parseFloat(document.getElementById('weekBudgetInput').value)||0;
+  if(!month)return alert('请选择月份');
+  const b=getBudgets();
+  if(weekVal>0){
+    // 按周预算
+    const weeks=getMonthWeeks(month);
+    const weekObj={};
+    weeks.forEach((w,i)=>{weekObj[i]=weekVal});
+    b[month]={weekBudget:weekVal,weeks:weekObj};
+  }else{
+    b[month]=val;
+  }
+  setBudgets(b);
+  toast(`已设置 ${month} 预算 ${weekVal>0?'每周¥'+weekVal:'每月¥'+val}`);
+  closeBudgetModal();
+  render();
+}
+function openBudgetModal(){
+  const m=getThisMonth();
+  document.getElementById('budgetMonth').value=m;
+  const b=getBudgets()[m];
+  if(b&&typeof b==='object'&&b.weekBudget){
+    document.getElementById('budgetInput').value='';
+    document.getElementById('weekBudgetInput').value=b.weekBudget||'';
+  }else{
+    document.getElementById('budgetInput').value=b||'';
+    document.getElementById('weekBudgetInput').value='';
+  }
+  document.getElementById('budgetOverlay').classList.add('active');
+}
 
 // ===== FAB 点击 =====
 document.getElementById('fabBtn').addEventListener('click',()=>{
