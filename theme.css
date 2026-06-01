@@ -545,6 +545,7 @@ body.dark .ex-view-btn.active { box-shadow: 2px 2px 0 0 #1e1b4b !important; }
 
 /* --- Visibility helpers --- */
 .mobile-only { display: none !important; }
+.hidden { display: none !important; }
 .desktop-only { display: block !important; }
 .tabs.desktop-only { display: flex !important; }
 
