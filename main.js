@@ -1903,6 +1903,7 @@ function saveBudget(){
 }
 
 function openBudgetModal(){
+  console.log('BUDGET_DEBUG_openBudgetModal');
   const m=getThisMonth();
   document.getElementById('budgetMonth').value=m;
   const b=getBudgets()[m];
