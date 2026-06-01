@@ -284,35 +284,11 @@ function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
 function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
 function renderWeekBudgetInputs(m,total){
-  console.log('BUDGET_DEBUG_renderWeek: m='+m+' total='+total);
-  const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
-  const monthExpenses=expenses.filter(e=>getMonth(e['日期'])===m&&e['类型']!=='收入');
-  let html='<div style="margin-top:16px">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-  html+='<span style="font-size:13px;font-weight:700">📅 每周预算</span>';
-  let allocated=0;Object.values(wb.weeks||{}).forEach(v=>{if(v>0)allocated+=v});
-  if(total>0){html+='<span style="font-size:11px;color:var(--muted)">已分配 ¥'+allocated+'/'+total+'</span>'}
-  html+='</div>';
-  weeks.forEach((w,i)=>{
-    const val=wb.weeks[i]||'';
-    let spent=0;
-    monthExpenses.forEach(e=>{const d=parseInt((e['日期']||'').slice(8,10));if(d>=w.start&&d<=w.end)spent+=Number(e['金额']||0)});
-    const budget=val||0;
-    const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
-    const barColor=pct>=100?'var(--red)':pct>=80?'var(--orange)':'var(--green)';
-    html+='<div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">';
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-    html+='<span style="font-size:12px;font-weight:600">第'+w.num+'周 <span style="color:var(--muted);font-weight:400">'+w.start+'-'+w.end+'日</span></span>';
-    html+='<span style="font-size:11px;color:var(--muted)">已花 ¥'+spent.toFixed(0)+'</span>';
-    html+='</div>';
-    html+='<div style="display:flex;align-items:center;gap:8px">';
-    html+='<input id="weekBudget_'+i+'" type="number" min="0" step="1" placeholder="¥0" value="'+val+'" style="width:80px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;text-align:center">';
-    if(budget>0){html+='<div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px;transition:width .3s"></div></div>'}
-    html+='</div></div>';
-  });
-  html+='</div>';
-  console.log('BUDGET_DEBUG_html_length:', html.length);document.getElementById('weekBudgetSection').innerHTML=html;console.log('BUDGET_DEBUG_done');
+  for(let i=0;i<5;i++){
+    const el=document.getElementById('weekBudget_'+i);
+    if(el)el.value=wb.weeks[i]||'';
+  }
 }
 
 async function analyzeBudget(){
