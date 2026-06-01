@@ -497,36 +497,7 @@
     </div>
     <div id="weekBudgetSection" style="margin:12px 0">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 每周预算</div>
-      <div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600">第1周 <span style="color:var(--muted)">1-7日</span></span>
-        </div>
-        <input id="weekBudget_0" type="number" min="0" step="1" placeholder="¥0" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600">第2周 <span style="color:var(--muted)">8-14日</span></span>
-        </div>
-        <input id="weekBudget_1" type="number" min="0" step="1" placeholder="¥0" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600">第3周 <span style="color:var(--muted)">15-21日</span></span>
-        </div>
-        <input id="weekBudget_2" type="number" min="0" step="1" placeholder="¥0" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600">第4周 <span style="color:var(--muted)">22-28日</span></span>
-        </div>
-        <input id="weekBudget_3" type="number" min="0" step="1" placeholder="¥0" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600">第5周 <span style="color:var(--muted)">29-30日</span></span>
-        </div>
-        <input id="weekBudget_4" type="number" min="0" step="1" placeholder="¥0" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px">
-      </div>
+      <div id="weekBudgetCards"></div>
     </div>
     <p style="font-size:11px;color:var(--muted);margin:8px 0;text-align:center">💡 周预算之和不能超过月总预算</p>
     <div id="budgetAiResult" style="display:none;margin:8px 0;padding:12px;background:var(--bg);border-radius:12px;font-size:13px;line-height:1.6"></div>

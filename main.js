@@ -278,17 +278,35 @@ function getBudgets(){try{return JSON.parse(localStorage.getItem('purchase_budge
 function setBudgets(b){localStorage.setItem('purchase_budgets',JSON.stringify(b))}
 function getBudget(m){return getBudgets()[m]||0}
 // === 周预算系统 ===
-function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const w=[];let s=1,n=1;while(s<=ld){let e=s;const d=new Date(y,m-1,s).getDay();e=Math.min(s+(d===0?0:7-d),ld);w.push({num:n,start:s,end:e});s=e+1;n++}return w}
+function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const base=Math.floor(ld/4);const rem=ld%4;const w=[];let s=1;for(let i=0;i<4;i++){const days=base+(i<rem?1:0);w.push({num:i+1,start:s,end:s+days-1});s+=days}return w}
 function getWeekForDate(ds,ym){if(!ds)return-1;const d=parseInt(ds.slice(8,10));const w=getMonthWeeks(ym);for(let i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}return-1}
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
 function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
 function renderWeekBudgetInputs(m,total){
+  const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
-  for(let i=0;i<5;i++){
-    const el=document.getElementById('weekBudget_'+i);
-    if(el)el.value=wb.weeks[i]||'';
-  }
+  const container=document.getElementById('weekBudgetCards');
+  if(!container)return;
+  container.innerHTML='';
+  weeks.forEach((w,i)=>{
+    const card=document.createElement('div');
+    card.style.cssText='background:var(--bg);border-radius:12px;padding:10px 12px;margin-bottom:8px';
+    const header=document.createElement('div');
+    header.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px';
+    header.innerHTML='<span style="font-size:12px;font-weight:600">第'+w.num+'周 <span style="color:var(--muted)">'+w.start+'-'+w.end+'日</span></span>';
+    card.appendChild(header);
+    const input=document.createElement('input');
+    input.id='weekBudget_'+i;
+    input.type='number';
+    input.min='0';
+    input.step='1';
+    input.placeholder='¥0';
+    input.value=wb.weeks[i]||'';
+    input.style.cssText='width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:14px';
+    card.appendChild(input);
+    container.appendChild(card);
+  });
 }
 
 async function analyzeBudget(){
