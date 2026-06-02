@@ -392,3 +392,6 @@ function settingsAction(action){
     case 'logout': logout(); break;
   }
 }
+
+setupPullToRefresh();
+setupSwipe();

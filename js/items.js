@@ -147,8 +147,6 @@ function doDetailModalAction(id,nextStatus){
   }).catch(()=>{toast('网络错误，请刷新');loadAll();});
 }
 
-setupPullToRefresh();
-setupSwipe();
 
 
 // ============================================================
