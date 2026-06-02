@@ -92,7 +92,7 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
       <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
       const isOut=e['类型']==='支出'||e['类型']==='采购';
-      const typeBadge=e['类型']==='采购'?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(99,102,241,.15);color:#6366f1;margin-left:4px">采购</span>':'';
+      const typeBadge=e['类型']==='采购'?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(99,102,241,.15);color:#6366f1;margin-left:4px">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;margin-left:4px">📊 '+e['分摊周数']+'周</span>':'';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       // ===== 图片显示 =====
 // kv:前缀 -> KV key -> /api/images?key=xxx
@@ -100,7 +100,7 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}${typeBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
     });
@@ -150,10 +150,10 @@ function renderExpenseWeek(){
     const weekExpenses=monthExpenses.filter(function(e){
       return getWeekForDate(e['日期'],thisMonth)===i;
     });
-    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+Number(e['金额']||0)},0);
+    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+getExpenseWeekAmount(e,w.start)},0);
     const weekBudget=getWeekBudget(thisMonth,i);
     const catMap={};
-    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
+    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.start)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
     html+='<div class="week-card">';
     html+='<div class="week-card-header">';
@@ -341,6 +341,43 @@ async function deleteExpenseImage(){const eid=document.getElementById('eEditId')
 async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;const r=await expenseApi('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);return}toast('已删除');await loadAll()}
 
+
+function toggleSplit(){
+  var group=document.getElementById('splitGroup');
+  var btn=document.getElementById('splitBtn');
+  var showing=group.style.display==='none';
+  group.style.display=showing?'':'none';
+  btn.style.background=showing?'var(--pri)':'var(--bg)';
+  btn.style.color=showing?'#fff':'var(--text)';
+  if(showing)updateSplitPreview();
+}
+function updateSplitPreview(){
+  var weeks=parseInt(document.getElementById('eSplitWeeks').value)||0;
+  var amount=parseFloat(document.getElementById('eAmount').value)||0;
+  var preview=document.getElementById('splitPreview');
+  if(preview)preview.textContent=weeks>0&&amount>0?'每期 \u00a5'+(amount/weeks).toFixed(2):'';
+}
+function getWeekStart(dateStr){
+  var d=new Date(dateStr);
+  var day=d.getDay();
+  var diff=d.getDate()-day+(day===0?-6:1);
+  var monday=new Date(d.setDate(diff));
+  return monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+}
+function getExpenseWeekAmount(e, targetWeekStart){
+  var splitWeeks=Number(e['分摊周数'])||0;
+  if(splitWeeks<=0)return Number(e['金额']||0);
+  var startWeek=e['分摊开始周']||'';
+  if(!startWeek)return Number(e['金额']||0);
+  var weekNum=getWeekDiff(startWeek,targetWeekStart);
+  if(weekNum<0||weekNum>=splitWeeks)return 0;
+  return Number(e['金额']||0)/splitWeeks;
+}
+function getWeekDiff(week1,week2){
+  var d1=new Date(week1);
+  var d2=new Date(week2);
+  return Math.round((d2-d1)/(7*24*3600*1000));
+}
 // ===== AI 助手 =====
 
 // ============================================================

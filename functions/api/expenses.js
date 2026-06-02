@@ -50,6 +50,8 @@ export async function onRequest(context) {
             '分类': f['分类'] || '其他',
             '金额': Number(f['金额']) || 0,
             '备注': f['备注'] || '',
+            '分摊周数': Number(f['分摊周数']) || 0,
+            '分摊开始周': f['分摊开始周'] || '',
             '图片': f['图片'] || '',
           });
         });
@@ -108,6 +110,8 @@ export async function onRequest(context) {
       fields['金额'] = amt;
     }
     if (body.note !== undefined) fields['备注'] = (body.note || '').slice(0, 500);
+    if (body.splitWeeks !== undefined) fields['分摊周数'] = Number(body.splitWeeks) || 0;
+    if (body.splitStartWeek !== undefined) fields['分摊开始周'] = body.splitStartWeek || '';
     if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
     if (body.imageKey !== undefined) fields['图片'] = body.imageKey ? 'kv:' + body.imageKey : '';
     else if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
