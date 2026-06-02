@@ -346,3 +346,11 @@ async function delExpense(id){if(!confirm('确定删除？'))return;const r=awai
 // ============================================================
 // AI 功能
 // ============================================================
+
+// Expense button event delegation
+document.addEventListener('click', function(e) {
+  var editBtn = e.target.closest('[data-expense-edit]');
+  if (editBtn) { openExpenseModal(editBtn.getAttribute('data-expense-edit')); return; }
+  var delBtn = e.target.closest('[data-expense-del]');
+  if (delBtn) { delExpense(delBtn.getAttribute('data-expense-del')); return; }
+});

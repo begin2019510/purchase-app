@@ -259,7 +259,7 @@ async function handleParse(apiKey, data, corsHeaders) {
   const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { text, currentDate } = data;
   const today = currentDate || new Date().toISOString().slice(0, 10);
-  const systemPrompt = "你是一个记账助手。用户用自然语言描述消费，解析成JSON数组。\n当前日期: " + today + "\n用户可能一次描述多笔消费，也可能只有一笔。始终输出JSON数组。\n输出严格JSON数组:\n[{\"type\":\"支出或收入\",\"amount\":数字,\"category\":\"餐饮|交通|购物|娱乐|居住|医疗|教育|其他\",\"date\":\"YYYY-MM-DDTHH:mm\",\"note\":\"润色后的备注\",\"confidence\":0-1}]\nnote字段规则:从用户描述中提取核心消费信息，润色为简洁记录。保留关键细节。\n例:\"午饭35打车28\"→两笔;\"午饭35\"→一笔。没提金额的条目跳过。";
+  const systemPrompt = "你是一个记账助手。用户用自然语言描述消费，解析成JSON数组。\n当前日期: " + today + " (用户所在时区 UTC+8)\n用户可能一次描述多笔消费，也可能只有一笔。始终输出JSON数组。\n输出严格JSON数组:\n[{\"type\":\"支出或收入\",\"amount\":数字,\"category\":\"餐饮|交通|购物|娱乐|居住|医疗|教育|其他\",\"date\":\"YYYY-MM-DDTHH:mm\",\"note\":\"润色后的备注\",\"confidence\":0-1}]\n\ndate字段规则(非常重要):\n- 必须从用户描述中提取时间信息\n- 如果用户说了具体时间(如\"下午3点\",\"晚上8点半\",\"中午12点\")，必须转换为24小时制填入\n- 如果用户说了\"刚才\",\"刚才下午3点\",\"今天中午\"等，也要提取具体时间\n- 如果用户没有提到任何时间，使用当前时间\n- 格式必须是 YYYY-MM-DDTHH:mm\n\nnote字段规则:从用户描述中提取核心消费信息，润色为简洁记录。\n例:\"午饭35打车28\"→两笔;\"午饭35\"→一笔。没提金额的条目跳过。";
   const result = await callAI(apiKey, systemPrompt, text);
   const m = result.match(/\[[\s\S]*\]/);
   if (m) { try { const arr = JSON.parse(m[0]); return json({ ok: true, data: arr }); } catch {} }
