@@ -179,7 +179,7 @@ function switchTab(t){
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
 async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast('正在更新 '+ids.length+' 项...');const r=await api('PATCH',{ids,status});if(r&&r.error){alert('批量更新失败: '+r.error);return}if(status==='已下单'){for(const id of ids){const item=items.find(x=>x.id===id);if(item)await createPurchaseExpense(item)}}toast('已更新 '+ids.length+' 项为"'+status+'"');selectedIds.clear();toggleBatch();await loadAll()}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);await loadAll()}
+async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删除选中的 '+selectedIds.size+' 项？'))return;const ids=[...selectedIds];for(const id of ids){var item=items.find(x=>x.id===id);if(item)await deletePurchaseExpenses(item['商品名称']||'')}items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast('已删除 '+ok+' 项');await loadAll()}
 
 // ============================================================
 // 采购 Modal
@@ -189,7 +189,21 @@ function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.get
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
 async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null,installments:parseInt(document.getElementById('fInstallments')&&document.getElementById('fInstallments').value)||0,installmentAmount:0,installmentStart:getThisMonth()};if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){alert('更新失败: '+r.error+(r.detail?JSON.stringify(r.detail):''));return}toast('已更新')}else{const r=await api('POST',data);if(r&&r.error){alert('添加失败: '+r.error+(r.detail?JSON.stringify(r.detail):''));return}toast('已添加')}closeModal();await loadAll()}
 
-async function delItem(id){if(!confirm('确定删除？'))return;items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);await loadAll();return}toast('已删除');await loadAll()}
+async function deletePurchaseExpenses(itemName) {
+  try {
+    const related = expenses.filter(function(e) {
+      return e['备注'] && (e['备注'].includes('[采购]') || e['备注'].includes('[采购分期]')) && e['备注'].includes(itemName);
+    });
+    for (var i = 0; i < related.length; i++) {
+      await expenseApi('DELETE', null, related[i].id);
+    }
+    if (related.length > 0) {
+      expenses = expenses.filter(function(e) { return !related.find(function(r) { return r.id === e.id; }); });
+    }
+  } catch(e) { console.error('deletePurchaseExpenses error:', e); }
+}
+
+async function delItem(id){if(!confirm('确定删除？'))return;var item=items.find(x=>x.id===id);var itemName=item?item['商品名称']||'':'';if(itemName)await deletePurchaseExpenses(itemName);items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);await loadAll();return}toast('已删除');await loadAll()}
 
 // ===== 审批流操作 =====
 const NEXT_STATUS={'待评估':'待审批','待审批':'已审批','已审批':'已下单','已下单':'已到'};
