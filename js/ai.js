@@ -1,4 +1,4 @@
-// ai.js - AI Assistant, Evaluation, Analysis
+﻿// ai.js - AI Assistant, Evaluation, Analysis
 function parseEvalNote(note) {
   if (!note || !note.includes('===BUDGET===')) return null;
   try {
@@ -104,8 +104,29 @@ function skipToDetail() {
   document.getElementById('fNote').value = '';
   document.getElementById('fPlatform').value = '拼多多';
   document.getElementById('fCategory').value = '日用';
+  var dig=document.getElementById('detailInstallmentGroup');if(dig)dig.style.display='none';
+  var dib=document.getElementById('detailInstBtn');if(dib){dib.style.background='var(--bg)';dib.style.color='var(--text)';}
+  var dip=document.getElementById('installmentPreviewDetail');if(dip)dip.textContent='';
+  var did=document.getElementById('fInstallmentsDetail');if(did)did.value='';
+  document.getElementById('fBudgetDisplay').textContent='未设置';
 }
-
+function toggleDetailInstallment(){
+  var group=document.getElementById('detailInstallmentGroup');
+  var btn=document.getElementById('detailInstBtn');
+  var showing=group.style.display==='none';
+  group.style.display=showing?'':'none';
+  btn.style.background=showing?'var(--pri)':'var(--bg)';
+  btn.style.color=showing?'#fff':'var(--text)';
+  if(showing)updateDetailInstallmentPreview();
+}
+function updateDetailInstallmentPreview(){
+  var periods=parseInt(document.getElementById('fInstallmentsDetail').value)||0;
+  var price=parseFloat(document.getElementById('fPrice').value)||0;
+  var qty=parseInt(document.getElementById('fQty').value)||1;
+  var total=price*qty;
+  var preview=document.getElementById('installmentPreviewDetail');
+  if(preview)preview.textContent=periods>0?'每期 \u00a5'+(total/periods).toFixed(2):'';
+}
 // --- AI 需求评估（嵌入采购创建流程） ---
 async function runPurchaseEval() {
   const name = document.getElementById('fName').value.trim();
@@ -251,12 +272,10 @@ async function submitEvaluation() {
   if (purchaseChatHistory.length < 1) { alert('请先进行AI评估'); return; }
 
   const reason = (document.getElementById('fReason').value || '').trim();
-
   const aiSummary = purchaseChatHistory
     .filter(m => m.role === 'assistant')
-    .map(m => m.content.replace(/\\n+/g, ' ').slice(0, 200))
+    .map(m => m.content.replace(/\n+/g, ' ').slice(0, 200))
     .join(' | ');
-
   const budgetMin = parseFloat(document.getElementById('fBudgetMin').value) || 0;
   const budgetMax = parseFloat(document.getElementById('fBudgetMax').value) || 0;
   let budgetText = '';
@@ -264,31 +283,25 @@ async function submitEvaluation() {
   else if (budgetMin > 0) budgetText = budgetMin + '+';
   else if (budgetMax > 0) budgetText = budgetMax + '-';
 
-  const btn = document.querySelector('#aiEvalResult .ai-confirm-btn.primary');
-  if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
-
-  try {
-    const data = {
-      name,
-      platform: '待定',
-      category: '日用',
-      price: 0,
-      qty: 1,
-      status: '待评估',
-      date: new Date().toISOString().slice(0,10),
-      note: '',
-      evalSummary: aiSummary,
-      buyReason: reason,
-      budgetRange: budgetText
-    };
-    const r = await api('POST', data);
-    if (r && r.error) { alert('提交失败: ' + r.error); return; }
-    toast('评估已提交');
-    closeModal();
-    await loadAll();
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '✔ 提交评估'; }
-  }
+  // Switch to detailPhase with AI data pre-filled
+  document.getElementById('evalPhase').style.display = 'none';
+  document.getElementById('chatArea').style.display = 'none';
+  document.getElementById('detailPhase').style.display = '';
+  document.getElementById('fNameDisplay').value = name;
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fQty').value = '1';
+  document.getElementById('fNote').value = reason || '';
+  document.getElementById('fPlatform').value = '拼多多';
+  document.getElementById('fCategory').value = '日用';
+  document.getElementById('fBudgetDisplay').textContent = budgetText || '未设置';
+  // Reset installment state
+  var dig=document.getElementById('detailInstallmentGroup');if(dig)dig.style.display='none';
+  var dib=document.getElementById('detailInstBtn');if(dib){dib.style.background='var(--bg)';dib.style.color='var(--text)';}
+  var dip=document.getElementById('installmentPreviewDetail');if(dip)dip.textContent='';
+  var did=document.getElementById('fInstallmentsDetail');if(did)did.value='';
+  // Store AI context for submitPurchase to use
+  purchaseEvalContext = aiSummary;
+  toast('AI评估完成，请填写采购详情');
 }
 
 function backToEval() {
@@ -500,19 +513,26 @@ async function submitEvalToDetail() {
 async function submitPurchase() {
   const name = document.getElementById('fNameDisplay').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
+  const price = parseFloat(document.getElementById('fPrice').value) || 0;
+  const qty = parseInt(document.getElementById('fQty').value) || 1;
+  const total = price * qty;
+  const instVal = parseInt(document.getElementById('fInstallmentsDetail')?.value) || 0;
   const data = {
     name,
     platform: document.getElementById('fPlatform').value,
     category: document.getElementById('fCategory').value,
-    price: parseFloat(document.getElementById('fPrice').value) || 0,
-    qty: parseInt(document.getElementById('fQty').value) || 1,
-    status: '待评估',
-    date: null,
-    note: document.getElementById('fNote').value.trim() || null
+    price: price,
+    qty: qty,
+    status: '待审批',
+    date: new Date().toISOString().slice(0, 10),
+    note: document.getElementById('fNote').value.trim() || null,
+    installments: instVal,
+    installmentAmount: instVal > 0 ? Math.round((total / instVal) * 100) / 100 : 0,
+    installmentStart: getThisMonth()
   };
   const r = await api('POST', data);
   if (r && r.error) { alert('添加失败: ' + r.error); return; }
-  toast('评估已提交，进入待评估状态');
+  toast('采购单已提交，进入待审批状态');
   closeModal();
   await loadAll();
 }
