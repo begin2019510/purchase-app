@@ -53,9 +53,9 @@ function recordToItem(r) {
     '购买理由': f['购买理由'] || '',
     '预算区间': f['预算区间'] || '',
     '取消原因': f['取消原因'] || '',
-    '分期期数': f['分期期数'] || 0,
-    '分期金额': f['分期金额'] || 0,
-    '分期开始月': f['分期开始月'] || '',
+    '分期期数': Number(f['分期期数']) || 0,
+    '分期金额': Number(f['分期金额']) || 0,
+    '分期已还': Number(f['分期已还']) || 0,
     '分期已还': f['分期已还'] || 0,
   };
 }
@@ -136,10 +136,10 @@ export async function onRequest(context) {
         '购买理由': body.buyReason || '',
         '预算区间': body.budgetRange || '',
         '取消原因': '',
-        '分期期数': body.installments || 0,
-        '分期金额': body.installmentAmount || 0,
+        '分期期数': String(body.installments || 0),
+        '分期金额': String(body.installmentAmount || 0),
         '分期开始月': body.installmentStart || '',
-        '分期已还': 0,
+        '分期已还': '0',
       };
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
@@ -182,10 +182,10 @@ export async function onRequest(context) {
       if (body.buyReason !== undefined) fields['购买理由'] = body.buyReason;
       if (body.budgetRange !== undefined) fields['预算区间'] = body.budgetRange;
       if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
-      if (body.installments !== undefined) fields['分期期数'] = body.installments;
-      if (body.installmentAmount !== undefined) fields['分期金额'] = body.installmentAmount;
+      if (body.installments !== undefined) fields['分期期数'] = String(body.installments);
+      if (body.installmentAmount !== undefined) fields['分期金额'] = String(body.installmentAmount);
       if (body.installmentStart !== undefined) fields['分期开始月'] = body.installmentStart;
-      if (body.installmentPaid !== undefined) fields['分期已还'] = body.installmentPaid;
+      if (body.installmentPaid !== undefined) fields['分期已还'] = String(body.installmentPaid);
       if (body.setDate && !fields['日期']) fields['日期'] = Date.now();
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
