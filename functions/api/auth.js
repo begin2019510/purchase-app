@@ -1,10 +1,10 @@
-// 多用户认证系统 v2
+// 多用户认证系统 v3
 // 存储: Cloudflare KV (IMAGE_STORE)
-// 密码: SHA-256 + salt
+// 密码: PBKDF2-SHA256 (100k iterations) + salt, auto-upgrade from SHA-256
 // 会话: JWT (HS256)
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, hashPasswordNew, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
 
 const json = jsonFn;
 const corsHeaders = getCorsHeaders;
@@ -181,7 +181,7 @@ export async function onRequest(context) {
       if (!opPassword) return json({ error: '请输入操作密码' }, 400, cors);
       const adminUser = await getUser(KV, 'admin');
       if (!adminUser) return json({ error: '管理员账号异常' }, 500, cors);
-      const opHash = await hashPassword(opPassword, adminUser.salt);
+      const opHash = await hashPassword(opPassword, adminUser.salt, adminUser.hashVersion);
       if (opHash !== adminUser.passwordHash) return json({ error: '操作密码错误' }, 401, cors);
       // 签发短期操作 token（5分钟）
       const opToken = await createJWT({ username: 'admin', op: true }, JWT_SECRET, 0.083);
@@ -232,12 +232,13 @@ async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
 
   // 哈希密码
   const salt = generateSalt();
-  const hash = await hashPassword(password, salt);
+  const hash = await hashPasswordNew(password, salt);
 
   // 保存用户
   const userData = {
     username,
     passwordHash: hash,
+    hashVersion: 2,
     salt,
     createdAt: new Date().toISOString(),
     bitable: tables,
@@ -303,10 +304,22 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors) {
     return json({ error: '用户名或密码错误' }, 401, cors);
   }
 
-  const hash = await hashPassword(password, user.salt);
+  const hash = await hashPassword(password, user.salt, user.hashVersion);
   if (hash !== user.passwordHash) {
-    await recordLoginFail(KV, ip, rateLimit.recent);
+    await recordLoginFail(KV, ip, rateLimit.recent).catch(() => {});
     return json({ error: '用户名或密码错误' }, 401, cors);
+  }
+
+  // Auto-upgrade old SHA-256 users to PBKDF2 on successful login
+  if (!user.hashVersion || user.hashVersion < 2) {
+    try {
+      const newSalt = generateSalt();
+      const newHash = await hashPasswordNew(password, newSalt);
+      user.salt = newSalt;
+      user.passwordHash = newHash;
+      user.hashVersion = 2;
+      await saveUser(KV, username, user);
+    } catch (e) { console.error('Auto-upgrade hash failed:', e.message); }
   }
 
   // 登录成功，清除限流

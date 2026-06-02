@@ -1,4 +1,4 @@
-﻿/*
+/*
   Cache-Control: no-cache, no-store, must-revalidate
   X-Content-Type-Options: nosniff
 
@@ -6,15 +6,7 @@
   Content-Type: text/css; charset=utf-8
   Cache-Control: no-cache, no-store, must-revalidate
 
-/main.js
-  Content-Type: application/javascript; charset=utf-8
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/style.css
-  Content-Type: text/css; charset=utf-8
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/app.js
+/js/*.js
   Content-Type: application/javascript; charset=utf-8
   Cache-Control: no-cache, no-store, must-revalidate
 

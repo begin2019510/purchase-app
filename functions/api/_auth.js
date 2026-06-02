@@ -1,6 +1,5 @@
-// Deploy: 2026-06-01 15:38:48
-// 共享认证模块 - 被所有 API 函数引用
-export const CORS_ORIGINS = ['https://121212121.top', 'http://121212121.top'];
+// Shared auth module - imported by all API functions
+export const CORS_ORIGINS = ['https://121212121.top'];
 
 export function getCorsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -8,7 +7,7 @@ export function getCorsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS,PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type,X-API-Key,Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   };
 }
 
@@ -19,15 +18,39 @@ export function jsonResponse(data, status = 200, headers = {}) {
   });
 }
 
-// 向后兼容别名
 export const corsHeaders = getCorsHeaders;
 export const json = jsonResponse;
 
-// 密码哈希
-export async function hashPassword(password, salt) {
+// ===== Password Hashing =====
+
+// Legacy SHA-256 (for migration only)
+async function hashPasswordV1(password, salt) {
   const data = new TextEncoder().encode(salt + password);
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// PBKDF2 with 100k iterations (v2)
+async function hashPasswordV2(password, salt) {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial, 256
+  );
+  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Unified hash function with version migration
+export async function hashPassword(password, salt, hashVersion) {
+  if (hashVersion === 2) return hashPasswordV2(password, salt);
+  return hashPasswordV1(password, salt);
+}
+
+// Export V2 for new registrations
+export async function hashPasswordNew(password, salt) {
+  return hashPasswordV2(password, salt);
 }
 
 export function generateSalt() {
@@ -35,7 +58,8 @@ export function generateSalt() {
     .map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// JWT 创建
+// ===== JWT =====
+
 export async function createJWT(payload, secret, expiresInHours = 24) {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
@@ -51,7 +75,6 @@ export async function createJWT(payload, secret, expiresInHours = 24) {
   return token + '.' + sigStr;
 }
 
-// JWT 验证
 export async function verifyJWT(token, secret) {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
@@ -69,15 +92,9 @@ export async function verifyJWT(token, secret) {
   } catch { return null; }
 }
 
-// 从请求中提取用户上下文
-// 兼容两种认证方式：JWT token (Bearer) 和 旧 PIN (X-API-Key)
-export function verifyPin(request, env) {
-  const pin = request.headers.get('X-API-Key');
-  return pin && pin === env.API_KEY;
-}
+// ===== Authentication (JWT only, PIN removed) =====
 
 export async function authenticate(request, env) {
-  // 优先尝试 JWT
   const authHeader = request.headers.get('Authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.replace('Bearer ', '');
@@ -86,32 +103,16 @@ export async function authenticate(request, env) {
       return {
         authenticated: true,
         username: payload.username,
-        bitable: payload.bitable, // { purchaseApp, purchaseTable, expenseApp, expenseTable }
+        bitable: payload.bitable,
         isJWT: true,
       };
     }
   }
-
-  // 回退到旧 PIN 认证
-  const pin = request.headers.get('X-API-Key');
-  if (pin && pin === env.API_KEY) {
-    return {
-      authenticated: true,
-      username: 'legacy',
-      bitable: {
-        purchaseApp: env.FEISHU_BITABLE_APP,
-        purchaseTable: env.FEISHU_BITABLE_TABLE,
-        expenseApp: env.FEISHU_EXPENSE_APP,
-        expenseTable: env.FEISHU_EXPENSE_TABLE,
-      },
-      isJWT: false,
-    };
-  }
-
   return { authenticated: false };
 }
 
-// 获取 Feishu token
+// ===== Feishu Token =====
+
 export async function getFeishuToken(env) {
   const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
     method: 'POST',
@@ -123,40 +124,33 @@ export async function getFeishuToken(env) {
   return data.tenant_access_token;
 }
 
+// ===== Refresh Token =====
 
-// ===== Refresh Token 管理 =====
-
-// 生成 refresh token (UUID)
 export function generateRefreshToken() {
   return crypto.randomUUID();
 }
 
-// 存储 refresh token 到 KV
 export async function storeRefreshToken(kv, username, token, expiresInDays = 30) {
   const key = 'refresh:' + token;
   await kv.put(key, JSON.stringify({
     username,
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + expiresInDays * 86400000).toISOString(),
-  }), { expirationTtl: expiresInDays * 86400 }); // KV 自动过期
+  }), { expirationTtl: expiresInDays * 86400 });
 }
 
-// 验证 refresh token
 export async function validateRefreshToken(kv, token) {
   const data = await kv.get('refresh:' + token);
   if (!data) return null;
   const parsed = JSON.parse(data);
-  // 检查是否过期（KV TTL 兜底，这里做双重检查）
   if (new Date(parsed.expiresAt) < new Date()) return null;
   return parsed;
 }
 
-// 删除 refresh token（logout 用）
 export async function deleteRefreshToken(kv, token) {
   await kv.delete('refresh:' + token);
 }
 
-// 删除用户所有 refresh token（管理员删用户时用）
 export async function deleteAllRefreshTokens(kv, username) {
   const list = await kv.list({ prefix: 'refresh:' });
   for (const key of list.keys) {
@@ -170,19 +164,17 @@ export async function deleteAllRefreshTokens(kv, username) {
   }
 }
 
-// ===== 操作日志 =====
+// ===== Audit Log =====
 
-// 记录操作日志
 export async function logOp(kv, action, username, details, request) {
   const now = new Date();
   const ts = now.toISOString();
-  const date = ts.slice(0, 10); // YYYY-MM-DD
+  const date = ts.slice(0, 10);
   const key = `log:${date}:${now.getTime()}`;
   const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
   await kv.put(key, JSON.stringify({ action, username, details, ip, ts }), { expirationTtl: 2592000 });
 }
 
-// 获取指定日期的操作日志
 export async function getLogs(kv, date, username) {
   const list = await kv.list({ prefix: `log:${date}` });
   const logs = [];
@@ -190,13 +182,11 @@ export async function getLogs(kv, date, username) {
     const data = await kv.get(item.name);
     if (data) {
       const log = JSON.parse(data);
-      // 如果指定了用户名，只返回该用户的日志
       if (!username || log.username === username) {
         logs.push(log);
       }
     }
   }
-  // 按时间倒序
   logs.sort((a, b) => new Date(b.ts) - new Date(a.ts));
   return logs;
 }

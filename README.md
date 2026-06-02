@@ -1,4 +1,4 @@
-# 采购管家 v2.7.0
+# 个人管家 v3.0.0
 
 多用户采购记账 PWA，基于飞书 Bitable + Cloudflare Pages。
 
@@ -6,7 +6,7 @@
 
 ### 采购管理
 - 增删改查采购记录（商品、平台、单价、数量、分类、备注）
-- 审批流：待审批 → 已审批 → 已下单 → 已到/已退 → 已归档
+- 审批流：待评估 → 待审批 → 已审批 → 已下单 → 已到/已退 → 已归档
 - 批量操作：批量改状态、批量删除
 - 搜索过滤：按状态、分类筛选
 - 卡片左滑删除、右滑改状态
@@ -17,17 +17,17 @@
 - 日历视图：按天聚合，点击查看明细
 - 列表视图：按时间线展示
 - 图片附件：拍照/相册上传，压缩后存 Cloudflare KV
-- 导出 TSV
+- 导出 CSV/TSV
 
-### AI 功能（DeepSeek）
-- 自然语言记账：说句话自动解析金额/分类/时间，润色备注
+### AI 功能（MiMo）
+- 自然语言记账：说句话自动解析金额/分类/时间
 - 智能分类：输入备注时自动推荐分类+标签
 - 财务分析报告：消费异常、省钱建议、趋势洞察
 - 消费画像：深度分析消费习惯、生活方式
-- 自然语言查询：问问题直接回答（如"这个月奶茶花了多少"）
+- 自然语言查询：问问题直接回答（如"这个月奶茶花了多少？"）
 
 ### 统计
-- 本月总览卡片
+- 本月总计卡片
 - 采购/记账分类饼图
 - 每日支出趋势折线图
 - 每周支出柱状对比
@@ -47,17 +47,18 @@
 - 骨架屏加载动画
 - 下拉刷新
 - 预算管理
+- 固定支出管理
 
 ## 技术栈
 
 | 层 | 技术 |
 |----|------|
-| 前端 | HTML + CSS + 原生 JS（无框架），PWA |
+| 前端 | HTML + CSS + 原生 JS（模块化，无框架），PWA |
 | 后端 | Cloudflare Pages Functions |
 | 数据库 | 飞书 Bitable（多维表格） |
 | 图片存储 | Cloudflare KV（IMAGE_STORE） |
-| AI | DeepSeek API |
-| 认证 | JWT（HS256）+ 邀请码注册 |
+| AI | MiMo API（xiaomimimo.com） |
+| 认证 | JWT（HS256）+ PBKDF2 密码哈希 + Refresh Token |
 | 推送 | 飞书自定义机器人 Webhook |
 | 定时任务 | Cloudflare Worker Cron Triggers |
 | 部署 | Cloudflare Pages + GitHub Actions（双通道） |
@@ -67,45 +68,46 @@
 ```
 purchase-app/
 ├── index.html              # 主页面（HTML 结构）
-├── app.js                  # 前端所有 JS 逻辑（1227行）
-├── style.css               # 样式（30KB）
-├── sw.js                   # Service Worker（离线缓存 + 推送）
+├── js/                     # 前端模块化 JS
+│   ├── utils.js            # 版本号、工具函数（esc, toast, getMonth）
+│   ├── auth.js             # 认证（登录/注册/JWT刷新/管理员/日志查看）
+│   ├── api.js              # API 封装（采购/记账/预算/固定支出/图片）
+│   ├── stats.js            # 统计图表（饼图/折线/柱状/排行）
+│   ├── expense.js          # 记账渲染（列表/日历/周视图/CRUD）
+│   ├── items.js            # 采购渲染（卡片/批量/审批/详情弹窗）
+│   ├── ai.js               # AI 助手（记账/分类/分析/评估/查询）
+│   ├── budget.js           # 预算弹窗/导出
+│   └── app.js              # 初始化/核心渲染/事件/离线检测/设置
+├── theme.css               # 样式（主题+暗色模式+响应式）
+├── sw.js                   # Service Worker（离线缓存+推送）
 ├── manifest.json           # PWA 清单
 ├── icon-192.png / icon-512.png
-│
+├── help.html               # 在线帮助文档
+├── IMAGE_ARCH.md           # 图片存储架构说明
 ├── functions/              # Cloudflare Pages Functions（API）
-│   ├── _utils.js           # 公共工具（CORS、Feishu API）
 │   └── api/
-│       ├── _auth.js        # 认证模块（JWT、PIN、Feishu token）
+│       ├── _auth.js        # 公共认证模块（JWT/PBKDF2/Refresh Token/CORS）
 │       ├── auth.js         # 多用户认证（注册/登录/邀请码/管理员）
 │       ├── items.js        # 采购 CRUD + 缓存
 │       ├── expenses.js     # 记账 CRUD
 │       ├── images.js       # 图片上传/读取/删除（KV）
-│       ├── ai.js           # AI 代理（解析/分类/分析/画像/查询）
+│       ├── ai.js           # AI 代理（解析/分类/分析/画像/查询/评估）
 │       ├── notify.js       # 飞书机器人消息推送
+│       ├── budgets.js      # 预算存储
+│       ├── recurring.js    # 固定支出存储
 │       └── push/
-│           ├── trigger.js      # 每日记账提醒
-│           ├── summary.js      # 周度/月度汇总
+│           ├── trigger.js  # 每日记账提醒
+│           ├── summary.js  # 周度/月度汇总
 │           └── archive-check.js # 归档检查
-│
-├── api/                    # Vercel 兼容 API（旧版，已废弃）
-│   └── items.js
-│
 ├── cron-worker/            # Cloudflare Worker Cron
 │   ├── index.js            # 定时任务调度
 │   └── wrangler.toml       # Worker 配置
-│
 ├── .github/workflows/      # GitHub Actions（双通道兜底）
 │   ├── daily-reminder.yml
 │   ├── archive-check.yml
 │   ├── summary-weekly.yml
 │   └── summary-monthly.yml
-│
-├── vercel.json             # Vercel 部署配置（已废弃）
-├── package.json
-├── README.md
-├── IMAGE_ARCH.md           # 图片存储架构说明
-└── SETUP-PUSH.md           # 推送配置指南
+└── _headers                # Cloudflare Pages 响应头
 ```
 
 ## 环境变量
@@ -114,41 +116,38 @@ purchase-app/
 
 | 变量名 | 用途 |
 |--------|------|
-| `FEISHU_APP_ID` | 飞书应用 App ID |
-| `FEISHU_APP_SECRET` | 飞书应用 App Secret |
-| `FEISHU_BITABLE_APP` | 采购表 Bitable app_token |
-| `FEISHU_BITABLE_TABLE` | 采购表 table_id |
-| `FEISHU_EXPENSE_APP` | 记账表 Bitable app_token |
-| `FEISHU_EXPENSE_TABLE` | 记账表 table_id |
-| `API_KEY` | 旧版 PIN 认证密钥（兼容保留） |
 | `JWT_SECRET` | JWT 签名密钥 |
-| `INVITE_CODES` | 注册邀请码（逗号分隔，可重复使用） |
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥 |
-| `FEISHU_BOT_WEBHOOK` | 飞书机器人 Webhook 地址 |
-| `CRON_SECRET` | 定时任务调用密钥 |
+| `FEISHU_APP_ID` | 飞书应用 ID |
+| `FEISHU_APP_SECRET` | 飞书应用密钥 |
+| `FEISHU_BOT_WEBHOOK` | 飞书机器人 Webhook |
+| `MIMO_API_KEY` | MiMo AI API Key |
+| `INVITE_CODE` | 注册邀请码（可重复使用） |
 | `IMAGE_STORE` | Cloudflare KV namespace |
 
 ### Cloudflare Worker (cron-worker)
 
 | 变量名 | 用途 |
 |--------|------|
-| `API_BASE` | API 基础 URL（`https://121212121.top`） |
+| `API_BASE` | API 基础 URL（https://121212121.top） |
 | `CRON_SECRET` | 调用密钥 |
 
 ## 认证系统
 
-### 多用户（v2.6.0 新增）
+### 安全特性（v3.0）
+- **密码哈希**: PBKDF2-SHA256（100,000 次迭代）+ 随机 salt
+- **自动升级**: 旧版 SHA-256 用户登录时自动升级为 PBKDF2
+- **JWT 会话**: HS256 签名，1小时 Access Token + 30天 Refresh Token
+- **Token 轮换**: Refresh Token 使用后立即销毁，签发新的
+- **登录限流**: 5次/15分钟，防止暴力破解
+- **AI 限流**: 每用户每小时30次，防止滥用
+- **输入校验**: 所有 API 端点有长度/范围/白名单校验
 
+### 多用户（v2.6.0 新增）
 1. **注册**：用户名 + 密码 + 邀请码 → 创建独立 Bitable 表 → 返回 JWT
-2. **登录**：用户名 + 密码 → 验证 → 返回 JWT
+2. **登录**：用户名 + 密码 → 验证 → 返回 JWT + Refresh Token
 3. **认证方式**：`Authorization: Bearer <jwt_token>`
 4. **管理员**：`admin` 账户可创建邀请码、删除用户
 5. **邀请码**：环境变量（可重复）+ KV 动态码（一次性）双模式
-
-### 旧版兼容
-
-- PIN 认证（`X-API-Key` 头）仍可用
-- 回退到共享 Bitable 表
 
 ## 图片存储
 
@@ -157,7 +156,7 @@ purchase-app/
 - 前端压缩（max 800px, quality 0.7, 上限 500KB）
 - 存入 Cloudflare KV，Bitable 只存 `kv:key` 引用
 - GET 返回二进制图片（支持 `<img src>` 直接加载）
-- 图片认证：`?pin=xxx` 查询参数（浏览器 img 不支持自定义头）
+- 图片认证：`?token=jwt` 查询参数（浏览器 img 不支持自定义头）
 
 ## 部署
 
@@ -173,6 +172,8 @@ npx wrangler pages deploy . --project-name=purchase-app
 # 设置环境变量
 npx wrangler pages secret put JWT_SECRET
 npx wrangler pages secret put FEISHU_BOT_WEBHOOK
+npx wrangler pages secret put MIMO_API_KEY
+npx wrangler pages secret put INVITE_CODE
 # ... 其他变量
 ```
 
@@ -187,47 +188,16 @@ npx wrangler deploy
 
 代码推送到 GitHub 后自动部署，Actions cron 作为 Cloudflare Worker 的兜底。
 
-## 已知问题
-
-- SW 缓存旧版本会导致前端功能缺失，需手动 Unregister 后刷新
-- 含中文的 JS 文件用 `edit` 工具修改可能编码损坏，用 Python 脚本处理
-- `img.src` 不能发送自定义 HTTP 头，图片认证必须用 query 参数
-- Chrome 手机端 SW 更新极慢，CSS 已从 SW 缓存中排除
-
-## v2.7.0 代码审查修复（2026-05-24）
-
-### 致命修复
-- Cache API 跨用户数据串台：cacheKey 加入 username 后缀
-- `new Request(url, request)` ReadableStream disturbed：去掉 request 参数
-- 新用户 Bitable 表缺时间字段：createUserTables 补全 5 个字段
-- 前端 save() 不检查错误：失败时 alert 而非静默吞掉
-
-### 严重修复
-- expenses.js POST 重试后仍返回 ok:true：加错误检查
-- debug-env 端点无认证暴露配置：加管理员权限
-- batchUpdate/delItem/delExpense 不检查结果：全部补上
-- 删账户不删 Bitable 数据表：通过 Drive API 同步删除
-
-### 中等修复
-- CSS 被 SW 缓存导致手机端不更新：CSS 永不缓存
-- header stats-row 被统计页 CSS 覆盖：高优先级选择器
-- 统计页手机端图表太小：≤480px 改为竖向堆叠
-
 ## 版本历史
 
 | 版本 | 日期 | 主要变更 |
 |------|------|----------|
-| v2.7.0 | 2026-05-24 | 导出增强/统计页重构/离线优化/帮助文档/代码审查修复/多用户缓存隔离 |
-| v2.6.0 | 2026-05-23 | 代码重构：JS 提取为独立 app.js；多用户登录系统 |
-| v2.5.9 | 2026-05-23 | AI 智能分类 + 批量标签提炼 |
-| v2.5.8 | 2026-05-23 | AI 自然语言记账 + 财务分析 |
-| v2.5.7 | 2026-05-23 | 骨架屏 + 下拉刷新 + 卡片滑动 |
-| v2.5.6 | 2026-05-23 | 统计页趋势图 |
-| v2.5.5 | 2026-05-23 | 记账月历视图 |
-| v2.5.4 | 2026-05-22 | 图片 API 二进制返回 + Cron Worker |
-| v2.5.3 | 2026-05-21 | 拍照+相册双按钮 |
-| v2.5.2 | 2026-05-21 | 图片改存 Cloudflare KV |
-| v2.5.1 | 2026-05-21 | 精确时间戳 + 导出时间列 |
+| v3.0.0 | 2026-06-02 | 全面重构：前端模块化(9文件)/PBKDF2密码哈希/移除旧PIN认证/AI限流/输入校验/后端公共模块提取 |
+| v2.11.0 | 2026-06-01 | 分期管理/固定支出自动记账/AI需求评估优化 |
+| v2.10.0 | 2026-05-27 | 采购评估流程优化：新增购买理由输入、评估摘要窗口 |
+| v2.9.0 | 2026-05-27 | 安全加固：登录限流/XSS修复/AI提示注入防护 |
+| v2.8.0 | 2026-05-25 | AI 需求评估：输入商品名AI分析历史采购+预算 |
+| v2.7.0 | 2026-05-24 | 导出增强/统计页重架/离线优化/帮助文档/代码审查修复 |
+| v2.6.0 | 2026-05-23 | 代码重构：JS提取为独立文件；多用户登录系统 |
 | v2.5.0 | 2026-05-20 | 归档功能 + 完整审批流 |
-| v2.4.x | 2026-05-20 | 审批流分支 + 详情弹窗 stepper + 暗色模式 |
-| v2.3.0 | 2026-05-20 | 暗色模式 + 记账图片 + 周月汇总推送 |
+| v2.4.0 | 2026-05-20 | 采购审批流 + 暗色模式 + 记账图片附件 |

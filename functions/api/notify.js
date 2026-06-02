@@ -2,7 +2,7 @@
 // POST body: { message: "通知内容" }
 // 需要环境变量: FEISHU_BOT_WEBHOOK (飞书自定义机器人 webhook 地址)
 
-import { json, corsHeaders, verifyPin, authenticate } from './_auth.js';
+import { json, corsHeaders, authenticate } from './_auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -18,7 +18,7 @@ export async function onRequest(context) {
 
   // 支持 JWT 和 PIN 两种认证方式
   const user = await authenticate(request, env);
-  if (!user.authenticated && !verifyPin(request, env)) {
+  if (!user.authenticated) {
     return json({ error: '未授权' }, 401, headers);
   }
 

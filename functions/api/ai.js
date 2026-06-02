@@ -10,9 +10,23 @@ export async function onRequest(context) {
   const corsHeaders = getCorsHeaders(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
-  // 认证（JWT 或 旧 PIN）
+  // 认证（JWT only）
   const user = await authenticate(request, env);
   if (!user.authenticated) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
+
+  // Rate limiting: per-user per-hour
+  const KV = env.IMAGE_STORE;
+  if (KV && user.username) {
+    const hour = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
+    const rateKey = 'ratelimit:ai:' + user.username + ':' + hour;
+    try {
+      const current = parseInt(await KV.get(rateKey) || '0');
+      if (current >= 30) {
+        return jsonResponse({ error: '请求过于频繁，请稍后再试（每小时上限30次）' }, 429, corsHeaders);
+      }
+      await KV.put(rateKey, String(current + 1), { expirationTtl: 7200 });
+    } catch (e) { console.error('Rate limit check failed:', e.message); }
+  }
 
   const apiKey = env.MIMO_API_KEY || env.DEEPSEEK_API_KEY || env.OPENAI_API_KEY;
   if (!apiKey) {

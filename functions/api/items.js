@@ -84,30 +84,6 @@ export async function onRequest(context) {
   }
 
   // 调试: 查看当前用户的认证和表信息（仅管理员）
-  if (url.searchParams.get('debug') === 'auth') {
-    if (user.username !== 'admin') return json({ error: '仅管理员可查看' }, 403);
-    const authHeader = request.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) return jsonResponse({ error: 'no token', authHeader }, 200, corsHeaders);
-    try {
-      const payload = await verifyJWT(token, env.JWT_SECRET);
-      if (!payload) return jsonResponse({ error: 'JWT verify failed', tokenLen: token.length }, 200, corsHeaders);
-      return jsonResponse({
-        ok: true,
-        username: payload.username,
-        hasBitable: !!payload.bitable,
-        purchaseApp: payload.bitable?.purchaseApp || null,
-        purchaseTable: payload.bitable?.purchaseTable || null,
-        expenseApp: payload.bitable?.expenseApp || null,
-        expenseTable: payload.bitable?.expenseTable || null,
-        exp: payload.exp,
-        now: Math.floor(Date.now() / 1000),
-      }, 200, corsHeaders);
-    } catch (e) {
-      return jsonResponse({ error: 'verify error: ' + e.message }, 200, corsHeaders);
-    }
-  }
-
   const APP = user.bitable.purchaseApp;
   const TABLE = user.bitable.purchaseTable;
 

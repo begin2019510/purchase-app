@@ -4,7 +4,7 @@ export async function onRequest(context) {
   const { request, env } = context;
   const origin = request.headers.get('Origin') || '';
   const corsHeaders = {
-    'Access-Control-Allow-Origin': ['https://121212121.top', 'http://121212121.top'].includes(origin) ? origin : 'https://121212121.top',
+    'Access-Control-Allow-Origin': ['https://121212121.top', ].includes(origin) ? origin : 'https://121212121.top',
     'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
   };
@@ -27,10 +27,6 @@ export async function onRequest(context) {
       const payload = await verifyJWT(qToken, env.JWT_SECRET);
       if (payload) return true;
     }
-    // 3. 旧 PIN (backward compatibility)
-    const qPin = url.searchParams.get('pin');
-    const pin = req.headers.get('X-API-Key') || qPin;
-    if (pin && pin === env.API_KEY) return true;
     return false;
   }
   if (!(await verifyAuth(request, env))) {

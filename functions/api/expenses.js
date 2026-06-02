@@ -63,6 +63,8 @@ export async function onRequest(context) {
     const body = await request.json();
     const amount = Number(body.amount) || 0;
     if (amount < 0 || amount > 999999) return json({ error: '金额需在 0 ~ 999999 之间' }, 400);
+    const validTypes = ['支出', '收入'];
+    if (body.type && !validTypes.includes(body.type)) return json({ error: '无效类型' }, 400);
     const fields = {
       '日期': dateToTs(body.date),
       '类型': body.type || '支出',
