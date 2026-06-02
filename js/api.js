@@ -1,4 +1,4 @@
-// api.js - API Layer, Budget, Recurring
+﻿// api.js - API Layer, Budget, Recurring
 const API='/api/items';
 const EXPENSE_API='/api/expenses';
 var _budgetCache=null;
@@ -206,6 +206,7 @@ async function checkInstallments() {
       const monthsDiff = (tm[0] - sm[0]) * 12 + (tm[1] - sm[1]);
       if (monthsDiff < paid || monthsDiff >= totalPeriods) continue;
       const amount = Number(item['分期金额']) || 0;
+      console.log('INSTALLMENT_CHECK', { item: item['商品名称'], totalPeriods, paid, startMonth, monthsDiff, amount });
       if (amount <= 0) continue;
       const dup = expenses.find(e => e['备注'] && e['备注'].includes('[分期]') && e['备注'].includes(item['商品名称'] || '') && getMonth(e['日期']) === thisMonth);
       if (dup) { await api('PUT', { id: item.id, installmentPaid: monthsDiff + 1 }); item['分期已还'] = monthsDiff + 1; changed = true; continue; }

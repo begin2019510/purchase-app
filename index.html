@@ -46,8 +46,8 @@
       <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v3000000000</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
-      <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button></span>
+      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="openRecurringModal()">📌 固定</button></span>
+      <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button><button class="action-btn" onclick="openRecurringModal()">📌 固定</button></span>
       <span id="actionStats" style="display:none"></span>
       <button class="action-btn desktop-only" id="pushBtn" onclick="setupPush()" style="display:none">🤖 推送</button>
       <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
