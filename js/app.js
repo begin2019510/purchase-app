@@ -124,15 +124,15 @@ function setupPullToRefresh(){
     ptrDist=0;
   });
 }
-async function loadAll(){
 async function cleanupOrphanExpenses(){
   try{
     var orphaned=expenses.filter(function(e){
       if(!e['备注'])return false;
       var note=e['备注'];
-      if(!note.includes('[采购]')&&!note.includes('[采购分期]'))return false;
+      if(!note.includes('[采购]')&&!note.includes('[采购分期]')&&!note.includes('[分期]'))return false;
       var name='';
       if(note.includes('[采购分期]'))name=note.replace('[采购分期] ','').split(' (')[0];
+      else if(note.includes('[分期]'))name=note.replace('[分期] ','').split(' (')[0];
       else if(note.includes('[采购]'))name=note.replace('[采购] ','');
       if(!name)return false;
       return !items.find(function(i){return i['商品名称']===name});
@@ -146,6 +146,7 @@ async function cleanupOrphanExpenses(){
     }
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
+async function loadAll(){
   try{await loadBudgetFromServer()}catch(e){}
   showSkeleton();
   try{
@@ -159,9 +160,11 @@ async function cleanupOrphanExpenses(){
   isLoadingData=false;
   try{await loadRecurringData()}catch(e){}
   try{await checkRecurring()}catch(e){console.error('recurring err',e)}
-  try{await checkInstallments()}catch(e){console.error('install err',e)}try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e)}
+  try{await checkInstallments()}catch(e){console.error('install err',e)}
+  try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e)}
   render();
 }
+
 function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
