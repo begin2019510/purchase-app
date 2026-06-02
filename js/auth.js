@@ -1,4 +1,4 @@
-// auth.js - Authentication, Login, Register, Admin
+﻿// auth.js - Authentication, Login, Register, Admin
 function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
 function getRefreshToken(){return localStorage.getItem('refresh_token')||''}
@@ -218,3 +218,13 @@ async function setupPush(){
   const msg = '推送使用飞书机器人\n\n操作步骤：\n1. 飞书打开一个群聊\n2. 群设置 → 群机器人 → 添加机器人\n3. 选择自定义机器人 → 复制 Webhook 地址\n4. 在 Cloudflare Pages 设置中添加环境变量：\n   FEISHU_BOT_WEBHOOK = 复制的地址\n5. 然后 GitHub Actions 每天 20:00 自动发提醒';
   alert(msg);
 }
+
+// ===== Init =====
+showVersion();
+document.getElementById('searchInput').value='';
+setTimeout(function(){document.getElementById('searchInput').value='';render()},100);
+setTimeout(function(){document.getElementById('searchInput').value='';render()},500);
+if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
+
+// ===== Startup Bootstrap =====
+if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
