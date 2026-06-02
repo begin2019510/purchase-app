@@ -103,6 +103,28 @@ function openDetailModal(id){
   document.getElementById('detailOverlay').classList.add('active');
 }
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
+async function createPurchaseExpense(item) {
+  try {
+    const name = item['商品名称'] || '';
+    const dup = expenses.find(function(e) { return e['备注'] && e['备注'].includes('[采购') && e['备注'].includes(name); });
+    if (dup) return;
+    const totalPeriods = Number(item['分期期数']) || 0;
+    const price = Number(item['单价']) || 0;
+    const qty = Number(item['数量']) || 1;
+    var total = price * qty;
+    if (total <= 0) return;
+    if (totalPeriods > 0) {
+      var instAmount = Number(item['分期金额']) || Math.round((total / totalPeriods) * 100) / 100;
+      await expenseApi('POST', { amount: instAmount, type: '采购', category: item['分类'] || '其他', note: '[采购分期] ' + name + ' (1/' + totalPeriods + ')', date: new Date().toISOString().slice(0, 10) });
+      await api('PUT', { id: item.id, installmentPaid: 1 });
+      item['分期已还'] = 1;
+      toast('已下单\uff0c首期 \u00a5' + instAmount + ' 已记账');
+    } else {
+      await expenseApi('POST', { amount: total, type: '采购', category: item['分类'] || '其他', note: '[采购] ' + name, date: new Date().toISOString().slice(0, 10) });
+      toast('已下单\uff0c\u00a5' + total.toFixed(2) + ' 已记账');
+    }
+  } catch(e) { console.error('createPurchaseExpense error:', e); }
+}
 function doDetailModalAction(id,nextStatus){
   if(!confirm('确认执行此操作？'))return;
   // Optimistic update: update local state immediately
@@ -114,6 +136,7 @@ function doDetailModalAction(id,nextStatus){
     else if(nextStatus==='已下单')item['下单时间']=now;
     else if(nextStatus==='已到'||nextStatus==='已退')item['到货时间']=now;
     else if(nextStatus==='已归档')item['归档时间']=now;
+    if(nextStatus==='已下单' && item) createPurchaseExpense(item);
     toast(`已更新为"${nextStatus}"`);
     closeDetailModal();
     render();
@@ -155,7 +178,7 @@ function switchTab(t){
 // ===== 采购操作 =====
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast(`正在更新 ${ids.length} 项...`);const r=await api('PATCH',{ids,status});if(r&&r.error){alert('批量更新失败: '+r.error);return}toast(`已更新 ${ids.length} 项为“${status}”`);selectedIds.clear();toggleBatch();await loadAll()}
+async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast('正在更新 '+ids.length+' 项...');const r=await api('PATCH',{ids,status});if(r&&r.error){alert('批量更新失败: '+r.error);return}if(status==='已下单'){for(const id of ids){const item=items.find(x=>x.id===id);if(item)await createPurchaseExpense(item)}}toast('已更新 '+ids.length+' 项为"'+status+'"');selectedIds.clear();toggleBatch();await loadAll()}
 async function batchDelete(){if(!selectedIds.size)return;if(!confirm(`确定删除选中的 ${selectedIds.size} 项？`))return;const ids=[...selectedIds];items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast(`已删除 ${ok} 项`);await loadAll()}
 
 // ============================================================

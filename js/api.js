@@ -208,17 +208,16 @@ async function checkInstallments() {
       const amount = Number(item['分期金额']) || 0;
       console.log('INSTALLMENT_CHECK', { item: item['商品名称'], totalPeriods, paid, startMonth, monthsDiff, amount });
       if (amount <= 0) continue;
-      const dup = expenses.find(e => e['备注'] && e['备注'].includes('[分期]') && e['备注'].includes(item['商品名称'] || '') && getMonth(e['日期']) === thisMonth);
+      const dup = expenses.find(e => e['备注'] && e['备注'].includes('[采购分期]') && e['备注'].includes(item['商品名称'] || '') && getMonth(e['日期']) === thisMonth);
       if (dup) { await api('PUT', { id: item.id, installmentPaid: monthsDiff + 1 }); item['分期已还'] = monthsDiff + 1; changed = true; continue; }
       const periodNum = monthsDiff + 1;
       const isLast = periodNum >= totalPeriods;
       const finalAmount = isLast ? (Number(item['单价'] || 0) * Number(item['数量'] || 1)) - amount * (totalPeriods - 1) : amount;
       await expenseApi('POST', {
-        amount: finalAmount, category: item['分类'] || '其他',
-        note: '[分期] ' + (item['商品名称'] || '') + ' (' + periodNum + '/' + totalPeriods + ')',
+        amount: finalAmount, type: '采购', category: item['分类'] || '其他',
+        note: '[采购分期] ' + (item['商品名称'] || '') + ' (' + periodNum + '/' + totalPeriods + ')',
         date: thisMonth + '-01T09:00:00'
       });
-      await api('PUT', { id: item.id, installmentPaid: periodNum });
       item['分期已还'] = periodNum;
       changed = true;
     }

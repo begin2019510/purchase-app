@@ -1,8 +1,9 @@
-// expense.js - Expense Rendering, Calendar, Week, CRUD
+﻿// expense.js - Expense Rendering, Calendar, Week, CRUD
 // ===== 记账渲染 =====
 const CAT_ICONS={'餐饮':'🍜','交通':'🚗','购物':'🛍️','娱乐':'🎮','居住':'🏠','医疗':'🏥','教育':'📚','其他':'📌'};
 const CAT_COLORS = {'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8','餐饮':'#ef4444','购物':'#ec4899','娱乐':'#8b5cf6','居住':'#10b981','医疗':'#f59e0b','教育':'#3b82f6'};
 const WEEKDAYS=['日','一','二','三','四','五','六'];
+let expenseTypeFilter='all';
 function formatDay(dayStr) {
   if (!dayStr) return { date: '??', weekday: '?' };
   try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}月${(d.getDate()+'').padStart(2,'0')}日`, weekday: '周'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
@@ -17,6 +18,10 @@ function renderExpense(){
   if(chipsEl){
     let ch='<div class="chip '+(currentWeekFilter===-1?'active':'')+'" onclick="currentWeekFilter=-1;render()">本月</div>';
     monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</div>'});
+    ch+='<span style="width:1px;background:var(--border);flex-shrink:0"></span>';
+    ch+='<div class="chip '+(expenseTypeFilter==='all'?'active':'')+'" onclick="expenseTypeFilter='+'\'all\''+';render()">全部</div>';
+    ch+='<div class="chip '+(expenseTypeFilter==='支出'?'active':'')+'" onclick="expenseTypeFilter='+'\'支出\''+';render()">日常</div>';
+    ch+='<div class="chip '+(expenseTypeFilter==='采购'?'active':'')+'" onclick="expenseTypeFilter='+'\'采购\''+';render()">采购</div>';
     chipsEl.innerHTML=ch;
   }
   let monthExpenses=expenses.filter(e=>{
@@ -25,15 +30,16 @@ function renderExpense(){
   }).sort((a,b)=>(b['日期']||'')>(a['日期']||'')?1:-1);
   if(currentWeekFilter>=0){monthExpenses=monthExpenses.filter(e=>getWeekForDate(e['日期'],thisMonth)===currentWeekFilter)}
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
-const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
-  const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
+  if(expenseTypeFilter!=='all'){searched=searched.filter(e=>e['类型']===expenseTypeFilter)}
+  const totalOut=searched.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
   const totalIn=0;
   const net=-totalOut;
   const budget=getBudgetNum(thisMonth);
   const count=searched.length;
   const periodLabel=currentWeekFilter>=0?'本周':'本月';
   const catMap={};
-  searched.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
+  searched.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
   const pl=currentWeekFilter>=0?'本周':'本月';
@@ -80,12 +86,13 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
   html+=`<div class="ex-section"><div class="ex-section-title">📅 消费记录</div><div class="ex-timeline">`;
   if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">💰</div><div class="ex-empty-text">本月暂无记账</div><div class="ex-empty-hint">点右下角 + 记一笔</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
-    const dayTotal=list.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+    const dayTotal=list.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
     const {date,weekday,day:dayNum}=formatDay(day);
     html+=`<div class="ex-day"><div class="ex-day-marker"><div class="ex-day-circle">${dayNum||'?'}</div><div class="ex-day-line"></div></div>
       <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
-      const isOut=e['类型']==='支出';
+      const isOut=e['类型']==='支出'||e['类型']==='采购';
+      const typeBadge=e['类型']==='采购'?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(99,102,241,.15);color:#6366f1;margin-left:4px">采购</span>':'';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       // ===== 图片显示 =====
 // kv:前缀 -> KV key -> /api/images?key=xxx
@@ -93,7 +100,7 @@ const searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includ
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?'/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}${typeBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
     });
@@ -112,7 +119,7 @@ function renderExpenseWeek(){
     if(!e['日期'])return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
-  const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const totalOut=monthExpenses.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
   const container=document.getElementById('expenseContent');
   if(!container)return;
   let html='';
@@ -143,10 +150,10 @@ function renderExpenseWeek(){
     const weekExpenses=monthExpenses.filter(function(e){
       return getWeekForDate(e['日期'],thisMonth)===i;
     });
-    const weekOut=weekExpenses.filter(function(e){return e['类型']==='支出'}).reduce(function(s,e){return s+Number(e['金额']||0)},0);
+    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+Number(e['金额']||0)},0);
     const weekBudget=getWeekBudget(thisMonth,i);
     const catMap={};
-    weekExpenses.filter(function(e){return e['类型']==='支出'}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
+    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
     html+='<div class="week-card">';
     html+='<div class="week-card-header">';
@@ -224,14 +231,14 @@ function renderExpenseCalendar(){
       const ds=e['日期'].slice(0,10);
       if(!dayMap[ds])dayMap[ds]={out:0,in:0,count:0,entries:[]};
       const amt=Number(e['金额']||0);
-      if(e['类型']==='支出')dayMap[ds].out+=amt; else dayMap[ds].in+=amt;
+      if((e['类型']==='支出'||e['类型']==='采购'))dayMap[ds].out+=amt; else dayMap[ds].in+=amt;
       dayMap[ds].count++;
       dayMap[ds].entries.push(e);
     }catch{}
   });
 
   // 月份统计
-  const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const totalOut=searched.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
   const totalIn=searched.filter(e=>e['类型']==='收入').reduce((s,e)=>s+Number(e['金额']||0),0);
 
   // 日历网格

@@ -1,4 +1,4 @@
-// IMAGE_ARCH: kv:前缀+KV key存'图片'字段, 见index.html显示逻辑
+﻿// IMAGE_ARCH: kv:前缀+KV key存'图片'字段, 见index.html显示逻辑
 import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken } from './_auth.js';
 
 export async function onRequest(context) {
@@ -63,7 +63,7 @@ export async function onRequest(context) {
     const body = await request.json();
     const amount = Number(body.amount) || 0;
     if (amount < 0 || amount > 999999) return json({ error: '金额需在 0 ~ 999999 之间' }, 400);
-    const validTypes = ['支出', '收入'];
+    const validTypes = ['支出', '收入', '采购'];
     if (body.type && !validTypes.includes(body.type)) return json({ error: '无效类型' }, 400);
     const fields = {
       '日期': dateToTs(body.date),

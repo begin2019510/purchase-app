@@ -533,21 +533,7 @@ async function submitPurchase() {
   };
   const r = await api('POST', data);
   if (r && r.error) { alert('添加失败: ' + r.error + (r.detail ? JSON.stringify(r.detail) : '')); return; }
-  // 分期：立即创建当月第一期记账记录
-  if (instVal > 0 && instAmount > 0) {
-    try {
-      await expenseApi('POST', {
-        amount: instAmount,
-        category: data.category || '其他',
-        note: '[分期] ' + name + ' (1/' + instVal + ')',
-        date: new Date().toISOString().slice(0, 10)
-      });
-      if (r && r.id) {
-        await api('PUT', { id: r.id, installmentPaid: 1 });
-      }
-    } catch(e) { console.error('installment expense error:', e); }
-  }
-  toast(instVal > 0 ? '采购单已提交，首期 ¥' + instAmount + ' 已记账' : '采购单已提交，进入待审批状态');
+  toast('采购单已提交，进入待审批状态');
   closeModal();
   await loadAll();
 }
