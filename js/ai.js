@@ -531,7 +531,7 @@ async function submitPurchase() {
     installmentStart: getThisMonth()
   };
   const r = await api('POST', data);
-  if (r && r.error) { alert('添加失败: ' + r.error); return; }
+  if (r && r.error) { alert('添加失败: ' + r.error + (r.detail ? JSON.stringify(r.detail) : '')); return; }
   toast('采购单已提交，进入待审批状态');
   closeModal();
   await loadAll();

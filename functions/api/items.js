@@ -15,11 +15,14 @@ async function ensureEvalFields(APP, TABLE, env) {
     const existing = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/fields?page_size=100`, null, env);
     if (existing.code !== 0) return;
     const names = (existing.data?.items || []).map(f => f.field_name);
-    const needed = ['评估摘要', '购买理由', '预算区间', '取消原因', '分期期数', '分期金额', '分期开始月', '分期已还'];
-    for (const name of needed) {
-      if (!names.includes(name)) {
+    const needed = [
+      {name:'评估摘要', type:1}, {name:'购买理由', type:1}, {name:'预算区间', type:1}, {name:'取消原因', type:1},
+      {name:'分期期数', type:2}, {name:'分期金额', type:2}, {name:'分期开始月', type:1}, {name:'分期已还', type:2}
+    ];
+    for (const f of needed) {
+      if (!names.includes(f.name)) {
         await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/fields`, {
-          field_name: name, type: 1
+          field_name: f.name, type: f.type
         }, env);
       }
     }
