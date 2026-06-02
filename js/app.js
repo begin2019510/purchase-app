@@ -125,6 +125,27 @@ function setupPullToRefresh(){
   });
 }
 async function loadAll(){
+async function cleanupOrphanExpenses(){
+  try{
+    var orphaned=expenses.filter(function(e){
+      if(!e['备注'])return false;
+      var note=e['备注'];
+      if(!note.includes('[采购]')&&!note.includes('[采购分期]'))return false;
+      var name='';
+      if(note.includes('[采购分期]'))name=note.replace('[采购分期] ','').split(' (')[0];
+      else if(note.includes('[采购]'))name=note.replace('[采购] ','');
+      if(!name)return false;
+      return !items.find(function(i){return i['商品名称']===name});
+    });
+    if(orphaned.length>0){
+      console.log('CLEANUP: deleting '+orphaned.length+' orphaned expense records');
+      for(var i=0;i<orphaned.length;i++){
+        await expenseApi('DELETE',null,orphaned[i].id);
+      }
+      expenses=expenses.filter(function(e){return !orphaned.find(function(o){return o.id===e.id})});
+    }
+  }catch(e){console.error('cleanupOrphanExpenses error:',e)}
+}
   try{await loadBudgetFromServer()}catch(e){}
   showSkeleton();
   try{
@@ -138,7 +159,7 @@ async function loadAll(){
   isLoadingData=false;
   try{await loadRecurringData()}catch(e){}
   try{await checkRecurring()}catch(e){console.error('recurring err',e)}
-  try{await checkInstallments()}catch(e){console.error('install err',e)}
+  try{await checkInstallments()}catch(e){console.error('install err',e)}try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e)}
   render();
 }
 function render(){
