@@ -26,64 +26,62 @@ async function aiRequest(action,data){
 // --- 自然语言记账 ---
 let pendingAI=null;
 async function sendAI(){
-  const input=document.getElementById('aiInput');
+  const input=document.getElementById("aiInput");
   const text=input.value.trim();
   if(!text)return;
-  const btn=document.getElementById('aiSendBtn');
-  const resultEl=document.getElementById('aiResult');
+  const btn=document.getElementById("aiSendBtn");
+  const resultEl=document.getElementById("aiResult");
   btn.disabled=true;
-  btn.textContent='⏳';
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>解析中...</span></div>`;
+  btn.textContent="⏳";
+  resultEl.innerHTML='<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>解析中...</span></div>';
   try{
     const now=new Date(Date.now()+8*3600*1000);
     const currentDate=now.toISOString().slice(0,10);
-    const res=await aiRequest('parse',{text,currentDate});
-    if(res.ok&&res.data&&res.data.amount>0){
+    const res=await aiRequest("parse",{text,currentDate});
+    if(res.ok&&res.data&&res.data.length>0){
       pendingAI=res.data;
-      const d=res.data;
-      resultEl.innerHTML=`<div class="ai-result">
-        <div class="ai-result-header"><span class="ai-result-tag">🤖 AI 解析</span><span style="font-size:10px;color:var(--muted)">置信度 ${((d.confidence||0)*100).toFixed(0)}%</span></div>
-        <div style="font-size:13px;margin-bottom:6px"><b>${d.type}</b> ¥${d.amount.toFixed(2)} · ${d.category}${d.note?' · '+d.note:''}</div>
-        <div style="display:flex;gap:6px">
-          <button class="ai-confirm-btn primary" onclick="confirmAI()">✓ 记一笔</button>
-          <button class="ai-confirm-btn secondary" onclick="editAI()">✏️ 修改</button>
-          <button class="ai-confirm-btn secondary" onclick="cancelAI()">✕ 取消</button>
-        </div>
-      </div>`;
+      let html='<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤖 AI 解析</span><span style="font-size:10px;color:var(--muted)">识别到 '+res.data.length+' 笔</span></div>';
+      res.data.forEach(function(d){
+        html+='<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)"><b>'+d.type+'</b> ¥'+d.amount.toFixed(2)+' · '+(d.category||"其他")+(d.note?" · "+d.note:"")+'</div>';
+      });
+      html+='<div style="display:flex;gap:6px;margin-top:8px">';
+      html+='<button class="ai-confirm-btn primary" onclick="confirmAI()">✓ 全部记账</button>';
+      html+='<button class="ai-confirm-btn secondary" onclick="cancelAI()">✕ 取消</button>';
+      html+='</div></div>';
+      resultEl.innerHTML=html;
     }else{
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤔 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>`;
+      resultEl.innerHTML='<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤔 没听清</span></div><div style="font-size:12px;color:var(--muted)">没识别到金额，试试: 午饭35、打车28去公司</div></div>';
     }
   }catch(e){
-    resultEl.innerHTML=`<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ ${e.message||'未知错误'}</div></div>`;
+    resultEl.innerHTML='<div class="ai-result"><div style="color:var(--red);font-size:12px">⚠️ '+(e.message||"未知错误")+'</div></div>';
   }
   btn.disabled=false;
-  btn.textContent='✨';
-  input.value='';
+  btn.textContent="✨";
+  input.value="";
 }
-
-function confirmAI(){
+async function confirmAI(){
   if(!pendingAI)return;
-  const d=pendingAI;
+  const arr=Array.isArray(pendingAI)?pendingAI:[pendingAI];
   const now=new Date(Date.now()+8*3600*1000);
-  const pad=n=>String(n).padStart(2,'0');
-  const dateStr=d.date||(now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes()));
-  openExpenseModal();
-  document.getElementById('eType').value=d.type||'支出';
-  document.getElementById('eAmount').value=d.amount||'';
-  document.getElementById('eCategory').value=d.category||'其他';
-  document.getElementById('eDate').value=dateStr;
-  document.getElementById('eNote').value=d.note||'';
-  document.getElementById('aiResult').innerHTML='';
+  const pad=function(n){return String(n).padStart(2,"0")};
+  const defaultDate=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+"T"+pad(now.getHours())+":"+pad(now.getMinutes());
+  let ok=0;
+  for(var i=0;i<arr.length;i++){
+    var d=arr[i];
+    if(!d.amount||d.amount<=0)continue;
+    var dateStr=d.date||defaultDate;
+    try{
+      var r=await expenseApi("POST",{amount:d.amount,type:d.type||"支出",category:d.category||"其他",date:dateStr,note:d.note||""});
+      if(r&&!r.error)ok++;
+    }catch(e){console.error("confirmAI item error:",e)}
+  }
+  toast("已记账 "+ok+" 笔");
   pendingAI=null;
-}
-function editAI(){
-  if(!pendingAI)return;
-  document.getElementById('aiInput').value=`${pendingAI.type} ${pendingAI.amount} ${pendingAI.category} ${pendingAI.note||''}`;
-  document.getElementById('aiResult').innerHTML='';
-  pendingAI=null;
+  document.getElementById("aiResult").innerHTML="";
+  await loadAll();
 }
 function cancelAI(){
-  document.getElementById('aiResult').innerHTML='';
+  document.getElementById("aiResult").innerHTML="";
   pendingAI=null;
 }
 

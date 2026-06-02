@@ -258,26 +258,14 @@ ${webPrices ? '\n=== 全网比价结果 ===\n<<<DATA_START>>>\n' + webPrices + '
 async function handleParse(apiKey, data, corsHeaders) {
   const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
   const { text, currentDate } = data;
-  const systemPrompt = `你是一个记账助手。用户用自然语言描述消费，解析成JSON。
-
-当前日期: ${currentDate || new Date().toISOString().slice(0, 10)}
-
-输出严格JSON:
-{"type":"支出或收入","amount":数字,"category":"餐饮|交通|购物|娱乐|居住|医疗|教育|其他","date":"YYYY-MM-DDTHH:mm","note":"润色后的备注","confidence":0-1}
-
-note字段规则:
-- 从用户描述中提取核心消费信息，润色为一句简洁完整的记录
-- 保留关键细节：商品/服务名、数量、地点（如有）
-- 去掉流水账、闲聊、无关内容
-- 长段落要浓缩，不是照抄原文
-- 例: "午饭35" → "午餐 ¥35"; "今天中午和同事去公司附近湘菜馆吃了剁椒鱼头" → "湘菜馆午餐 剁椒鱼头 ¥128"; "刚才打车从家到公司花了28块" → "打车 家→公司 ¥28"
-
-其他规则: 没提金额返回amount=0。"午饭"→餐饮,"打车"→交通。`;
-
+  const today = currentDate || new Date().toISOString().slice(0, 10);
+  const systemPrompt = "你是一个记账助手。用户用自然语言描述消费，解析成JSON数组。\n当前日期: " + today + "\n用户可能一次描述多笔消费，也可能只有一笔。始终输出JSON数组。\n输出严格JSON数组:\n[{\"type\":\"支出或收入\",\"amount\":数字,\"category\":\"餐饮|交通|购物|娱乐|居住|医疗|教育|其他\",\"date\":\"YYYY-MM-DDTHH:mm\",\"note\":\"润色后的备注\",\"confidence\":0-1}]\nnote字段规则:从用户描述中提取核心消费信息，润色为简洁记录。保留关键细节。\n例:\"午饭35打车28\"→两笔;\"午饭35\"→一笔。没提金额的条目跳过。";
   const result = await callAI(apiKey, systemPrompt, text);
-  const m = result.match(/\{[\s\S]*\}/);
-  if (m) { try { return json({ ok: true, data: JSON.parse(m[0]) }, 200, corsHeaders); } catch {} }
-  return json({ ok: false, error: 'Parse failed' }, 200, corsHeaders);
+  const m = result.match(/\[[\s\S]*\]/);
+  if (m) { try { const arr = JSON.parse(m[0]); return json({ ok: true, data: arr }); } catch {} }
+  const m2 = result.match(/\{[\s\S]*\}/);
+  if (m2) { try { return json({ ok: true, data: [JSON.parse(m2[0])] }); } catch {} }
+  return json({ ok: false, error: 'Parse failed' });
 }
 
 // ===== AI 自动分类（从备注推断） =====
