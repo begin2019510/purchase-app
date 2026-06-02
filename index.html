@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="1780400002">
+<meta name="app-version" content="1780400003">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=1780400002">
+<link rel="stylesheet" href="theme.css?v=1780400003">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="1780400002">
+<meta http-equiv="Expires" content="1780400003">
 </head>
 <body>
 <script>
 (function(){
-  var V='1780400002';
+  var V='1780400003';
   try{
     var s=sessionStorage.getItem('app_ver');
     if(s&&s!==V){
@@ -43,7 +43,7 @@
   <div class="header-top">
     <div class="app-logo">
       <div class="logo-icon">🏠</div>
-      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780400002</sup></h1>
+      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge">v1780400003</sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
       <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button></span>
@@ -95,6 +95,11 @@
       <div class="settings-item" onclick="settingsAction('budget')">
         <div class="settings-icon">🎯</div>
         <div class="settings-label">预算设置</div>
+        <div class="settings-arrow">›</div>
+      </div>
+      <div class="settings-item" onclick="settingsAction('recurring')">
+        <div class="settings-icon">📌</div>
+        <div class="settings-label">固定支出</div>
         <div class="settings-arrow">›</div>
       </div>
       <div class="settings-item" onclick="settingsAction('push')">
@@ -168,7 +173,8 @@
   <div class="search-bar"><input class="search-input" id="expenseSearch" placeholder="搜索备注..." oninput="render()"></div>
   <div class="container">
       <div class="ex-view-toggle" style="margin:0">
-        <button class="ex-view-btn active" id="viewListBtn" onclick="switchExpenseView('list')">📋 列表</button>
+        <button class="ex-view-btn active" id="viewWeekBtn" onclick="switchExpenseView('week')">📊 周视图</button>
+        <button class="ex-view-btn" id="viewListBtn" onclick="switchExpenseView('day')">📋 日视图</button>
         <button class="ex-view-btn" id="viewCalBtn" onclick="switchExpenseView('calendar')">📅 日历</button>
       </div>
     <div class="ai-bar" id="aiBar">
@@ -374,6 +380,14 @@
         <div class="form-group"><label>日期</label><input id="fDateEdit" type="date"></div>
       </div>
       <div class="form-group"><label>备注</label><textarea id="fNoteEdit" placeholder="可选"></textarea></div>
+      <div class="form-group" id="installmentGroup" style="display:none">
+        <label>📦 分期设置</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="fInstallments" type="number" min="0" max="60" placeholder="期数" style="width:80px">
+          <span style="font-size:12px;color:var(--muted)">期 (0=不分期)</span>
+          <span id="installmentPreview" style="font-size:12px;color:var(--pri);font-weight:600"></span>
+        </div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="closeModal()">取消</button>
         <button class="btn btn-primary" onclick="save()">保存</button>
@@ -509,6 +523,7 @@
       <label>月份</label>
       <input id="budgetMonth" type="month" readonly style="background:var(--bg)">
     </div>
+    <div id="budgetFixedPreview" style="display:none;background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px"></div>
     <div class="form-group">
       <label>月总预算（元）</label>
       <input id="budgetInput" type="number" step="1" min="0" placeholder="例如：3000" style="font-size:18px;font-weight:700;text-align:center;padding:12px">

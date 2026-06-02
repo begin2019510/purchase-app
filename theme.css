@@ -845,3 +845,30 @@ span.desktop-only.hidden { display: none !important; }
 .nav-item.active::after { content: ""; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 24px; height: 3px; background: var(--pri); border-radius: 2px; }
 .nav-item.active .nav-icon { transform: scale(1.1); }
 .nav-item { position: relative; }
+
+
+/* ===== 周视图卡片 ===== */
+.week-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--border);transition:.15s}
+.week-card:active{transform:scale(.99)}
+.week-card-header{display:flex;justify-content:space-between;align-items:center}
+.week-card-title{font-size:15px;font-weight:700}
+.week-card-dates{font-size:12px;color:var(--muted);margin-left:8px}
+.week-card-amount{font-size:18px;font-weight:800;color:var(--pri)}
+
+/* ===== 分类小标签 ===== */
+.cat-mini-badge{display:inline-block;padding:3px 8px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--muted);font-weight:500}
+
+/* ===== 固定支出标记 ===== */
+.recurring-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(99,102,241,.1);border-radius:4px;font-size:10px;color:var(--pri);font-weight:600}
+
+/* ===== 分期进度 ===== */
+.installment-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(245,158,11,.1);border-radius:4px;font-size:10px;color:var(--orange);font-weight:600}
+
+/* ===== Dark mode for week cards ===== */
+body.dark .week-card{border-color:var(--border)}
+
+/* ===== Mobile week card responsive ===== */
+@media (max-width: 767px) {
+  .week-card-amount{font-size:16px}
+  .week-card-title{font-size:14px}
+}

@@ -42,7 +42,7 @@ let items=[], expenses=[];
 let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
 let currentTab='purchase';
-let expenseViewMode='list';
+let expenseViewMode='week';
 let currentWeekFilter=-1; // 'list' | 'calendar'
 let calYear, calMonth; // 0-indexed month
 let calSelectedDate=null; // 'YYYY-MM-DD'
@@ -411,6 +411,118 @@ async function expenseApi(method,body,id){
   return r.json();
 }
 
+// ===== 固定支出 API =====
+const RECURRING_API = '/api/recurring';
+async function recurringApi(method, data) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() } };
+  if (data && method !== 'GET') opts.body = JSON.stringify(data);
+  let r = await fetch(RECURRING_API, opts);
+  if (r.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) { opts.headers['Authorization'] = 'Bearer ' + newToken; r = await fetch(RECURRING_API, opts); }
+  }
+  return r.json();
+}
+
+// ===== 固定支出自动记账 =====
+async function checkRecurring() {
+  try {
+    const pin = getPin();
+    if (!pin) return;
+    const res = await fetch(RECURRING_API, { headers: { 'Authorization': 'Bearer ' + pin } });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok || !data.data || !data.data.items) return;
+    const now = new Date(Date.now() + 8 * 3600000);
+    const thisMonth = now.toISOString().slice(0, 7);
+    let changed = false;
+    for (const item of data.data.items) {
+      if (!item.active) continue;
+      if (item.lastGenerated >= thisMonth) continue;
+      const day = String(item.dayOfMonth || 1).padStart(2, '0');
+      const dateStr = thisMonth + '-' + day;
+      const dateTs = new Date(dateStr + 'T12:00:00+08:00').getTime();
+      const dup = expenses.find(e => e['备注'] && e['备注'].includes('[固定]') && e['备注'].includes(item.name) && getMonth(e['日期']) === thisMonth);
+      if (dup) { item.lastGenerated = thisMonth; changed = true; continue; }
+      await expenseApi('POST', {
+        amount: item.amount, category: item.category || '其他',
+        note: '[固定] ' + item.name + (item.note ? ' - ' + item.note : ''),
+        date: dateStr + 'T09:00:00'
+      });
+      item.lastGenerated = thisMonth;
+      changed = true;
+    }
+    if (changed) {
+      await fetch(RECURRING_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pin },
+        body: JSON.stringify({ data: data.data })
+      });
+    }
+  } catch (e) { console.error('checkRecurring error:', e); }
+}
+
+// ===== 分期自动生成 =====
+async function checkInstallments() {
+  try {
+    const pin = getPin();
+    if (!pin) return;
+    const now = new Date(Date.now() + 8 * 3600000);
+    const thisMonth = now.toISOString().slice(0, 7);
+    let changed = false;
+    for (const item of items) {
+      const totalPeriods = Number(item['分期期数']) || 0;
+      const paid = Number(item['分期已还']) || 0;
+      const startMonth = item['分期开始月'] || '';
+      if (totalPeriods <= 0 || paid >= totalPeriods || !startMonth) continue;
+      const sm = startMonth.split('-').map(Number);
+      const tm = thisMonth.split('-').map(Number);
+      const monthsDiff = (tm[0] - sm[0]) * 12 + (tm[1] - sm[1]);
+      if (monthsDiff < paid || monthsDiff >= totalPeriods) continue;
+      const amount = Number(item['分期金额']) || 0;
+      if (amount <= 0) continue;
+      const dup = expenses.find(e => e['备注'] && e['备注'].includes('[分期]') && e['备注'].includes(item['商品名称'] || '') && getMonth(e['日期']) === thisMonth);
+      if (dup) { await api('PUT', { id: item.id, installmentPaid: monthsDiff + 1 }); item['分期已还'] = monthsDiff + 1; changed = true; continue; }
+      const periodNum = monthsDiff + 1;
+      const isLast = periodNum >= totalPeriods;
+      const finalAmount = isLast ? (Number(item['单价'] || 0) * Number(item['数量'] || 1)) - amount * (totalPeriods - 1) : amount;
+      await expenseApi('POST', {
+        amount: finalAmount, category: item['分类'] || '其他',
+        note: '[分期] ' + (item['商品名称'] || '') + ' (' + periodNum + '/' + totalPeriods + ')',
+        date: thisMonth + '-01T09:00:00'
+      });
+      await api('PUT', { id: item.id, installmentPaid: periodNum });
+      item['分期已还'] = periodNum;
+      changed = true;
+    }
+    if (changed) { expenses = (await expenseApi('GET')) || expenses; }
+  } catch (e) { console.error('checkInstallments error:', e); }
+}
+
+// ===== 固定支出管理 =====
+let _recurringData = { items: [] };
+async function loadRecurringData() {
+  try {
+    const pin = getPin();
+    if (!pin) return;
+    const res = await fetch(RECURRING_API, { headers: { 'Authorization': 'Bearer ' + pin } });
+    if (res.ok) { const d = await res.json(); if (d.ok && d.data) _recurringData = d.data; }
+  } catch {}
+}
+async function saveRecurringData() {
+  try {
+    const pin = getPin();
+    if (!pin) return;
+    await fetch(RECURRING_API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + pin },
+      body: JSON.stringify({ data: _recurringData })
+    });
+  } catch (e) { console.error('saveRecurring error:', e); }
+}
+function getFixedExpenseTotal() {
+  return (_recurringData.items || []).filter(i => i.active).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+}
+
+
 // ===== 启动 =====
 showVersion();
 // 清空可能被浏览器自动填充的搜索框（延迟清空对抗Chrome autofill）
@@ -602,6 +714,9 @@ async function loadAll(){
   }catch{}
   isLoadingData=false;
   render();
+  try{await checkRecurring()}catch(e){console.error('recurring err',e)}
+  try{await checkInstallments()}catch(e){console.error('install err',e)}
+  try{await loadRecurringData()}catch(e){}
 }
 
 // ===== 采购渲染 =====
@@ -663,6 +778,7 @@ function formatDay(dayStr) {
 
 function renderExpense(){
   if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
+  if(expenseViewMode==='week'){renderExpenseWeek();return}
   const thisMonth=getThisMonth();
   const monthWeeks=getMonthWeeks(thisMonth);
   const chipsEl=document.getElementById('expenseChips');
@@ -929,6 +1045,78 @@ function getWeekData(expenses, monthStr, type='支出'){
   return weeks;
 }
 
+
+// ===== 周视图 =====
+function renderExpenseWeek(){
+  const thisMonth=getThisMonth();
+  const monthWeeks=getMonthWeeks(thisMonth);
+  const budget=getBudgetNum(thisMonth);
+  const fixedTotal=getFixedExpenseTotal();
+  const monthExpenses=expenses.filter(e=>{
+    if(!e['日期'])return false;
+    try{return getMonth(e['日期'])===thisMonth}catch{return false}
+  });
+  const totalOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const container=document.getElementById('expenseContent');
+  if(!container)return;
+  let html='';
+  // 月度总览
+  html+='<div class="ex-header">';
+  html+='<div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥'+totalOut.toFixed(2)+'</div></div></div>';
+  if(budget>0){
+    const br=Math.max(budget-totalOut,0);
+    html+='<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">月预算</div><div class="ex-total-val">¥'+budget.toFixed(0)+'</div></div></div>';
+    html+='<div class="ex-total-card '+(br>0?'ex-in':'ex-out')+'"><div class="ex-total-icon">'+(br>0?'✅':'⚠️')+'</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥'+br.toFixed(0)+'</div></div></div>';
+  }
+  if(fixedTotal>0){
+    html+='<div class="ex-total-card ex-count"><div class="ex-total-icon">📌</div><div class="ex-total-info"><div class="ex-total-label">固定支出</div><div class="ex-total-val">¥'+fixedTotal.toFixed(0)+'</div></div></div>';
+  }
+  html+='</div>';
+  // 月度预算进度条
+  if(budget>0){
+    const pct=Math.min(totalOut/budget*100,100);
+    const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
+    html+='<div class="ex-budget" style="margin:0 0 12px">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13px;font-weight:700">月度预算</span><span style="font-size:12px;color:var(--muted)">剩余 <b style="color:'+bc+'">¥'+Math.max(budget-totalOut,0).toFixed(0)+'</b></span></div>';
+    html+='<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:4px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px;transition:width .5s"></div></div>';
+    html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>'+pct.toFixed(0)+'% 已用</span><span>¥'+totalOut.toFixed(0)+' / ¥'+budget.toFixed(0)+'</span></div>';
+    html+='</div>';
+  }
+  // 每周卡片
+  monthWeeks.forEach(function(w, i){
+    const weekExpenses=monthExpenses.filter(function(e){
+      return getWeekForDate(e['日期'],thisMonth)===i;
+    });
+    const weekOut=weekExpenses.filter(function(e){return e['类型']==='支出'}).reduce(function(s,e){return s+Number(e['金额']||0)},0);
+    const weekBudget=getWeekBudget(thisMonth,i);
+    const catMap={};
+    weekExpenses.filter(function(e){return e['类型']==='支出'}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0)});
+    const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
+    html+='<div class="week-card">';
+    html+='<div class="week-card-header">';
+    html+='<div><span class="week-card-title">第'+w.num+'周</span><span class="week-card-dates">'+w.start+'-'+w.end+'日</span></div>';
+    html+='<span class="week-card-amount">¥'+weekOut.toFixed(0)+'</span>';
+    html+='</div>';
+    if(weekBudget>0){
+      const wpct=Math.min(weekOut/weekBudget*100,100);
+      const wbc=wpct>90?'var(--red)':wpct>70?'var(--orange)':'var(--green)';
+      html+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin:8px 0"><div style="width:'+wpct+'%;height:100%;background:'+wbc+';border-radius:3px"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>预算 ¥'+weekBudget.toFixed(0)+'</span><span>剩余 ¥'+Math.max(weekBudget-weekOut,0).toFixed(0)+'</span></div>';
+    } else {
+      html+='<div style="font-size:11px;color:var(--muted);margin-top:4px">未设置周预算</div>';
+    }
+    if(catEntries.length>0){
+      html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';
+      catEntries.slice(0,4).forEach(function(ce){
+        html+='<span class="cat-mini-badge">'+ce[0]+' ¥'+ce[1].toFixed(0)+'</span>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  container.innerHTML=html;
+}
+
 // ===== 月历视图 =====
 function initCalMonth(){
   const now=new Date(Date.now()+8*3600*1000);
@@ -937,10 +1125,14 @@ function initCalMonth(){
 }
 function switchExpenseView(mode){
   expenseViewMode=mode;
-  document.getElementById('viewListBtn').classList.toggle('active',mode==='list');
-  document.getElementById('viewCalBtn').classList.toggle('active',mode==='calendar');
+  var weekBtn=document.getElementById('viewWeekBtn');
+  var listBtn=document.getElementById('viewListBtn');
+  var calBtn=document.getElementById('viewCalBtn');
+  if(weekBtn)weekBtn.classList.toggle('active',mode==='week');
+  if(listBtn)listBtn.classList.toggle('active',mode==='day');
+  if(calBtn)calBtn.classList.toggle('active',mode==='calendar');
   if(mode==='calendar'&&!calYear)initCalMonth();
-  if(mode==='list')calSelectedDate=null;
+  if(mode==='day')calSelectedDate=null;
   render();
 }
 function calNav(delta){
@@ -1960,6 +2152,17 @@ function openBudgetModal(){
   const b=getBudgets()[m];
   const total=(b&&typeof b==='object')?b.total:(typeof b==='number'?b:0);
   document.getElementById('budgetInput').value=total||'';document.getElementById('budgetInput').min=0;
+  // Show fixed expense preview
+  var fixedTotal=getFixedExpenseTotal();
+  var previewEl=document.getElementById('budgetFixedPreview');
+  if(previewEl){
+    if(fixedTotal>0){
+      previewEl.style.display='block';
+      previewEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13px;font-weight:600">📌 固定支出</span><span style="font-size:15px;font-weight:700;color:var(--orange)">¥'+fixedTotal.toFixed(0)+'/月</span></div><div style="font-size:12px;color:var(--muted)">扣除固定支出后可用预算: <b style="color:var(--pri)">¥'+Math.max((total||0)-fixedTotal,0).toFixed(0)+'</b></div>';
+    } else {
+      previewEl.style.display='none';
+    }
+  }
   renderWeekBudgetInputs(m,total);
   document.getElementById('budgetOverlay').classList.add('active');
 }
@@ -2227,6 +2430,96 @@ document.addEventListener('click', function(e) {
   if(!navigator.onLine)updateOnlineStatus();
 })();
 
+
+// ===== 固定支出管理弹窗 =====
+function openRecurringModal(){
+  var overlay=document.getElementById('recurringOverlay');
+  if(!overlay){
+    overlay=document.createElement('div');
+    overlay.id='recurringOverlay';
+    overlay.className='modal-overlay';
+    overlay.onclick=function(e){if(e.target===this)closeRecurringModal()};
+    overlay.innerHTML='<div class="modal" style="max-width:480px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch"><h2>📌 固定支出管理</h2><div id="recurringList"></div><div style="margin-top:12px"><button class="btn btn-primary" style="width:100%" onclick="showAddRecurring()">+ 添加固定支出</button></div><div class="btn-row" style="margin-top:12px"><button class="btn btn-secondary" onclick="closeRecurringModal()">关闭</button></div></div>';
+    document.body.appendChild(overlay);
+  }
+  renderRecurringList();
+  overlay.classList.add('active');
+}
+function closeRecurringModal(){
+  var el=document.getElementById('recurringOverlay');
+  if(el)el.classList.remove('active');
+}
+function renderRecurringList(){
+  var list=document.getElementById('recurringList');
+  if(!list)return;
+  var items=_recurringData.items||[];
+  if(!items.length){
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">📌</div>还没有固定支出<br>添加房租、水电等每月固定开销</div>';
+    return;
+  }
+  var html='';
+  items.forEach(function(item,idx){
+    var statusIcon=item.active?'🟢':'⏸️';
+    html+='<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
+    html+='<div style="flex:1"><div style="font-weight:700;font-size:14px">'+statusIcon+' '+esc(item.name)+'</div>';
+    html+='<div style="font-size:12px;color:var(--muted);margin-top:2px">¥'+Number(item.amount).toFixed(0)+' · 每月'+item.dayOfMonth+'号 · '+(item.category||'其他')+'</div>';
+    if(item.note)html+='<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(item.note)+'</div>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:4px">';
+    html+='<button onclick="toggleRecurringActive('+idx+')" style="padding:6px 10px;border:none;background:var(--card);border-radius:8px;font-size:12px;cursor:pointer">'+(item.active?'⏸':'▶')+'</button>';
+    html+='<button onclick="editRecurringItem('+idx+')" style="padding:6px 10px;border:none;background:var(--card);border-radius:8px;font-size:12px;cursor:pointer">✏️</button>';
+    html+='<button onclick="deleteRecurringItem('+idx+')" style="padding:6px 10px;border:none;background:var(--card);border-radius:8px;font-size:12px;cursor:pointer;color:var(--red)">🗑</button>';
+    html+='</div></div>';
+  });
+  list.innerHTML=html;
+}
+function showAddRecurring(){
+  var name=prompt('固定支出名称 (如: 房租)');
+  if(!name)return;
+  var amount=parseFloat(prompt('金额 (元)'));
+  if(isNaN(amount)||amount<=0)return alert('请输入有效金额');
+  var day=parseInt(prompt('每月几号扣款? (1-28)', '1'));
+  if(isNaN(day)||day<1||day>28)day=1;
+  var cats=['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
+  var cat=prompt('分类: '+cats.join(', '), '居住');
+  if(!cat)cat='其他';
+  var note=prompt('备注 (选填)')||'';
+  _recurringData.items=_recurringData.items||[];
+  _recurringData.items.push({
+    id:'rec_'+Date.now(), name:name, amount:amount, category:cat,
+    dayOfMonth:day, note:note, active:true, lastGenerated:''
+  });
+  saveRecurringData();
+  renderRecurringList();
+  toast('已添加固定支出: '+name);
+}
+function editRecurringItem(idx){
+  var item=(_recurringData.items||[])[idx];
+  if(!item)return;
+  var amount=parseFloat(prompt('金额 (元)', item.amount));
+  if(isNaN(amount)||amount<=0)return;
+  var day=parseInt(prompt('每月几号扣款? (1-28)', item.dayOfMonth));
+  if(isNaN(day)||day<1||day>28)day=item.dayOfMonth;
+  item.amount=amount;
+  item.dayOfMonth=day;
+  saveRecurringData();
+  renderRecurringList();
+  toast('已更新');
+}
+function deleteRecurringItem(idx){
+  if(!confirm('确定删除此固定支出?'))return;
+  _recurringData.items.splice(idx,1);
+  saveRecurringData();
+  renderRecurringList();
+  toast('已删除');
+}
+function toggleRecurringActive(idx){
+  var item=(_recurringData.items||[])[idx];
+  if(!item)return;
+  item.active=!item.active;
+  saveRecurringData();
+  renderRecurringList();
+}
 // ===== 设置面板 =====
 function openSettings(){
   document.getElementById('settingsOverlay').classList.add('active');
@@ -2249,8 +2542,10 @@ function settingsAction(action){
     case 'budget': openBudgetModal(); break;
     case 'push': setupPush(); break;
     case 'changelog': openChangelog(); break;
+    case 'recurring': openRecurringModal(); break;
     case 'logout': logout(); break;
   }
 }
+
 
 // ===== 设置面板 =====
