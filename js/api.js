@@ -27,15 +27,15 @@ function getBudgetNum(m){var b=getBudget(m);return(b&&typeof b==='object')?(b.to
 // === 周预算系统 ===
 function getMonthWeeks(ym){
   var parts=ym.split('-');var y=Number(parts[0]);var m=Number(parts[1]);
-  var first=new Date(y,m-1,1);var lastDay=new Date(y,m,0).getDate();
-  var firstDow=first.getDay();if(firstDow===0)firstDow=7;
-  var weeks=[];var day=2-firstDow;
-  while(day<=lastDay){
-    var start=Math.max(day,1);var end=Math.min(day+6,lastDay);
-    weeks.push({num:weeks.length+1,start:start,end:end,startDate:ym+'-'+String(start).padStart(2,'0')});
-    day+=7;
+  var ld=new Date(y,m,0).getDate();
+  var base=Math.floor(ld/4);var rem=ld%4;
+  var w=[];var s=1;
+  for(var i=0;i<4;i++){
+    var days=base+(i<rem?1:0);
+    w.push({num:i+1,start:s,end:s+days-1,startDate:ym+'-'+String(s).padStart(2,'0')});
+    s+=days;
   }
-  return weeks;
+  return w;
 }
 function getWeekForDate(ds,ym){
   if(!ds)return -1;

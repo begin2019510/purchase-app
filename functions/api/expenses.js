@@ -28,7 +28,7 @@ export async function onRequest(context) {
       const r = await fetch(listUrl, { headers: { Authorization: 'Bearer ' + feishuToken } });
       const d = await r.json();
       const names = (d.data?.items || []).map(f => f.field_name);
-      const needed = [{name:'分摊周数', type:2}, {name:'分摊开始周', type:1}];
+      const needed = [{name:'分摊周数', type:2}, {name:'分摊开始周', type:2}];
       for (const f of needed) {
         if (!names.includes(f.name)) {
           const createUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/fields`;
