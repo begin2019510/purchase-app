@@ -24,13 +24,15 @@ export async function onRequest(context) {
   const feishuToken = await getFeishuToken(env);
   async function ensureExpenseFields() {
     try {
-      const r = await fetch(https://open.feishu.cn/open-apis/bitable/v1/apps//tables//fields?page_size=100, { headers: { Authorization: 'Bearer ' + feishuToken } });
+      const listUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/fields?page_size=100`;
+      const r = await fetch(listUrl, { headers: { Authorization: 'Bearer ' + feishuToken } });
       const d = await r.json();
       const names = (d.data?.items || []).map(f => f.field_name);
       const needed = [{name:'分摊周数', type:2}, {name:'分摊开始周', type:1}];
       for (const f of needed) {
         if (!names.includes(f.name)) {
-          await fetch(https://open.feishu.cn/open-apis/bitable/v1/apps//tables//fields, {
+          const createUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/fields`;
+          await fetch(createUrl, {
             method: 'POST', headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },
             body: JSON.stringify({ field_name: f.name, type: f.type })
           });
