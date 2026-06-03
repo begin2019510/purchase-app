@@ -150,10 +150,10 @@ function renderExpenseWeek(){
     const weekExpenses=monthExpenses.filter(function(e){
       return getWeekForDate(e['日期'],thisMonth)===i;
     });
-    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+getExpenseWeekAmount(e,w.start)},0);
+    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+getExpenseWeekAmount(e,w.startDate)},0);
     const weekBudget=getWeekBudget(thisMonth,i);
     const catMap={};
-    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.start)});
+    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.startDate)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
     html+='<div class="week-card">';
     html+='<div class="week-card-header">';
@@ -333,12 +333,90 @@ function renderExpenseCalendar(){
   html+=`</div>`;
   document.getElementById('expenseContent').innerHTML=html;
 }
-function openExpenseModal(id){const m=document.getElementById('expenseModalTitle');const eid=document.getElementById('eEditId');currentImageData='';const preview=document.getElementById('eImagePreview');if(id){const e=expenses.find(x=>x.id===id);if(!e)return;m.textContent='✏️ 编辑记账';eid.value=id;document.getElementById('eAmount').value=Number(e['金额']||0);document.getElementById('eNote').value=e['备注']||'';document.getElementById('eType').value=e['类型']||'支出';document.getElementById('eCategory').value=e['分类']||'餐饮';let d='';if(e['日期']){try{const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');const pad=n=>String(n).padStart(2,'0');d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes())}catch{}}document.getElementById('eDate').value=d;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);currentImageKey=k;currentImageData='';document.getElementById('eImageWrap').style.display='block';preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin())}else if(e['图片']){currentImageData=e['图片'];currentImageKey='';document.getElementById('eImageWrap').style.display='block';preview.src=e['图片']}else{preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}}else{m.textContent='💰 记一笔';eid.value='';document.getElementById('eAmount').value='';document.getElementById('eNote').value='';document.getElementById('eType').value='支出';document.getElementById('eCategory').value='餐饮';const now=new Date(Date.now()+8*3600*1000);const pad=n=>String(n).padStart(2,'0');document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());preview.src='';document.getElementById('eImageWrap').style.display='none';const info=document.getElementById('imageSizeInfo');info.textContent='';info.style.display='none'}document.getElementById('eCameraInput').value='';document.getElementById('eGalleryInput').value='';document.getElementById('expenseOverlay').classList.add('active')}
+function openExpenseModal(id){
+  const m=document.getElementById('expenseModalTitle');
+  const eid=document.getElementById('eEditId');
+  currentImageData='';
+  const preview=document.getElementById('eImagePreview');
+  const _sg=document.getElementById('splitGroup');
+  const _sb=document.getElementById('splitBtn');
+  const _si=document.getElementById('eSplitWeeks');
+  function resetSplit(){
+    if(_sg)_sg.style.display='none';
+    if(_sb){_sb.style.background='var(--bg)';_sb.style.color='var(--text)'}
+    if(_si)_si.value='';
+  }
+  function applySplit(sw){
+    if(sw>0){
+      if(_sg)_sg.style.display='';
+      if(_sb){_sb.style.background='var(--pri)';_sb.style.color='#fff'}
+    }else{resetSplit()}
+    if(_si)_si.value=sw||'';
+    updateSplitPreview();
+  }
+  if(id){
+    const e=expenses.find(x=>x.id===id);
+    if(!e)return;
+    m.textContent='\u270f\ufe0f 编辑记账';
+    eid.value=id;
+    document.getElementById('eAmount').value=Number(e['金额']||0);
+    document.getElementById('eNote').value=e['备注']||'';
+    document.getElementById('eType').value=e['类型']||'支出';
+    document.getElementById('eCategory').value=e['分类']||'餐饮';
+    let d='';
+    if(e['日期']){
+      try{
+        const dt=new Date(e['日期'].includes('T')?e['日期']:e['日期']+'T00:00:00+08:00');
+        const pad=n=>String(n).padStart(2,'0');
+        d=dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())+'T'+pad(dt.getHours())+':'+pad(dt.getMinutes());
+      }catch{}
+    }
+    document.getElementById('eDate').value=d;
+    if(e['图片']&&e['图片'].startsWith('kv:')){
+      const k=e['图片'].slice(3);
+      currentImageKey=k;
+      currentImageData='';
+      document.getElementById('eImageWrap').style.display='block';
+      preview.src='/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin());
+    }else if(e['图片']){
+      currentImageData=e['图片'];
+      currentImageKey='';
+      document.getElementById('eImageWrap').style.display='block';
+      preview.src=e['图片'];
+    }else{
+      preview.src='';
+      document.getElementById('eImageWrap').style.display='none';
+      const info=document.getElementById('imageSizeInfo');
+      info.textContent='';
+      info.style.display='none';
+    }
+    applySplit(Number(e['分摊周数'])||0);
+  }else{
+    m.textContent='\ud83d\udcb0 记一笔';
+    eid.value='';
+    document.getElementById('eAmount').value='';
+    document.getElementById('eNote').value='';
+    document.getElementById('eType').value='支出';
+    document.getElementById('eCategory').value='餐饮';
+    resetSplit();
+    const now=new Date(Date.now()+8*3600*1000);
+    const pad=n=>String(n).padStart(2,'0');
+    document.getElementById('eDate').value=now.getUTCFullYear()+'-'+pad(now.getUTCMonth()+1)+'-'+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+':'+pad(now.getUTCMinutes());
+    preview.src='';
+    document.getElementById('eImageWrap').style.display='none';
+    const info=document.getElementById('imageSizeInfo');
+    info.textContent='';
+    info.style.display='none';
+  }
+  document.getElementById('eCameraInput').value='';
+  document.getElementById('eGalleryInput').value='';
+  document.getElementById('expenseOverlay').classList.add('active');
+}
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){showExportDialog('记账',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['日期'+sep+'时间'+sep+'类型'+sep+'分类'+sep+'金额'+sep+'备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['金额']||0).toFixed(2);const note=(e['备注']||'').includes(sep)?'"'+(e['备注']||'').replace(/"/g,'""')+'"':(e['备注']||'');lines.push(datePart+sep+timePart+sep+(e['类型']||'')+sep+(e['分类']||'')+sep+'¥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+ext;a.click()})}
 // 图片: kv:前缀=KV key存飞书图片字段; 无前缀=base64（回退）
 async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch('/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');await loadAll()}
-async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
+async function saveExpense(){const amount=parseFloat(document.getElementById('eAmount').value);if(!amount||amount<=0){alert('请输入金额');return}const data={type:document.getElementById('eType').value,category:document.getElementById('eCategory').value,amount,date:document.getElementById('eDate').value,note:document.getElementById('eNote').value.trim()};var _sw=parseInt(document.getElementById('eSplitWeeks').value)||0;if(_sw>0){data.splitWeeks=_sw;data.splitStartWeek=getWeekStart(document.getElementById('eDate').value)}if(currentImageData){try{toast('正在上传图片...');const uploadRes=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({image:currentImageData})});const uploadData=await uploadRes.json();if(uploadData.key){data.imageKey=uploadData.key;data.image=currentImageData}else{data.image=currentImageData;}}catch(e){data.image=currentImageData;}}else if(currentImageKey){data.imageKey=currentImageKey;}const eid=document.getElementById('eEditId').value;let res;if(eid){res=await expenseApi('PUT',{id:eid,...data});if(res&&res.error){alert('更新失败: '+res.error);return}toast('已更新')}else{res=await expenseApi('POST',data);if(res&&res.error){alert('记录失败: '+res.error);return}toast('已记录')}currentImageData='';currentImageKey='';closeExpenseModal();await loadAll()}
 async function delExpense(id){if(!confirm('确定删除？'))return;const r=await expenseApi('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);return}toast('已删除');await loadAll()}
 
 

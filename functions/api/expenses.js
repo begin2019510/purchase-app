@@ -74,6 +74,8 @@ export async function onRequest(context) {
       '金额': amount,
       '备注': (body.note || '').slice(0, 500),
     };
+    if (body.splitWeeks) fields['分摊周数'] = Number(body.splitWeeks) || 0;
+    if (body.splitStartWeek) fields['分摊开始周'] = body.splitStartWeek;
     if (body.imageKey) fields['图片'] = 'kv:' + body.imageKey;
     else if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
     let r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {

@@ -25,8 +25,26 @@ async function loadBudgetFromServer(){
 }
 function getBudgetNum(m){var b=getBudget(m);return(b&&typeof b==='object')?(b.total||0):(typeof b==='number'?b:0)}
 // === 周预算系统 ===
-function getMonthWeeks(ym){const[y,m]=ym.split('-').map(Number);const ld=new Date(y,m,0).getDate();const base=Math.floor(ld/4);const rem=ld%4;const w=[];let s=1;for(let i=0;i<4;i++){const days=base+(i<rem?1:0);w.push({num:i+1,start:s,end:s+days-1});s+=days}return w}
-function getWeekForDate(ds,ym){if(!ds)return-1;if(typeof ds==="number"){var _d=new Date(ds+8*3600000);ds=_d.getUTCFullYear()+"-"+String(_d.getUTCMonth()+1).padStart(2,"0")+"-"+String(_d.getUTCDate()).padStart(2,"0")}const d=parseInt(ds.slice(8,10));const w=getMonthWeeks(ym);for(let i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}return-1}
+function getMonthWeeks(ym){
+  var parts=ym.split('-');var y=Number(parts[0]);var m=Number(parts[1]);
+  var first=new Date(y,m-1,1);var lastDay=new Date(y,m,0).getDate();
+  var firstDow=first.getDay();if(firstDow===0)firstDow=7;
+  var weeks=[];var day=2-firstDow;
+  while(day<=lastDay){
+    var start=Math.max(day,1);var end=Math.min(day+6,lastDay);
+    weeks.push({num:weeks.length+1,start:start,end:end,startDate:ym+'-'+String(start).padStart(2,'0')});
+    day+=7;
+  }
+  return weeks;
+}
+function getWeekForDate(ds,ym){
+  if(!ds)return -1;
+  if(typeof ds==="number"){var _d=new Date(ds+8*3600000);ds=_d.getUTCFullYear()+"-"+String(_d.getUTCMonth()+1).padStart(2,"0")+"-"+String(_d.getUTCDate()).padStart(2,"0")}
+  var d=parseInt(ds.slice(8,10));
+  var w=getMonthWeeks(ym);
+  for(var i=0;i<w.length;i++){if(d>=w[i].start&&d<=w[i].end)return i}
+  return -1;
+}
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
 function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
