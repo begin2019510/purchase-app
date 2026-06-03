@@ -228,3 +228,27 @@ if('serviceWorker' in navigator) document.getElementById('pushBtn').style.displa
 
 // ===== Startup Bootstrap =====
 if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
+// === App.auth namespace exports ===
+App.auth.getPin = getPin;
+App.auth.setPin = setPin;
+App.auth.getRefreshToken = getRefreshToken;
+App.auth.setRefreshToken = setRefreshToken;
+App.auth.clearTokens = clearTokens;
+App.auth.submitPin = submitPin;
+App.auth.doLogin = doLogin;
+App.auth.refreshAccessToken = refreshAccessToken;
+App.auth.doLoginAPI = doLoginAPI;
+App.auth.doRegister = doRegister;
+App.auth.showLogin = showLogin;
+App.auth.showRegister = showRegister;
+App.auth.loadUserList = loadUserList;
+App.auth.openAdminPanel = openAdminPanel;
+App.auth.closeAdminPanel = closeAdminPanel;
+App.auth.createInviteCodes = createInviteCodes;
+App.auth.loadInviteList = loadInviteList;
+App.auth.deleteUser = deleteUser;
+App.auth.debugMyAuth = debugMyAuth;
+App.auth.debugMyAuthStats = debugMyAuthStats;
+App.auth.verifyAndLoad = verifyAndLoad;
+App.auth.logout = logout;
+App.auth.setupPush = setupPush;

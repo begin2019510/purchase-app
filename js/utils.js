@@ -1,3 +1,6 @@
+// === App Namespace ===
+const App = { utils: {}, auth: {}, api: {}, stats: {}, expense: {}, items: {}, ai: {}, budget: {}, app: {} };
+
 // utils.js - Version, Changelog, Utilities
 const APP_VERSION='3.0.0';
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
@@ -47,3 +50,20 @@ function skelCards(n){
 function skelStats(){
   return '<div class="stats-section"><div style="height:18px;width:100px;background:var(--border);border-radius:4px;margin-bottom:16px"></div><div style="height:120px;background:var(--border);border-radius:8px"></div></div>'.repeat(3);
 }
+
+// === App.utils namespace exports ===
+App.utils.showVersion = showVersion;
+App.utils.openChangelog = openChangelog;
+App.utils.closeChangelog = closeChangelog;
+App.utils.validateAmount = validateAmount;
+App.utils.esc = esc;
+App.utils.stripMd = stripMd;
+App.utils.escAttr = escAttr;
+App.utils.toast = toast;
+App.utils.getMonth = getMonth;
+App.utils.getThisMonth = getThisMonth;
+App.utils.totalCost = totalCost;
+App.utils.skelCards = skelCards;
+App.utils.skelStats = skelStats;
+App.utils.APP_VERSION = APP_VERSION;
+App.utils.CHANGELOG = CHANGELOG;

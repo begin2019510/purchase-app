@@ -398,3 +398,28 @@ function settingsAction(action){
 
 setupPullToRefresh();
 setupSwipe();
+
+// === App.app namespace exports ===
+App.app.setupSwipe = setupSwipe;
+App.app.showSkeleton = showSkeleton;
+App.app.setupPullToRefresh = setupPullToRefresh;
+App.app.cleanupOrphanExpenses = cleanupOrphanExpenses;
+App.app.loadAll = loadAll;
+App.app.render = render;
+App.app.updateHeader = updateHeader;
+App.app.renderPurchase = renderPurchase;
+App.app.changeLogDate = changeLogDate;
+App.app.loadLogs = loadLogs;
+App.app.openLogsPanel = openLogsPanel;
+App.app.closeLogsPanel = closeLogsPanel;
+App.app.updateOnlineStatus = updateOnlineStatus;
+App.app.openRecurringModal = openRecurringModal;
+App.app.closeRecurringModal = closeRecurringModal;
+App.app.renderRecurringList = renderRecurringList;
+App.app.showAddRecurring = showAddRecurring;
+App.app.editRecurringItem = editRecurringItem;
+App.app.deleteRecurringItem = deleteRecurringItem;
+App.app.toggleRecurringActive = toggleRecurringActive;
+App.app.openSettings = openSettings;
+App.app.closeSettings = closeSettings;
+App.app.settingsAction = settingsAction;

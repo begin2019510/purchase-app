@@ -638,3 +638,37 @@ function applyAICat(){
 
 
 
+
+// === App.ai namespace exports ===
+App.ai.parseEvalNote = parseEvalNote;
+App.ai.aiRequest = aiRequest;
+App.ai.sendAI = sendAI;
+App.ai.confirmAI = confirmAI;
+App.ai.cancelAI = cancelAI;
+App.ai.skipToDetail = skipToDetail;
+App.ai.toggleDetailInstallment = toggleDetailInstallment;
+App.ai.updateDetailInstallmentPreview = updateDetailInstallmentPreview;
+App.ai.runPurchaseEval = runPurchaseEval;
+App.ai.switchToDetailPhase = switchToDetailPhase;
+App.ai.renderChatMessages = renderChatMessages;
+App.ai.sendPurchaseChat = sendPurchaseChat;
+App.ai.sendQuickChat = sendQuickChat;
+App.ai.cancelPurchaseEval = cancelPurchaseEval;
+App.ai.cancelPurchase = cancelPurchase;
+App.ai.submitEvaluation = submitEvaluation;
+App.ai.backToEval = backToEval;
+App.ai.openEvalModal = openEvalModal;
+App.ai.closeEvalModal = closeEvalModal;
+App.ai.cancelFromEval = cancelFromEval;
+App.ai.renderEvalModal = renderEvalModal;
+App.ai.sendEvalChat = sendEvalChat;
+App.ai.sendEvalQuickChat = sendEvalQuickChat;
+App.ai.saveEvalProgress = saveEvalProgress;
+App.ai.submitEvalToDetail = submitEvalToDetail;
+App.ai.submitPurchase = submitPurchase;
+App.ai.queryAI = queryAI;
+App.ai.runAIAnalysis = runAIAnalysis;
+App.ai.runAIProfile = runAIProfile;
+App.ai.onNoteInput = onNoteInput;
+App.ai.suggestCategory = suggestCategory;
+App.ai.applyAICat = applyAICat;

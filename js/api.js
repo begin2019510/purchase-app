@@ -273,3 +273,29 @@ function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');lo
 (function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='\u2600\ufe0f'}else if(localStorage.getItem('dark_mode')==='0'){document.documentElement.classList.add('light')}})();
 function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement("canvas");const MAX=800;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);let q=0.7;let dataUrl=canvas.toDataURL("image/jpeg",q);while(dataUrl.length>500000&&q>0.2){q-=0.1;dataUrl=canvas.toDataURL("image/jpeg",q)}currentImageData=dataUrl;currentImageKey="";const preview=document.getElementById("eImagePreview");preview.src=dataUrl;preview.style.display="block";const info=document.getElementById("imageSizeInfo");info.textContent="[Compressed: "+String((dataUrl.length/1024).toFixed(0))+"KB]";info.style.display="block";};img.src=e.target.result;};reader.readAsDataURL(file)}
 function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
+
+// === App.api namespace exports ===
+App.api.api = api;
+App.api.expenseApi = expenseApi;
+App.api.recurringApi = recurringApi;
+App.api.getBudgets = getBudgets;
+App.api.setBudgets = setBudgets;
+App.api.getBudget = getBudget;
+App.api.syncBudgetToServer = syncBudgetToServer;
+App.api.loadBudgetFromServer = loadBudgetFromServer;
+App.api.getBudgetNum = getBudgetNum;
+App.api.getMonthWeeks = getMonthWeeks;
+App.api.getWeekForDate = getWeekForDate;
+App.api.getWeekBudgets = getWeekBudgets;
+App.api.getWeekBudget = getWeekBudget;
+App.api.setWeekBudgets = setWeekBudgets;
+App.api.renderWeekBudgetInputs = renderWeekBudgetInputs;
+App.api.analyzeBudget = analyzeBudget;
+App.api.checkRecurring = checkRecurring;
+App.api.checkInstallments = checkInstallments;
+App.api.loadRecurringData = loadRecurringData;
+App.api.saveRecurringData = saveRecurringData;
+App.api.getFixedExpenseTotal = getFixedExpenseTotal;
+App.api.toggleDarkMode = toggleDarkMode;
+App.api.handleImageUpload = handleImageUpload;
+App.api.showFullscreenImg = showFullscreenImg;

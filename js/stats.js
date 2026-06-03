@@ -327,3 +327,15 @@ function switchStatsTab(tab) {
   document.getElementById('statsTabExpense').className = tab === 'expense' ? 'stats-tab active' : 'stats-tab';
 }
 
+
+// === App.stats namespace exports ===
+App.stats.barChart = barChart;
+App.stats.donutChart = donutChart;
+App.stats.donutLegend = donutLegend;
+App.stats.miniCards = miniCards;
+App.stats.lineChart = lineChart;
+App.stats.barChartV = barChartV;
+App.stats.getMonthDailyData = getMonthDailyData;
+App.stats.getWeekData = getWeekData;
+App.stats.renderStats = renderStats;
+App.stats.switchStatsTab = switchStatsTab;

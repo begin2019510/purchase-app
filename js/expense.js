@@ -469,3 +469,24 @@ document.addEventListener('click', function(e) {
   var delBtn = e.target.closest('[data-expense-del]');
   if (delBtn) { delExpense(delBtn.getAttribute('data-expense-del')); return; }
 });
+// === App.expense namespace exports ===
+App.expense.formatDay = formatDay;
+App.expense.renderExpense = renderExpense;
+App.expense.renderExpenseWeek = renderExpenseWeek;
+App.expense.initCalMonth = initCalMonth;
+App.expense.switchExpenseView = switchExpenseView;
+App.expense.calNav = calNav;
+App.expense.selectCalDay = selectCalDay;
+App.expense.addExpenseForDate = addExpenseForDate;
+App.expense.renderExpenseCalendar = renderExpenseCalendar;
+App.expense.openExpenseModal = openExpenseModal;
+App.expense.closeExpenseModal = closeExpenseModal;
+App.expense.exportExpenses = exportExpenses;
+App.expense.deleteExpenseImage = deleteExpenseImage;
+App.expense.saveExpense = saveExpense;
+App.expense.delExpense = delExpense;
+App.expense.toggleSplit = toggleSplit;
+App.expense.updateSplitPreview = updateSplitPreview;
+App.expense.getWeekStart = getWeekStart;
+App.expense.getExpenseWeekAmount = getExpenseWeekAmount;
+App.expense.getWeekDiff = getWeekDiff;

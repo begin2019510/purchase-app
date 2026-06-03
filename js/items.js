@@ -240,3 +240,22 @@ function closeApprovalModal(){document.getElementById('approvalOverlay').classLi
 // ============================================================
 // 记账 Modal
 // ============================================================
+
+// === App.items namespace exports ===
+App.items.openDetailModal = openDetailModal;
+App.items.closeDetailModal = closeDetailModal;
+App.items.createPurchaseExpense = createPurchaseExpense;
+App.items.doDetailModalAction = doDetailModalAction;
+App.items.switchTab = switchTab;
+App.items.toggleBatch = toggleBatch;
+App.items.toggleSelect = toggleSelect;
+App.items.batchUpdate = batchUpdate;
+App.items.batchDelete = batchDelete;
+App.items.openModal = openModal;
+App.items.editItem = editItem;
+App.items.closeModal = closeModal;
+App.items.save = save;
+App.items.deletePurchaseExpenses = deletePurchaseExpenses;
+App.items.delItem = delItem;
+App.items.showApprovalModal = showApprovalModal;
+App.items.closeApprovalModal = closeApprovalModal;
