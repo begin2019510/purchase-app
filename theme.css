@@ -894,3 +894,32 @@ body.dark .week-card{border-color:var(--border)}
 .budget-pool-item:nth-child(3) { animation-delay: 0.4s; }
 .budget-pool-item-label { font-size: 11px; color: var(--muted); }
 .budget-pool-item-val { font-size: 18px; font-weight: 700; margin-top: 2px; }
+/* === Budget Waterfall Layout === */
+.budget-waterfall { background: var(--card); border-radius: 16px; padding: 24px; margin-bottom: 16px; overflow: hidden; }
+.budget-waterfall-header { text-align: center; margin-bottom: 16px; }
+.budget-waterfall-title { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .5px; }
+.budget-waterfall-big { font-size: 42px; font-weight: 900; line-height: 1.1; margin: 8px 0; color: var(--text); }
+.budget-deductions { padding: 0 4px; }
+.budget-deduction-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; opacity: 0; animation: slideInLeft 0.4s ease both; }
+.budget-deduction-row:nth-child(1) { animation-delay: 0.15s; }
+.budget-deduction-row:nth-child(2) { animation-delay: 0.3s; }
+.budget-deduction-row span:first-child { font-size: 14px; color: var(--text); }
+.budget-deduction-row span:last-child { font-size: 15px; font-weight: 700; }
+.budget-waterfall-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.budget-available { text-align: center; margin: 16px 0 12px; }
+.budget-available-label { font-size: 14px; font-weight: 700; color: var(--pri); letter-spacing: .5px; }
+.budget-available-num { font-size: 36px; font-weight: 900; margin: 4px 0; color: var(--text); }
+.budget-progress-bar { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; margin: 12px 0; }
+.budget-progress-fill { height: 100%; border-radius: 5px; width: 0; transition: width 1s cubic-bezier(.4,0,.2,1); }
+.budget-detail-cards { display: flex; gap: 12px; margin-top: 16px; }
+.budget-detail-card { flex: 1; text-align: center; padding: 12px 0; background: var(--bg); border-radius: 10px; opacity: 0; animation: fadeInUp 0.4s ease both; }
+.budget-detail-card:nth-child(1) { animation-delay: 1.0s; }
+.budget-detail-card:nth-child(2) { animation-delay: 1.15s; }
+.budget-detail-card:nth-child(3) { animation-delay: 1.3s; }
+@keyframes slideInLeft { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+
+@media (min-width: 769px) {
+  .budget-waterfall { max-width: 600px; margin: 0 auto 16px; }
+  .budget-waterfall-big { font-size: 52px; }
+  .budget-available-num { font-size: 44px; }
+}

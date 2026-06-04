@@ -222,35 +222,51 @@ function renderStats() { console.log('renderStats START');
 
   let html = '';
 
-  // ===== 共享预算池概览 =====
+  // ===== 预算池瀑布流 =====
   if (pool.totalBudget > 0) {
-    const poolColor = pool.remaining < 0 ? 'var(--red)' : pool.remaining < pool.totalBudget * 0.2 ? 'var(--orange)' : 'var(--green)';
-    const spendPct = pool.totalBudget > 0 ? Math.min(pool.totalSpend / pool.totalBudget * 100, 100) : 0;
-    const purchasePct = pool.totalBudget > 0 ? (pool.purchaseDeduction / pool.totalBudget * 100) : 0;
-    const expensePct = pool.totalBudget > 0 ? (pool.expenseSpend / pool.totalBudget * 100) : 0;
-    const fixedPct = pool.totalBudget > 0 ? (pool.fixedDeduction / pool.totalBudget * 100) : 0;
-    html += `<div class="stats-hero" style="margin-bottom:16px">
-      <div class="stats-hero-label">${monthName}预算池</div>
-      <div class="stats-hero-num" style="color:${poolColor}">¥${pool.remaining.toFixed(0)}</div>
-      <div class="stats-hero-sub">
-        <span>总预算 ¥${pool.totalBudget.toFixed(0)}</span>
-        ${pool.fixedDeduction > 0 ? ' · <span style="color:var(--orange)">固定 -¥'+pool.fixedDeduction.toFixed(0)+'</span>' : ''}
-        ${pool.purchaseDeduction > 0 ? ' · <span style="color:var(--blue)">采购 -¥'+pool.purchaseDeduction.toFixed(0)+'</span>' : ''}
-      </div>
-      <div style="margin-top:10px;height:10px;background:rgba(255,255,255,.2);border-radius:5px;overflow:hidden;display:flex">
-        ${fixedPct > 0 ? '<div style="width:'+Math.min(fixedPct,100)+'%;background:var(--orange);height:100%" title="固定支出 ¥'+pool.fixedDeduction.toFixed(0)+'"></div>' : ''}
-        ${purchasePct > 0 ? '<div style="width:'+Math.min(purchasePct,100)+'%;background:var(--blue);height:100%" title="采购 ¥'+pool.purchaseDeduction.toFixed(0)+'"></div>' : ''}
-        ${expensePct > 0 ? '<div style="width:'+Math.min(expensePct,100)+'%;background:var(--pink);height:100%" title="记账 ¥'+pool.expenseSpend.toFixed(0)+'"></div>' : ''}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:6px;opacity:.8">
-        <span>🟠 固定 ¥${pool.fixedDeduction.toFixed(0)}</span>
-        <span>🔵 采购 ¥${pool.purchaseDeduction.toFixed(0)}</span>
-        <span>🩷 记账 ¥${pool.expenseSpend.toFixed(0)}</span>
-        <span style="color:${poolColor}">剩余 ¥${pool.remaining.toFixed(0)}</span>
-      </div>
-    </div>`;
+    const usagePct = pool.available > 0 ? Math.min((pool.directPurchaseSpend + pool.expenseSpend) / pool.available * 100, 100) : 0;
+    const barColor = usagePct > 90 ? "var(--red)" : usagePct > 70 ? "var(--orange)" : "var(--green)";
+    html += '<div class="budget-waterfall">';
+    // Header: total budget
+    html += '<div class="budget-waterfall-header">';
+    html += '<div class="budget-waterfall-title">' + monthName + '预算总池</div>';
+    html += '<div class="budget-waterfall-big" data-animate-num="' + pool.totalBudget + '">\u00a50</div>';
+    html += '</div>';
+    // Deduction rows
+    html += '<div class="budget-deductions">';
+    if (pool.fixedDeduction > 0) {
+      html += '<div class="budget-deduction-row"><span>📌 固定支出</span><span style="color:var(--orange);font-weight:700">-\u00a5' + pool.fixedDeduction.toFixed(0) + '</span></div>';
+    }
+    if (pool.installmentDeduction > 0) {
+      html += '<div class="budget-deduction-row"><span>📦 分期还款</span><span style="color:#8b5cf6;font-weight:700">-\u00a5' + pool.installmentDeduction.toFixed(0) + '</span></div>';
+    }
+    html += '</div>';
+    // Divider
+    html += '<hr class="budget-waterfall-divider">';
+    // Available pool
+    html += '<div class="budget-available">';
+    html += '<div class="budget-available-label">可用预算池</div>';
+    html += '<div class="budget-available-num" data-animate-num="' + pool.available + '" data-animate-delay="500">\u00a50</div>';
+    html += '</div>';
+    // Progress bar
+    const dedPct = pool.totalBudget > 0 ? Math.min((pool.fixedDeduction + pool.installmentDeduction) / pool.totalBudget * 100, 100) : 0;
+    const usePct = pool.available > 0 ? Math.min((pool.directPurchaseSpend + pool.expenseSpend) / pool.available * 100, 100) : 0;
+    html += '<div class="budget-progress-bar">';
+    html += '<div class="budget-progress-fill" id="budgetPoolFill" data-width="' + usePct.toFixed(1) + '" style="background:' + barColor + '"></div>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">';
+    html += '<span>' + usePct.toFixed(0) + '% 已用</span>';
+    html += '<span>\u00a5' + (pool.directPurchaseSpend + pool.expenseSpend).toFixed(0) + ' / \u00a5' + pool.available.toFixed(0) + '</span>';
+    html += '</div>';
+    // Detail cards
+    html += '<div class="budget-detail-cards">';
+    html += '<div class="budget-detail-card"><div style="font-size:11px;color:var(--muted)">🛒 采购</div><div style="font-size:18px;font-weight:800;margin-top:4px">\u00a5' + pool.directPurchaseSpend.toFixed(0) + '</div></div>';
+    html += '<div class="budget-detail-card"><div style="font-size:11px;color:var(--muted)">💰 记账</div><div style="font-size:18px;font-weight:800;margin-top:4px">\u00a5' + pool.expenseSpend.toFixed(0) + '</div></div>';
+    const remColor = pool.remaining >= 0 ? "var(--green)" : "var(--red)";
+    html += '<div class="budget-detail-card"><div style="font-size:11px;color:var(--muted)">🏷️ 剩余</div><div style="font-size:18px;font-weight:800;margin-top:4px;color:' + remColor + '">\u00a5' + pool.remaining.toFixed(0) + '</div></div>';
+    html += '</div>';
+    html += '</div>';
   }
-
   // Tab 切换
   html += `<div class="stats-tabs">
     <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">🛒 采购</div>
@@ -263,7 +279,7 @@ function renderStats() { console.log('renderStats START');
   // 本月采购扣减 - hero number
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}采购消耗</div>
-    <div class="stats-hero-num">¥${pool.purchaseDeduction.toFixed(0)}</div>
+    <div class="stats-hero-num">¥${pool.directPurchaseSpend.toFixed(0)}</div>
     <div class="stats-hero-sub">${monthItems.length}件商品 · 全额 ¥${monthTotal.toFixed(0)}</div>
   </div>`;
 
@@ -315,7 +331,7 @@ function renderStats() { console.log('renderStats START');
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}记账消耗</div>
     <div class="stats-hero-num">¥${pool.expenseSpend.toFixed(0)}</div>
-    <div class="stats-hero-sub">可用池 ¥${pool.available.toFixed(0)} · 剩余 <span style="color:${pool.remaining>=0?'var(--green)':'var(--red)'}">¥${pool.remaining.toFixed(0)}</span></div>
+    <div class="stats-hero-sub">可用池 ¥${pool.available.toFixed(0)} · 采购 ¥${pool.directPurchaseSpend.toFixed(0)} · 记账 ¥${pool.expenseSpend.toFixed(0)} · 剩余 <span style="color:${pool.remaining>=0?'var(--green)':'var(--red)'}">¥${pool.remaining.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势
@@ -353,10 +369,18 @@ function renderStats() { console.log('renderStats START');
   // Trigger animations
   setTimeout(function(){
     document.querySelectorAll('[data-animate-num]').forEach(function(el){
-      animateNumber(el, Number(el.dataset.animateNum), 800);
+      var delay = Number(el.dataset.animateDelay) || 0;
+      var duration = 800;
+      if(delay > 0){
+        setTimeout(function(){ animateNumber(el, Number(el.dataset.animateNum), duration); }, delay);
+      } else {
+        animateNumber(el, Number(el.dataset.animateNum), duration);
+      }
     });
     var fill=document.getElementById('budgetPoolFill');
-    if(fill)fill.style.width=fill.dataset.width+'%';
+    if(fill){
+      setTimeout(function(){ fill.style.width = fill.dataset.width + '%'; }, 800);
+    }
   }, 100);
   console.log('renderStats DONE html_len='+html.length);
 }
