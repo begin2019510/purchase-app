@@ -32,11 +32,18 @@ function openBudgetModal(){
   document.getElementById('budgetInput').value=total||'';document.getElementById('budgetInput').min=0;
   // Show fixed expense preview
   var fixedTotal=getFixedExpenseTotal();
+  var purchaseDeduction=getPurchaseDeduction(m);
+  var totalDeduction=fixedTotal+purchaseDeduction;
+  var availableBudget=Math.max((total||0)-totalDeduction,0);
   var previewEl=document.getElementById('budgetFixedPreview');
   if(previewEl){
-    if(fixedTotal>0){
+    if(totalDeduction>0&&total>0){
       previewEl.style.display='block';
-      previewEl.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13px;font-weight:600">📌 固定支出</span><span style="font-size:15px;font-weight:700;color:var(--orange)">¥'+fixedTotal.toFixed(0)+'/月</span></div><div style="font-size:12px;color:var(--muted)">扣除固定支出后可用预算: <b style="color:var(--pri)">¥'+Math.max((total||0)-fixedTotal,0).toFixed(0)+'</b></div>';
+      var lines='';
+      if(fixedTotal>0) lines+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📌 固定支出</span><span style="color:var(--orange);font-weight:700">-¥'+fixedTotal.toFixed(0)+'</span></div>';
+      if(purchaseDeduction>0) lines+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>🛒 采购扣减</span><span style="color:var(--blue);font-weight:700">-¥'+purchaseDeduction.toFixed(0)+'</span></div>';
+      lines+='<div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;display:flex;justify-content:space-between"><span style="font-weight:700">💰 可用预算</span><span style="font-size:16px;font-weight:800;color:var(--pri)">¥'+availableBudget.toFixed(0)+'</span></div>';
+      previewEl.innerHTML=lines;
     } else {
       previewEl.style.display='none';
     }

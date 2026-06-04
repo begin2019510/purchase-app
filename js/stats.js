@@ -188,7 +188,7 @@ function animateNumber(el, target, duration) {
 
 function renderStats() { console.log('renderStats START');
   const thisMonth = getThisMonth();
-  const budget = getBudgetNum(thisMonth);
+  const pool = getBudgetPool(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
   // 数据
@@ -203,8 +203,6 @@ function renderStats() { console.log('renderStats START');
     try { return getMonth(e['日期']) === thisMonth } catch { return false }
   });
   const totalOut = monthExpenses.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
-  // Income removed - only track expenses
-  const balance = budget - totalOut;
 
   // 分类/平台数据
   const pCatMap = {};
@@ -219,6 +217,35 @@ function renderStats() { console.log('renderStats START');
 
   let html = '';
 
+  // ===== 共享预算池概览 =====
+  if (pool.totalBudget > 0) {
+    const poolColor = pool.remaining < 0 ? 'var(--red)' : pool.remaining < pool.totalBudget * 0.2 ? 'var(--orange)' : 'var(--green)';
+    const spendPct = pool.totalBudget > 0 ? Math.min(pool.totalSpend / pool.totalBudget * 100, 100) : 0;
+    const purchasePct = pool.totalBudget > 0 ? (pool.purchaseDeduction / pool.totalBudget * 100) : 0;
+    const expensePct = pool.totalBudget > 0 ? (pool.expenseSpend / pool.totalBudget * 100) : 0;
+    const fixedPct = pool.totalBudget > 0 ? (pool.fixedDeduction / pool.totalBudget * 100) : 0;
+    html += `<div class="stats-hero" style="margin-bottom:16px">
+      <div class="stats-hero-label">${monthName}预算池</div>
+      <div class="stats-hero-num" style="color:${poolColor}">¥${pool.remaining.toFixed(0)}</div>
+      <div class="stats-hero-sub">
+        <span>总预算 ¥${pool.totalBudget.toFixed(0)}</span>
+        ${pool.fixedDeduction > 0 ? ' · <span style="color:var(--orange)">固定 -¥'+pool.fixedDeduction.toFixed(0)+'</span>' : ''}
+        ${pool.purchaseDeduction > 0 ? ' · <span style="color:var(--blue)">采购 -¥'+pool.purchaseDeduction.toFixed(0)+'</span>' : ''}
+      </div>
+      <div style="margin-top:10px;height:10px;background:rgba(255,255,255,.2);border-radius:5px;overflow:hidden;display:flex">
+        ${fixedPct > 0 ? '<div style="width:'+Math.min(fixedPct,100)+'%;background:var(--orange);height:100%" title="固定支出 ¥'+pool.fixedDeduction.toFixed(0)+'"></div>' : ''}
+        ${purchasePct > 0 ? '<div style="width:'+Math.min(purchasePct,100)+'%;background:var(--blue);height:100%" title="采购 ¥'+pool.purchaseDeduction.toFixed(0)+'"></div>' : ''}
+        ${expensePct > 0 ? '<div style="width:'+Math.min(expensePct,100)+'%;background:var(--pink);height:100%" title="记账 ¥'+pool.expenseSpend.toFixed(0)+'"></div>' : ''}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:6px;opacity:.8">
+        <span>🟠 固定 ¥${pool.fixedDeduction.toFixed(0)}</span>
+        <span>🔵 采购 ¥${pool.purchaseDeduction.toFixed(0)}</span>
+        <span>🩷 记账 ¥${pool.expenseSpend.toFixed(0)}</span>
+        <span style="color:${poolColor}">剩余 ¥${pool.remaining.toFixed(0)}</span>
+      </div>
+    </div>`;
+  }
+
   // Tab 切换
   html += `<div class="stats-tabs">
     <div class="stats-tab active" id="statsTabPurchase" onclick="switchStatsTab('purchase')">🛒 采购</div>
@@ -228,23 +255,12 @@ function renderStats() { console.log('renderStats START');
   // ===== 采购 =====
   html += `<div id="statsSectionPurchase">`;
 
-  // 本月采购总额 - hero number
+  // 本月采购扣减 - hero number
   html += `<div class="stats-hero">
-    <div class="stats-hero-label">${monthName}采购总额</div>
-    <div class="stats-hero-num">¥${monthTotal.toFixed(0)}</div>
-    <div class="stats-hero-sub">${monthItems.length}件商品 · 累计 ¥${totalAll.toFixed(0)}</div>
+    <div class="stats-hero-label">${monthName}采购消耗</div>
+    <div class="stats-hero-num">¥${pool.purchaseDeduction.toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}件商品 · 全额 ¥${monthTotal.toFixed(0)}</div>
   </div>`;
-
-  // 预算进度
-  if (budget) {
-    const pct = Math.min(monthTotal / budget * 100, 100);
-    const color = monthTotal > budget ? 'var(--red)' : monthTotal > budget * 0.8 ? 'var(--orange)' : 'var(--green)';
-    html += `<div class="stats-section">
-      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:8px"><span>预算</span><span style="color:${color}">¥${monthTotal.toFixed(0)} / ¥${budget}</span></div>
-      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:4px"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px"><span>${pct.toFixed(0)}% 已用</span><span>剩余 ¥${Math.max(budget - monthTotal, 0).toFixed(0)}</span></div>
-    </div>`;
-  }
 
   // 分类 + 平台并排
   if (pCatEntries.length || pPlatEntries.length) {
@@ -290,11 +306,11 @@ function renderStats() { console.log('renderStats START');
   // ===== 记账 =====
   html += `<div id="statsSectionExpense" style="display:none">`;
 
-  // 结余 - hero number
+  // 记账消耗 - hero number
   html += `<div class="stats-hero">
-    <div class="stats-hero-label">${monthName}结余</div>
-    <div class="stats-hero-num" style="color:${balance>=0?'var(--green)':'var(--red)'}">¥${balance.toFixed(0)}</div>
-    <div class="stats-hero-sub"><span style="color:var(--red)">支出 ¥${totalOut.toFixed(0)}</span> · <span style="color:var(--green)">预算 ¥${budget.toFixed(0)}</span></div>
+    <div class="stats-hero-label">${monthName}记账消耗</div>
+    <div class="stats-hero-num">¥${pool.expenseSpend.toFixed(0)}</div>
+    <div class="stats-hero-sub">可用池 ¥${pool.available.toFixed(0)} · 剩余 <span style="color:${pool.remaining>=0?'var(--green)':'var(--red)'}">¥${pool.remaining.toFixed(0)}</span></div>
   </div>`;
 
   // 每日趋势

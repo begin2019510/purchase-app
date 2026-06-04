@@ -296,6 +296,43 @@ App.api.checkInstallments = checkInstallments;
 App.api.loadRecurringData = loadRecurringData;
 App.api.saveRecurringData = saveRecurringData;
 App.api.getFixedExpenseTotal = getFixedExpenseTotal;
+
+// 计算本月采购的月均扣减金额
+function getPurchaseDeduction(month) {
+  let total = 0;
+  (items || []).forEach(function(item) {
+    var m = getMonth(item['日期']);
+    if (m !== month) return;
+    var status = item['状态'] || '';
+    if (status === '已退' || status === '已取消') return;
+    var periods = Number(item['分期期数']) || 0;
+    var price = (Number(item['单价']) || 0) * (Number(item['数量']) || 1);
+    if (periods > 1) {
+      total += Number(item['分期金额']) || (price / periods);
+    } else {
+      total += price;
+    }
+  });
+  return total;
+}
+
+// 共享预算池计算
+function getBudgetPool(month) {
+  var totalBudget = getBudgetNum(month);
+  var fixedDeduction = getFixedExpenseTotal();
+  var purchaseDeduction = getPurchaseDeduction(month);
+  var totalDeduction = fixedDeduction + purchaseDeduction;
+  var available = Math.max(totalBudget - totalDeduction, 0);
+  var expenseSpend = (expenses || [])
+    .filter(function(e) { return e['类型'] === '支出' && getMonth(e['日期']) === month; })
+    .reduce(function(s, e) { return s + Number(e['金额'] || 0); }, 0);
+  var totalSpend = purchaseDeduction + expenseSpend;
+  var remaining = totalBudget - totalDeduction - expenseSpend;
+  return { totalBudget: totalBudget, fixedDeduction: fixedDeduction, purchaseDeduction: purchaseDeduction, totalDeduction: totalDeduction, available: available, expenseSpend: expenseSpend, totalSpend: totalSpend, remaining: remaining };
+}
+
+App.api.getPurchaseDeduction = getPurchaseDeduction;
+App.api.getBudgetPool = getBudgetPool;
 App.api.toggleDarkMode = toggleDarkMode;
 App.api.handleImageUpload = handleImageUpload;
 App.api.showFullscreenImg = showFullscreenImg;
