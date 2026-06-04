@@ -344,39 +344,44 @@ function getBudgetPool(month) {
 
 App.api.getDirectPurchaseSpend = getDirectPurchaseSpend;
 
-// 计算某周的总支出（记账 + 采购）
+// 计算某周的总支出（记账分搙支持）
 function getWeekSpending(month, weekIndex) {
-  var weekExpenses = (expenses || []).filter(function(e) {
+  return (expenses || []).filter(function(e) {
     if (e['类型'] !== '支出' || getMonth(e['日期']) !== month) return false;
-    return getWeekForDate(e['日期'], month) === weekIndex;
-  }).reduce(function(s, e) { return s + Number(e['金额'] || 0); }, 0);
-  var weekPurchases = (items || []).filter(function(i) {
-    var s = i['状态'] || '';
-    if (s === '已退' || s === '已取消' || s === '待评估' || s === '待审批') return false;
-    if (getMonth(i['日期']) !== month) return false;
-    return getWeekForDate(String(i['日期']), month) === weekIndex;
-  }).reduce(function(s, i) {
-    var tp = Number(i['分期期数']) || 0;
-    if (tp > 1) return s + (Number(i['分期金额']) || 0);
-    return s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1);
+    var note = e['备注'] || '';
+    if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) return false;
+    return true;
+  }).reduce(function(s, e) {
+    var splitWeeks = Number(e['分搙周数']) || 0;
+    if (splitWeeks > 0) {
+      var startWeek = Number(e['分搙开始周']) || 0;
+      var offset = weekIndex - startWeek;
+      if (offset < 0 || offset >= splitWeeks) return s;
+      return s + Number(e['金额'] || 0) / splitWeeks;
+    }
+    if (getWeekForDate(e['日期'], month) !== weekIndex) return s;
+    return s + Number(e['金额'] || 0);
   }, 0);
-  return weekExpenses + weekPurchases;
 }
 
-// 动态周预算：(可用池 - 前几周已花) ÷ 剩余周数
+// 动态周预算：从当前周视角计算，所有未来周共享同一额度
 function getDynamicWeekBudget(month, weekIndex) {
   var pool = getBudgetPool(month);
   if (pool.available <= 0) return 0;
   var weeks = getMonthWeeks(month);
   var totalWeeks = weeks.length;
-  var priorSpent = 0;
-  for (var i = 0; i < weekIndex; i++) {
-    priorSpent += getWeekSpending(month, i);
+  var now = new Date(Date.now() + 8*3600000);
+  var today = now.toISOString().slice(0, 10);
+  var currentWeek = getWeekForDate(today, month);
+  if (currentWeek < 0) currentWeek = 0;
+  if (weekIndex < currentWeek) return 0;
+  var totalSpent = 0;
+  for (var i = 0; i < currentWeek; i++) {
+    totalSpent += getWeekSpending(month, i);
   }
-  var remainingWeeks = totalWeeks - weekIndex;
+  var remainingWeeks = totalWeeks - currentWeek;
   if (remainingWeeks <= 0) return 0;
-  var available = Math.max(pool.available - priorSpent, 0);
-  return available / remainingWeeks;
+  return Math.max(pool.available - totalSpent, 0) / remainingWeeks;
 }
 
 App.api.getWeekSpending = getWeekSpending;
