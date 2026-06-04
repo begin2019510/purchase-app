@@ -1,4 +1,4 @@
-// stats.js - Chart Functions & Statistics
+﻿// stats.js - Chart Functions & Statistics
 function barChart(entries, maxVal, colorFn) {
   if (!entries.length) return '';
   const max = maxVal || Math.max(...entries.map(e => e[1]));

@@ -1,4 +1,4 @@
-// === App Namespace ===
+﻿// === App Namespace ===
 const App = { utils: {}, auth: {}, api: {}, stats: {}, expense: {}, items: {}, ai: {}, budget: {}, app: {} };
 
 // utils.js - Version, Changelog, Utilities
