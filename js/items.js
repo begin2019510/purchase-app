@@ -165,9 +165,9 @@ function switchTab(t){
   document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
-  var ap=document.getElementById('actionPurchase');ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
-  var ae=document.getElementById('actionExpense');ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
-  var as=document.getElementById('actionStats');as.className=t==='stats'?'desktop-only':'desktop-only hidden';
+  var ap=document.getElementById('actionPurchase');if(ap)ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
+  var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
+  var as=document.getElementById('actionStats');if(as)as.className=t==='stats'?'desktop-only':'desktop-only hidden';
   if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();
