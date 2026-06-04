@@ -200,6 +200,7 @@ function updateHeader(){
   var el=document.getElementById('headerStats');
   if(el) el.innerHTML='';
 }
+function getMonthInstallmentTotal(ym){return items.filter(function(i){var tp=Number(i['分期期数'])||0;var pd=Number(i['分期已还'])||0;var sm=i['分期开始月']||'';if(tp<=0||pd>=tp||!sm)return false;var parts=sm.split('-').map(Number);var tm=ym.split('-').map(Number);var diff=(tm[0]-parts[0])*12+(tm[1]-parts[1]);return diff>=0&&diff<tp}).reduce(function(s,i){var tp=Number(i['分期期数'])||1;var ia=Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp);return s+ia},0)}
 function getMonthPurchaseTotal(ym){return items.filter(function(i){var s=i['状态']||'';return getMonth(i['日期'])===ym&&(s==='已下单'||s==='已到'||s==='已归档')&&s!=='已退'}).reduce(function(s,i){return s+(Number(i['单价'])||0)*(Number(i['数量'])||1)},0)}
 function renderPurchase(){
   const q=document.getElementById('searchInput').value.toLowerCase();
