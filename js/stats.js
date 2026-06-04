@@ -279,8 +279,8 @@ function renderStats() { console.log('renderStats START');
   // 本月采购扣减 - hero number
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}采购消耗</div>
-    <div class="stats-hero-num">¥${pool.directPurchaseSpend.toFixed(0)}</div>
-    <div class="stats-hero-sub">${monthItems.length}件商品</div>
+    <div class="stats-hero-num">¥${(pool.directPurchaseSpend + pool.installmentDeduction).toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}件商品${pool.directPurchaseSpend > 0 ? ' · 直接 ¥' + pool.directPurchaseSpend.toFixed(0) : ''}${pool.installmentDeduction > 0 ? ' · 分期 ¥' + pool.installmentDeduction.toFixed(0) : ''}</div>
   </div>`;
 
   // 分期概况
