@@ -324,7 +324,12 @@ function getBudgetPool(month) {
   var totalDeduction = fixedDeduction + purchaseDeduction;
   var available = Math.max(totalBudget - totalDeduction, 0);
   var expenseSpend = (expenses || [])
-    .filter(function(e) { return e['类型'] === '支出' && getMonth(e['日期']) === month; })
+    .filter(function(e) {
+      if (e['类型'] !== '支出' || getMonth(e['日期']) !== month) return false;
+      var note = e['备注'] || '';
+      if (note.includes('[采购]') || note.includes('[采购分期]')) return false;
+      return true;
+    })
     .reduce(function(s, e) { return s + Number(e['金额'] || 0); }, 0);
   var totalSpend = purchaseDeduction + expenseSpend;
   var remaining = totalBudget - totalDeduction - expenseSpend;

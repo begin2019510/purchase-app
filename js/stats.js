@@ -202,7 +202,12 @@ function renderStats() { console.log('renderStats START');
     if (!e['日期']) return false;
     try { return getMonth(e['日期']) === thisMonth } catch { return false }
   });
-  const totalOut = monthExpenses.filter(e => e['类型'] === '支出').reduce((s, e) => s + Number(e['金额'] || 0), 0);
+  const totalOut = monthExpenses.filter(e => {
+    if (e['类型'] !== '支出') return false;
+    var note = e['备注'] || '';
+    if (note.includes('[采购]') || note.includes('[采购分期]')) return false;
+    return true;
+  }).reduce((s, e) => s + Number(e['金额'] || 0), 0);
 
   // 分类/平台数据
   const pCatMap = {};
