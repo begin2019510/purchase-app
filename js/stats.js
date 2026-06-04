@@ -48,7 +48,7 @@ function miniCards(items) {
 // ===== SVG 趋势图 =====
 function lineChart(data, opts={}){
   // data: [{label, value, color?}]
-  const W=opts.width||340, H=opts.height||140, pad={t:20,r:12,b:24,l:36};
+  const isDesktop=typeof window!=='undefined'&&window.innerWidth>768;const W=opts.width||(isDesktop?600:340), H=opts.height||(isDesktop?280:140), pad={t:20,r:12,b:24,l:36};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   if(!data.length)return '<div class="empty-chart">暂无数据</div>';
   const vals=data.map(d=>d.value);
@@ -101,7 +101,7 @@ function lineChart(data, opts={}){
 
 function barChartV(data, opts={}){
   // data: [{label, value, color?}]
-  const W=opts.width||340, H=opts.height||130, pad={t:16,r:8,b:28,l:8};
+  const W=opts.width||(isDesktop?600:340), H=opts.height||(isDesktop?260:130), pad={t:16,r:8,b:28,l:8};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   if(!data.length)return '<div class="empty-chart">暂无数据</div>';
   const maxV=Math.max(...data.map(d=>d.value),1);
@@ -293,7 +293,7 @@ function renderStats() { console.log('renderStats START');
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / Math.max(dailyData.filter(d => d.value > 0).length, 1);
     html += `<div class="stats-section">
       <div class="stats-section-title">📉 每日支出 <span style="float:right;font-weight:400;font-size:11px">最高 ¥${dayMax.toFixed(0)} · 日均 ¥${dayAvg.toFixed(0)}</span></div>
-      ${lineChart(dailyData, { color: '#ef4444', height: (window.innerWidth > 768) ? 300 : 140 })}
+      ${lineChart(dailyData, { color: '#ef4444', height: (window.innerWidth > 768) ? 280 : 140 })}
     </div>`;
   }
 
@@ -311,7 +311,7 @@ function renderStats() { console.log('renderStats START');
       html += `</div>`;
     }
     if (weekData.some(d => d.value > 0)) {
-      html += `<div class="stats-section"><div class="stats-section-title">📊 每周</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: (window.innerWidth > 768) ? 240 : 120 })}</div>`;
+      html += `<div class="stats-section"><div class="stats-section-title">📊 每周</div>${barChartV(weekData.map((d, i) => ({ ...d, label: 'W' + (i + 1), color: `hsl(${220 + i * 30}, 70%, 60%)` })), { height: (window.innerWidth > 768) ? 260 : 120 })}</div>`;
     }
     html += `</div>`;
   }

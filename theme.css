@@ -643,7 +643,7 @@ span.desktop-only.hidden { display: none !important; }
 
 /* ===== Tablet (768px+) ===== */
 @media (min-width: 768px) {
-  .stats-row { grid-template-columns: repeat(4, 1fr) !important; }
+  .stats-row { grid-template-columns: repeat(2, 1fr) !important; }
   .container { max-width: 720px; margin: 0 auto; }
   .card, .swipe-card { padding: 18px 20px 16px !important; }
   .stats-section { padding: 24px !important; }
@@ -666,8 +666,12 @@ span.desktop-only.hidden { display: none !important; }
   .chips { max-width: 900px; margin: 0 auto; }
   .modal { max-width: 560px; }
   .fab { width: 64px; height: 64px; font-size: 30px; }
-  .trend-chart { min-height: 260px; }
-  .trend-svg { max-height: 300px; }
+  .trend-chart { min-height: 280px; }
+  .trend-svg { max-height: 340px; }
+  .stats-bar-track { height: 18px !important; }
+  .stats-bar-row { margin-bottom: 14px !important; }
+  .stats-bar-label { font-size: 15px !important; }
+  .stats-bar-val { font-size: 15px !important; }
 }
 
 /* ===== Large Desktop (1440px+) ===== */
