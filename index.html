@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="1780548865">
+<meta name="app-version" content="3.1.0">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=1780548865">
+<link rel="stylesheet" href="theme.css?v=3.1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="1780548865">
+<meta http-equiv="Expires" content="3.1.0">
 </head>
 <body>
 <script>
 (function(){
-  var V='3000000000';
+  var V='3.1.0';
   try{
     var s=sessionStorage.getItem('app_ver');
     if(s&&s!==V){
@@ -43,13 +43,9 @@
   <div class="header-top">
     <div class="app-logo">
       <div class="logo-icon">🏠</div>
-      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge" onclick="openChangelog()" style="cursor:pointer">v3000000000</sup></h1>
+      <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge" onclick="openChangelog()" style="cursor:pointer"></sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <span id="actionPurchase" class="desktop-only"><button class="action-btn" onclick="toggleBatch()">☑ 批量</button><button class="action-btn" onclick="exportData()">📤 导出</button><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="openRecurringModal()">📌 固定</button></span>
-      <span id="actionExpense" style="display:none" class="desktop-only"><button class="action-btn" onclick="openBudgetModal()">🎯 预算</button><button class="action-btn" onclick="exportExpenses()">📤 导出</button><button class="action-btn" onclick="openRecurringModal()">📌 固定</button></span>
-      <span id="actionStats" style="display:none"></span>
-      
       <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
       
       
@@ -525,15 +521,15 @@
   </div>
 </div>
 
-<script src="js/utils.js?v=1780548865"></script>
-<script src="js/auth.js?v=1780548865"></script>
-<script src="js/api.js?v=1780548865"></script>
-<script src="js/stats.js?v=1780548865"></script>
-<script src="js/expense.js?v=1780548865"></script>
-<script src="js/items.js?v=1780548865"></script>
-<script src="js/ai.js?v=1780548865"></script>
-<script src="js/budget.js?v=1780548865"></script>
-<script src="js/app.js?v=1780548865"></script>
+<script src="js/utils.js?v=3.1.0"></script>
+<script src="js/auth.js?v=3.1.0"></script>
+<script src="js/api.js?v=3.1.0"></script>
+<script src="js/stats.js?v=3.1.0"></script>
+<script src="js/expense.js?v=3.1.0"></script>
+<script src="js/items.js?v=3.1.0"></script>
+<script src="js/ai.js?v=3.1.0"></script>
+<script src="js/budget.js?v=3.1.0"></script>
+<script src="js/app.js?v=3.1.0"></script>
 
 
 
