@@ -176,7 +176,7 @@ export async function onRequest(context) {
         '分期期数': String(body.installments || 0),
         '分期金额': String(body.installmentAmount || 0),
         '分期开始月': body.installmentStart || '',
-        '分期已还': '0',
+        '分期已还': '1',
       };
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
