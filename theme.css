@@ -653,6 +653,7 @@ span.desktop-only.hidden { display: none !important; }
   .stats-bar-val { font-size: 14px !important; width: 64px !important; }
   .stats-bar-row { margin-bottom: 12px !important; gap: 12px !important; }
   .stats-hero-num { font-size: 64px !important; }
+  .trend-chart { min-height: 200px; }
 }
 
 /* ===== Desktop (1024px+) ===== */
@@ -665,6 +666,8 @@ span.desktop-only.hidden { display: none !important; }
   .chips { max-width: 900px; margin: 0 auto; }
   .modal { max-width: 560px; }
   .fab { width: 64px; height: 64px; font-size: 30px; }
+  .trend-chart { min-height: 260px; }
+  .trend-svg { max-height: 300px; }
 }
 
 /* ===== Large Desktop (1440px+) ===== */
@@ -834,10 +837,7 @@ span.desktop-only.hidden { display: none !important; }
 
 
 
-/* Desktop settings button hidden */
-@media (min-width: 768px) {
-  .settings-btn { display: none !important; }
-}
+/* Desktop settings button: visible */
 
 /* Nav item active fix */
 .nav-item.active { background: var(--pri-light) !important; }
