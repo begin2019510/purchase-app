@@ -168,6 +168,23 @@ async function loadAll(){
   _log('Rendering, items='+items.length+', expenses='+expenses.length);
   try{render()}catch(e){_log('RENDER ERROR: '+e.message);console.error('render error:',e)}
   _log('loadAll complete');
+  setTimeout(function(){
+    try{
+      var listEl=document.getElementById('list');
+      var expEl=document.getElementById('expenseContent');
+      var tabP=document.getElementById('tab-purchase');
+      var tabE=document.getElementById('tab-expense');
+      var authEl=document.getElementById('authScreen');
+      _log('DOM: list='+(listEl?listEl.innerHTML.length+'chars':'NULL')+' display='+(listEl?getComputedStyle(listEl).display:'?'));
+      _log('DOM: tab-purchase display='+(tabP?getComputedStyle(tabP).display:'?')+' visibility='+(tabP?getComputedStyle(tabP).visibility:'?'));
+      _log('DOM: tab-expense display='+(tabE?getComputedStyle(tabE).display:'?'));
+      _log('DOM: authScreen display='+(authEl?authEl.style.display:'?'));
+      _log('DOM: body scrollHeight='+document.body.scrollHeight+' clientHeight='+document.body.clientHeight);
+      if(listEl&&listEl.innerHTML.length>0){
+        _log('LIST sample: '+listEl.innerHTML.substring(0,200));
+      }
+    }catch(e){_log('DOM check error: '+e.message)}
+  },500);
 }
 
 function render(){
