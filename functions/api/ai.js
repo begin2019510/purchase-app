@@ -1,4 +1,4 @@
-// AI 代理 - 深度备注解析 + 消费画像 + 智能分析
+﻿// AI 代理 - 深度备注解析 + 消费画像 + 智能分析
 // 环境变量: DEEPSEEK_API_KEY
 
 import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
