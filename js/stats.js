@@ -101,7 +101,7 @@ function lineChart(data, opts={}){
 
 function barChartV(data, opts={}){
   // data: [{label, value, color?}]
-  const W=opts.width||(isDesktop?600:340), H=opts.height||(isDesktop?260:130), pad={t:16,r:8,b:28,l:8};
+  const isDesktop=typeof window!=='undefined'&&window.innerWidth>768;const W=opts.width||(isDesktop?600:340), H=opts.height||(isDesktop?260:130), pad={t:16,r:8,b:28,l:8};
   const cw=W-pad.l-pad.r, ch=H-pad.t-pad.b;
   if(!data.length)return '<div class="empty-chart">暂无数据</div>';
   const maxV=Math.max(...data.map(d=>d.value),1);
