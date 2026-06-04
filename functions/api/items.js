@@ -17,7 +17,7 @@ async function ensureEvalFields(APP, TABLE, env) {
     const names = (existing.data?.items || []).map(f => f.field_name);
     const needed = [
       {name:'评估摘要', type:1}, {name:'购买理由', type:1}, {name:'预算区间', type:1}, {name:'取消原因', type:1},
-      {name:'分期期数', type:2}, {name:'分期金额', type:2}, {name:'分期开始月', type:1}, {name:'分期已还', type:2}
+      {name:'分期期数', type:1}, {name:'分期金额', type:1}, {name:'分期开始月', type:1}, {name:'分期已还', type:1}
     ];
     for (const f of needed) {
       if (!names.includes(f.name)) {
