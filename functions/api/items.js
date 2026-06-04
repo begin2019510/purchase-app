@@ -32,6 +32,27 @@ async function ensureEvalFields(APP, TABLE, env) {
   }
 }
 
+// Extract number from Feishu field (handles rich text arrays)
+function feishuNum(v) {
+  if (v == null) return 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return Number(v) || 0;
+  if (Array.isArray(v) && v.length > 0) {
+    var text = v.map(function(seg) { return seg.text || seg.content || ''; }).join('');
+    return Number(text) || 0;
+  }
+  return Number(v) || 0;
+}
+// Extract string from Feishu field (handles rich text arrays)
+function feishuStr(v) {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v.length > 0) {
+    return v.map(function(seg) { return seg.text || seg.content || ''; }).join('');
+  }
+  return String(v);
+}
+
 function recordToItem(r) {
   const f = r.fields;
   return {
@@ -53,10 +74,10 @@ function recordToItem(r) {
     '购买理由': f['购买理由'] || '',
     '预算区间': f['预算区间'] || '',
     '取消原因': f['取消原因'] || '',
-    '分期期数': Number(f['分期期数']) || 0,
-    '分期金额': Number(f['分期金额']) || 0,
-    '分期开始月': f['分期开始月'] || '',
-    '分期已还': Number(f['分期已还']) || 0,
+    '分期期数': feishuNum(f['分期期数']),
+    '分期金额': feishuNum(f['分期金额']),
+    '分期开始月': feishuStr(f['分期开始月']),
+    '分期已还': feishuNum(f['分期已还']),
   };
 }
 
