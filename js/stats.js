@@ -280,8 +280,36 @@ function renderStats() { console.log('renderStats START');
   html += `<div class="stats-hero">
     <div class="stats-hero-label">${monthName}采购消耗</div>
     <div class="stats-hero-num">¥${pool.directPurchaseSpend.toFixed(0)}</div>
-    <div class="stats-hero-sub">${monthItems.length}件商品 · 全额 ¥${monthTotal.toFixed(0)}</div>
+    <div class="stats-hero-sub">${monthItems.length}件商品</div>
   </div>`;
+
+  // 分期概况
+  const installmentItems = monthItems.filter(i => (Number(i['分期期数']) || 0) > 1);
+  if (installmentItems.length > 0) {
+    const instTotalPrice = installmentItems.reduce((s, i) => s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1), 0);
+    const instMonthly = installmentItems.reduce((s, i) => {
+      var tp = Number(i['分期期数']) || 1;
+      return s + (Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp));
+    }, 0);
+    html += '<div class="stats-section" style="margin-bottom:12px"><div class="stats-section-title">📦 分期采购</div>';
+    html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">分期商品</div><div style="font-size:20px;font-weight:800;margin-top:4px">' + installmentItems.length + '件</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">总价</div><div style="font-size:20px;font-weight:800;margin-top:4px">¥' + instTotalPrice.toFixed(0) + '</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">每月还款</div><div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--pri)">¥' + instMonthly.toFixed(0) + '</div></div>';
+    html += '</div>';
+    installmentItems.forEach(function(i) {
+      var tp = Number(i['分期期数']) || 1;
+      var pd = Number(i['分期已还']) || 0;
+      var ia = Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp);
+      var pct = tp > 0 ? (pd / tp * 100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)">';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + (i['商品名称'] || '未命名') + '</div>';
+      html += '<div style="font-size:11px;color:var(--muted)">' + pd + '/' + tp + '期 · ¥' + ia + '/期</div></div>';
+      html += '<div style="width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:var(--pri);border-radius:3px"></div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
 
   // 分类 + 平台并排
   if (pCatEntries.length || pPlatEntries.length) {
