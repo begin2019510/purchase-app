@@ -508,7 +508,6 @@ async function submitEvalToDetail() {
 }
 
 
-async 
 // ===== Purchase Image Upload =====
 var purchaseImageData = {};
 function handlePurchaseImage(input, prefix) {

@@ -224,7 +224,7 @@ showVersion();
 document.getElementById('searchInput').value='';
 setTimeout(function(){document.getElementById('searchInput').value='';render()},100);
 setTimeout(function(){document.getElementById('searchInput').value='';render()},500);
-if('serviceWorker' in navigator) document.getElementById('pushBtn').style.display='';
+if('serviceWorker' in navigator) var _pb=document.getElementById('pushBtn');if(_pb)_pb.style.display='';
 
 // ===== Startup Bootstrap =====
 if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
