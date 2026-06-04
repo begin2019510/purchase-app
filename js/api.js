@@ -207,7 +207,9 @@ async function checkRecurring() {
 }
 
 // ===== 分期自动生成 =====
-async function checkInstallments() {
+// Installments tracked via items data in getPurchaseDeduction(), no expense records needed
+async function checkInstallments() { /* disabled: shared budget pool model */ }
+async function checkInstallments_DISABLED() {
   try {
     const pin = getPin();
     if (!pin) return;

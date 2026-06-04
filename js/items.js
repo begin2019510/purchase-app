@@ -104,28 +104,8 @@ function openDetailModal(id){
   document.getElementById('detailOverlay').classList.add('active');
 }
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
-async function createPurchaseExpense(item) {
-  try {
-    const name = item['商品名称'] || '';
-    const dup = expenses.find(function(e) { return e['备注'] && e['备注'].includes('[采购') && e['备注'].includes(name); });
-    if (dup) return;
-    const totalPeriods = Number(item['分期期数']) || 0;
-    const price = Number(item['单价']) || 0;
-    const qty = Number(item['数量']) || 1;
-    var total = price * qty;
-    if (total <= 0) return;
-    if (totalPeriods > 0) {
-      var instAmount = Number(item['分期金额']) || Math.round((total / totalPeriods) * 100) / 100;
-      await expenseApi('POST', { amount: instAmount, type: '采购', category: item['分类'] || '其他', note: '[采购分期] ' + name + ' (1/' + totalPeriods + ')', date: new Date().toISOString().slice(0, 10) });
-      await api('PUT', { id: item.id, installmentPaid: 1 });
-      item['分期已还'] = 1;
-      toast('已下单\uff0c首期 \u00a5' + instAmount + ' 已记账');
-    } else {
-      await expenseApi('POST', { amount: total, type: '采购', category: item['分类'] || '其他', note: '[采购] ' + name, date: new Date().toISOString().slice(0, 10) });
-      toast('已下单\uff0c\u00a5' + total.toFixed(2) + ' 已记账');
-    }
-  } catch(e) { console.error('createPurchaseExpense error:', e); }
-}
+// Purchases no longer create expense records - budget pool tracks them independently
+async function createPurchaseExpense(item) { /* disabled: shared budget pool model */ }
 function doDetailModalAction(id,nextStatus){
   if(!confirm('确认执行此操作？'))return;
   // Optimistic update: update local state immediately
