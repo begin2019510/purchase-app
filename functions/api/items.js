@@ -133,7 +133,23 @@ export async function onRequest(context) {
       }
       const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
-      const items = (data.data?.items || []).map(recordToItem);
+      // DEBUG: log raw fields for first item with installments
+      const rawItems = data.data?.items || [];
+      for (const ri of rawItems) {
+        const rf = ri.fields;
+        if (rf['分期期数']) {
+          console.log('DEBUG_INSTALLMENT', JSON.stringify({
+            name: rf['商品名称'],
+            分期期数: rf['分期期数'],
+            分期金额: rf['分期金额'],
+            分期开始月: rf['分期开始月'],
+            分期已还: rf['分期已还'],
+            typeof_分期期数: typeof rf['分期期数'],
+            isArray: Array.isArray(rf['分期期数'])
+          }));
+        }
+      }
+      const items = rawItems.map(recordToItem);
       const resp = new Response(JSON.stringify(items), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private', 'Vary': 'Authorization' } });
       context.waitUntil(cache.put(cacheKey, resp.clone()));
       return json(items);
