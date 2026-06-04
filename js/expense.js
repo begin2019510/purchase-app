@@ -26,6 +26,8 @@ function renderExpense(){
   }
   let monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
+    var note=e['备注']||'';
+    if(note.includes('[固定]')||note.includes('[采购]')||note.includes('[采购分期]'))return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   }).sort((a,b)=>(b['日期']||'')>(a['日期']||'')?1:-1);
   if(currentWeekFilter>=0){monthExpenses=monthExpenses.filter(e=>getWeekForDate(e['日期'],thisMonth)===currentWeekFilter)}
@@ -122,6 +124,8 @@ function renderExpenseWeek(){
   const installmentTotal=pool.installmentDeduction;
   const monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
+    var note=e['备注']||'';
+    if(note.includes('[固定]')||note.includes('[采购]')||note.includes('[采购分期]'))return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
   const pureExpenseOut=pool.expenseSpend;
@@ -161,6 +165,8 @@ function renderExpenseWeek(){
   // 每周卡片（动态预算）
   monthWeeks.forEach(function(w, i){
     const weekExpenses=monthExpenses.filter(function(e){
+      var note=e['备注']||'';
+      if(note.includes('[固定]')||note.includes('[采购]')||note.includes('[采购分期]'))return false;
       var wi=getWeekForDate(e['日期'],thisMonth);
       if(wi===i)return true;
       var sw=Number(e['分搙周数'])||0;
@@ -172,7 +178,7 @@ function renderExpenseWeek(){
     const weekOut=getWeekSpending(thisMonth,i);
     const weekBudget=getDynamicWeekBudget(thisMonth,i);
     const catMap={};
-    weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.startDate,thisMonth,i)});
+    weekExpenses.filter(function(e){return e['类型']==='支出'}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.startDate,thisMonth,i)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
     html+='<div class="week-card">';
     html+='<div class="week-card-header">';
@@ -237,6 +243,8 @@ function renderExpenseCalendar(){
   const thisMonth=getThisMonth();
   const monthExpenses=expenses.filter(e=>{
     if(!e['日期'])return false;
+    var note=e['备注']||'';
+    if(note.includes('[固定]')||note.includes('[采购]')||note.includes('[采购分期]'))return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
   const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
