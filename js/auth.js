@@ -47,7 +47,7 @@ async function doLoginAPI(username,password){
   try{
     const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin')document.getElementById('adminBtn').style.display='';loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
   }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
@@ -159,7 +159,7 @@ async function verifyAndLoad(){
     }
     const d=await r.json();
     document.getElementById('authScreen').style.display='none';
-    if(d.ok&&d.username==='admin')document.getElementById('adminBtn').style.display='';
+    if(d.ok&&d.username==='admin'){var _ab2=document.getElementById('adminBtn');if(_ab2)_ab2.style.display='';}
     loadAll();
   }catch{
     document.getElementById('authScreen').style.display='flex';
@@ -174,7 +174,7 @@ function logout(){
     body:JSON.stringify({refreshToken:getRefreshToken()}),
   }).catch(()=>{});
   clearTokens();
-  document.getElementById('adminBtn').style.display='none';
+  var _ab3=document.getElementById('adminBtn');if(_ab3)_ab3.style.display='none';
   document.getElementById('authScreen').style.display='flex';
   document.getElementById('loginUsername').value='';
   document.getElementById('loginPassword').value='';
