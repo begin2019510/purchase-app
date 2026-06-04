@@ -130,46 +130,48 @@ function renderExpenseWeek(){
   const container=document.getElementById('expenseContent');
   if(!container)return;
   let html='';
-  // 月度总览
-  html+='<div class="ex-header">';
-  html+='<div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥'+totalOut.toFixed(0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">采购 ¥'+purchaseOut.toFixed(0)+' · 记账 ¥'+pureExpenseOut.toFixed(0)+'</div></div></div>';
+  // 简洁进度条
   if(budget>0){
-    const br=Math.max(budget-totalOut,0);
-    html+='<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">月预算</div><div class="ex-total-val">¥'+budget.toFixed(0)+'</div></div></div>';
-    html+='<div class="ex-total-card '+(br>0?'ex-in':'ex-out')+'"><div class="ex-total-icon">'+(br>0?'✅':'⚠️')+'</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥'+br.toFixed(0)+'</div></div></div>';
-  }
-  if(fixedTotal>0||installmentTotal>0){
-    html+='<div class="ex-total-card ex-count"><div class="ex-total-icon">📌</div><div class="ex-total-info"><div class="ex-total-label">自动扣减</div><div class="ex-total-val">¥'+(fixedTotal+installmentTotal).toFixed(0)+'</div>';
-    if(fixedTotal>0&&installmentTotal>0) html+='<div style="font-size:10px;color:var(--muted);margin-top:2px">固定 ¥'+fixedTotal.toFixed(0)+' · 分期 ¥'+installmentTotal.toFixed(0)+'</div>';
-    html+='</div></div>';
-  }
-  html+='</div>';
-  // 月度预算进度条
-  if(budget>0){
-    const pct=Math.min(totalOut/budget*100,100);
+    const pool=getBudgetPool(thisMonth);
+    const usedSpend=pool.directPurchaseSpend+pool.expenseSpend;
+    const pct=Math.min(usedSpend/pool.available*100,100);
     const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
-    html+='<div class="ex-budget" style="margin:0 0 12px">';
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:13px;font-weight:700">月度预算</span><span style="font-size:12px;color:var(--muted)">剩余 <b style="color:'+bc+'">¥'+Math.max(budget-totalOut,0).toFixed(0)+'</b></span></div>';
-    html+='<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:4px"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px;transition:width .5s"></div></div>';
-    html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>'+pct.toFixed(0)+'% 已用</span><span>¥'+totalOut.toFixed(0)+' / ¥'+budget.toFixed(0)+'</span></div>';
+    html+='<div class="ex-budget" style="margin:0 0 12px;border-radius:14px;padding:14px">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html+='<span style="font-size:13px;font-weight:700">可用池 ¥'+pool.available.toFixed(0)+'</span>';
+    html+='<span style="font-size:12px;color:var(--muted)">已用 '+pct.toFixed(0)+'%</span>';
+    html+='</div>';
+    html+='<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:6px">';
+    html+='<div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px;transition:width .5s"></div>';
+    html+='</div>';
+    html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">';
+    html+='<span>记账 ¥'+pool.expenseSpend.toFixed(0)+' · 采购 ¥'+pool.directPurchaseSpend.toFixed(0)+'</span>';
+    html+='<span>总预算 ¥'+pool.totalBudget.toFixed(0)+'</span>';
+    html+='</div>';
     if(pool.totalDeduction>0){
-      html+='<div style="font-size:10px;color:var(--muted);margin-top:4px">扣除固定+分期 ¥'+pool.totalDeduction.toFixed(0)+' · 可用池 ¥'+pool.available.toFixed(0)+'</div>';
+      html+='<div style="font-size:10px;color:var(--muted);margin-top:4px">扣除固定+分期 ¥'+pool.totalDeduction.toFixed(0)+'</div>';
     }
     html+='</div>';
+  } else {
+    html+='<div style="text-align:center;padding:12px;margin:0 0 12px;background:var(--card);border-radius:14px;border:1.5px dashed var(--border)">';
+    html+='<div style="font-size:13px;color:var(--muted);margin-bottom:8px">💡 未设置预算</div>';
+    html+='<button onclick="openBudgetModal()" style="padding:8px 20px;border:none;background:var(--pri-g);color:#fff;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">🎯 设置预算</button>';
+    html+='</div>';
   }
-  // 每周卡片
+
+  // 每周卡片（动态预算）
   monthWeeks.forEach(function(w, i){
     const weekExpenses=monthExpenses.filter(function(e){
       var wi=getWeekForDate(e['日期'],thisMonth);
       if(wi===i)return true;
-      var sw=Number(e['分摊周数'])||0;
+      var sw=Number(e['分搙周数'])||0;
       if(sw<=0)return false;
-      var startW=Number(e['分摊开始周'])||0;
+      var startW=Number(e['分搙开始周'])||0;
       var offset=i-startW;
       return offset>=0&&offset<sw;
     });
-    const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+getExpenseWeekAmount(e,w.startDate,thisMonth,i)},0);
-    const weekBudget=getWeekBudget(thisMonth,i);
+    const weekOut=getWeekSpending(thisMonth,i);
+    const weekBudget=getDynamicWeekBudget(thisMonth,i);
     const catMap={};
     weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.startDate,thisMonth,i)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
@@ -182,9 +184,9 @@ function renderExpenseWeek(){
       const wpct=Math.min(weekOut/weekBudget*100,100);
       const wbc=wpct>90?'var(--red)':wpct>70?'var(--orange)':'var(--green)';
       html+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin:8px 0"><div style="width:'+wpct+'%;height:100%;background:'+wbc+';border-radius:3px"></div></div>';
-      html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>预算 ¥'+weekBudget.toFixed(0)+'</span><span>剩余 ¥'+Math.max(weekBudget-weekOut,0).toFixed(0)+'</span></div>';
-    } else {
-      html+='<div style="font-size:11px;color:var(--muted);margin-top:4px">未设置周预算</div>';
+      html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)"><span>动态额度 ¥'+weekBudget.toFixed(0)+'</span><span>剩余 ¥'+Math.max(weekBudget-weekOut,0).toFixed(0)+'</span></div>';
+    } else if(budget>0) {
+      html+='<div style="font-size:11px;color:var(--muted);margin-top:4px">💡 可用池已用完</div>';
     }
     if(catEntries.length>0){
       html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';

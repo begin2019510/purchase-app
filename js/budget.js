@@ -7,48 +7,32 @@ function saveBudget(){
   const total=parseFloat(document.getElementById('budgetInput').value)||0;
   if(!month)return alert('请选择月份');
   if(total<0)return alert('预算不能为负数');
-  const weeks=getMonthWeeks(month);
-  const weekObj={};let weekSum=0;
-  for(let i=0;i<weeks.length;i++){
-    const el=document.getElementById('weekBudget_'+i);
-    const v=el?parseFloat(el.value)||0:0;
-    if(v<0){alert('周预算不能为负数');return}
-    if(v>0){weekObj[i]=v;weekSum+=v}
-  }
-  if(total>0&&weekSum>total){alert('周预算总和 ¥'+weekSum+' 超过月预算 ¥'+total);return}
-  setWeekBudgets(month,total,0,weekObj);
-  const msg=Object.keys(weekObj).length?'月预算'+total+'，'+Object.keys(weekObj).length+'个周预算':'月预算'+total;
-  toast('已设置 '+msg);
+  setWeekBudgets(month,total,0,{});
+  toast('已设置 月预算'+total);
   closeBudgetModal();
   render();
 }
 
 function openBudgetModal(){
-  console.log('BUDGET_DEBUG_openBudgetModal');
   const m=getThisMonth();
   document.getElementById('budgetMonth').value=m;
   const b=getBudgets()[m];
   const total=(b&&typeof b==='object')?b.total:(typeof b==='number'?b:0);
   document.getElementById('budgetInput').value=total||'';document.getElementById('budgetInput').min=0;
-  // Show fixed expense preview
-  var fixedTotal=getFixedExpenseTotal();
-  var purchaseDeduction=getPurchaseDeduction(m);
-  var totalDeduction=fixedTotal+purchaseDeduction;
-  var availableBudget=Math.max((total||0)-totalDeduction,0);
+  var pool=getBudgetPool(m);
   var previewEl=document.getElementById('budgetFixedPreview');
   if(previewEl){
-    if(totalDeduction>0&&total>0){
+    if(pool.totalDeduction>0&&total>0){
       previewEl.style.display='block';
-      var lines='';
-      if(fixedTotal>0) lines+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📌 固定支出</span><span style="color:var(--orange);font-weight:700">-¥'+fixedTotal.toFixed(0)+'</span></div>';
-      if(purchaseDeduction>0) lines+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>🛒 采购扣减</span><span style="color:var(--blue);font-weight:700">-¥'+purchaseDeduction.toFixed(0)+'</span></div>';
-      lines+='<div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;display:flex;justify-content:space-between"><span style="font-weight:700">💰 可用预算</span><span style="font-size:16px;font-weight:800;color:var(--pri)">¥'+availableBudget.toFixed(0)+'</span></div>';
-      previewEl.innerHTML=lines;
+      var html='';
+      if(pool.fixedDeduction>0) html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📌 固定支出</span><span style="color:var(--orange);font-weight:700">-¥'+pool.fixedDeduction.toFixed(0)+'</span></div>';
+      if(pool.installmentDeduction>0) html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📦 分期还款</span><span style="color:#8b5cf6;font-weight:700">-¥'+pool.installmentDeduction.toFixed(0)+'</span></div>';
+      html+='<div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;display:flex;justify-content:space-between"><span style="font-weight:700">💰 可用预算</span><span style="font-size:16px;font-weight:800;color:var(--pri)">¥'+pool.available.toFixed(0)+'</span></div>';
+      previewEl.innerHTML=html;
     } else {
       previewEl.style.display='none';
     }
   }
-  renderWeekBudgetInputs(m,total);
   document.getElementById('budgetOverlay').classList.add('active');
 }
 

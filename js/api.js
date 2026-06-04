@@ -343,6 +343,44 @@ function getBudgetPool(month) {
 }
 
 App.api.getDirectPurchaseSpend = getDirectPurchaseSpend;
+
+// 计算某周的总支出（记账 + 采购）
+function getWeekSpending(month, weekIndex) {
+  var weekExpenses = (expenses || []).filter(function(e) {
+    if (e['类型'] !== '支出' || getMonth(e['日期']) !== month) return false;
+    return getWeekForDate(e['日期'], month) === weekIndex;
+  }).reduce(function(s, e) { return s + Number(e['金额'] || 0); }, 0);
+  var weekPurchases = (items || []).filter(function(i) {
+    var s = i['状态'] || '';
+    if (s === '已退' || s === '已取消' || s === '待评估' || s === '待审批') return false;
+    if (getMonth(i['日期']) !== month) return false;
+    return getWeekForDate(String(i['日期']), month) === weekIndex;
+  }).reduce(function(s, i) {
+    var tp = Number(i['分期期数']) || 0;
+    if (tp > 1) return s + (Number(i['分期金额']) || 0);
+    return s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1);
+  }, 0);
+  return weekExpenses + weekPurchases;
+}
+
+// 动态周预算：(可用池 - 前几周已花) ÷ 剩余周数
+function getDynamicWeekBudget(month, weekIndex) {
+  var pool = getBudgetPool(month);
+  if (pool.available <= 0) return 0;
+  var weeks = getMonthWeeks(month);
+  var totalWeeks = weeks.length;
+  var priorSpent = 0;
+  for (var i = 0; i < weekIndex; i++) {
+    priorSpent += getWeekSpending(month, i);
+  }
+  var remainingWeeks = totalWeeks - weekIndex;
+  if (remainingWeeks <= 0) return 0;
+  var available = Math.max(pool.available - priorSpent, 0);
+  return available / remainingWeeks;
+}
+
+App.api.getWeekSpending = getWeekSpending;
+App.api.getDynamicWeekBudget = getDynamicWeekBudget;
 App.api.getBudgetPool = getBudgetPool;
 App.api.toggleDarkMode = toggleDarkMode;
 App.api.handleImageUpload = handleImageUpload;

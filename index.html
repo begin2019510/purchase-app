@@ -559,11 +559,11 @@
       <label>月总预算（元）</label>
       <input id="budgetInput" type="number" step="1" min="0" placeholder="例如：3000" style="font-size:18px;font-weight:700;text-align:center;padding:12px">
     </div>
-    <div id="weekBudgetSection" style="margin:12px 0">
+    <div id="weekBudgetSection" style="display:none">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 每周预算</div>
       <div id="weekBudgetCards"></div>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:8px 0;text-align:center">💡 周预算之和不能超过月总预算</p>
+    
     <div id="budgetAiResult" style="display:none;margin:8px 0;padding:12px;background:var(--bg);border-radius:12px;font-size:13px;line-height:1.6"></div>
     <button class="btn" style="width:100%;margin-bottom:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:10px;border-radius:12px;font-size:13px;font-weight:700" onclick="analyzeBudget()">🤖 AI 智能分析预算</button>
     <div class="btn-row">
