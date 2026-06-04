@@ -143,25 +143,34 @@ async function debugMyAuthStats(){
   }catch(e){el.textContent='错误: '+e.message}
 }
 async function verifyAndLoad(){
+  var _vs=document.getElementById('debugBanner');
+  function _vl(m){console.log('VERIFY:',m);if(_vs){_vs.style.display='block';_vs.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0">'+m+'</div>'}}
   try{
+    _vl('Verifying token...');
     let r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
+    _vl('Verify status: '+r.status);
     if(r.status===401){
-      // access token 过期，尝试用 refresh token 续期
+      _vl('Token expired, trying refresh...');
       const newToken=await refreshAccessToken();
+      _vl('Refresh: '+(newToken?'OK':'FAILED'));
       if(newToken){
         r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
+        _vl('Re-verify status: '+r.status);
       }
     }
     if(!r.ok){
+      _vl('Auth FAILED, clearing tokens');
       clearTokens();
       document.getElementById('authScreen').style.display='flex';
       return;
     }
     const d=await r.json();
+    _vl('Auth OK, user='+d.username);
     document.getElementById('authScreen').style.display='none';
     if(d.ok&&d.username==='admin'){var _ab2=document.getElementById('adminBtn');if(_ab2)_ab2.style.display='';}
     loadAll();
-  }catch{
+  }catch(e){
+    _vl('EXCEPTION: '+e.message);
     document.getElementById('authScreen').style.display='flex';
   }
 }

@@ -1,4 +1,25 @@
-﻿// === App Namespace ===
+﻿// === Global Error Handler ===
+window.onerror=function(msg,src,line,col,err){
+  try{
+    var el=document.getElementById('debugBanner');
+    if(el){
+      el.style.display='block';
+      el.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:4px 0">❌ '+msg+' ('+src.split('/').pop()+':'+line+':'+col+')</div>';
+    }
+  }catch(ex){}
+  console.error('GLOBAL_ERROR:',msg,src,line,col,err);
+};
+window.addEventListener('unhandledrejection',function(e){
+  try{
+    var el=document.getElementById('debugBanner');
+    if(el){
+      el.style.display='block';
+      el.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:4px 0">❌ Promise: '+(e.reason?.message||e.reason||'unknown')+'</div>';
+    }
+  }catch(ex){}
+  console.error('UNHANDLED_REJECTION:',e.reason);
+});
+// === App Namespace ===
 const App = { utils: {}, auth: {}, api: {}, stats: {}, expense: {}, items: {}, ai: {}, budget: {}, app: {} };
 
 // utils.js - Version, Changelog, Utilities

@@ -147,22 +147,27 @@ async function cleanupOrphanExpenses(){
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
 async function loadAll(){
-  try{await loadBudgetFromServer()}catch(e){}
+  var _dbg=document.getElementById('debugBanner');
+  function _log(m){console.log('LOADALL:',m);if(_dbg){_dbg.style.display='block';_dbg.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0">'+m+'</div>'}}
+  _log('Starting loadAll, pin='+(getPin()?'YES':'NO'));
+  try{await loadBudgetFromServer()}catch(e){_log('budget error: '+e.message)}
   showSkeleton();
   try{
-    const [r, e] = await Promise.all([
-      api('GET'),
-      expenseApi('GET')
-    ]);
-    if(r && !r.error && Array.isArray(r)) items = r;
-    if(e && !e.error && Array.isArray(e)) expenses = e;
-  }catch(e){console.error('loadAll fetch error:', e)}
+    _log('Fetching data...');
+    const [r, e] = await Promise.all([api('GET'),expenseApi('GET')]);
+    if(r && !r.error && Array.isArray(r)){items = r;_log('Items loaded: '+r.length)}
+    else{_log('Items result: '+JSON.stringify(r).substring(0,200))}
+    if(e && !e.error && Array.isArray(e)){expenses = e;_log('Expenses loaded: '+e.length)}
+    else{_log('Expenses result: '+JSON.stringify(e).substring(0,200))}
+  }catch(e){console.error('loadAll fetch error:', e);_log('FETCH ERROR: '+e.message)}
   isLoadingData=false;
-  try{await loadRecurringData()}catch(e){}
-  try{await checkRecurring()}catch(e){console.error('recurring err',e)}
-  try{await checkInstallments()}catch(e){console.error('install err',e)}
-  try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e)}
-  render();
+  try{await loadRecurringData()}catch(e){_log('recurring error: '+e.message)}
+  try{await checkRecurring()}catch(e){console.error('recurring err',e);_log('checkRecurring: '+e.message)}
+  try{await checkInstallments()}catch(e){console.error('install err',e);_log('checkInstallments: '+e.message)}
+  try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e);_log('cleanup: '+e.message)}
+  _log('Rendering, items='+items.length+', expenses='+expenses.length);
+  try{render()}catch(e){_log('RENDER ERROR: '+e.message);console.error('render error:',e)}
+  _log('loadAll complete');
 }
 
 function render(){
