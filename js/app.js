@@ -127,23 +127,18 @@ function setupPullToRefresh(){
 }
 async function cleanupOrphanExpenses(){
   try{
-    var orphaned=expenses.filter(function(e){
+    // Delete ALL purchase-related expense records (purchases tracked via items data now)
+    var toDelete=expenses.filter(function(e){
       if(!e['备注'])return false;
       var note=e['备注'];
-      if(!note.includes('[采购]')&&!note.includes('[采购分期]')&&!note.includes('[分期]'))return false;
-      var name='';
-      if(note.includes('[采购分期]'))name=note.replace('[采购分期] ','').split(' (')[0];
-      else if(note.includes('[分期]'))name=note.replace('[分期] ','').split(' (')[0];
-      else if(note.includes('[采购]'))name=note.replace('[采购] ','');
-      if(!name)return false;
-      return !items.find(function(i){return i['商品名称']===name});
+      return note.includes('[采购]')||note.includes('[采购分期]')||note.includes('[分期]');
     });
-    if(orphaned.length>0){
-      console.log('CLEANUP: deleting '+orphaned.length+' orphaned expense records');
-      for(var i=0;i<orphaned.length;i++){
-        await expenseApi('DELETE',null,orphaned[i].id);
+    if(toDelete.length>0){
+      console.log('CLEANUP: deleting '+toDelete.length+' purchase expense records (budget pool model)');
+      for(var i=0;i<toDelete.length;i++){
+        await expenseApi('DELETE',null,toDelete[i].id);
       }
-      expenses=expenses.filter(function(e){return !orphaned.find(function(o){return o.id===e.id})});
+      expenses=expenses.filter(function(e){return !toDelete.find(function(o){return o.id===e.id})});
     }
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
