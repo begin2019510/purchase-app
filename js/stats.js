@@ -293,7 +293,7 @@ function renderStats() { console.log('renderStats START');
     const dayAvg = dailyData.reduce((s, d) => s + d.value, 0) / Math.max(dailyData.filter(d => d.value > 0).length, 1);
     html += `<div class="stats-section">
       <div class="stats-section-title">📉 每日支出 <span style="float:right;font-weight:400;font-size:11px">最高 ¥${dayMax.toFixed(0)} · 日均 ¥${dayAvg.toFixed(0)}</span></div>
-      ${lineChart(dailyData, { color: '#ef4444', height: 140 })}
+      ${lineChart(dailyData, { color: '#ef4444', height: (window.innerWidth > 768) ? 220 : 140 })}
     </div>`;
   }
 

@@ -508,6 +508,38 @@ async function submitEvalToDetail() {
 }
 
 
+async 
+// ===== Purchase Image Upload =====
+var purchaseImageData = {};
+function handlePurchaseImage(input, prefix) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var MAX = 800;
+      var w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      purchaseImageData[prefix] = canvas.toDataURL('image/jpeg', 0.8);
+      var preview = document.getElementById(prefix + 'ImagePreview');
+      var wrap = document.getElementById(prefix + 'ImageWrap');
+      var sizeInfo = document.getElementById(prefix + 'ImageSize');
+      if (preview) preview.src = purchaseImageData[prefix];
+      if (wrap) wrap.style.display = 'block';
+      if (sizeInfo) { var kb = Math.round(purchaseImageData[prefix].length * 0.75 / 1024); sizeInfo.textContent = kb + 'KB'; }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 async function submitPurchase() {
   const name = document.getElementById('fNameDisplay').value.trim();
   if (!name) { alert('商品名称丢失'); return; }
@@ -525,6 +557,7 @@ async function submitPurchase() {
     status: '待审批',
     date: new Date().toISOString().slice(0, 10),
     note: document.getElementById('fNote').value.trim() || null,
+    image: purchaseImageData['p'] || null,
     installments: instVal,
     installmentAmount: instAmount,
     installmentStart: getThisMonth()
