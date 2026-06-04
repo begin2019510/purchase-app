@@ -148,7 +148,13 @@ function renderExpenseWeek(){
   // 每周卡片
   monthWeeks.forEach(function(w, i){
     const weekExpenses=monthExpenses.filter(function(e){
-      return getWeekForDate(e['日期'],thisMonth)===i;
+      var wi=getWeekForDate(e['日期'],thisMonth);
+      if(wi===i)return true;
+      var sw=Number(e['分摊周数'])||0;
+      if(sw<=0)return false;
+      var startW=Number(e['分摊开始周'])||0;
+      var offset=i-startW;
+      return offset>=0&&offset<sw;
     });
     const weekOut=weekExpenses.filter(function(e){return (e['类型']==='支出'||e['类型']==='采购')}).reduce(function(s,e){return s+getExpenseWeekAmount(e,w.startDate,thisMonth,i)},0);
     const weekBudget=getWeekBudget(thisMonth,i);
