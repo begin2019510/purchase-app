@@ -175,6 +175,17 @@ function getWeekData(expenses, monthStr, type='支出'){
 
 
 // ===== 周视图 =====
+function animateNumber(el, target, duration) {
+  var start = performance.now();
+  function tick(now) {
+    var progress = Math.min((now - start) / duration, 1);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = '\u00a5' + Math.round(target * eased);
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function renderStats() { console.log('renderStats START');
   const thisMonth = getThisMonth();
   const budget = getBudgetNum(thisMonth);
@@ -317,7 +328,16 @@ function renderStats() { console.log('renderStats START');
   }
   html += '</div>';
 
-  document.getElementById('statsContent').innerHTML = html; console.log('renderStats DONE html_len='+html.length);
+  document.getElementById('statsContent').innerHTML = html;
+  // Trigger animations
+  setTimeout(function(){
+    document.querySelectorAll('[data-animate-num]').forEach(function(el){
+      animateNumber(el, Number(el.dataset.animateNum), 800);
+    });
+    var fill=document.getElementById('budgetPoolFill');
+    if(fill)fill.style.width=fill.dataset.width+'%';
+  }, 100);
+  console.log('renderStats DONE html_len='+html.length);
 }
 
 function switchStatsTab(tab) {

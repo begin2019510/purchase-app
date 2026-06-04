@@ -33,6 +33,7 @@ function openDetailModal(id){
   ${item['购买理由']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">💡 购买理由</div><div style="color:var(--muted)">${esc(item['购买理由'])}</div></div>`:''}
   ${item['预算区间']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">💰 预算: ¥${esc(item['预算区间'])}</div>`:''}
   ${item['取消原因']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">❌ 取消理由</div><div style="color:var(--muted)">${esc(item['取消原因'])}</div></div>`:''}
+  ${(function(){var tp=Number(item['分期期数'])||0;if(tp<=0)return'';var pd=Number(item['分期已还'])||0;var ia=Number(item['分期金额'])||Math.round((Number(item['单价']||0)*Number(item['数量']||1))/tp);var pa=ia*pd;var tt=Number(item['单价']||0)*Number(item['数量']||1);var pct=Math.min(pa/tt*100,100);var bc=pct>90?'var(--red)':pct>60?'var(--orange)':'var(--green)';return '<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:8px;font-size:13px;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:6px">📦 分期购买</div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>¥'+ia+'/期 · 共'+tp+'期</span><span>已付'+pd+'期</span></div><div style="font-size:18px;font-weight:700;margin-bottom:8px">¥'+pa+' <span style="font-size:12px;color:var(--muted);font-weight:400">/ ¥'+tt+'</span></div><div style="height:6px;background:var(--card);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px;transition:width .5s"></div></div></div>'})()}
   </div>`;
 
   // Stepper: always show full flow 待审批→已审批→已下单→已到/已退→已归档
@@ -136,7 +137,7 @@ function doDetailModalAction(id,nextStatus){
     else if(nextStatus==='已下单')item['下单时间']=now;
     else if(nextStatus==='已到'||nextStatus==='已退')item['到货时间']=now;
     else if(nextStatus==='已归档')item['归档时间']=now;
-    if(nextStatus==='已下单' && item) createPurchaseExpense(item);
+    // Purchase expense no longer auto-created (shared budget pool model)
     toast(`已更新为"${nextStatus}"`);
     closeDetailModal();
     render();
@@ -176,7 +177,7 @@ function switchTab(t){
 // ===== 采购操作 =====
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast('正在更新 '+ids.length+' 项...');const r=await api('PATCH',{ids,status});if(r&&r.error){alert('批量更新失败: '+r.error);return}if(status==='已下单'){for(const id of ids){const item=items.find(x=>x.id===id);if(item)await createPurchaseExpense(item)}}toast('已更新 '+ids.length+' 项为"'+status+'"');selectedIds.clear();toggleBatch();await loadAll()}
+async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast('正在更新 '+ids.length+' 项...');const r=await api('PATCH',{ids,status});if(r&&r.error){alert('批量更新失败: '+r.error);return}toast('已更新 '+ids.length+' 项为"'+status+'"');selectedIds.clear();toggleBatch();await loadAll()}
 async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删除选中的 '+selectedIds.size+' 项？'))return;const ids=[...selectedIds];for(const id of ids){var item=items.find(x=>x.id===id);if(item)await deletePurchaseExpenses(item['商品名称']||'')}items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast('已删除 '+ok+' 项');await loadAll()}
 
 // ============================================================

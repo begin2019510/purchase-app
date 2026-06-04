@@ -44,16 +44,17 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
   let html='';
   const pl=currentWeekFilter>=0?'本周':'本月';
   const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudgetNum(thisMonth);
-  const br=Math.max(wb-totalOut,0);
+  const budgetWb=currentWeekFilter>=0?wb:getBudgetNum(thisMonth);
+  const br=Math.max(budgetWb-budgetTotalOut,0);
   html+=`<div class="ex-header">
     <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
     ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
   </div>`;
   // Budget dashboard
   if(wb>0){
-    const pct=Math.min(totalOut/wb*100,100);
+    const pct=Math.min(budgetTotalOut/budgetWb*100,100);
     const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
-    const rem=Math.max(wb-totalOut,0);
+    const rem=Math.max(budgetWb-budgetTotalOut,0);
     html+=`<div class="ex-budget" style="margin:0 0 10px;border-radius:14px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-size:13px;font-weight:700">${pl}预算</span>
@@ -61,7 +62,7 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
         <span style="font-size:28px;font-weight:900;color:var(--pri)">¥${wb.toFixed(0)}</span>
-        <span style="font-size:12px;color:var(--muted)">已用 ¥${totalOut.toFixed(0)}</span>
+        <span style="font-size:12px;color:var(--muted)">已用 ¥${budgetTotalOut.toFixed(0)}</span>
       </div>
       <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:6px">
         <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .5s"></div>
@@ -119,13 +120,15 @@ function renderExpenseWeek(){
     if(!e['日期'])return false;
     try{return getMonth(e['日期'])===thisMonth}catch{return false}
   });
-  const totalOut=monthExpenses.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
+  const pureExpenseOut=monthExpenses.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
+  const purchaseOut=typeof getMonthPurchaseTotal==='function'?getMonthPurchaseTotal(thisMonth):0;
+  const totalOut=pureExpenseOut+purchaseOut;
   const container=document.getElementById('expenseContent');
   if(!container)return;
   let html='';
   // 月度总览
   html+='<div class="ex-header">';
-  html+='<div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥'+totalOut.toFixed(2)+'</div></div></div>';
+  html+='<div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">本月支出</div><div class="ex-total-val">¥'+totalOut.toFixed(0)+'</div><div style="font-size:10px;color:var(--muted);margin-top:2px">采购 ¥'+purchaseOut.toFixed(0)+' · 记账 ¥'+pureExpenseOut.toFixed(0)+'</div></div></div>';
   if(budget>0){
     const br=Math.max(budget-totalOut,0);
     html+='<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">月预算</div><div class="ex-total-val">¥'+budget.toFixed(0)+'</div></div></div>';
