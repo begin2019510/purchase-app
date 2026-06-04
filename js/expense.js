@@ -32,14 +32,14 @@ function renderExpense(){
 const sq=document.getElementById('expenseSearch')?document.getElementById('expenseSearch').value.toLowerCase():'';
 let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
   if(expenseTypeFilter!=='all'){searched=searched.filter(e=>e['类型']===expenseTypeFilter)}
-  const totalOut=searched.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
+  const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
   const totalIn=0;
   const net=-totalOut;
   const budget=getBudgetNum(thisMonth);
   const count=searched.length;
   const periodLabel=currentWeekFilter>=0?'本周':'本月';
   const catMap={};
-  searched.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
+  searched.filter(e=>e['类型']==='支出').forEach(e=>{const c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+Number(e['金额']||0);});
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
   const pl=currentWeekFilter>=0?'本周':'本月';
@@ -47,7 +47,7 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
   const budgetWb=currentWeekFilter>=0?wb:getBudgetNum(thisMonth);
   const br=Math.max(budgetWb-budgetTotalOut,0);
   html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${totalOut.toFixed(2)}</div></div></div>
+    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${budgetTotalOut.toFixed(0)}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">采购 ¥${purchaseOut.toFixed(0)} · 记账 ¥${totalOut.toFixed(0)}</div></div></div>
     ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
   </div>`;
   // Budget dashboard
