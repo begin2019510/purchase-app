@@ -301,6 +301,7 @@ function renderStats() { console.log('renderStats START');
       var tp = Number(i['分期期数']) || 1;
       var pd = Number(i['分期已还']) || 0;
       var sm = i['分期开始月'] || '';
+      if (!sm) { var d = i['日期']; if (d) { var dd = new Date(typeof d === 'number' ? d + 8*3600000 : d); sm = dd.getUTCFullYear() + '-' + String(dd.getUTCMonth() + 1).padStart(2, '0'); } }
       if (pd === 0 && sm === getThisMonth()) pd = 1;
       var ia = Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp);
       var pct = tp > 0 ? (pd / tp * 100) : 0;
