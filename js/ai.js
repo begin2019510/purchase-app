@@ -556,7 +556,7 @@ async function submitPurchase() {
     status: '待审批',
     date: new Date().toISOString().slice(0, 10),
     note: document.getElementById('fNote').value.trim() || null,
-    image: purchaseImageData['p'] || null,
+    image: purchaseImageData['p'] || purchaseImageData['ev'] || null,
     installments: instVal,
     installmentAmount: instAmount,
     installmentStart: getThisMonth()
@@ -578,9 +578,9 @@ async function queryAI(){
   input.value='';
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
-    const res=await aiRequest('query',{question:q,expenses:monthExpenses});
-    if(res.ok){resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🤖 回答</span></div><div>${esc(res.data)}</div></div>`}
+    const allExpenses=expenses||[];
+    const res=await aiRequest('query',{question:q,expenses:allExpenses});
+    if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
     else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
   }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
 }
@@ -591,12 +591,12 @@ async function runAIAnalysis(){
   resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>分析中...</span></div>`;
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
-    const monthItems=items.filter(i=>getMonth(i['日期'])===thisMonth);
-    const res=await aiRequest('analyze',{expenses:monthExpenses,items:monthItems,month:thisMonth});
+    const allExpenses=expenses||[];const allItems=items||[];
+    if(!allExpenses.length&&!allItems.length){resultEl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">💡 暂无数据，请先添加记账或采购记录</div>';return}
+    const res=await aiRequest('analyze',{expenses:allExpenses,items:allItems,month:thisMonth});
     if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
-    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
-  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
+    else{resultEl.innerHTML='<div style="color:var(--red);font-size:12px">分析失败</div>'}
+  }catch(e){resultEl.innerHTML='<div style="color:var(--red);font-size:12px">'+e.message+'</div>'}
 }
 
 // --- 消费画像 ---
@@ -605,8 +605,8 @@ async function runAIProfile(){
   resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>深度分析中...</span></div>`;
   try{
     const thisMonth=getThisMonth();
-    const monthExpenses=expenses.filter(e=>{if(!e['日期'])return false;try{return getMonth(e['日期'])===thisMonth}catch{return false}});
-    const res=await aiRequest('profile',{expenses:monthExpenses});
+    const allExpenses=expenses||[];if(!allExpenses.length){resultEl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">💡 暂无记账数据</div>';return}
+    const res=await aiRequest('profile',{expenses:allExpenses});
     if(res.ok&&res.data){
       const d=res.data;
       let html='';

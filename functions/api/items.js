@@ -17,7 +17,7 @@ async function ensureEvalFields(APP, TABLE, env) {
     const names = (existing.data?.items || []).map(f => f.field_name);
     const needed = [
       {name:'评估摘要', type:1}, {name:'购买理由', type:1}, {name:'预算区间', type:1}, {name:'取消原因', type:1},
-      {name:'分期期数', type:1}, {name:'分期金额', type:1}, {name:'分期开始月', type:1}, {name:'分期已还', type:1}
+      {name:'分期期数', type:1}, {name:'分期金额', type:1}, {name:'分期开始月', type:1}, {name:'分期已还', type:1}, {name:'图片', type:1}
     ];
     for (const f of needed) {
       if (!names.includes(f.name)) {
@@ -74,6 +74,7 @@ function recordToItem(r) {
     '购买理由': f['购买理由'] || '',
     '预算区间': f['预算区间'] || '',
     '取消原因': f['取消原因'] || '',
+    '图片': feishuStr(f['图片']),
     '分期期数': feishuNum(f['分期期数']),
     '分期金额': feishuNum(f['分期金额']),
     '分期开始月': feishuStr(f['分期开始月']),
@@ -178,6 +179,19 @@ export async function onRequest(context) {
         '分期开始月': body.installmentStart || '',
         '分期已还': '1',
       };
+            // Image upload to KV
+      let imageRef = '';
+      if (body.image && body.image.startsWith('data:')) {
+        const KV = env.IMAGE_STORE;
+        if (KV) {
+          const key = 'purchase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+          await KV.put(key, body.image, { expirationTtl: 86400 * 365 });
+          imageRef = 'kv:' + key;
+        }
+      } else if (body.image && body.image.startsWith('kv:')) {
+        imageRef = body.image;
+      }
+      fields['图片'] = imageRef;
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
@@ -223,6 +237,21 @@ export async function onRequest(context) {
       if (String(body.installmentAmount) !== undefined) fields['分期金额'] = body.installmentAmount;
       if (body.installmentStart !== undefined) fields['分期开始月'] = body.installmentStart;
       if (String(body.installmentPaid) !== undefined) fields['分期已还'] = body.installmentPaid;
+            // Image upload to KV for PUT
+      if (body.image !== undefined) {
+        if (body.image && body.image.startsWith('data:')) {
+          const KV = env.IMAGE_STORE;
+          if (KV) {
+            const key = 'purchase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            await KV.put(key, body.image, { expirationTtl: 86400 * 365 });
+            fields['图片'] = 'kv:' + key;
+          }
+        } else if (body.image && body.image.startsWith('kv:')) {
+          fields['图片'] = body.image;
+        } else if (!body.image) {
+          fields['图片'] = '';
+        }
+      }
       if (body.setDate && !fields['日期']) fields['日期'] = Date.now();
       const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);

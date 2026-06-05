@@ -310,6 +310,15 @@
         <label>为什么想买？<span style="color:var(--muted);font-size:11px">（选填）</span></label>
         <textarea id="fReason" rows="2" placeholder="写写购买理由，帮助评估是否真的需要" style="resize:none" autocomplete="off"></textarea>
       </div>
+      <div class="form-group"><label>图片 <span style="color:var(--muted);font-size:11px">（选填）</span></label>
+        <div id="evImageWrap" style="display:none;margin-bottom:8px"><img id="evImagePreview" style="max-width:100%;max-height:200px;border-radius:8px"></div>
+        <div style="display:flex;gap:8px">
+          <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('evCameraInput').click()"><div class="upload-icon">📷</div><div class="upload-text">拍照</div></div>
+          <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('evGalleryInput').click()"><div class="upload-icon">🖼️</div><div class="upload-text">相册</div></div>
+        </div>
+        <input type="file" id="evCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,'ev')">
+        <input type="file" id="evGalleryInput" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,'ev')">
+      </div>
       <div class="form-row">
         <div class="form-group" style="flex:1"><label>预算最低</label><input id="fBudgetMin" type="number" placeholder="如 200" min="0" autocomplete="off"></div>
         <div class="form-group" style="flex:1"><label>预算最高</label><input id="fBudgetMax" type="number" placeholder="如 500" min="0" autocomplete="off"></div>
@@ -393,6 +402,15 @@
         <div class="form-group"><label>日期</label><input id="fDateEdit" type="date"></div>
       </div>
       <div class="form-group"><label>备注</label><textarea id="fNoteEdit" placeholder="可选"></textarea></div>
+      <div class="form-group"><label>图片</label>
+        <div id="peImageWrap" style="display:none;margin-bottom:8px"><img id="peImagePreview" style="max-width:100%;max-height:200px;border-radius:8px"><button onclick="clearPurchaseEditImage()" style="display:block;margin-top:4px;padding:2px 8px;font-size:11px;color:#f87171;background:none;border:1px solid #f87171;border-radius:4px;cursor:pointer">🗑️ 删除图片</button></div>
+        <div style="display:flex;gap:8px">
+          <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('peCameraInput').click()"><div class="upload-icon">📷</div><div class="upload-text">拍照</div></div>
+          <div class="img-upload-area" style="flex:1;margin:0" onclick="document.getElementById('peGalleryInput').click()"><div class="upload-icon">🖼️</div><div class="upload-text">相册</div></div>
+        </div>
+        <input type="file" id="peCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,'pe')">
+        <input type="file" id="peGalleryInput" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,'pe')">
+      </div>
       <div class="form-group" id="installmentGroup" style="display:none">
         <label>📦 分期设置</label>
         <div style="display:flex;gap:8px;align-items:center">
@@ -558,6 +576,14 @@
     <div class="form-group">
       <label>月总预算（元）</label>
       <input id="budgetInput" type="number" step="1" min="0" placeholder="例如：3000" style="font-size:18px;font-weight:700;text-align:center;padding:12px">
+    </div>
+    <div style="margin:12px 0;padding:12px;background:var(--bg);border-radius:12px">
+      <label style="font-size:13px;font-weight:700">➕ 追加预算</label>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="budgetAppendInput" type="number" step="1" min="1" placeholder="追加金额" style="flex:1;font-size:16px;font-weight:700">
+        <button onclick="App.budget.appendBudget()" style="padding:8px 16px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">追加</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">在当前预算基础上增加，不替换原有预算</div>
     </div>
     <div id="weekBudgetSection" style="display:none">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 每周预算</div>

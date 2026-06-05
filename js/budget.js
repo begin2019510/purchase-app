@@ -48,9 +48,11 @@ function exportPurchases(){showExportDialog('采购',function(format){const sep=
 
 
 // === App.budget namespace exports ===
+function appendBudget(){var month=document.getElementById("budgetMonth").value;var appendVal=parseFloat(document.getElementById("budgetAppendInput").value)||0;if(!month)return alert("请选择月份");if(appendVal<=0)return alert("追加金额必须大于0");var current=getBudgetNum(month);var newTotal=current+appendVal;if(!confirm("确认追加预算？\n\n当前预算：¥"+current.toFixed(0)+"\n追加金额：¥"+appendVal.toFixed(0)+"\n追加后总预算：¥"+newTotal.toFixed(0)))return;setWeekBudgets(month,newTotal,0,{});toast("已追加 ¥"+appendVal.toFixed(0)+"，总预算 ¥"+current.toFixed(0)+" → ¥"+newTotal.toFixed(0));document.getElementById("budgetAppendInput").value="";document.getElementById("budgetInput").value=newTotal;var pool=getBudgetPool(month);var previewEl=document.getElementById("budgetFixedPreview");if(previewEl&&pool.totalDeduction>0){previewEl.style.display="block";var html="";if(pool.fixedDeduction>0)html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📌 固定支出</span><span style="color:var(--orange);font-weight:700">-¥'+pool.fixedDeduction.toFixed(0)+'</span></div>';if(pool.installmentDeduction>0)html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>📦 分期还款</span><span style="color:#8b5cf6;font-weight:700">-¥'+pool.installmentDeduction.toFixed(0)+'</span></div>';html+='<div style="border-top:1px dashed var(--border);padding-top:6px;margin-top:6px;display:flex;justify-content:space-between"><span style="font-weight:700">💰 可用预算</span><span style="font-size:16px;font-weight:800;color:var(--pri)">¥'+pool.available.toFixed(0)+'</span></div>';previewEl.innerHTML=html}render()}
 App.budget.closeBudgetModal = closeBudgetModal;
 App.budget.showExportDialog = showExportDialog;
 App.budget.saveBudget = saveBudget;
 App.budget.openBudgetModal = openBudgetModal;
 App.budget.exportData = exportData;
 App.budget.exportPurchases = exportPurchases;
+App.budget.appendBudget = appendBudget;
