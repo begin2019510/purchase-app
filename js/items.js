@@ -1,4 +1,4 @@
-﻿// items.js - Purchase CRUD, Batch, Approval, Detail Modal
+// items.js - Purchase CRUD, Batch, Approval, Detail Modal
 const STEPPER_STEPS=['待评估','待审批','已审批','已下单'];
 const STEPPER_ICONS={'待评估':'🤔','待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
 const STEP_TIME_FIELDS={'待评估':'创建时间','待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};
@@ -175,6 +175,12 @@ function doDetailModalAction(id,nextStatus){
     toast(`已更新为"${nextStatus}"`);
     closeDetailModal();
     render();
+    // Update FAB onclick for todo
+    var fab=document.getElementById('fabBtn');
+    if(fab){
+      if(t==='todo'){fab.onclick=function(){openTodoModal()}}
+      else{fab.onclick=function(){currentTab==='purchase'?openModal():openExpenseModal()}}
+    }
   }
   // Fire PATCH in background, don't block UI
   api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
@@ -189,7 +195,7 @@ function switchTab(t){
   currentTab=t;
   // 电脑端标签高亮
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  var tabIndex=t==='purchase'?1:t==='expense'?2:3;
+  var tabIndex=t==='purchase'?1:t==='expense'?2:t==='stats'?3:4;
   var desktopTab=document.querySelector('.tabs .tab:nth-child('+tabIndex+')');
   if(desktopTab)desktopTab.classList.add('active');
   // 手机端底部导航高亮
@@ -199,10 +205,12 @@ function switchTab(t){
   document.getElementById('tab-purchase').style.display=t==='purchase'?'':'none';
   document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
-  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense')?'':'none';
+    var todoTab=document.getElementById('tab-todo');if(todoTab)todoTab.style.display=t==='todo'?'':'none';
+  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense'||t==='todo')?'':'none';
   var ap=document.getElementById('actionPurchase');if(ap)ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
   var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
   var as=document.getElementById('actionStats');if(as)as.className=t==='stats'?'desktop-only':'desktop-only hidden';
+    var at=document.getElementById('actionTodo');if(at)at.className=t==='todo'?'desktop-only':'desktop-only hidden';
   if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();

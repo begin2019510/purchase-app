@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -62,6 +62,7 @@
   <div class="tab active" onclick="switchTab('purchase')">🛒 采购</div>
   <div class="tab" onclick="switchTab('expense')">💰 记账</div>
   <div class="tab" onclick="switchTab('stats')">📊 统计</div>
+  <div class="tab" onclick="switchTab('todo')">📋 待办</div>
 </div>
 
 <!-- Settings Overlay - Mobile only -->
@@ -152,6 +153,10 @@
     <span class="nav-icon">📊</span>
     <span class="nav-label">统计</span>
   </div>
+  <div class="nav-item" onclick="switchTab('todo')" data-tab="todo">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">待办</span>
+  </div>
 </nav>
 
 <!-- 采购 Tab -->
@@ -191,7 +196,16 @@
 <!-- 统计 Tab -->
 <div id="tab-stats" style="display:none">
   <div class="ptr-wrapper">
-    <div class="ptr-indicator"><div class="ptr-spinner"></div><div class="ptr-text"></div></div>
+    <div class="ptr-indicator"><div class="ptr-spinner"></div>
+  <!-- Todo Tab -->
+  <div id="tab-todo" style="display:none">
+    <div class="desktop-only" id="actionTodo" style="display:none">
+      <button class="action-btn" onclick="openTodoModal()">➕ 新建</button>
+      <button class="action-btn" onclick="switchTodoView('list')">📋 列表</button>
+      <button class="action-btn" onclick="switchTodoView('calendar')">📅 日历</button>
+    </div>
+    <div id="todoContent"></div>
+  </div><div class="ptr-text"></div></div>
     <div class="container stats-page">
       <div class="ai-analysis" id="aiAnalysis">
         <h3>🤖 AI 助手</h3>
@@ -539,15 +553,98 @@
   </div>
 </div>
 
-<script src="js/utils.js?v=3.2.0"></script>
-<script src="js/auth.js?v=3.2.0"></script>
-<script src="js/api.js?v=3.2.0"></script>
-<script src="js/stats.js?v=3.2.0"></script>
-<script src="js/expense.js?v=3.2.0"></script>
-<script src="js/items.js?v=3.2.0"></script>
-<script src="js/ai.js?v=3.2.0"></script>
-<script src="js/budget.js?v=3.2.0"></script>
-<script src="js/app.js?v=3.2.0"></script>
+
+  <!-- Todo New/Edit Modal -->
+  <div class="modal-overlay" id="todoModalOverlay" onclick="if(event.target===this)closeTodoModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="todoModalTitle">新建待办</h3>
+        <button class="close-btn" onclick="closeTodoModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>标题 *</label>
+          <input type="text" id="todoTitle" placeholder="做什么..." maxlength="200">
+        </div>
+        <div class="form-group">
+          <label>描述</label>
+          <textarea id="todoDesc" rows="3" placeholder="详细说明（选填）" maxlength="2000"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>截止日期</label>
+            <input type="date" id="todoDueDate">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>优先级</label>
+            <select id="todoPriority">
+              <option value="高">🔴 高</option>
+              <option value="中" selected>🟡 中</option>
+              <option value="低">⚪ 低</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>分类</label>
+            <select id="todoCategory">
+              <option value="生活">🏠 生活</option>
+              <option value="工作">💼 工作</option>
+              <option value="采购">🛒 采购</option>
+              <option value="记账">💰 记账</option>
+              <option value="健康">🏥 健康</option>
+              <option value="其他" selected>📌 其他</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>重复</label>
+            <select id="todoRepeat">
+              <option value="无" selected>无</option>
+              <option value="每天">🔄 每天</option>
+              <option value="每周">🔄 每周</option>
+              <option value="每月">🔄 每月</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>子任务 <button onclick="addSubtask()" style="font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer">➕ 添加</button></label>
+          <div id="todoSubtaskList"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>关联类型</label>
+            <select id="todoLinkType">
+              <option value="无" selected>无</option>
+              <option value="采购">🛒 采购</option>
+              <option value="记账">💰 记账</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>关联ID</label>
+            <input type="text" id="todoLinkId" placeholder="选填">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="saveTodo()" style="width:100%;margin-top:12px">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Todo Detail Modal -->
+  <div class="modal-overlay" id="todoDetailOverlay" onclick="if(event.target===this)closeTodoDetail()">
+    <div class="modal">
+      <div id="todoDetailBody"></div>
+    </div>
+  </div>
+<script src="js/utils.js?v=3.3.0"></script>
+<script src="js/auth.js?v=3.3.0"></script>
+<script src="js/api.js?v=3.3.0"></script>
+<script src="js/stats.js?v=3.3.0"></script>
+<script src="js/expense.js?v=3.3.0"></script>
+<script src="js/items.js?v=3.3.0"></script>
+<script src="js/ai.js?v=3.3.0"></script>
+<script src="js/budget.js?v=3.3.0">
+  <script src="js/todo.js?v=3.3.0"></script></script>
+<script src="js/app.js?v=3.3.0"></script>
 
 
 

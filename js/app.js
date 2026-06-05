@@ -1,4 +1,4 @@
-﻿// app.js - App Init, Core Render, Pull-to-Refresh, Events
+// app.js - App Init, Core Render, Pull-to-Refresh, Events
 let items=[], expenses=[];
 let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
@@ -161,6 +161,7 @@ async function loadAll(){
   try{await checkRecurring()}catch(e){console.error('recurring err',e);_log('checkRecurring: '+e.message)}
   try{await checkInstallments()}catch(e){console.error('install err',e);_log('checkInstallments: '+e.message)}
   try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e);_log('cleanup: '+e.message)}
+    try{await loadTodos()}catch(e){console.error('todo err',e);_log('loadTodos: '+e.message)}
   _log('Rendering, items='+items.length+', expenses='+expenses.length);
   try{render()}catch(e){_log('RENDER ERROR: '+e.message);console.error('render error:',e)}
   _log('loadAll complete');

@@ -1,4 +1,4 @@
-﻿
+
 
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--pri:#6366f1;--pri-dark:#4f46e5;--pri-light:#eef2ff;--pri-g:linear-gradient(135deg,#6366f1,#8b5cf6);--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--pink:#ec4899;--radius:14px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)}
@@ -922,4 +922,90 @@ body.dark .week-card{border-color:var(--border)}
   .budget-waterfall { max-width: 600px; margin: 0 auto 16px; }
   .budget-waterfall-big { font-size: 52px; }
   .budget-available-num { font-size: 44px; }
+}
+
+/* ===== Todo Module ===== */
+.todo-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--border);
+}
+.todo-card:active { transform: scale(0.98); }
+.todo-card.todo-done { opacity: 0.6; }
+.todo-card.todo-cancelled { opacity: 0.4; }
+.todo-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.todo-card-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; flex: 1; }
+.todo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.todo-check { font-size: 16px; }
+.todo-card-tags { display: flex; gap: 6px; flex-shrink: 0; }
+.todo-tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--bg); color: var(--muted); white-space: nowrap; }
+.todo-tag.pri-高 { background: #fef2f2; color: #ef4444; }
+.todo-tag.pri-低 { background: #f3f4f6; color: #9ca3af; }
+.todo-tag.cat { background: var(--bg); }
+.todo-tag.repeat { background: #eff6ff; color: #3b82f6; }
+.todo-due { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.todo-due.due-overdue { color: #ef4444; font-weight: 600; }
+.todo-due.due-today { color: #f59e0b; font-weight: 600; }
+.todo-due.due-soon { color: #f59e0b; }
+.todo-sub-progress { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.todo-sub-bar { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+.todo-sub-fill { height: 100%; background: var(--pri); border-radius: 2px; transition: width 0.3s; }
+.todo-sub-text { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.todo-link { font-size: 12px; color: var(--pri); margin-top: 6px; }
+
+/* Subtask rows in modal */
+.subtask-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.subtask-input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); color: var(--text); }
+.subtask-del { width: 28px; height: 28px; border: none; background: #fef2f2; color: #ef4444; border-radius: 8px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+.subtask-check { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; }
+.subtask-check input { width: 18px; height: 18px; accent-color: var(--pri); }
+
+/* Calendar */
+.cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.cal-nav-btn { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; color: var(--text); }
+.cal-nav-title { font-weight: 700; font-size: 16px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-header { text-align: center; font-size: 12px; color: var(--muted); font-weight: 600; padding: 8px 0; }
+.cal-day { min-height: 60px; background: var(--card); border-radius: 10px; padding: 6px; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s; }
+.cal-day:hover { border-color: var(--pri); }
+.cal-day.empty { background: transparent; cursor: default; }
+.cal-day.today { border-color: var(--pri); background: color-mix(in srgb, var(--pri) 8%, var(--card)); }
+.cal-day.selected { border-color: var(--pri); background: color-mix(in srgb, var(--pri) 12%, var(--card)); }
+.cal-day.has-todo { }
+.cal-day-num { font-size: 13px; font-weight: 600; }
+.cal-day.today .cal-day-num { color: var(--pri); }
+.cal-dots { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
+.cal-dot { width: 6px; height: 6px; border-radius: 50%; }
+.cal-detail { background: var(--card); border-radius: 14px; padding: 14px; margin-top: 12px; }
+.cal-detail-title { font-weight: 700; margin-bottom: 10px; }
+.cal-todo-item { padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 14px; }
+.cal-todo-item:last-child { border-bottom: none; }
+
+/* Todo detail modal */
+.detail-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.detail-header h2 { font-size: 18px; margin: 0; }
+.detail-body { padding: 16px 20px; max-height: 60vh; overflow-y: auto; }
+.detail-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.detail-label { font-size: 13px; color: var(--muted); }
+.detail-desc { padding: 12px 0; font-size: 14px; line-height: 1.6; color: var(--text); border-bottom: 1px solid var(--border); }
+.detail-subtasks { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.detail-actions { display: flex; gap: 8px; padding: 16px 20px; flex-wrap: wrap; }
+.btn-action { flex: 1; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px; min-width: 80px; }
+.btn-complete { background: #dcfce7; color: #16a34a; }
+.btn-edit { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+.btn-delete { background: #fef2f2; color: #ef4444; }
+.todo-tag.status-待办 { background: #eff6ff; color: #3b82f6; }
+.todo-tag.status-进行中 { background: #fef3c7; color: #d97706; }
+.todo-tag.status-已完成 { background: #dcfce7; color: #16a34a; }
+.todo-tag.status-已取消 { background: #f3f4f6; color: #9ca3af; }
+
+.form-row { display: flex; gap: 12px; }
+
+@media (min-width: 769px) {
+  .todo-card { max-width: 600px; margin-left: auto; margin-right: auto; }
+  .cal-grid { max-width: 600px; margin: 0 auto; }
 }
