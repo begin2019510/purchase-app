@@ -1,10 +1,10 @@
-﻿// 澶氱敤鎴疯璇佺郴缁?v3
-// 瀛樺偍: Cloudflare KV (IMAGE_STORE)
-// 瀵嗙爜: PBKDF2-SHA256 (100k iterations) + salt, auto-upgrade from SHA-256
-// 浼氳瘽: JWT (HS256)
-// 閭€璇风爜: 鐜鍙橀噺(鍙噸澶? + KV鍔ㄦ€佺爜(涓€娆℃€?
+// 多用户认证系统 v2
+// 存储: Cloudflare KV (IMAGE_STORE)
+// 密码: SHA-256 + salt
+// 会话: JWT (HS256)
+// 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, hashPasswordNew, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
 
 const json = jsonFn;
 const corsHeaders = getCorsHeaders;
@@ -36,50 +36,50 @@ async function createTable(token, appToken, name, fields) {
   const res = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${appToken}/tables`, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ table: { name, default_view_name: '榛樿瑙嗗浘', fields } }),
+    body: JSON.stringify({ table: { name, default_view_name: '默认视图', fields } }),
   });
   const data = await res.json();
   if (data.code !== 0) throw new Error('Create table failed: ' + data.msg);
   return data.data.table_id;
 }
 
-// ===== 鍒涘缓鐢ㄦ埛 Bitable 琛?=====
+// ===== 创建用户 Bitable 表 =====
 async function createUserTables(env, username) {
   const feishuToken = await getFeishuTokenDirect(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
 
-  const purchaseApp = await createBitable(feishuToken, `[${username}] 閲囪喘绠＄悊`);
-  const purchaseTable = await createTable(feishuToken, purchaseApp, '閲囪喘璁板綍', [
-    { field_name: '鍟嗗搧鍚嶇О', type: 1 },
-    { field_name: '骞冲彴', type: 3, property: { options: [{ name: '鎷煎澶? }, { name: '娣樺疂' }, { name: '浜笢' }, { name: '鎶栭煶' }, { name: '鍏朵粬' }] } },
-    { field_name: '鍒嗙被', type: 3, property: { options: [{ name: '鏃ョ敤' }, { name: '鏈嶉グ' }, { name: '楗' }, { name: '鐢靛瓙' }, { name: '浜ら€? }, { name: '鍏朵粬' }] } },
-    { field_name: '鍗曚环', type: 2 },
-    { field_name: '鏁伴噺', type: 2 },
-    { field_name: '鐘舵€?, type: 3, property: { options: [{ name: '寰呭鎵? }, { name: '宸插鎵? }, { name: '宸蹭笅鍗? }, { name: '宸插埌' }, { name: '宸查€€' }, { name: '宸插綊妗? }] } },
-    { field_name: '鏃ユ湡', type: 5, property: { date_formatter: 'yyyy/MM/dd' } },
-    { field_name: '澶囨敞', type: 1 },
-    { field_name: '鍥剧墖', type: 1 },
-    { field_name: '鍒涘缓鏃堕棿', type: 1 },
-    { field_name: '瀹℃壒鏃堕棿', type: 1 },
-    { field_name: '涓嬪崟鏃堕棿', type: 1 },
-    { field_name: '鍒拌揣鏃堕棿', type: 1 },
-    { field_name: '褰掓。鏃堕棿', type: 1 },
+  const purchaseApp = await createBitable(feishuToken, `[${username}] 采购管理`);
+  const purchaseTable = await createTable(feishuToken, purchaseApp, '采购记录', [
+    { field_name: '商品名称', type: 1 },
+    { field_name: '平台', type: 3, property: { options: [{ name: '拼多多' }, { name: '淘宝' }, { name: '京东' }, { name: '抖音' }, { name: '其他' }] } },
+    { field_name: '分类', type: 3, property: { options: [{ name: '日用' }, { name: '服饰' }, { name: '饮食' }, { name: '电子' }, { name: '交通' }, { name: '其他' }] } },
+    { field_name: '单价', type: 2 },
+    { field_name: '数量', type: 2 },
+    { field_name: '状态', type: 3, property: { options: [{ name: '待审批' }, { name: '已审批' }, { name: '已下单' }, { name: '已到' }, { name: '已退' }, { name: '已归档' }] } },
+    { field_name: '日期', type: 5, property: { date_formatter: 'yyyy/MM/dd' } },
+    { field_name: '备注', type: 1 },
+    { field_name: '图片', type: 1 },
+    { field_name: '创建时间', type: 1 },
+    { field_name: '审批时间', type: 1 },
+    { field_name: '下单时间', type: 1 },
+    { field_name: '到货时间', type: 1 },
+    { field_name: '归档时间', type: 1 },
   ]);
 
-  const expenseApp = await createBitable(feishuToken, `[${username}] 璁拌处绠＄悊`);
-  const expenseTable = await createTable(feishuToken, expenseApp, '璁拌处璁板綍', [
-    { field_name: '绫诲瀷', type: 3, property: { options: [{ name: '鏀嚭' }, { name: '鏀跺叆' }] } },
-    { field_name: '閲戦', type: 2 },
-    { field_name: '鍒嗙被', type: 3, property: { options: [{ name: '椁愰ギ' }, { name: '浜ら€? }, { name: '璐墿' }, { name: '濞变箰' }, { name: '灞呬綇' }, { name: '鍖荤枟' }, { name: '鏁欒偛' }, { name: '鍏朵粬' }] } },
-    { field_name: '鏃ユ湡', type: 5, property: { date_formatter: 'yyyy/MM/dd HH:mm' } },
-    { field_name: '澶囨敞', type: 1 },
-    { field_name: '鍥剧墖', type: 1 },
+  const expenseApp = await createBitable(feishuToken, `[${username}] 记账管理`);
+  const expenseTable = await createTable(feishuToken, expenseApp, '记账记录', [
+    { field_name: '类型', type: 3, property: { options: [{ name: '支出' }, { name: '收入' }] } },
+    { field_name: '金额', type: 2 },
+    { field_name: '分类', type: 3, property: { options: [{ name: '餐饮' }, { name: '交通' }, { name: '购物' }, { name: '娱乐' }, { name: '居住' }, { name: '医疗' }, { name: '教育' }, { name: '其他' }] } },
+    { field_name: '日期', type: 5, property: { date_formatter: 'yyyy/MM/dd HH:mm' } },
+    { field_name: '备注', type: 1 },
+    { field_name: '图片', type: 1 },
   ]);
 
     const todoApp = await createBitable(feishuToken, `[${username}] Todo`);
   const todoTable = await createTable(feishuToken, todoApp, 'Todo', [
     { field_name: '标题', type: 1 },
     { field_name: '描述', type: 1 },
-    { field_name: '截止日期', type: 5, property: { date_formatter: 'yyyy/MM/dd HH:mm' } },
+    { field_name: '截止日期', type: 5 },
     { field_name: '优先级', type: 3, property: { options: [{ name: '高' }, { name: '中' }, { name: '低' }] } },
     { field_name: '分类', type: 3, property: { options: [{ name: '采购' }, { name: '记账' }, { name: '生活' }, { name: '工作' }, { name: '健康' }, { name: '其他' }] } },
     { field_name: '状态', type: 3, property: { options: [{ name: '待办' }, { name: '进行中' }, { name: '已完成' }, { name: '已取消' }] } },
@@ -88,12 +88,12 @@ async function createUserTables(env, username) {
     { field_name: '图片', type: 1 },
     { field_name: '关联类型', type: 3, property: { options: [{ name: '无' }, { name: '采购' }, { name: '记账' }] } },
     { field_name: '关联ID', type: 1 },
-    { field_name: '完成时间', type: 5, property: { date_formatter: 'yyyy/MM/dd HH:mm' } },
+    { field_name: '完成时间', type: 5 },
   ]);
   return { purchaseApp, purchaseTable, expenseApp, expenseTable, todoApp, todoTable };
 }
 
-// ===== KV 瀛樺偍 =====
+// ===== KV 存储 =====
 async function getUser(kv, username) {
   const data = await kv.get('user:' + username);
   return data ? JSON.parse(data) : null;
@@ -107,20 +107,20 @@ async function deleteUser(kv, username) {
   await kv.delete('user:' + username);
 }
 
-// ===== 閭€璇风爜楠岃瘉锛堢幆澧冨彉閲?+ KV鍔ㄦ€佺爜锛?=====
+// ===== 邀请码验证（环境变量 + KV动态码） =====
 async function validateInviteCode(env, KV, code) {
-  // 1. 妫€鏌ョ幆澧冨彉閲忥紙鍙噸澶嶄娇鐢ㄧ殑鐮侊級
+  // 1. 检查环境变量（可重复使用的码）
   const envCodes = (env.INVITE_CODES || '').replace(/\r|\n/g, '').split(',').map(c => c.trim()).filter(Boolean);
   if (envCodes.includes(code)) {
     return { valid: true, type: 'env' };
   }
 
-  // 2. 妫€鏌V鍔ㄦ€佺爜锛堜竴娆℃€э級
+  // 2. 检查KV动态码（一次性）
   const dynamicData = await KV.get('dynamic_invites') || '[]';
   const dynamicCodes = JSON.parse(dynamicData);
   const idx = dynamicCodes.findIndex(c => c.code === code && !c.used);
   if (idx !== -1) {
-    // 鏍囪涓哄凡浣跨敤
+    // 标记为已使用
     dynamicCodes[idx].used = true;
     dynamicCodes[idx].usedAt = new Date().toISOString();
     await KV.put('dynamic_invites', JSON.stringify(dynamicCodes));
@@ -130,7 +130,7 @@ async function validateInviteCode(env, KV, code) {
   return { valid: false };
 }
 
-// ===== 涓诲鐞?=====
+// ===== 主处理 =====
 export async function onRequest(context) {
   const { request, env } = context;
   const cors = corsHeaders(request);
@@ -170,12 +170,12 @@ export async function onRequest(context) {
     } else if (action === 'list-logs') {
       return await handleListLogs(request, env, KV, cors);
     } else if (action === 'debug-env') {
-      // 浠呯鐞嗗憳鍙煡鐪?
+      // 仅管理员可查看
       const debugAuth = request.headers.get('Authorization');
       if (!debugAuth) return json({ error: 'Unauthorized' }, 401, cors);
       const debugToken = debugAuth.replace('Bearer ', '');
       const debugPayload = await verifyJWT(debugToken, env.JWT_SECRET);
-      if (!debugPayload || debugPayload.username !== 'admin') return json({ error: '浠呯鐞嗗憳鍙煡鐪? }, 403, cors);
+      if (!debugPayload || debugPayload.username !== 'admin') return json({ error: '仅管理员可查看' }, 403, cors);
       const codes = env.INVITE_CODES || '';
       return json({
         ok: true,
@@ -186,19 +186,19 @@ export async function onRequest(context) {
         API_KEY_SET: !!env.API_KEY,
       }, 200, cors);
     } else if (action === 'admin-op-verify') {
-      // 绠＄悊鍛樻搷浣滀簩娆￠獙璇侊紙鎿嶄綔瀵嗙爜锛?
+      // 管理员操作二次验证（操作密码）
       const aovAuth = request.headers.get('Authorization');
       if (!aovAuth) return json({ error: 'Unauthorized' }, 401, cors);
       const aovToken = aovAuth.replace('Bearer ', '');
       const aovPayload = await verifyJWT(aovToken, env.JWT_SECRET);
-      if (!aovPayload || aovPayload.username !== 'admin') return json({ error: '浠呯鐞嗗憳' }, 403, cors);
+      if (!aovPayload || aovPayload.username !== 'admin') return json({ error: '仅管理员' }, 403, cors);
       const { opPassword } = body;
-      if (!opPassword) return json({ error: '璇疯緭鍏ユ搷浣滃瘑鐮? }, 400, cors);
+      if (!opPassword) return json({ error: '请输入操作密码' }, 400, cors);
       const adminUser = await getUser(KV, 'admin');
-      if (!adminUser) return json({ error: '绠＄悊鍛樿处鍙峰紓甯? }, 500, cors);
-      const opHash = await hashPassword(opPassword, adminUser.salt, adminUser.hashVersion);
-      if (opHash !== adminUser.passwordHash) return json({ error: '鎿嶄綔瀵嗙爜閿欒' }, 401, cors);
-      // 绛惧彂鐭湡鎿嶄綔 token锛?鍒嗛挓锛?
+      if (!adminUser) return json({ error: '管理员账号异常' }, 500, cors);
+      const opHash = await hashPassword(opPassword, adminUser.salt);
+      if (opHash !== adminUser.passwordHash) return json({ error: '操作密码错误' }, 401, cors);
+      // 签发短期操作 token（5分钟）
       const opToken = await createJWT({ username: 'admin', op: true }, JWT_SECRET, 0.083);
       return json({ ok: true, opToken }, 200, cors);
     } else {
@@ -209,51 +209,50 @@ export async function onRequest(context) {
   }
 }
 
-// ===== 娉ㄥ唽 =====
+// ===== 注册 =====
 async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   const { username, password, inviteCode } = body;
   if (!username || !password || !inviteCode) {
-    return json({ error: '璇峰～鍐欑敤鎴峰悕銆佸瘑鐮佸拰閭€璇风爜' }, 400, cors);
+    return json({ error: '请填写用户名、密码和邀请码' }, 400, cors);
   }
   if (username.length < 3 || username.length > 20) {
-    return json({ error: '鐢ㄦ埛鍚?-20涓瓧绗? }, 400, cors);
+    return json({ error: '用户名3-20个字符' }, 400, cors);
   }
   if (password.length < 6) {
-    return json({ error: '瀵嗙爜鑷冲皯6浣? }, 400, cors);
+    return json({ error: '密码至少6位' }, 400, cors);
   }
   if (username === 'admin') {
-    return json({ error: '涓嶈兘浣跨敤淇濈暀鐢ㄦ埛鍚? }, 400, cors);
+    return json({ error: '不能使用保留用户名' }, 400, cors);
   }
 
-  // 楠岃瘉閭€璇风爜锛堢幆澧冨彉閲?+ KV鍔ㄦ€佺爜锛?
+  // 验证邀请码（环境变量 + KV动态码）
   const inviteResult = await validateInviteCode(env, KV, inviteCode);
   if (!inviteResult.valid) {
-    return json({ error: '閭€璇风爜鏃犳晥鎴栧凡琚娇鐢? }, 400, cors);
+    return json({ error: '邀请码无效或已被使用' }, 400, cors);
   }
 
-  // 妫€鏌ョ敤鎴锋槸鍚﹀凡瀛樺湪
+  // 检查用户是否已存在
   const existing = await getUser(KV, username);
   if (existing) {
-    return json({ error: '鐢ㄦ埛鍚嶅凡瀛樺湪' }, 400, cors);
+    return json({ error: '用户名已存在' }, 400, cors);
   }
 
-  // 鍒涘缓 Bitable 琛?
+  // 创建 Bitable 表
   let tables;
   try {
     tables = await createUserTables(env, username);
   } catch (e) {
-    return json({ error: '鍒涘缓鏁版嵁琛ㄥけ璐? ' + e.message }, 500, cors);
+    return json({ error: '创建数据表失败: ' + e.message }, 500, cors);
   }
 
-  // 鍝堝笇瀵嗙爜
+  // 哈希密码
   const salt = generateSalt();
-  const hash = await hashPasswordNew(password, salt);
+  const hash = await hashPassword(password, salt);
 
-  // 淇濆瓨鐢ㄦ埛
+  // 保存用户
   const userData = {
     username,
     passwordHash: hash,
-    hashVersion: 2,
     salt,
     createdAt: new Date().toISOString(),
     bitable: tables,
@@ -262,21 +261,21 @@ async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   };
   await saveUser(KV, username, userData);
 
-  const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1灏忔椂 access token
+  const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
-  await logOp(KV, 'register', username, '娉ㄥ唽鎴愬姛锛堥個璇风爜: ' + inviteResult.type + '锛?, request).catch(() => {});
+  await logOp(KV, 'register', username, '注册成功（邀请码: ' + inviteResult.type + '）', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
-// ===== 鐧诲綍闄愭祦 =====
+// ===== 登录限流 =====
 async function checkLoginRateLimit(kv, ip) {
   const key = 'login_fail:' + ip;
   const data = await kv.get(key);
   if (!data) return { blocked: false, remaining: 5 };
   const parsed = JSON.parse(data);
   const now = Date.now();
-  // 娓呯悊15鍒嗛挓鍓嶇殑璁板綍
+  // 清理15分钟前的记录
   const recent = parsed.filter(t => now - t < 15 * 60 * 1000);
   if (recent.length >= 5) {
     const oldest = Math.min(...recent);
@@ -298,46 +297,34 @@ async function clearLoginRateLimit(kv, ip) {
   await kv.delete('login_fail:' + ip);
 }
 
-// ===== 鐧诲綍 =====
+// ===== 登录 =====
 async function handleLogin(request, body, KV, JWT_SECRET, cors, env) {
   const { username, password } = body;
   if (!username || !password) {
-    return json({ error: '璇疯緭鍏ョ敤鎴峰悕鍜屽瘑鐮? }, 400, cors);
+    return json({ error: '请输入用户名和密码' }, 400, cors);
   }
 
-  // 闄愭祦妫€鏌?
+  // 限流检查
   const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
   const rateLimit = await checkLoginRateLimit(KV, ip);
   if (rateLimit.blocked) {
-    await logOp(KV, 'login_blocked', username, '鐧诲綍闄愭祦瑙﹀彂锛圛P: ' + ip + '锛?, request).catch(() => {});
-    return json({ error: `鐧诲綍灏濊瘯杩囧锛岃 ${rateLimit.waitSec} 绉掑悗閲嶈瘯` }, 429, cors);
+    await logOp(KV, 'login_blocked', username, '登录限流触发（IP: ' + ip + '）', request).catch(() => {});
+    return json({ error: `登录尝试过多，请 ${rateLimit.waitSec} 秒后重试` }, 429, cors);
   }
 
   const user = await getUser(KV, username);
   if (!user) {
     await recordLoginFail(KV, ip, rateLimit.recent);
-    return json({ error: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' }, 401, cors);
+    return json({ error: '用户名或密码错误' }, 401, cors);
   }
 
-  const hash = await hashPassword(password, user.salt, user.hashVersion);
+  const hash = await hashPassword(password, user.salt);
   if (hash !== user.passwordHash) {
-    await recordLoginFail(KV, ip, rateLimit.recent).catch(() => {});
-    return json({ error: '鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒' }, 401, cors);
+    await recordLoginFail(KV, ip, rateLimit.recent);
+    return json({ error: '用户名或密码错误' }, 401, cors);
   }
 
-  // Auto-upgrade old SHA-256 users to PBKDF2 on successful login
-  if (!user.hashVersion || user.hashVersion < 2) {
-    try {
-      const newSalt = generateSalt();
-      const newHash = await hashPasswordNew(password, newSalt);
-      user.salt = newSalt;
-      user.passwordHash = newHash;
-      user.hashVersion = 2;
-      await saveUser(KV, username, user);
-    } catch (e) { console.error('Auto-upgrade hash failed:', e.message); }
-  }
-
-  // 鐧诲綍鎴愬姛锛屾竻闄ら檺娴?
+  // 登录成功，清除限流
   await clearLoginRateLimit(KV, ip);
 
   // Auto-migrate: create todo table if missing
@@ -364,30 +351,30 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors, env) {
       await saveUser(KV, username, user);
     } catch (e) { console.error('Todo migration failed:', e.message); }
   }
-  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1灏忔椂 access token
+  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
-  await logOp(KV, 'login', username, '鐧诲綍鎴愬姛', request).catch(() => {});
+  await logOp(KV, 'login', username, '登录成功', request).catch(() => {});
   return json({ ok: true, token, refreshToken, username }, 200, cors);
 }
 
-// ===== 楠岃瘉 token =====
+// ===== 验证 token =====
 async function handleVerify(request, KV, JWT_SECRET, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return json({ error: '鏈櫥褰? }, 401, cors);
+    return json({ error: '未登录' }, 401, cors);
   }
 
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, JWT_SECRET);
   if (!payload) {
-    return json({ error: 'Token鏃犳晥鎴栧凡杩囨湡' }, 401, cors);
+    return json({ error: 'Token无效或已过期' }, 401, cors);
   }
 
   return json({ ok: true, username: payload.username }, 200, cors);
 }
 
-// ===== 鍒涘缓閭€璇风爜锛堜粎绠＄悊鍛橈級 =====
+// ===== 创建邀请码（仅管理员） =====
 async function handleCreateInvite(request, body, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
@@ -395,7 +382,7 @@ async function handleCreateInvite(request, body, env, KV, cors) {
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload || payload.username !== 'admin') {
-    return json({ error: '浠呯鐞嗗憳鍙垱寤洪個璇风爜' }, 403, cors);
+    return json({ error: '仅管理员可创建邀请码' }, 403, cors);
   }
   const count = Math.min(Math.max(parseInt(body.count) || 1, 1), 10);
 
@@ -411,15 +398,15 @@ async function handleCreateInvite(request, body, env, KV, cors) {
     });
   }
 
-  // 杩藉姞鍒?KV
+  // 追加到 KV
   const existing = JSON.parse(await KV.get('dynamic_invites') || '[]');
   existing.push(...newCodes);
   await KV.put('dynamic_invites', JSON.stringify(existing));
-  await logOp(KV, 'create_invite', payload.username, '鍒涘缓 ' + count + ' 涓個璇风爜', request).catch(() => {});
+  await logOp(KV, 'create_invite', payload.username, '创建 ' + count + ' 个邀请码', request).catch(() => {});
   return json({ ok: true, codes: newCodes.map(c => c.code) }, 200, cors);
 }
 
-// ===== 鏌ョ湅閭€璇风爜鍒楄〃锛堜粎绠＄悊鍛橈級 =====
+// ===== 查看邀请码列表（仅管理员） =====
 async function handleListInvites(request, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
@@ -427,14 +414,14 @@ async function handleListInvites(request, env, KV, cors) {
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload || payload.username !== 'admin') {
-    return json({ error: '浠呯鐞嗗憳鍙煡鐪? }, 403, cors);
+    return json({ error: '仅管理员可查看' }, 403, cors);
   }
 
   const codes = JSON.parse(await KV.get('dynamic_invites') || '[]');
   return json({ ok: true, codes }, 200, cors);
 }
 
-// ===== 鍒犻櫎鐢ㄦ埛锛堜粎绠＄悊鍛橈紝涓嶈兘鍒犺嚜宸憋級 =====
+// ===== 删除用户（仅管理员，不能删自己） =====
 async function handleDeleteUser(request, body, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
@@ -442,23 +429,23 @@ async function handleDeleteUser(request, body, env, KV, cors) {
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload || payload.username !== 'admin') {
-    return json({ error: '浠呯鐞嗗憳鍙垹闄ょ敤鎴? }, 403, cors);
+    return json({ error: '仅管理员可删除用户' }, 403, cors);
   }
 
   const { username } = body;
   if (!username) {
-    return json({ error: '璇锋寚瀹氳鍒犻櫎鐨勭敤鎴峰悕' }, 400, cors);
+    return json({ error: '请指定要删除的用户名' }, 400, cors);
   }
   if (username === 'admin') {
-    return json({ error: '涓嶈兘鍒犻櫎绠＄悊鍛樿处鍙? }, 400, cors);
+    return json({ error: '不能删除管理员账号' }, 400, cors);
   }
 
   const user = await getUser(KV, username);
   if (!user) {
-    return json({ error: '鐢ㄦ埛涓嶅瓨鍦? }, 404, cors);
+    return json({ error: '用户不存在' }, 404, cors);
   }
 
-  // 鍒犻櫎椋炰功 Bitable 鏁版嵁琛?
+  // 删除飞书 Bitable 数据表
   const deleteErrors = [];
   if (user.bitable) {
     const feishuToken = await getFeishuTokenDirect(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
@@ -477,18 +464,18 @@ async function handleDeleteUser(request, body, env, KV, cors) {
     }
   }
 
-  // 鍒犻櫎鐢ㄦ埛鎵€鏈?refresh token
+  // 删除用户所有 refresh token
   await deleteAllRefreshTokens(KV, username);
   await deleteUser(KV, username);
 
-  await logOp(KV, 'delete_user', payload.username, '鍒犻櫎鐢ㄦ埛: ' + username, request).catch(() => {});
+  await logOp(KV, 'delete_user', payload.username, '删除用户: ' + username, request).catch(() => {});
   if (deleteErrors.length) {
-    return json({ ok: true, message: `鐢ㄦ埛 ${username} 宸插垹闄わ紝浣嗛儴鍒嗘暟鎹〃鍒犻櫎澶辫触`, errors: deleteErrors }, 200, cors);
+    return json({ ok: true, message: `用户 ${username} 已删除，但部分数据表删除失败`, errors: deleteErrors }, 200, cors);
   }
-  return json({ ok: true, message: `鐢ㄦ埛 ${username} 鍙婂叾鏁版嵁宸插叏閮ㄥ垹闄 }, 200, cors);
+  return json({ ok: true, message: `用户 ${username} 及其数据已全部删除` }, 200, cors);
 }
 
-// ===== 鐢ㄦ埛鍒楄〃锛堜粎绠＄悊鍛橈級 =====
+// ===== 用户列表（仅管理员） =====
 async function handleListUsers(request, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
@@ -496,7 +483,7 @@ async function handleListUsers(request, env, KV, cors) {
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload || payload.username !== 'admin') {
-    return json({ error: '浠呯鐞嗗憳鍙煡鐪? }, 403, cors);
+    return json({ error: '仅管理员可查看' }, 403, cors);
   }
 
   const keys = await KV.list({ prefix: 'user:' });
@@ -517,24 +504,24 @@ async function handleListUsers(request, env, KV, cors) {
 }
 
 
-// ===== Refresh Token 缁湡 =====
+// ===== Refresh Token 续期 =====
 async function handleRefresh(body, KV, JWT_SECRET, cors) {
   const { refreshToken } = body;
-  if (!refreshToken) return json({ error: '缂哄皯 refreshToken' }, 400, cors);
+  if (!refreshToken) return json({ error: '缺少 refreshToken' }, 400, cors);
 
   const tokenData = await validateRefreshToken(KV, refreshToken);
-  if (!tokenData) return json({ error: 'Refresh token 鏃犳晥鎴栧凡杩囨湡' }, 401, cors);
+  if (!tokenData) return json({ error: 'Refresh token 无效或已过期' }, 401, cors);
 
   const user = await getUser(KV, tokenData.username);
-  if (!user) return json({ error: '鐢ㄦ埛涓嶅瓨鍦? }, 401, cors);
+  if (!user) return json({ error: '用户不存在' }, 401, cors);
 
-  // 鍒犻櫎鏃?refresh token锛坮otation锛?
+  // 删除旧 refresh token（rotation）
   await deleteRefreshToken(KV, refreshToken);
 
-  // 绛惧彂鏂?access token (1灏忔椂)
+  // 签发新 access token (1小时)
   const accessToken = await createJWT({ username: tokenData.username, bitable: user.bitable }, JWT_SECRET, 1);
 
-  // 绛惧彂鏂?refresh token
+  // 签发新 refresh token
   const newRefreshToken = generateRefreshToken();
   await storeRefreshToken(KV, tokenData.username, newRefreshToken);
 
@@ -550,24 +537,24 @@ async function handleLogout(request, body, KV, cors) {
     try { const p = JSON.parse(atob(authHeader.replace('Bearer ', '').split('.')[1])); username = p.username; } catch {}
   }
   if (refreshToken) await deleteRefreshToken(KV, refreshToken);
-  await logOp(KV, 'logout', username, '閫€鍑虹櫥褰?, request).catch(() => {});
+  await logOp(KV, 'logout', username, '退出登录', request).catch(() => {});
   return json({ ok: true }, 200, cors);
 }
 
-// ===== 鏌ョ湅鎿嶄綔鏃ュ織锛堜粎绠＄悊鍛橈級 =====
+// ===== 查看操作日志（仅管理员） =====
 async function handleListLogs(request, env, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return json({ error: 'Unauthorized' }, 401, cors);
   const token = authHeader.replace('Bearer ', '');
   const payload = await verifyJWT(token, env.JWT_SECRET);
-  if (!payload) return json({ error: 'Token鏃犳晥鎴栧凡杩囨湡' }, 401, cors);
+  if (!payload) return json({ error: 'Token无效或已过期' }, 401, cors);
 
   const isAdmin = payload.username === 'admin';
   const url = new URL(request.url);
   const date = url.searchParams.get('date') || new Date().toISOString().slice(0, 10);
   const filterUser = url.searchParams.get('username');
 
-  // 绠＄悊鍛樺彲浠ユ煡鐪嬫墍鏈夋棩蹇楁垨鎸囧畾鐢ㄦ埛鏃ュ織锛屾櫘閫氱敤鎴峰彧鑳芥煡鐪嬭嚜宸辩殑
+  // 管理员可以查看所有日志或指定用户日志，普通用户只能查看自己的
   const targetUser = isAdmin ? (filterUser || null) : payload.username;
   const logs = await getLogs(KV, date, targetUser);
   return json({ ok: true, logs, date, isAdmin, currentUser: payload.username }, 200, cors);
