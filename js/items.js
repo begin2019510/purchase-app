@@ -7,8 +7,10 @@ const STEP_BTN_CONFIG={
   '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
   '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
 };
+var currentDetailId='';
 const CANCELABLE_STATUSES = ['待评估','待审批','已审批'];
 function openDetailModal(id){
+  currentDetailId=id;
   const item=items.find(x=>x.id===id);
   if(!item)return;
   const qty=Number(item['数量'])||1;
@@ -105,7 +107,7 @@ function openDetailModal(id){
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('active');
 }
-function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=document.getElementById("editId").value;if(!id){toast("无法识别采购ID");return}toast("上传中...");api("PUT",{id:id,image:dataUrl}).then(function(r){if(r&&!r.error){toast("图片已保存");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
+function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=currentDetailId;if(!id){toast("无法识别采购ID");return}toast("上传中...");api("PUT",{id:id,image:dataUrl}).then(function(r){if(r&&!r.error){toast("图片已保存");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
 function saveDetailImage(id){if(typeof purchaseImageData==='undefined'||!purchaseImageData['d'])return;api('PUT',{id:id,image:purchaseImageData['d']}).then(function(r){if(r&&!r.error){toast('图片已保存');purchaseImageData['d']='';loadAll()}else{toast('保存失败')}}).catch(function(){toast('网络错误')})}
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
 // Purchases no longer create expense records - budget pool tracks them independently
