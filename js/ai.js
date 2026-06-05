@@ -518,7 +518,7 @@ function handlePurchaseImage(input, prefix) {
     var img = new Image();
     img.onload = function() {
       var canvas = document.createElement('canvas');
-      var MAX = 800;
+      var MAX = 1600;
       var w = img.width, h = img.height;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -526,7 +526,7 @@ function handlePurchaseImage(input, prefix) {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      purchaseImageData[prefix] = canvas.toDataURL('image/jpeg', 0.8);
+      purchaseImageData[prefix] = canvas.toDataURL('image/jpeg', 0.92);
       var preview = document.getElementById(prefix + 'ImagePreview');
       var wrap = document.getElementById(prefix + 'ImageWrap');
       var sizeInfo = document.getElementById(prefix + 'ImageSize');

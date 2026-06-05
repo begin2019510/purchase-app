@@ -51,7 +51,7 @@ export async function onRequest(context) {
     
     // 后端大小校验：base64 解码后不超过 2MB
     const estimatedBytes = Math.ceil(base64.length * 3 / 4);
-    if (estimatedBytes > 2 * 1024 * 1024) {
+    if (estimatedBytes > 5 * 1024 * 1024) {
       return json({ error: '图片过大（' + (estimatedBytes / 1024 / 1024).toFixed(1) + 'MB），请压缩后重试' }, 413, corsHeaders);
     }
     
