@@ -71,12 +71,18 @@ export async function onRequest(context) {
     const key = url.searchParams.get('key');
     if (!key) return json({ error: 'Missing key' }, 400, corsHeaders);
     
-    const base64 = await KV.get(key);
-    if (!base64) return json({ error: 'Image not found' }, 404, corsHeaders);
+    let raw = await KV.get(key);
+    if (!raw) return json({ error: 'Image not found' }, 404, corsHeaders);
     
     const meta = await KV.getWithMetadata(key);
-    const contentType = meta.metadata?.contentType || 'image/jpeg';
+    let contentType = meta.metadata?.contentType || 'image/jpeg';
     
+    let base64 = raw;
+    if (raw.startsWith('data:')) {
+      const dm = raw.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (dm) { contentType = dm[1]; base64 = dm[2]; }
+    }
+
     // Return actual image binary so <img src> works directly
     const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     return new Response(binary,

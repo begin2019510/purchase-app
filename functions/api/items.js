@@ -185,7 +185,7 @@ export async function onRequest(context) {
         const KV = env.IMAGE_STORE;
         if (KV) {
           const key = 'purchase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-          await KV.put(key, body.image, { expirationTtl: 86400 * 365 });
+          const imgMatch = body.image.match(/^data:(image\/\w+);base64,(.+)$/); const imgBase64 = imgMatch ? imgMatch[2] : body.image; const imgMeta = imgMatch ? { contentType: imgMatch[1] } : { contentType: 'image/jpeg' }; await KV.put(key, imgBase64, { expirationTtl: 86400 * 365, metadata: imgMeta });
           imageRef = 'kv:' + key;
         }
       } else if (body.image && body.image.startsWith('kv:')) {
@@ -243,7 +243,7 @@ export async function onRequest(context) {
           const KV = env.IMAGE_STORE;
           if (KV) {
             const key = 'purchase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-            await KV.put(key, body.image, { expirationTtl: 86400 * 365 });
+            const imgMatch = body.image.match(/^data:(image\/\w+);base64,(.+)$/); const imgBase64 = imgMatch ? imgMatch[2] : body.image; const imgMeta = imgMatch ? { contentType: imgMatch[1] } : { contentType: 'image/jpeg' }; await KV.put(key, imgBase64, { expirationTtl: 86400 * 365, metadata: imgMeta });
             fields['图片'] = 'kv:' + key;
           }
         } else if (body.image && body.image.startsWith('kv:')) {
