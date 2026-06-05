@@ -196,7 +196,7 @@ export async function onRequest(context) {
       if (body.stageImage && body.stageName) {
         try {
           var existing = {};
-          try { existing = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+          try { existing = JSON.parse(existingImage || '{}'); } catch(e) {}
           if (typeof existing !== 'object') existing = {};
           existing[body.stageName] = imageRef;
           fields['图片'] = JSON.stringify(existing);
@@ -220,17 +220,19 @@ export async function onRequest(context) {
       if (!body.id) return json({ error: 'id required' }, 400);
 
       // 获取旧状态用于日志记录
+      // 获取已有记录（用于日志 + 图片合并）
       let oldStatus = null;
       let oldName = '';
-      if (body.status !== undefined) {
-        try {
-          const existingData = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, null, env);
-          if (existingData.code === 0 && existingData.data?.record) {
-            oldStatus = existingData.data.record.fields['状态'] || '未知';
-            oldName = existingData.data.record.fields['商品名称'] || '';
-          }
-        } catch {}
-      }
+      let existingImage = '';
+      try {
+        const existingData = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, null, env);
+        if (existingData.code === 0 && existingData.data?.record) {
+          const ef = existingData.data.record.fields;
+          oldStatus = ef['状态'] || '未知';
+          oldName = ef['商品名称'] || '';
+          existingImage = ef['图片'] || '';
+        }
+      } catch(e) {}
 
       const fields = {};
       if (body.name !== undefined) fields['商品名称'] = body.name;
@@ -260,7 +262,7 @@ export async function onRequest(context) {
             if (body.stageImage && body.stageName) {
               try {
                 var _existing = {};
-                try { _existing = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+                try { _existing = JSON.parse(existingImage || '{}'); } catch(e) {}
                 if (typeof _existing !== 'object') _existing = {};
                 _existing[body.stageName] = _imgRef;
                 fields['图片'] = JSON.stringify(_existing);
@@ -270,12 +272,22 @@ export async function onRequest(context) {
             }
           }
         } else if (body.image && body.image.startsWith('kv:')) {
-          fields['图片'] = body.image;
+          if (body.stageImage && body.stageName) {
+            try {
+              var _ex4 = {};
+              try { _ex4 = JSON.parse(existingImage || '{}'); } catch(e) {}
+              if (typeof _ex4 !== 'object') _ex4 = {};
+              _ex4[body.stageName] = body.image;
+              fields['图片'] = JSON.stringify(_ex4);
+            } catch(e) { fields['图片'] = body.image; }
+          } else {
+            fields['图片'] = body.image;
+          }
         } else if (!body.image) {
           if (body.stageImage && body.stageName) {
               try {
                 var _ex3 = {};
-                try { _ex3 = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+                try { _ex3 = JSON.parse(existingImage || '{}'); } catch(e) {}
                 if (typeof _ex3 === 'object') { delete _ex3[body.stageName]; fields['图片'] = JSON.stringify(_ex3); }
                 else { fields['图片'] = ''; }
               } catch(e) { fields['图片'] = ''; }
