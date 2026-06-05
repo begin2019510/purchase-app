@@ -188,6 +188,7 @@ function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
+  else if(currentTab==='todo') renderTodo();
   updateHeader();
   // DEBUG: 在页面顶部显示状态
   // 延迟检测：3秒后再检查一次
