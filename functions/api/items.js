@@ -233,10 +233,10 @@ export async function onRequest(context) {
       if (body.buyReason !== undefined) fields['购买理由'] = body.buyReason;
       if (body.budgetRange !== undefined) fields['预算区间'] = body.budgetRange;
       if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
-      if (String(body.installments) !== undefined) fields['分期期数'] = body.installments;
-      if (String(body.installmentAmount) !== undefined) fields['分期金额'] = body.installmentAmount;
+      if (body.installments !== undefined) fields['分期期数'] = String(body.installments);
+      if (body.installmentAmount !== undefined) fields['分期金额'] = String(body.installmentAmount);
       if (body.installmentStart !== undefined) fields['分期开始月'] = body.installmentStart;
-      if (String(body.installmentPaid) !== undefined) fields['分期已还'] = body.installmentPaid;
+      if (body.installmentPaid !== undefined) fields['分期已还'] = String(body.installmentPaid);
             // Image upload to KV for PUT
       if (body.image !== undefined) {
         if (body.image && body.image.startsWith('data:')) {
