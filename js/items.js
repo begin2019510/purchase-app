@@ -125,7 +125,10 @@ function openDetailModal(id){
         html += '</span>';
       }
       html += '</div>';
-      if (imgHtml) html += imgHtml;
+      if (imgHtml) {
+        html += imgHtml;
+        if (!isCurrent && stageImg) html += '<div style="text-align:right;margin-top:4px"><button onclick="deleteStageImage(\'' + id + '\',\'' + stage + '\')" style="padding:3px 8px;background:none;border:1px solid #f87171;color:#f87171;border-radius:6px;font-size:10px;cursor:pointer">🗑️ 删除</button></div>';
+      }
       if (!stageImg && isCurrent) html += '<div style="font-size:11px;color:var(--muted);margin-top:6px">未上传附件</div>';
       html += '</div>';
     }
