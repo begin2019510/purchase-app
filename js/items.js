@@ -90,26 +90,47 @@ function openDetailModal(id){
   });
   html+='</div>';
 
-  // 附件上传
-  var existingImg = item['图片'] || '';
-  var imgSrc = '';
-  if (existingImg.startsWith('kv:')) {
-    imgSrc = '/api/images?key=' + encodeURIComponent(existingImg.slice(3)) + '&token=' + encodeURIComponent(getPin());
-  } else if (existingImg) {
-    imgSrc = existingImg;
-  }
-  html += '<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:12px">';
-  html += '<div style="font-size:13px;font-weight:700;margin-bottom:8px">📎 附件</div>';
-  if (imgSrc) {
-    html += '<div style="margin-bottom:8px"><img src="' + imgSrc + '" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer" onclick="showFullscreenImg(this.src)"></div>';
-  }
-  html += '<div style="display:flex;gap:8px">';
-  html += '<button onclick="document.getElementById(\'detailCameraInput\').click()" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer">📷 拍照</button>';
-  html += '<button onclick="document.getElementById(\'detailGalleryInput\').click()" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer">🖼️ 相册</button>';
-  if (imgSrc) {
-    html += '<button onclick="deleteDetailImage(\'' + id + '\')" style="padding:8px 14px;background:var(--card);border:1px solid #f87171;border-radius:8px;font-size:12px;color:#f87171;cursor:pointer">🗑️ 删除</button>';
-  }
-  html += '</div>';
+  // 阶段附件
+  var attachments = item['附件'] || {};
+  if (typeof attachments === 'string') { try { attachments = JSON.parse(attachments); } catch(e) { attachments = {}; } }
+  var allStages = ['待审批','已审批','已下单','已到','已退','已归档'];
+  var currentStage = status;
+  html += '<div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:12px">';
+  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px">📎 阶段附件</div>';
+  var hasAnyImg = false;
+  allStages.forEach(function(stage) {
+    var stageImg = attachments[stage] || '';
+    var isCurrent = stage === currentStage;
+    if (stageImg || isCurrent) {
+      hasAnyImg = true;
+      var stageLabel = stage;
+      var imgHtml = '';
+      if (stageImg && stageImg.startsWith('kv:')) {
+        imgHtml = '<img src="/api/images?key=' + encodeURIComponent(stageImg.slice(3)) + '&token=' + encodeURIComponent(getPin()) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
+      } else if (stageImg) {
+        imgHtml = '<img src="' + stageImg + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
+      }
+      var borderColor = isCurrent ? 'var(--pri)' : 'var(--border)';
+      var bg = isCurrent ? 'var(--card)' : 'transparent';
+      html += '<div style="padding:10px;margin-bottom:8px;border:1px solid ' + borderColor + ';border-radius:10px;background:' + bg + '">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-size:12px;font-weight:' + (isCurrent?'700':'400') + '">' + (isCurrent ? '🔵 ' : '⚫ ') + stageLabel + '</span>';
+      if (isCurrent) {
+        html += '<span style="display:flex;gap:6px">';
+        html += '<button onclick="document.getElementById(\'stageCameraInput\').click()" style="padding:4px 10px;background:var(--pri);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">📷</button>';
+        html += '<button onclick="document.getElementById(\'stageGalleryInput\').click()" style="padding:4px 10px;background:var(--pri);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">🖼️</button>';
+        if (stageImg) {
+          html += '<button onclick="deleteStageImage(\'' + id + '\',\'' + stage + '\')" style="padding:4px 10px;background:var(--card);border:1px solid #f87171;color:#f87171;border:none;border-radius:6px;font-size:11px;cursor:pointer">🗑️</button>';
+        }
+        html += '</span>';
+      }
+      html += '</div>';
+      if (imgHtml) html += imgHtml;
+      if (!stageImg && isCurrent) html += '<div style="font-size:11px;color:var(--muted);margin-top:6px">未上传附件</div>';
+      html += '</div>';
+    }
+  });
+  if (!hasAnyImg) html += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px">暂无附件</div>';
   html += '</div>';
 
   // 操作按钮
@@ -128,9 +149,11 @@ function openDetailModal(id){
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailOverlay').classList.add('active');
 }
-function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=currentDetailId;if(!id){toast("无法识别采购ID");return}toast("上传中...");api("PUT",{id:id,image:dataUrl}).then(function(r){if(r&&!r.error){toast("图片已保存");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
+function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=currentDetailId;if(!id){toast("无法识别采购ID");return;}
+var currentItem=items.find(function(x){return x.id===id});var stage=currentItem?(currentItem['状态']||'待审批'):'待审批';toast("上传中...");api("PUT",{id:id,image:dataUrl,stageImage:true,stageName:stage}).then(function(r){if(r&&!r.error){toast("附件已保存到"+stage+"阶段");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
 function saveDetailImage(id){if(typeof purchaseImageData==='undefined'||!purchaseImageData['d'])return;api('PUT',{id:id,image:purchaseImageData['d']}).then(function(r){if(r&&!r.error){toast('图片已保存');purchaseImageData['d']='';loadAll()}else{toast('保存失败')}}).catch(function(){toast('网络错误')})}
 function deleteDetailImage(id){if(!confirm('确认删除图片？'))return;api('PUT',{id:id,image:''}).then(function(r){if(r&&!r.error){toast('图片已删除');loadAll().then(function(){openDetailModal(id)})}else{toast('删除失败')}}).catch(function(){toast('网络错误')})}
+function deleteStageImage(id,stage){if(!confirm('确认删除'+stage+'阶段的附件？'))return;api('PUT',{id:id,image:'',stageImage:true,stageName:stage}).then(function(r){if(r&&!r.error){toast('附件已删除');loadAll().then(function(){openDetailModal(id)})}else{toast('删除失败')}}).catch(function(){toast('网络错误')})}
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
 // Purchases no longer create expense records - budget pool tracks them independently
 async function createPurchaseExpense(item) { /* disabled: shared budget pool model */ }
@@ -272,7 +295,7 @@ App.items.clearEvImage = clearEvImage;
 App.items.clearDetailPhaseImage = clearDetailPhaseImage;
 App.items.clearPurchaseEditImage = clearPurchaseEditImage;
 App.items.uploadDetailImage = uploadDetailImage;
-App.items.deleteDetailImage = deleteDetailImage;
+App.items.deleteStageImage = deleteStageImage;
 App.items.saveDetailImage = saveDetailImage;
 App.items.delItem = delItem;
 App.items.showApprovalModal = showApprovalModal;

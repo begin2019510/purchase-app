@@ -75,6 +75,7 @@ function recordToItem(r) {
     '预算区间': f['预算区间'] || '',
     '取消原因': f['取消原因'] || '',
     '图片': feishuStr(f['图片']),
+    '附件': (function(){var v=feishuStr(f['图片']);try{return v?JSON.parse(v):{}}catch(e){return v?{legacy:v}:{}}}()),
     '分期期数': feishuNum(f['分期期数']),
     '分期金额': feishuNum(f['分期金额']),
     '分期开始月': feishuStr(f['分期开始月']),
@@ -191,7 +192,18 @@ export async function onRequest(context) {
       } else if (body.image && body.image.startsWith('kv:')) {
         imageRef = body.image;
       }
-      fields['图片'] = imageRef;
+      // Stage image handling
+      if (body.stageImage && body.stageName) {
+        try {
+          var existing = {};
+          try { existing = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+          if (typeof existing !== 'object') existing = {};
+          existing[body.stageName] = imageRef;
+          fields['图片'] = JSON.stringify(existing);
+        } catch(e) { fields['图片'] = imageRef; }
+      } else {
+        fields['图片'] = imageRef;
+      }
       if (body.date) fields['日期'] = new Date(body.date).getTime();
       const data = await feishuFetch('POST', `/bitable/v1/apps/${APP}/tables/${TABLE}/records`, { fields }, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
@@ -244,12 +256,32 @@ export async function onRequest(context) {
           if (KV) {
             const key = 'purchase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
             const imgMatch = body.image.match(/^data:(image\/\w+);base64,(.+)$/); const imgBase64 = imgMatch ? imgMatch[2] : body.image; const imgMeta = imgMatch ? { contentType: imgMatch[1] } : { contentType: 'image/jpeg' }; await KV.put(key, imgBase64, { expirationTtl: 86400 * 365, metadata: imgMeta });
-            fields['图片'] = 'kv:' + key;
+            var _imgRef = 'kv:' + key;
+            if (body.stageImage && body.stageName) {
+              try {
+                var _existing = {};
+                try { _existing = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+                if (typeof _existing !== 'object') _existing = {};
+                _existing[body.stageName] = _imgRef;
+                fields['图片'] = JSON.stringify(_existing);
+              } catch(e) { fields['图片'] = _imgRef; }
+            } else {
+              fields['图片'] = _imgRef;
+            }
           }
         } else if (body.image && body.image.startsWith('kv:')) {
           fields['图片'] = body.image;
         } else if (!body.image) {
-          fields['图片'] = '';
+          if (body.stageImage && body.stageName) {
+              try {
+                var _ex3 = {};
+                try { _ex3 = JSON.parse(fields['图片'] || '{}'); } catch(e) {}
+                if (typeof _ex3 === 'object') { delete _ex3[body.stageName]; fields['图片'] = JSON.stringify(_ex3); }
+                else { fields['图片'] = ''; }
+              } catch(e) { fields['图片'] = ''; }
+            } else {
+              fields['图片'] = '';
+            }
         }
       }
       if (body.setDate && !fields['日期']) fields['日期'] = Date.now();
