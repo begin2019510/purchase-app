@@ -190,6 +190,14 @@ function render(){
   else if(currentTab==='stats') renderStats();
   else if(currentTab==='todo') renderTodo();
   updateHeader();
+  // Update FAB onclick
+  var fab=document.getElementById('fabBtn');
+  if(fab){
+    if(currentTab==='todo'){fab.onclick=function(){openTodoModal()}}
+    else if(currentTab==='purchase'){fab.onclick=function(){openModal()}}
+    else if(currentTab==='expense'){fab.onclick=function(){openExpenseModal()}}
+    else{fab.style.display='none'}
+  }
   // DEBUG: 在页面顶部显示状态
   // 延迟检测：3秒后再检查一次
 }
