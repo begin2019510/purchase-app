@@ -175,13 +175,7 @@ function doDetailModalAction(id,nextStatus){
     toast(`已更新为"${nextStatus}"`);
     closeDetailModal();
     render();
-    // Update FAB onclick for todo
-    var fab=document.getElementById('fabBtn');
-    if(fab){
-      if(t==='todo'){fab.onclick=function(){openTodoModal()}}
-      else{fab.onclick=function(){currentTab==='purchase'?openModal():openExpenseModal()}}
-    }
-  }
+}
   // Fire PATCH in background, don't block UI
   api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
     if(r&&r.error){toast('同步失败，请刷新');loadAll();}
@@ -214,6 +208,12 @@ function switchTab(t){
   if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();
+  // Update FAB onclick for todo
+  var fab=document.getElementById('fabBtn');
+  if(fab){
+    if(t==='todo'){fab.onclick=function(){openTodoModal()}}
+    else{fab.onclick=function(){currentTab==='purchase'?openModal():openExpenseModal()}}
+  }
 }
 
 // ===== 采购操作 =====
