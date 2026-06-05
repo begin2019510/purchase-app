@@ -91,6 +91,28 @@ function openDetailModal(id){
   });
   html+='</div>';
 
+  // 附件上传
+  var existingImg = item['图片'] || '';
+  var imgSrc = '';
+  if (existingImg.startsWith('kv:')) {
+    imgSrc = '/api/images?key=' + encodeURIComponent(existingImg.slice(3)) + '&token=' + encodeURIComponent(getPin());
+  } else if (existingImg) {
+    imgSrc = existingImg;
+  }
+  html += '<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:12px">';
+  html += '<div style="font-size:13px;font-weight:700;margin-bottom:8px">📎 附件</div>';
+  if (imgSrc) {
+    html += '<div style="margin-bottom:8px"><img src="' + imgSrc + '" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer" onclick="showFullscreenImg(this.src)"></div>';
+  }
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button onclick="document.getElementById(\'detailCameraInput\').click()" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer">📷 拍照</button>';
+  html += '<button onclick="document.getElementById(\'detailGalleryInput\').click()" style="padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer">🖼️ 相册</button>';
+  if (imgSrc) {
+    html += '<button onclick="deleteDetailImage(\'' + id + '\')" style="padding:8px 14px;background:var(--card);border:1px solid #f87171;border-radius:8px;font-size:12px;color:#f87171;cursor:pointer">🗑️ 删除</button>';
+  }
+  html += '</div>';
+  html += '</div>';
+
   // 操作按钮
   if(CANCELABLE_STATUSES.includes(status)){
     const btnCfg=STEP_BTN_CONFIG[status];
@@ -109,6 +131,7 @@ function openDetailModal(id){
 }
 function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=currentDetailId;if(!id){toast("无法识别采购ID");return}toast("上传中...");api("PUT",{id:id,image:dataUrl}).then(function(r){if(r&&!r.error){toast("图片已保存");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
 function saveDetailImage(id){if(typeof purchaseImageData==='undefined'||!purchaseImageData['d'])return;api('PUT',{id:id,image:purchaseImageData['d']}).then(function(r){if(r&&!r.error){toast('图片已保存');purchaseImageData['d']='';loadAll()}else{toast('保存失败')}}).catch(function(){toast('网络错误')})}
+function deleteDetailImage(id){if(!confirm('确认删除图片？'))return;api('PUT',{id:id,image:''}).then(function(r){if(r&&!r.error){toast('图片已删除');loadAll().then(function(){openDetailModal(id)})}else{toast('删除失败')}}).catch(function(){toast('网络错误')})}
 function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
 // Purchases no longer create expense records - budget pool tracks them independently
 async function createPurchaseExpense(item) { /* disabled: shared budget pool model */ }
@@ -250,6 +273,7 @@ App.items.clearEvImage = clearEvImage;
 App.items.clearDetailPhaseImage = clearDetailPhaseImage;
 App.items.clearPurchaseEditImage = clearPurchaseEditImage;
 App.items.uploadDetailImage = uploadDetailImage;
+App.items.deleteDetailImage = deleteDetailImage;
 App.items.saveDetailImage = saveDetailImage;
 App.items.delItem = delItem;
 App.items.showApprovalModal = showApprovalModal;
