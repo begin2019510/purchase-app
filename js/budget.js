@@ -36,11 +36,6 @@ function openBudgetModal(){
   document.getElementById('budgetOverlay').classList.add('active');
 }
 
-// ===== FAB 点击 =====
-document.getElementById('fabBtn').addEventListener('click',()=>{
-  if(currentTab==='purchase') openModal();
-  else if(currentTab==='expense') openExpenseModal();
-});
 
 // ===== 导出 =====
 function exportData(){exportPurchases()}
