@@ -42,7 +42,6 @@ function renderTodo() {
     else filtered = todoList.filter(function(t){ return t.status === todoFilter; });
   }
 
-  // Sort: overdue first, then by due date, then by priority
   var now = Date.now();
   var todayStr = new Date(now + 8*3600000).toISOString().slice(0,10);
   filtered.sort(function(a, b) {
@@ -62,51 +61,89 @@ function renderTodo() {
   });
   html += '</div>';
 
+  // Summary bar
+  var total=todoList.length;
+  var pending=todoList.filter(function(t){return t.status==='待办'}).length;
+  var doing=todoList.filter(function(t){return t.status==='进行中'}).length;
+  var done=todoList.filter(function(t){return t.status==='已完成'}).length;
+  var overdue=todoList.filter(function(t){return t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue'}).length;
+  html += '<div class="todo-summary">';
+  html += '<div class="todo-summary-item"><div class="todo-summary-num pri">'+total+'</div><div class="todo-summary-label">全部</div></div>';
+  html += '<div class="todo-summary-item"><div class="todo-summary-num orange">'+pending+'</div><div class="todo-summary-label">待办</div></div>';
+  html += '<div class="todo-summary-item"><div class="todo-summary-num green">'+doing+'</div><div class="todo-summary-label">进行中</div></div>';
+  if(overdue>0) html += '<div class="todo-summary-item"><div class="todo-summary-num red">'+overdue+'</div><div class="todo-summary-label">已过期</div></div>';
+  html += '</div>';
+
   if (filtered.length === 0) {
-    html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:48px;margin-bottom:12px">📋</div><div>暂无待办</div><div style="font-size:13px;margin-top:8px">点击右下角 + 新建</div></div>';
+    html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';
+    html += '<div style="font-size:56px;margin-bottom:16px;opacity:0.6">📋</div>';
+    html += '<div style="font-size:16px;font-weight:700;margin-bottom:6px">暂无待办</div>';
+    html += '<div style="font-size:13px;opacity:0.7">点击右下角 + 新建</div>';
+    html += '</div>';
   } else {
-    filtered.forEach(function(t) {
-      var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
-      var priIcon = t.priority === '高' ? '🔴' : t.priority === '低' ? '⚪' : '🟡';
-      var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
-      var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
+    // Group: active first, then completed
+    var active = filtered.filter(function(t){ return t.status !== '已完成' && t.status !== '已取消'; });
+    var completed = filtered.filter(function(t){ return t.status === '已完成' || t.status === '已取消'; });
 
-      html += '<div class="todo-card ' + statusClass + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
-      html += '<div class="todo-card-header">';
-      html += '<div class="todo-card-title">';
-      if (t.status === '已完成') html += '<span class="todo-check">✅</span>';
-      else html += '<span class="todo-dot" style="background:' + priColor + '"></span>';
-      html += '<span>' + esc(t.title) + '</span>';
-      html += '</div>';
-      html += '<div class="todo-card-tags">';
-      html += '<span class="todo-tag pri-' + t.priority + '">' + priIcon + t.priority + '</span>';
-      html += '<span class="todo-tag cat">' + (catIcon[t.category] || '📌') + t.category + '</span>';
-      if (t.repeat && t.repeat !== '无') html += '<span class="todo-tag repeat">🔄' + t.repeat + '</span>';
-      html += '</div></div>';
-
-      if (t.dueDate) {
-        var dueStr = formatDueDate(t.dueDate);
-        var dueClass = getDueClass(t.dueDate, t.status);
-        html += '<div class="todo-due ' + dueClass + '">📅 ' + dueStr + '</div>';
-      }
-
-      if (t.subtasks && t.subtasks !== '[]') {
-        try {
-          var subs = JSON.parse(t.subtasks);
-          var doneCount = subs.filter(function(s){ return s.done; }).length;
-          html += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + (subs.length ? Math.round(doneCount/subs.length*100) : 0) + '%"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
-        } catch(e) {}
-      }
-
-      if (t.linkType && t.linkType !== '无') {
-        html += '<div class="todo-link">🔗 ' + t.linkType + '</div>';
-      }
-
-      html += '</div>';
-    });
+    if (active.length > 0) {
+      active.forEach(function(t) { html += renderTodoCard(t); });
+    }
+    if (completed.length > 0) {
+      html += '<div class="todo-section-title">✅ 已完成 <span class="todo-section-count">'+completed.length+'</span></div>';
+      completed.forEach(function(t) { html += renderTodoCard(t); });
+    }
   }
 
   el.innerHTML = html;
+}
+
+function renderTodoCard(t) {
+  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
+  var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
+  var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
+
+  var h = '<div class="todo-card ' + statusClass + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
+  h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
+  h += '<div class="todo-card-inner">';
+  h += '<div class="todo-card-header">';
+  h += '<div class="todo-card-title">';
+  if (t.status === '已完成') h += '<span class="todo-check">✅</span>';
+  else h += '<span class="todo-dot" style="background:' + priColor + '"></span>';
+  h += '<span>' + esc(t.title) + '</span>';
+  h += '</div>';
+  h += '<div class="todo-card-tags">';
+  h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
+  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄</span>';
+  h += '</div></div>';
+
+  // Meta row
+  var hasMeta = false;
+  if (t.dueDate) {
+    var dueStr = formatDueDate(t.dueDate);
+    var dueClass = getDueClass(t.dueDate, t.status);
+    h += '<div class="todo-due ' + dueClass + '"><span class="todo-due-icon">📅</span> ' + dueStr + '</div>';
+    hasMeta = true;
+  }
+
+  var metaHtml = '';
+  if (t.subtasks && t.subtasks !== '[]') {
+    try {
+      var subs = JSON.parse(t.subtasks);
+      var doneCount = subs.filter(function(s){ return s.done; }).length;
+      var pct = subs.length ? Math.round(doneCount/subs.length*100) : 0;
+      var barColor = pct >= 100 ? '#16a34a' : 'var(--pri)';
+      metaHtml += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
+    } catch(e) {}
+  }
+  if (t.linkType && t.linkType !== '无') {
+    metaHtml += '<div class="todo-link">🔗 ' + (catIcon[t.linkType]||'') + ' ' + t.linkType + '</div>';
+  }
+  if (metaHtml) {
+    h += '<div class="todo-meta-row">' + metaHtml + '</div>';
+  }
+
+  h += '</div></div>';
+  return h;
 }
 
 function renderTodoCalendar() {
@@ -344,9 +381,12 @@ function openTodoDetail(id) {
   var overlay = document.getElementById('todoDetailOverlay');
   if (!overlay) return;
 
-  var html = '';
-  var priIcon = t.priority === '高' ? '🔴' : t.priority === '低' ? '⚪' : '🟡';
+  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
+
+  var html = '';
+  // Priority color bar at top
+  html += '<div class="detail-priority-bar" style="background:' + priColor + '"></div>';
 
   html += '<div class="detail-header">';
   html += '<h2>' + esc(t.title) + '</h2>';
@@ -356,32 +396,35 @@ function openTodoDetail(id) {
   html += '<div class="detail-body">';
 
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">优先级</span><span>' + priIcon + ' ' + t.priority + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">分类</span><span>' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
-  if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span></div>';
-  if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span>🔄 ' + t.repeat + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
+  if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';
+  if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
+
   if (t.description) html += '<div class="detail-desc">' + esc(t.description) + '</div>';
 
   if (t.subtasks && t.subtasks !== '[]') {
     try {
       var subs = JSON.parse(t.subtasks);
+      var doneCount = subs.filter(function(s){ return s.done; }).length;
       html += '<div class="detail-subtasks">';
-      html += '<div class="detail-label">子任务</div>';
+      html += '<div class="detail-subtasks-title">子任务 · ' + doneCount + '/' + subs.length + '</div>';
       subs.forEach(function(s, i) {
         var ck = s.done ? 'checked' : '';
-        html += '<label class="subtask-check"><input type="checkbox" ' + ck + ' onchange="toggleTodoSubtask(' + "'" + id + "'," + i + ')"><span>' + esc(s.text) + '</span></label>';
+        var txtCls = s.done ? ' class="done-text"' : '';
+        html += '<label class="subtask-check"><input type="checkbox" ' + ck + ' onchange="toggleTodoSubtask(' + "'" + id + "'," + i + ')"><span' + txtCls + '>' + esc(s.text) + '</span></label>';
       });
       html += '</div>';
     } catch(e) {}
   }
 
   if (t.linkType && t.linkType !== '无') {
-    html += '<div class="detail-row"><span class="detail-label">关联</span><span>🔗 ' + t.linkType + (t.linkId ? ' #' + t.linkId.slice(0,8) : '') + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value">🔗 ' + (catIcon[t.linkType]||'') + ' ' + t.linkType + (t.linkId ? ' #' + t.linkId.slice(0,8) : '') + '</span></div>';
   }
 
   if (t.completedAt) {
     var cd = new Date(t.completedAt);
-    html += '<div class="detail-row"><span class="detail-label">完成时间</span><span>✅ ' + cd.toISOString().slice(0,10) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">完成时间</span><span class="detail-value">✅ ' + cd.toISOString().slice(0,10) + '</span></div>';
   }
 
   html += '</div>';
