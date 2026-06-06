@@ -169,9 +169,9 @@ function renderExpenseWeek(){
       if(note.includes('[固定]')||note.includes('[采购]')||note.includes('[采购分期]'))return false;
       var wi=getWeekForDate(e['日期'],thisMonth);
       if(wi===i)return true;
-      var sw=Number(e['分搙周数'])||0;
+      var sw=Number(e['分摊周数'])||0;
       if(sw<=0)return false;
-      var startW=Number(e['分搙开始周'])||0;
+      var startW=Number(e['分摊开始周'])||0;
       var offset=i-startW;
       return offset>=0&&offset<sw;
     });

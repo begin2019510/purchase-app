@@ -344,7 +344,7 @@ function getBudgetPool(month) {
 
 App.api.getDirectPurchaseSpend = getDirectPurchaseSpend;
 
-// 计算某周的总支出（记账分搙支持）
+// 计算某周的总支出（记账分摊支持）
 function getWeekSpending(month, weekIndex) {
   return (expenses || []).filter(function(e) {
     if (e['类型'] !== '支出' || getMonth(e['日期']) !== month) return false;
@@ -352,9 +352,9 @@ function getWeekSpending(month, weekIndex) {
     if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) return false;
     return true;
   }).reduce(function(s, e) {
-    var splitWeeks = Number(e['分搙周数']) || 0;
+    var splitWeeks = Number(e['分摊周数']) || 0;
     if (splitWeeks > 0) {
-      var startWeek = Number(e['分搙开始周']) || 0;
+      var startWeek = Number(e['分摊开始周']) || 0;
       var offset = weekIndex - startWeek;
       if (offset < 0 || offset >= splitWeeks) return s;
       return s + Number(e['金额'] || 0) / splitWeeks;
