@@ -26,8 +26,10 @@ async function todoApi(method, body, id) {
 async function loadTodos() {
   try {
     var r = await todoApi('GET');
+    console.log('loadTodos response:', Array.isArray(r) ? r.length + ' items' : JSON.stringify(r).substring(0,200));
     if (Array.isArray(r)) todoList = r;
-  } catch(e) { console.error('loadTodos:', e); }
+    else { console.warn('loadTodos: expected array, got:', r); }
+  } catch(e) { console.error('loadTodos error:', e); }
 }
 
 function renderTodo() {
@@ -223,6 +225,24 @@ function switchTodoFilter(f) { todoFilter = f; renderTodo(); }
 var editingTodoId = null;
 var todoSubtaskRows = [];
 
+// Populate link dropdown based on selected link type
+function updateLinkOptions() {
+  var linkType = document.getElementById('todoLinkType').value;
+  var sel = document.getElementById('todoLinkId');
+  sel.innerHTML = '<option value="">无</option>';
+  if (linkType === '采购' && typeof items !== 'undefined') {
+    items.forEach(function(it) {
+      var label = (it['商品名称'] || it['名称'] || it.id) + ' (¥' + (Number(it['单价']||0)*Number(it['数量']||1)).toFixed(0) + ')';
+      sel.innerHTML += '<option value="' + it.id + '">' + esc(label) + '</option>';
+    });
+  } else if (linkType === '记账' && typeof expenses !== 'undefined') {
+    expenses.forEach(function(ex) {
+      var label = (ex['备注'] || ex['分类'] || ex.id) + ' (¥' + Number(ex['金额']||0).toFixed(0) + ')';
+      sel.innerHTML += '<option value="' + ex.id + '">' + esc(label) + '</option>';
+    });
+  }
+}
+
 function openTodoModal(id) {
   editingTodoId = id || null;
   var overlay = document.getElementById('todoModalOverlay');
@@ -237,6 +257,7 @@ function openTodoModal(id) {
   document.getElementById('todoCategory').value = t ? t.category : '其他';
   document.getElementById('todoRepeat').value = t ? t.repeat : '无';
   document.getElementById('todoLinkType').value = t ? (t.linkType || '无') : '无';
+  updateLinkOptions();
   document.getElementById('todoLinkId').value = t ? (t.linkId || '') : '';
 
   if (t && t.dueDate) {
@@ -279,34 +300,42 @@ function removeSubtask(i) { todoSubtaskRows.splice(i, 1); renderSubtaskRows(); }
 function updateSubtaskText(i, v) { if (todoSubtaskRows[i]) todoSubtaskRows[i].text = v; }
 
 async function saveTodo() {
-  var title = document.getElementById('todoTitle').value.trim();
-  if (!title) return toast('请输入标题');
+  try {
+    var title = document.getElementById('todoTitle').value.trim();
+    if (!title) return toast('请输入标题');
 
-  var body = {
-    title: title,
-    description: document.getElementById('todoDesc').value.trim(),
-    dueDate: document.getElementById('todoDueDate').value || null,
-    priority: document.getElementById('todoPriority').value,
-    category: document.getElementById('todoCategory').value,
-    repeat: document.getElementById('todoRepeat').value,
-    linkType: document.getElementById('todoLinkType').value,
-    linkId: document.getElementById('todoLinkId').value.trim(),
-    subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); }))
-  };
+    var body = {
+      title: title,
+      description: document.getElementById('todoDesc').value.trim(),
+      dueDate: document.getElementById('todoDueDate').value || null,
+      priority: document.getElementById('todoPriority').value,
+      category: document.getElementById('todoCategory').value,
+      repeat: document.getElementById('todoRepeat').value,
+      linkType: document.getElementById('todoLinkType').value,
+      linkId: document.getElementById('todoLinkId').value || '',
+      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); }))
+    };
 
-  var r;
-  if (editingTodoId) {
-    body.id = editingTodoId;
-    r = await todoApi('PUT', body);
-  } else {
-    r = await todoApi('POST', body);
+    console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
+    var r;
+    if (editingTodoId) {
+      body.id = editingTodoId;
+      r = await todoApi('PUT', body);
+    } else {
+      r = await todoApi('POST', body);
+    }
+    console.log('saveTodo: response', JSON.stringify(r));
+
+    if (!r) { toast('保存失败: 服务器无响应'); return; }
+    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); return; }
+    toast(editingTodoId ? '已更新' : '已创建');
+    closeTodoModal();
+    await loadTodos();
+    render();
+  } catch(e) {
+    console.error('saveTodo error:', e);
+    toast('保存失败: ' + e.message);
   }
-
-  if (r && r.error) { toast('保存失败: ' + r.error); return; }
-  toast(editingTodoId ? '已更新' : '已创建');
-  closeTodoModal();
-  await loadTodos();
-  render();
 }
 
 function openTodoDetail(id) {
