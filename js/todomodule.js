@@ -70,9 +70,9 @@ function renderTodo() {
   
   // View switcher (segmented control)
   html += '<div class="todo-view-switcher">';
-  html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView('list')">📋 列表</button>';
-  html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView('calendar')">📅 日历</button>';
-  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView('gantt')">📊 甘特图</button>';
+  html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView(\x27list\x27)">📋 列表</button>';
+  html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView(\x27calendar\x27)">📅 日历</button>';
+  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView(\x27gantt\x27)">📊 甘特图</button>';
   html += '</div>';
 
   // Stats row (compact)
