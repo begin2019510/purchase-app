@@ -72,7 +72,46 @@ function renderTodo() {
   html += '<div class="todo-summary-item"><div class="todo-summary-num orange">'+pending+'</div><div class="todo-summary-label">待办</div></div>';
   html += '<div class="todo-summary-item"><div class="todo-summary-num green">'+doing+'</div><div class="todo-summary-label">进行中</div></div>';
   if(overdue>0) html += '<div class="todo-summary-item"><div class="todo-summary-num red">'+overdue+'</div><div class="todo-summary-label">已过期</div></div>';
+  // Progress bar
+  var completionPct = total > 0 ? Math.round(done / total * 100) : 0;
+  var activeCount = pending + doing;
+  var progressColor = completionPct >= 80 ? 'done' : completionPct >= 50 ? '' : 'warn';
+
+  html += '<div class="todo-progress-wrap">';
+  html += '<div class="todo-progress-header">';
+  html += '<span class="todo-progress-label">完成进度</span>';
+  html += '<span class="todo-progress-pct" style="color:' + (completionPct >= 80 ? '#16a34a' : completionPct >= 50 ? 'var(--pri)' : '#f59e0b') + '">' + completionPct + '%</span>';
   html += '</div>';
+  html += '<div class="todo-progress-bar"><div class="todo-progress-fill ' + progressColor + '" data-width="' + completionPct + '"></div></div>';
+
+  // Segmented bar
+  if (total > 0) {
+    var doneFlex = done; var pendFlex = pending; var doingFlex = doing; var overFlex = overdue;
+    html += '<div class="todo-progress-segments">';
+    if (done > 0) html += '<div class="todo-progress-seg" style="flex:' + done + ';background:#16a34a"></div>';
+    if (doing > 0) html += '<div class="todo-progress-seg" style="flex:' + doing + ';background:var(--pri)"></div>';
+    if (pending > 0) html += '<div class="todo-progress-seg" style="flex:' + pending + ';background:#f59e0b"></div>';
+    if (overdue > 0) html += '<div class="todo-progress-seg" style="flex:' + overdue + ';background:#ef4444"></div>';
+    html += '</div>';
+
+    // Legend
+    html += '<div class="todo-progress-legend">';
+    if (done > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#16a34a"></span>已完成 ' + done + '</div>';
+    if (doing > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:var(--pri)"></span>进行中 ' + doing + '</div>';
+    if (pending > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#f59e0b"></span>待办 ' + pending + '</div>';
+    if (overdue > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#ef4444"></span>已过期 ' + overdue + '</div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+  html += '</div>';
+
+  // Trigger progress bar animation after render
+  setTimeout(function() {
+    document.querySelectorAll('.todo-progress-fill[data-width]').forEach(function(el) {
+      el.style.width = el.getAttribute('data-width') + '%';
+    });
+  }, 50);
 
   if (filtered.length === 0) {
     html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';

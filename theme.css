@@ -979,7 +979,54 @@ body.dark .week-card{border-color:var(--border)}
 .todo-summary-num.pri { color: var(--pri); }
 .todo-summary-num.orange { color: #f59e0b; }
 .todo-summary-num.green { color: #16a34a; }
+
 .todo-summary-num.red { color: #ef4444; }
+
+/* Todo progress bar */
+.todo-progress-wrap {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.todo-progress-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+}
+.todo-progress-label {
+  font-size: 12px; font-weight: 700; color: var(--muted);
+}
+.todo-progress-pct {
+  font-size: 22px; font-weight: 900; line-height: 1;
+}
+.todo-progress-bar {
+  height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; position: relative;
+}
+.todo-progress-fill {
+  height: 100%; border-radius: 5px; width: 0;
+  transition: width 1s cubic-bezier(.4,0,.2,1) 0.3s;
+  background: linear-gradient(90deg, var(--pri), #818cf8);
+}
+.todo-progress-fill.done {
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+}
+.todo-progress-fill.warn {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+.todo-progress-fill.danger {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+.todo-progress-segments {
+  display: flex; gap: 4px; margin-top: 8px; height: 6px; border-radius: 3px; overflow: hidden;
+}
+.todo-progress-seg {
+  height: 100%; border-radius: 3px; transition: flex 0.6s ease;
+}
+.todo-progress-legend {
+  display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap;
+}
+.todo-legend-item {
+  display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); font-weight: 600;
+}
+.todo-legend-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
 
 /* Subtask rows in modal */
 .subtask-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
