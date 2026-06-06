@@ -98,11 +98,13 @@ function renderTodo() {
 
   // Content based on view
   if (todoView === 'calendar') {
-    renderTodoCalendar();
+    html += buildCalendarHtml();
+    el.innerHTML = html;
     return;
   }
   if (todoView === 'gantt') {
-    renderTodoGantt();
+    html += buildGanttHtml();
+    el.innerHTML = html;
     return;
   }
 
@@ -217,9 +219,8 @@ function renderTodoCard(t) {
   return h;
 }
 
-function renderTodoGantt() {
-  var el = document.getElementById('todoContent');
-  if (!el) return;
+function buildGanttHtml() {
+  
 
   // Use same month as calendar
   if (!todoCalYear) { var now = new Date(Date.now()+8*3600000); todoCalYear = now.getUTCFullYear(); todoCalMonth = now.getUTCMonth(); }
@@ -246,7 +247,7 @@ function renderTodoGantt() {
 
   if (monthTodos.length === 0) {
     html += '<div style="text-align:center;padding:40px;color:var(--muted)">本月无待办</div>';
-    el.innerHTML = html;
+    return html;
     return;
   }
 
@@ -284,12 +285,11 @@ function renderTodoGantt() {
   });
 
   html += '</div></div>';
-  el.innerHTML = html;
+  return html;
 }
 
-function renderTodoCalendar() {
-  var el = document.getElementById('todoContent');
-  if (!el) return;
+function buildCalendarHtml() {
+  
   if (!todoCalYear) {
     var now = new Date(Date.now() + 8*3600000);
     todoCalYear = now.getUTCFullYear();
@@ -360,7 +360,7 @@ function renderTodoCalendar() {
     html += '</div>';
   }
 
-  el.innerHTML = html;
+  return html;
 }
 
 function todoCalPrev() { todoCalMonth--; if (todoCalMonth < 0) { todoCalMonth = 11; todoCalYear--; } todoCalSelected = null; renderTodoCalendar(); }
