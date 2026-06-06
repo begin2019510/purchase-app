@@ -614,7 +614,7 @@ function showLinkPreview(type, id) {
   var pop = document.createElement('div');
   pop.id = 'linkPreviewPopover';
   pop.className = 'link-preview-popover';
-  pop.innerHTML = html + '<button onclick="' + jumpFn + 'this.closest('#linkPreviewPopover').remove()" style="margin-top:10px;width:100%;padding:8px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">查看详情 ➡</button>';
+  pop.innerHTML = html + '<button onclick="' + jumpFn + 'this.closest(\x22#linkPreviewPopover\x22).remove()" style="margin-top:10px;width:100%;padding:8px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">查看详情 ➡</button>';
   document.body.appendChild(pop);
 
   // Close on click outside
