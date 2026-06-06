@@ -16,6 +16,8 @@ function parseEvalNote(note) {
 }
 
 const AI_API='/api/ai';
+let statsChatHistory = []; // Multi-turn chat history for stats AI
+
 async function aiRequest(action,data){
   const r=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action,data})});
   const res=await r.json().catch(()=>({error:'Response not JSON'}));
@@ -573,105 +575,143 @@ async function queryAI(){
   const input=document.getElementById('statsAIInput');
   const q=input.value.trim();
   if(!q)return;
-  const resultEl=document.getElementById('statsAIResult');
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  const chatEl=document.getElementById('statsChatArea');
+  if(!chatEl)return;
+  // Add user bubble
+  chatEl.innerHTML += '<div class="chat-bubble user-bubble">' + esc(q) + '</div>';
+  chatEl.innerHTML += '<div class="chat-bubble ai-bubble" id="aiLoadingBubble"><div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>';
+  chatEl.scrollTop = chatEl.scrollHeight;
   input.value='';
+  // Store in history
+  statsChatHistory.push({role:'user',content:q});
+  if(statsChatHistory.length > 40) statsChatHistory = statsChatHistory.slice(-40);
   try{
-    const thisMonth=getThisMonth();
     const allExpenses=expenses||[];
-    const res=await aiRequest('query',{question:q,expenses:allExpenses});
-    if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
-    else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">分析失败</div>`}
-  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
+    const allItems=items||[];
+    const res=await aiRequest('query',{question:q,expenses:allExpenses,items:allItems,messages:statsChatHistory});
+    const loadingEl=document.getElementById('aiLoadingBubble');
+    if(loadingEl) loadingEl.remove();
+    if(res.ok){
+      statsChatHistory.push({role:'assistant',content:res.data});
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble">' + esc(res.data) + '</div>';
+    }else{
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">分析失败</div>';
+    }
+  }catch(e){
+    const loadingEl=document.getElementById('aiLoadingBubble');
+    if(loadingEl) loadingEl.remove();
+    chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">' + esc(e.message) + '</div>';
+  }
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-// --- 财务分析 ---
+// --- 财务分析 (structured) ---
 async function runAIAnalysis(){
-  const resultEl=document.getElementById('statsAIResult');
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>分析中...</span></div>`;
+  const chatEl=document.getElementById('statsChatArea');
+  if(!chatEl)return;
+  chatEl.innerHTML += '<div class="chat-bubble ai-bubble" id="aiAnalysisLoading">📊 分析中...</div>';
+  chatEl.scrollTop = chatEl.scrollHeight;
   try{
     const thisMonth=getThisMonth();
     const allExpenses=expenses||[];const allItems=items||[];
-    if(!allExpenses.length&&!allItems.length){resultEl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">💡 暂无数据，请先添加记账或采购记录</div>';return}
+    if(!allExpenses.length&&!allItems.length){
+      const el=document.getElementById('aiAnalysisLoading');if(el)el.remove();
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble">💡 暂无数据，请先添加记账或采购记录</div>';
+      return;
+    }
     const res=await aiRequest('analyze',{expenses:allExpenses,items:allItems,month:thisMonth});
-    if(res.ok){resultEl.innerHTML=`<div class="ai-analysis-content">${esc(res.data)}</div>`}
-    else{resultEl.innerHTML='<div style="color:var(--red);font-size:12px">分析失败</div>'}
-  }catch(e){resultEl.innerHTML='<div style="color:var(--red);font-size:12px">'+e.message+'</div>'}
+    const el=document.getElementById('aiAnalysisLoading');if(el)el.remove();
+    if(res.ok){
+      statsChatHistory.push({role:'user',content:'请分析我的财务情况'});
+      statsChatHistory.push({role:'assistant',content:typeof res.data==='string'?res.data:JSON.stringify(res.data)});
+      // Try structured rendering
+      if(res.structured && res.data && typeof res.data==='object'){
+        const d=res.data;
+        let html='<div class="ai-structured">';
+        if(d.summary) html+='<div class="ai-summary-card">'+esc(d.summary)+'</div>';
+        if(d.highlights&&d.highlights.length){
+          html+='<div class="ai-highlights">';
+          d.highlights.forEach(function(h){html+='<span class="ai-highlight-tag">'+esc(h)+'</span>'});
+          html+='</div>';
+        }
+        if(d.categories&&d.categories.length){
+          const max=Math.max.apply(null,d.categories.map(function(c){return c.amount||0}));
+          html+='<div class="ai-bar-chart">';
+          d.categories.forEach(function(c){
+            const pct=max>0?(c.amount/max*100):0;
+            html+='<div class="ai-bar-row"><span class="ai-bar-label">'+esc(c.name)+'</span><div class="ai-bar-track"><div class="ai-bar-fill" style="width:'+pct.toFixed(0)+'%"></div></div><span class="ai-bar-value">¥'+(c.amount||0).toFixed(0)+' '+(c.pct?c.pct+'%':'')+'</span></div>';
+          });
+          html+='</div>';
+        }
+        if(d.suggestions&&d.suggestions.length){
+          html+='<div class="ai-suggestions">';
+          d.suggestions.forEach(function(s){html+='<div class="ai-suggestion-card">💡 '+esc(s)+'</div>'});
+          html+='</div>';
+        }
+        html+='</div>';
+        chatEl.innerHTML += '<div class="chat-bubble ai-bubble">' + html + '</div>';
+      }else{
+        chatEl.innerHTML += '<div class="chat-bubble ai-bubble"><div class="ai-analysis-content">'+esc(typeof res.data==='string'?res.data:JSON.stringify(res.data))+'</div></div>';
+      }
+    }else{
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">分析失败</div>';
+    }
+  }catch(e){
+    const el=document.getElementById('aiAnalysisLoading');if(el)el.remove();
+    chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">'+esc(e.message)+'</div>';
+  }
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-// --- 消费画像 ---
+// --- 消费画像 ---// --- 消费画像 ---
 async function runAIProfile(){
-  const resultEl=document.getElementById('statsAIResult');
-  resultEl.innerHTML=`<div class="ai-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>深度分析中...</span></div>`;
+  const chatEl=document.getElementById('statsChatArea');
+  if(!chatEl)return;
+  chatEl.innerHTML += '<div class="chat-bubble ai-bubble" id="aiProfileLoading">🧠 深度分析中...</div>';
+  chatEl.scrollTop = chatEl.scrollHeight;
   try{
-    const thisMonth=getThisMonth();
-    const allExpenses=expenses||[];if(!allExpenses.length){resultEl.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">💡 暂无记账数据</div>';return}
+    const allExpenses=expenses||[];
+    if(!allExpenses.length){
+      const el=document.getElementById('aiProfileLoading');if(el)el.remove();
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble">💡 暂无记账数据</div>';
+      return;
+    }
     const res=await aiRequest('profile',{expenses:allExpenses});
+    const el=document.getElementById('aiProfileLoading');if(el)el.remove();
     if(res.ok&&res.data){
+      statsChatHistory.push({role:'user',content:'请生成我的消费画像'});
+      statsChatHistory.push({role:'assistant',content:JSON.stringify(res.data)});
       const d=res.data;
-      let html='';
-      // 总结
-      if(d.summary) html+=`<div style="margin-bottom:12px;padding:10px;background:var(--pri-light);border-radius:10px;font-size:13px;line-height:1.7">${esc(d.summary)}</div>`;
-      // 画像
+      let html='<div class="ai-structured">';
+      if(d.summary) html+='<div class="ai-summary-card">'+esc(d.summary)+'</div>';
       if(d.profile){
         const p=d.profile;
-        html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">`;
-        if(p.diningStyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🍜 饮食风格</div>${esc(p.diningStyle)}</div>`;
-        if(p.lifestyle) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🎭 生活方式</div>${esc(p.lifestyle)}</div>`;
-        if(p.spendingPattern) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">💡 消费模式</div>${esc(p.spendingPattern)}</div>`;
-        if(p.topItems&&p.topItems.length) html+=`<div style="background:var(--bg);padding:8px 10px;border-radius:8px;font-size:11px"><div style="font-weight:700;margin-bottom:2px">🏆 主要开销</div>${p.topItems.map(i=>esc(i)).join('、')}</div>`;
-        html+=`</div>`;
+        html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">';
+        if(p.diningStyle) html+='<div style="background:var(--bg);padding:10px;border-radius:10px;font-size:12px"><div style="font-weight:700;margin-bottom:4px">🍜 饮食风格</div>'+esc(p.diningStyle)+'</div>';
+        if(p.lifestyle) html+='<div style="background:var(--bg);padding:10px;border-radius:10px;font-size:12px"><div style="font-weight:700;margin-bottom:4px">🎭 生活方式</div>'+esc(p.lifestyle)+'</div>';
+        if(p.spendingPattern) html+='<div style="background:var(--bg);padding:10px;border-radius:10px;font-size:12px"><div style="font-weight:700;margin-bottom:4px">💡 消费模式</div>'+esc(p.spendingPattern)+'</div>';
+        if(p.topItems&&p.topItems.length) html+='<div style="background:var(--bg);padding:10px;border-radius:10px;font-size:12px"><div style="font-weight:700;margin-bottom:4px">🏆 主要开销</div>'+p.topItems.map(function(i){return esc(i)}).join('、')+'</div>';
+        html+='</div>';
       }
-      // 习惯
       if(d.habits&&d.habits.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin-bottom:6px">📊 消费习惯</div>`;
-        d.habits.forEach(h=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${h.emoji||'📌'} ${esc(h.title)}</b><br>${esc(h.detail)}</div>`});
+        html+='<div style="font-size:12px;font-weight:700;margin:8px 0 4px">📊 消费习惯</div>';
+        d.habits.forEach(function(h){html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>'+(h.emoji||'📌')+' '+esc(h.title)+'</b><br>'+esc(h.detail)+'</div>'});
       }
-      // 洞察
       if(d.insights&&d.insights.length){
-        html+=`<div style="font-size:12px;font-weight:700;margin:10px 0 6px">💡 深度洞察</div>`;
-        d.insights.forEach(i=>{html+=`<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>${i.emoji||'💡'} ${esc(i.title)}</b><br>${esc(i.detail)}</div>`});
+        html+='<div style="font-size:12px;font-weight:700;margin:10px 0 4px">💡 深度洞察</div>';
+        d.insights.forEach(function(i){html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6"><b>'+(i.emoji||'💡')+' '+esc(i.title)+'</b><br>'+esc(i.detail)+'</div>'});
       }
-      resultEl.innerHTML=`<div class="ai-result"><div class="ai-result-header"><span class="ai-result-tag">🧠 消费画像</span></div>${html}</div>`;
-    }else{resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">生成失败</div>`}
-  }catch(e){resultEl.innerHTML=`<div style="color:var(--red);font-size:12px">${e.message}</div>`}
-}
-
-// ===== 预算 =====
-let catDebounce=null;let lastAICat=null;
-function onNoteInput(){
-  clearTimeout(catDebounce);
-  const note=document.getElementById('eNote').value.trim();
-  const suggestEl=document.getElementById('aiCatSuggest');
-  if(!note){suggestEl.style.display='none';lastAICat=null;return}
-  catDebounce=setTimeout(()=>suggestCategory(note),600);
-}
-async function suggestCategory(note){
-  const suggestEl=document.getElementById('aiCatSuggest');
-  const textEl=document.getElementById('aiCatText');
-  try{
-    const res=await aiRequest('categorize',{note,existingExpenses:expenses});
-    if(res.ok&&res.data){
-      const d=res.data;
-      lastAICat=d;
-      const tags=d.tags&&d.tags.length?d.tags.map(t=>`<span style="background:var(--card);padding:1px 6px;border-radius:4px;margin-left:4px;font-size:10px">${t}</span>`).join(''):'';
-      textEl.innerHTML=`🤖 建议: <b>${d.category}</b>${tags} <span style="font-size:10px;color:var(--muted);margin-left:4px">${((d.confidence||0)*100).toFixed(0)}% · 点击采纳</span>`;
-      suggestEl.style.display='block';
+      html+='</div>';
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble">' + html + '</div>';
+    }else{
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">生成失败</div>';
     }
-  }catch{suggestEl.style.display='none';lastAICat=null}
+  }catch(e){
+    const el=document.getElementById('aiProfileLoading');if(el)el.remove();
+    chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">'+esc(e.message)+'</div>';
+  }
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
-function applyAICat(){
-  if(!lastAICat)return;
-  document.getElementById('eCategory').value=lastAICat.category;
-  toast(`已切换为「${lastAICat.category}」`);
-  document.getElementById('aiCatSuggest').style.display='none';
-  lastAICat=null;
-}
-
-
-
-
-// === App.ai namespace exports ===
 App.ai.parseEvalNote = parseEvalNote;
 App.ai.aiRequest = aiRequest;
 App.ai.sendAI = sendAI;
@@ -704,3 +744,7 @@ App.ai.runAIProfile = runAIProfile;
 App.ai.onNoteInput = onNoteInput;
 App.ai.suggestCategory = suggestCategory;
 App.ai.applyAICat = applyAICat;
+App.ai.generateTodoSuggestions = generateTodoSuggestions;
+App.ai.clearChatHistory = clearChatHistory;
+window.generateTodoSuggestions = generateTodoSuggestions;
+window.clearChatHistory = clearChatHistory;

@@ -94,6 +94,100 @@ async function feishuFetch(method, path, body, env) {
   return res.json();
 }
 
+
+// ===== Todo linking helpers =====
+async function getFeishuTokenForItems(env) {
+  const res = await fetch('https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ app_id: env.FEISHU_APP_ID, app_secret: env.FEISHU_APP_SECRET }),
+  });
+  const data = await res.json();
+  return data.tenant_access_token;
+}
+
+async function createLinkedTodo(env, todoApp, todoTable, item, title, dueDate, priority) {
+  try {
+    const token = await getFeishuTokenForItems(env);
+    const fields = {
+      '标题': title.slice(0, 200),
+      '优先级': priority || '中',
+      '分类': '采购',
+      '状态': '待办',
+      '重复': '无',
+      '子任务': '[]',
+      '关联类型': '采购',
+      '关联ID': item.id || '',
+    };
+    if (dueDate) fields['截止日期'] = new Date(dueDate).getTime();
+    await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${todoApp}/tables/${todoTable}/records`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    });
+  } catch (e) { console.error('createLinkedTodo error:', e.message); }
+}
+
+async function deleteLinkedTodos(env, todoApp, todoTable, itemId) {
+  try {
+    const token = await getFeishuTokenForItems(env);
+    // Search for todos linked to this item
+    const searchUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${todoApp}/tables/${todoTable}/records/search`;
+    const res = await fetch(searchUrl, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filter: { conjunction: 'and', conditions: [{ field_name: '关联ID', operator: 'is', value: [itemId] }] },
+        page_size: 50,
+      }),
+    });
+    const data = await res.json();
+    if (data.data?.items) {
+      for (const rec of data.data.items) {
+        await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${todoApp}/tables/${todoTable}/records/${rec.record_id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + token },
+        });
+      }
+    }
+  } catch (e) { console.error('deleteLinkedTodos error:', e.message); }
+}
+
+async function completeLinkedTodos(env, todoApp, todoTable, itemId, titlePrefix) {
+  try {
+    const token = await getFeishuTokenForItems(env);
+    const searchUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${todoApp}/tables/${todoTable}/records/search`;
+    const res = await fetch(searchUrl, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filter: { conjunction: 'and', conditions: [
+          { field_name: '关联ID', operator: 'is', value: [itemId] },
+          { field_name: '标题', operator: 'contains', value: [titlePrefix] },
+        ]},
+        page_size: 10,
+      }),
+    });
+    const data = await res.json();
+    if (data.data?.items) {
+      for (const rec of data.data.items) {
+        await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${todoApp}/tables/${todoTable}/records/${rec.record_id}`, {
+          method: 'PUT',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: { '状态': '已完成', '完成时间': Date.now() } }),
+        });
+      }
+    }
+  } catch (e) { console.error('completeLinkedTodos error:', e.message); }
+}
+
+function calcInstallmentDate(baseDate, period) {
+  const d = new Date(baseDate);
+  d.setMonth(d.getMonth() + period);
+  d.setDate(15); // 15th of each month
+  return d.toISOString().slice(0, 10);
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -325,6 +419,38 @@ export async function onRequest(context) {
         if (body.cancelReason !== undefined) fields['取消原因'] = body.cancelReason;
         const data = await feishuFetch('PUT', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, { fields }, env);
         results.push({ id, ok: data.code === 0 });
+
+        // Todo linking: auto-create/delete/complete todos on status change
+        if (body.status && user.bitable?.todoApp && user.bitable?.todoTable) {
+          const todoApp = user.bitable.todoApp;
+          const todoTable = user.bitable.todoTable;
+          // Get item details for todo creation
+          if (body.status === '已审批' || body.status === '已下单' || body.status === '已到' || body.status === '已退' || body.status === '已取消') {
+            try {
+              const itemRes = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, null, env);
+              const item = itemRes.data?.record?.fields || {};
+              const itemName = item['商品名称'] || '商品';
+              const instPeriods = Number(item['分期期数']) || 0;
+              const instAmount = Number(item['分期金额']) || 0;
+
+              if (body.status === '已审批') {
+                await createLinkedTodo(env, todoApp, todoTable, {id}, '下单：' + itemName, null, '高');
+              }
+              if (body.status === '已下单' && instPeriods > 1) {
+                for (let p = 1; p <= instPeriods; p++) {
+                  const due = calcInstallmentDate(item['日期'] || Date.now(), p);
+                  await createLinkedTodo(env, todoApp, todoTable, {id}, `第${p}期还款 ¥${instAmount}`, due, '中');
+                }
+              }
+              if (body.status === '已到') {
+                await completeLinkedTodos(env, todoApp, todoTable, id, '下单');
+              }
+              if (body.status === '已退' || body.status === '已取消') {
+                await deleteLinkedTodos(env, todoApp, todoTable, id);
+              }
+            } catch (e) { console.error('Todo linking error:', e.message); }
+          }
+        }
       }
       const patchCacheSuffix = user.username ? `_${user.username}` : '';
       const patchCacheKey = new Request(url.origin + url.pathname + patchCacheSuffix);
