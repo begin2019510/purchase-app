@@ -227,8 +227,6 @@ export async function onRequest(context) {
         context.waitUntil(freshPromise);
         return cached;
       }
-      const data = await feishuFetch('GET', `/bitable/v1/apps/${APP}/tables/${TABLE}/records?page_size=500`, null, env);
-      if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
       // DEBUG: log raw fields for first item with installments
       const rawItems = data.data?.items || [];
       for (const ri of rawItems) {
@@ -463,6 +461,13 @@ export async function onRequest(context) {
       if (!id) return json({ error: 'id required' }, 400);
       const data = await feishuFetch('DELETE', `/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, null, env);
       if (data.code !== 0) return json({ error: 'Feishu API error', detail: data }, 500);
+      // 删除关联待办
+      try {
+        const tb = user.bitable || {};
+        if (tb.todoApp && tb.todoTable) {
+          await deleteLinkedTodos(env, tb.todoApp, tb.todoTable, id);
+        }
+      } catch (e) { console.error("delete linked todos on DELETE:", e.message); }
       // 清除缓存
       const cacheSuffix = user.username ? `_${user.username}` : '';
       const cacheKey = new Request(url.origin + url.pathname + cacheSuffix);
