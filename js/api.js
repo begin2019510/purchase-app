@@ -382,16 +382,17 @@ function getDynamicWeekBudget(month, weekIndex) {
     priorSpent += getWeekSpending(month, i);
   }
 
-  var remainingWeeks = totalWeeks - currentWeek;
-  if (remainingWeeks <= 0) return 0;
-
   if (weekIndex === currentWeek) {
-    // Current week: stable, dont subtract own spending
+    // Current week: stable budget, divide among all remaining weeks including current
+    var remainingWeeks = totalWeeks - currentWeek;
+    if (remainingWeeks <= 0) return 0;
     return Math.max(pool.available - priorSpent, 0) / remainingWeeks;
   } else {
-    // Future weeks: also subtract current week spending
+    // Future weeks: subtract current week spending, divide among weeks AFTER current
     var currentWeekSpent = getWeekSpending(month, currentWeek);
-    return Math.max(pool.available - priorSpent - currentWeekSpent, 0) / remainingWeeks;
+    var futureWeeks = totalWeeks - currentWeek - 1;
+    if (futureWeeks <= 0) return 0;
+    return Math.max(pool.available - priorSpent - currentWeekSpent, 0) / futureWeeks;
   }
 }
 
