@@ -1,28 +1,20 @@
-// Fallback: if todo module not loaded yet
-if(typeof renderTodo === "undefined"){
-  window.renderTodo = function(){
-    var el = document.getElementById("todoContent");
-    if(el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#999">Loading...</div>';
-  };
-}
-if(typeof loadTodos === "undefined"){
-  window.loadTodos = async function(){};
-}
-if(typeof openTodoModal === "undefined"){
-  window.openTodoModal = function(){
-    var o = document.getElementById("todoModalOverlay");
-    if(o) o.classList.add("active");
-  };
-}
-if(typeof closeTodoModal === "undefined"){
-  window.closeTodoModal = function(){
-    var o = document.getElementById("todoModalOverlay");
-    if(o) o.classList.remove("active");
-  };
-}
-if(typeof saveTodo === "undefined") window.saveTodo = async function(){};
-if(typeof switchTodoView === "undefined") window.switchTodoView = function(){};
-if(typeof switchTodoFilter === "undefined") window.switchTodoFilter = function(){};
+// Fallback: stubs for todo module functions (overwritten when todomodule.js loads)
+(function(){
+  var _todoStub = function(){};
+  var _todoAsyncStub = async function(){};
+  var fns = [
+    'renderTodo','renderTodoCalendar','loadTodos','openTodoModal','closeTodoModal',
+    'saveTodo','openTodoDetail','closeTodoDetail','completeTodo','deleteTodo',
+    'toggleTodoSubtask','switchTodoView','switchTodoFilter','addSubtask',
+    'removeSubtask','updateSubtaskText','todoCalPrev','todoCalNext',
+    'selectTodoCalDay','onTodoFab','formatDueDate','getDueClass'
+  ];
+  fns.forEach(function(fn){
+    if(typeof window[fn] === 'undefined'){
+      window[fn] = fn.startsWith('load') || fn === 'saveTodo' || fn === 'completeTodo' || fn === 'deleteTodo' ? _todoAsyncStub : _todoStub;
+    }
+  });
+})();
 
 // app.js - App Init, Core Render, Pull-to-Refresh, Events
 let items=[], expenses=[];
