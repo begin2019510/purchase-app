@@ -561,7 +561,7 @@ function openTodoDetail(id) {
 
   if (t.linkType && t.linkType !== '无') {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="closeTodoDetail();jumpToLink(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' ➡</span></div>';
+  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="showLinkPreview(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' ➡</span></div>';
   }
 
   if (t.completedAt) {
