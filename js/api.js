@@ -375,13 +375,24 @@ function getDynamicWeekBudget(month, weekIndex) {
   var currentWeek = getWeekForDate(today, month);
   if (currentWeek < 0) currentWeek = 0;
   if (weekIndex < currentWeek) return 0;
-  var totalSpent = 0;
+
+  // Spending from weeks before current week
+  var priorSpent = 0;
   for (var i = 0; i < currentWeek; i++) {
-    totalSpent += getWeekSpending(month, i);
+    priorSpent += getWeekSpending(month, i);
   }
+
   var remainingWeeks = totalWeeks - currentWeek;
   if (remainingWeeks <= 0) return 0;
-  return Math.max(pool.available - totalSpent, 0) / remainingWeeks;
+
+  if (weekIndex === currentWeek) {
+    // Current week: stable, dont subtract own spending
+    return Math.max(pool.available - priorSpent, 0) / remainingWeeks;
+  } else {
+    // Future weeks: also subtract current week spending
+    var currentWeekSpent = getWeekSpending(month, currentWeek);
+    return Math.max(pool.available - priorSpent - currentWeekSpent, 0) / remainingWeeks;
+  }
 }
 
 App.api.getWeekSpending = getWeekSpending;
