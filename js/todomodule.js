@@ -43,7 +43,6 @@ function renderTodo() {
   }
 
   var now = Date.now();
-  var todayStr = new Date(now + 8*3600000).toISOString().slice(0,10);
   filtered.sort(function(a, b) {
     if (a.status === '已完成' && b.status !== '已完成') return 1;
     if (a.status !== '已完成' && b.status === '已完成') return -1;
@@ -54,65 +53,60 @@ function renderTodo() {
     return (pri[a.priority] || 1) - (pri[b.priority] || 1);
   });
 
-  var html = '<div class="chips-wrap">';
+  // Stats
+  var total=todoList.length, pending=0, doing=0, done=0, overdue=0;
+  todoList.forEach(function(t){
+    if(t.status==='待办') pending++;
+    if(t.status==='进行中') doing++;
+    if(t.status==='已完成') done++;
+    if(t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue') overdue++;
+  });
+  var pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+  var html = '';
+
+  // === Compact header: segmented control + progress ===
+  html += '<div class="todo-compact-header">';
+  
+  // View switcher (segmented control)
+  html += '<div class="todo-view-switcher">';
+  html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView('list')">📋 列表</button>';
+  html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView('calendar')">📅 日历</button>';
+  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView('gantt')">📊 甘特图</button>';
+  html += '</div>';
+
+  // Stats row (compact)
+  html += '<div class="todo-stats-row">';
+  html += '<div class="todo-stat"><span class="todo-stat-num">' + total + '</span><span class="todo-stat-lbl">全部</span></div>';
+  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#f59e0b">' + pending + '</span><span class="todo-stat-lbl">待办</span></div>';
+  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + doing + '</span><span class="todo-stat-lbl">进行中</span></div>';
+  if(overdue>0) html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#ef4444">' + overdue + '</span><span class="todo-stat-lbl">过期</span></div>';
+  html += '<div class="todo-stat" style="margin-left:auto"><span class="todo-stat-num" style="color:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+';font-size:18px">' + pct + '%</span><span class="todo-stat-lbl">完成</span></div>';
+  html += '</div>';
+
+  // Progress bar
+  html += '<div class="todo-mini-progress"><div class="todo-mini-fill" data-width="' + pct + '" style="width:0;background:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+'"></div></div>';
+  html += '</div>';
+
+  // Filter chips (smaller)
+  html += '<div class="chips-wrap" style="margin:8px 0 10px">';
   var chips = ['全部', '待办', '进行中', '已完成', '高优先级'];
   chips.forEach(function(c) {
-    html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')">' + c + '</span>';
+    html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
   });
   html += '</div>';
 
-  // Summary bar
-  var total=todoList.length;
-  var pending=todoList.filter(function(t){return t.status==='待办'}).length;
-  var doing=todoList.filter(function(t){return t.status==='进行中'}).length;
-  var done=todoList.filter(function(t){return t.status==='已完成'}).length;
-  var overdue=todoList.filter(function(t){return t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue'}).length;
-  html += '<div class="todo-summary">';
-  html += '<div class="todo-summary-item"><div class="todo-summary-num pri">'+total+'</div><div class="todo-summary-label">全部</div></div>';
-  html += '<div class="todo-summary-item"><div class="todo-summary-num orange">'+pending+'</div><div class="todo-summary-label">待办</div></div>';
-  html += '<div class="todo-summary-item"><div class="todo-summary-num green">'+doing+'</div><div class="todo-summary-label">进行中</div></div>';
-  if(overdue>0) html += '<div class="todo-summary-item"><div class="todo-summary-num red">'+overdue+'</div><div class="todo-summary-label">已过期</div></div>';
-  // Progress bar
-  var completionPct = total > 0 ? Math.round(done / total * 100) : 0;
-  var activeCount = pending + doing;
-  var progressColor = completionPct >= 80 ? 'done' : completionPct >= 50 ? '' : 'warn';
-
-  html += '<div class="todo-progress-wrap">';
-  html += '<div class="todo-progress-header">';
-  html += '<span class="todo-progress-label">完成进度</span>';
-  html += '<span class="todo-progress-pct" style="color:' + (completionPct >= 80 ? '#16a34a' : completionPct >= 50 ? 'var(--pri)' : '#f59e0b') + '">' + completionPct + '%</span>';
-  html += '</div>';
-  html += '<div class="todo-progress-bar"><div class="todo-progress-fill ' + progressColor + '" data-width="' + completionPct + '"></div></div>';
-
-  // Segmented bar
-  if (total > 0) {
-    var doneFlex = done; var pendFlex = pending; var doingFlex = doing; var overFlex = overdue;
-    html += '<div class="todo-progress-segments">';
-    if (done > 0) html += '<div class="todo-progress-seg" style="flex:' + done + ';background:#16a34a"></div>';
-    if (doing > 0) html += '<div class="todo-progress-seg" style="flex:' + doing + ';background:var(--pri)"></div>';
-    if (pending > 0) html += '<div class="todo-progress-seg" style="flex:' + pending + ';background:#f59e0b"></div>';
-    if (overdue > 0) html += '<div class="todo-progress-seg" style="flex:' + overdue + ';background:#ef4444"></div>';
-    html += '</div>';
-
-    // Legend
-    html += '<div class="todo-progress-legend">';
-    if (done > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#16a34a"></span>已完成 ' + done + '</div>';
-    if (doing > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:var(--pri)"></span>进行中 ' + doing + '</div>';
-    if (pending > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#f59e0b"></span>待办 ' + pending + '</div>';
-    if (overdue > 0) html += '<div class="todo-legend-item"><span class="todo-legend-dot" style="background:#ef4444"></span>已过期 ' + overdue + '</div>';
-    html += '</div>';
+  // Content based on view
+  if (todoView === 'calendar') {
+    renderTodoCalendar();
+    return;
+  }
+  if (todoView === 'gantt') {
+    renderTodoGantt();
+    return;
   }
 
-  html += '</div>';
-  html += '</div>';
-
-  // Trigger progress bar animation after render
-  setTimeout(function() {
-    document.querySelectorAll('.todo-progress-fill[data-width]').forEach(function(el) {
-      el.style.width = el.getAttribute('data-width') + '%';
-    });
-  }, 50);
-
+  // List view
   if (filtered.length === 0) {
     html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';
     html += '<div style="font-size:56px;margin-bottom:16px;opacity:0.6">📋</div>';
@@ -120,10 +114,8 @@ function renderTodo() {
     html += '<div style="font-size:13px;opacity:0.7">点击右下角 + 新建</div>';
     html += '</div>';
   } else {
-    // Group: active first, then completed
     var active = filtered.filter(function(t){ return t.status !== '已完成' && t.status !== '已取消'; });
     var completed = filtered.filter(function(t){ return t.status === '已完成' || t.status === '已取消'; });
-
     if (active.length > 0) {
       active.forEach(function(t) { html += renderTodoCard(t); });
     }
@@ -134,6 +126,13 @@ function renderTodo() {
   }
 
   el.innerHTML = html;
+
+  // Animate progress bar
+  setTimeout(function() {
+    document.querySelectorAll('.todo-mini-fill[data-width]').forEach(function(el) {
+      el.style.width = el.getAttribute('data-width') + '%';
+    });
+  }, 50);
 }
 
 function getLinkDisplay(linkType, linkId) {
@@ -159,51 +158,133 @@ function getLinkDisplay(linkType, linkId) {
 function renderTodoCard(t) {
   var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
+  var isDone = t.status === '已完成' || t.status === '已取消';
   var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
 
   var h = '<div class="todo-card ' + statusClass + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
   h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
   h += '<div class="todo-card-inner">';
-  h += '<div class="todo-card-header">';
-  h += '<div class="todo-card-title">';
-  if (t.status === '已完成') h += '<span class="todo-check">✅</span>';
-  else h += '<span class="todo-dot" style="background:' + priColor + '"></span>';
-  h += '<span>' + esc(t.title) + '</span>';
-  h += '</div>';
-  h += '<div class="todo-card-tags">';
-  h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
-  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄</span>';
-  h += '</div></div>';
+  h += '<div class="todo-card-main">';
 
-  // Meta row
-  var hasMeta = false;
+  // Checkbox (quick complete)
+  if (isDone) {
+    h += '<div class="todo-quick-check done" onclick="event.stopPropagation()">✅</div>';
+  } else {
+    h += '<div class="todo-quick-check" style="border-color:' + priColor + '" onclick="event.stopPropagation();completeTodo(' + "'" + t.id + "'" + ')"></div>';
+  }
+
+  // Content
+  h += '<div class="todo-card-content">';
+  h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + esc(t.title) + '</div>';
+
+  // Due date line
   if (t.dueDate) {
     var dueStr = formatDueDate(t.dueDate);
     var dueClass = getDueClass(t.dueDate, t.status);
-    h += '<div class="todo-due ' + dueClass + '"><span class="todo-due-icon">📅</span> ' + dueStr + '</div>';
-    hasMeta = true;
+    h += '<div class="todo-due ' + dueClass + '">📅 ' + dueStr + '</div>';
   }
 
-  var metaHtml = '';
+  // Tags row
+  h += '<div class="todo-card-tags">';
+  h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
+  h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
+  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
+  h += '</div>';
+
+  // Subtask progress
   if (t.subtasks && t.subtasks !== '[]') {
     try {
       var subs = JSON.parse(t.subtasks);
       var doneCount = subs.filter(function(s){ return s.done; }).length;
-      var pct = subs.length ? Math.round(doneCount/subs.length*100) : 0;
-      var barColor = pct >= 100 ? '#16a34a' : 'var(--pri)';
-      metaHtml += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
+      var subPct = subs.length ? Math.round(doneCount/subs.length*100) : 0;
+      h += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + subPct + '%;background:' + (subPct>=100?'#16a34a':'var(--pri)') + '"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
     } catch(e) {}
   }
+
+  // Link
   if (t.linkType && t.linkType !== '无') {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-      if (linkDisp) metaHtml += '<div class="todo-link">' + linkDisp + '</div>';
-  }
-  if (metaHtml) {
-    h += '<div class="todo-meta-row">' + metaHtml + '</div>';
+    if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' ➡</div>';
   }
 
-  h += '</div></div>';
+  h += '</div>'; // content
+
+  // Priority dot (right side)
+  h += '<div class="todo-pri-dot" style="background:' + priColor + '"></div>';
+
+  h += '</div>'; // main
+  h += '</div></div>'; // inner + card
   return h;
+}
+
+function renderTodoGantt() {
+  var el = document.getElementById('todoContent');
+  if (!el) return;
+
+  // Use same month as calendar
+  if (!todoCalYear) { var now = new Date(Date.now()+8*3600000); todoCalYear = now.getUTCFullYear(); todoCalMonth = now.getUTCMonth(); }
+
+  var year = todoCalYear, month = todoCalMonth;
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+  var today = new Date(Date.now()+8*3600000).toISOString().slice(0,10);
+
+  // Get todos with due dates in this month
+  var monthTodos = todoList.filter(function(t) {
+    if (!t.dueDate) return false;
+    var d = new Date(t.dueDate);
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month;
+  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+
+  var html = '';
+
+  // Month nav
+  html += '<div class="gantt-nav">';
+  html += '<button class="cal-nav-btn" onclick="todoCalPrev();renderTodoGantt()">←</button>';
+  html += '<span class="cal-nav-title">' + year + '年' + (month+1) + '月</span>';
+  html += '<button class="cal-nav-btn" onclick="todoCalNext();renderTodoGantt()">→</button>';
+  html += '</div>';
+
+  if (monthTodos.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--muted)">本月无待办</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  // Gantt chart
+  html += '<div class="gantt-container">';
+  html += '<div class="gantt-scroll">';
+
+  // Header row (days)
+  html += '<div class="gantt-header">';
+  html += '<div class="gantt-label-header">待办</div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var isToday = dateStr === today;
+    var isWeekend = new Date(year, month, d).getDay() === 0 || new Date(year, month, d).getDay() === 6;
+    html += '<div class="gantt-day' + (isToday ? ' today' : '') + (isWeekend ? ' weekend' : '') + '">' + d + '</div>';
+  }
+  html += '</div>';
+
+  // Rows
+  monthTodos.forEach(function(t) {
+    var dueDate = new Date(t.dueDate);
+    var dueDay = dueDate.getUTCDate();
+    var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
+    var isDone = t.status === '已完成';
+
+    html += '<div class="gantt-row" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
+    html += '<div class="gantt-label">' + esc(t.title.slice(0,10)) + (t.title.length>10?'..':'') + '</div>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var isDue = d === dueDay;
+      html += '<div class="gantt-cell' + (isDue ? ' gantt-due' : '') + '">';
+      if (isDue) html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="background:' + priColor + '"></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  el.innerHTML = html;
 }
 
 function renderTodoCalendar() {
@@ -316,7 +397,7 @@ function getDueClass(dueDate, status) {
   return '';
 }
 
-function switchTodoView(v) { todoView = v; if (v === 'calendar') renderTodoCalendar(); else renderTodo(); }
+function switchTodoView(v) { todoView = v; renderTodo(); }
 function switchTodoFilter(f) { todoFilter = f; renderTodo(); }
 
 var editingTodoId = null;
@@ -500,6 +581,48 @@ function openTodoDetail(id) {
 
   document.getElementById('todoDetailBody').innerHTML = html;
   overlay.classList.add('active');
+}
+
+function showLinkPreview(type, id) {
+  // Remove existing preview
+  var old = document.getElementById('linkPreviewPopover');
+  if (old) { old.remove(); return; }
+
+  var html = '';
+  var jumpFn = '';
+  if (type === '采购' && typeof items !== 'undefined') {
+    var it = items.find(function(x){ return x.id === id; });
+    if (!it) return;
+    var name = it['商品名称'] || it['名称'] || '';
+    var price = (Number(it['单价']||0) * Number(it['数量']||1)).toFixed(0);
+    var status = it['状态'] || '';
+    html = '<div style="font-weight:700;font-size:15px;margin-bottom:6px">🛒 ' + esc(name) + '</div>';
+    html += '<div style="color:var(--pri);font-weight:800;font-size:18px;margin-bottom:4px">¥' + price + '</div>';
+    html += '<div style="font-size:12px;color:var(--muted)">状态: ' + status + '</div>';
+    jumpFn = "switchTab('purchase');closeTodoDetail();";
+  } else if (type === '记账' && typeof expenses !== 'undefined') {
+    var ex = expenses.find(function(x){ return x.id === id; });
+    if (!ex) return;
+    var name = ex['备注'] || ex['分类'] || '';
+    var amount = Number(ex['金额']||0).toFixed(0);
+    html = '<div style="font-weight:700;font-size:15px;margin-bottom:6px">💰 ' + esc(name) + '</div>';
+    html += '<div style="color:var(--pri);font-weight:800;font-size:18px;margin-bottom:4px">¥' + amount + '</div>';
+    jumpFn = "switchTab('expense');closeTodoDetail();";
+  }
+  if (!html) return;
+
+  var pop = document.createElement('div');
+  pop.id = 'linkPreviewPopover';
+  pop.className = 'link-preview-popover';
+  pop.innerHTML = html + '<button onclick="' + jumpFn + 'this.closest('#linkPreviewPopover').remove()" style="margin-top:10px;width:100%;padding:8px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">查看详情 ➡</button>';
+  document.body.appendChild(pop);
+
+  // Close on click outside
+  setTimeout(function() {
+    document.addEventListener('click', function handler(e) {
+      if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 10);
 }
 
 function jumpToLink(type, id) {

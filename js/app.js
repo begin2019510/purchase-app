@@ -20,7 +20,7 @@
 let items=[], expenses=[];
 let currentStatusFilter='全部',currentCatFilter='全部';
 let batchMode=false,selectedIds=new Set();
-let currentTab='purchase';
+let currentTab=localStorage.getItem('activeTab')||'purchase';
 let logDateState=new Date(Date.now()+8*3600000).toISOString().slice(0,10);
 let expenseViewMode='week';
 let currentWeekFilter=-1;

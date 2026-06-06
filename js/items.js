@@ -187,6 +187,7 @@ function doDetailModalAction(id,nextStatus){
 // ============================================================
 function switchTab(t){
   currentTab=t;
+  try{localStorage.setItem('activeTab',t)}catch(e){}
   // 电脑端标签高亮
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   var tabIndex=t==='purchase'?1:t==='expense'?2:t==='stats'?3:4;
