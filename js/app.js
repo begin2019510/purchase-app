@@ -182,6 +182,8 @@ async function loadAll(){
     try{await loadTodos()}catch(e){console.error('todo err',e);_log('loadTodos: '+e.message)}
   _log('Rendering, items='+items.length+', expenses='+expenses.length);
   try{render()}catch(e){_log('RENDER ERROR: '+e.message);console.error('render error:',e)}
+  // Ensure correct tab visibility after initial render
+  try{switchTab(currentTab)}catch(e){}
   _log('loadAll complete');
   setTimeout(function(){
     try{
