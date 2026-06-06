@@ -136,6 +136,26 @@ function renderTodo() {
   el.innerHTML = html;
 }
 
+function getLinkDisplay(linkType, linkId) {
+  if (!linkType || linkType === '无' || !linkId) return '';
+  if (linkType === '采购' && typeof items !== 'undefined') {
+    var it = items.find(function(x){ return x.id === linkId; });
+    if (it) {
+      var name = it['商品名称'] || it['名称'] || '';
+      var price = (Number(it['单价']||0) * Number(it['数量']||1)).toFixed(0);
+      return '🛒 ' + name + ' (¥' + price + ')';
+    }
+  } else if (linkType === '记账' && typeof expenses !== 'undefined') {
+    var ex = expenses.find(function(x){ return x.id === linkId; });
+    if (ex) {
+      var name = ex['备注'] || ex['分类'] || '';
+      var amount = Number(ex['金额']||0).toFixed(0);
+      return '💰 ' + name + ' (¥' + amount + ')';
+    }
+  }
+  return '🔗 ' + linkType;
+}
+
 function renderTodoCard(t) {
   var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
@@ -175,7 +195,8 @@ function renderTodoCard(t) {
     } catch(e) {}
   }
   if (t.linkType && t.linkType !== '无') {
-    metaHtml += '<div class="todo-link">🔗 ' + (catIcon[t.linkType]||'') + ' ' + t.linkType + '</div>';
+    var linkDisp = getLinkDisplay(t.linkType, t.linkId);
+      if (linkDisp) metaHtml += '<div class="todo-link">' + linkDisp + '</div>';
   }
   if (metaHtml) {
     h += '<div class="todo-meta-row">' + metaHtml + '</div>';
@@ -458,7 +479,8 @@ function openTodoDetail(id) {
   }
 
   if (t.linkType && t.linkType !== '无') {
-    html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value">🔗 ' + (catIcon[t.linkType]||'') + ' ' + t.linkType + (t.linkId ? ' #' + t.linkId.slice(0,8) : '') + '</span></div>';
+    var linkDisp = getLinkDisplay(t.linkType, t.linkId);
+  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="closeTodoDetail();jumpToLink(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' ➡</span></div>';
   }
 
   if (t.completedAt) {
@@ -478,6 +500,15 @@ function openTodoDetail(id) {
 
   document.getElementById('todoDetailBody').innerHTML = html;
   overlay.classList.add('active');
+}
+
+function jumpToLink(type, id) {
+  if (type === '采购') {
+    switchTab('purchase');
+    setTimeout(function(){ openDetailModal(id); }, 300);
+  } else if (type === '记账') {
+    switchTab('expense');
+  }
 }
 
 function closeTodoDetail() {
