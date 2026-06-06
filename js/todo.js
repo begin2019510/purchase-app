@@ -1,5 +1,4 @@
 // todo.js - Todo module
-(function(){
 
 var TODO_API = '/api/todos';
 var todoList = [];
@@ -409,45 +408,5 @@ async function toggleTodoSubtask(todoId, index) {
 
 function onTodoFab() { openTodoModal(); }
 
-App.todo = {
-  loadTodos: loadTodos,
-  renderTodo: renderTodo,
-  renderTodoCalendar: renderTodoCalendar,
-  openTodoModal: openTodoModal,
-  closeTodoModal: closeTodoModal,
-  saveTodo: saveTodo,
-  openTodoDetail: openTodoDetail,
-  closeTodoDetail: closeTodoDetail,
-  completeTodo: completeTodo,
-  deleteTodo: deleteTodo,
-  toggleTodoSubtask: toggleTodoSubtask,
-  switchTodoView: switchTodoView,
-  switchTodoFilter: switchTodoFilter,
-  addSubtask: addSubtask,
-  removeSubtask: removeSubtask,
-  updateSubtaskText: updateSubtaskText,
-  onTodoFab: onTodoFab
-};
 
-window.loadTodos = loadTodos;
-window.renderTodo = renderTodo;
-window.renderTodoCalendar = renderTodoCalendar;
-window.openTodoModal = openTodoModal;
-window.closeTodoModal = closeTodoModal;
-window.saveTodo = saveTodo;
-window.openTodoDetail = openTodoDetail;
-window.closeTodoDetail = closeTodoDetail;
-window.completeTodo = completeTodo;
-window.deleteTodo = deleteTodo;
-window.toggleTodoSubtask = toggleTodoSubtask;
-window.switchTodoView = switchTodoView;
-window.switchTodoFilter = switchTodoFilter;
-window.addSubtask = addSubtask;
-window.removeSubtask = removeSubtask;
-window.updateSubtaskText = updateSubtaskText;
-window.todoCalPrev = todoCalPrev;
-window.todoCalNext = todoCalNext;
-window.selectTodoCalDay = selectTodoCalDay;
-window.onTodoFab = onTodoFab;
 
-})();

@@ -231,8 +231,8 @@ async function setupPush(){
 // ===== Init =====
 showVersion();
 document.getElementById('searchInput').value='';
-setTimeout(function(){document.getElementById('searchInput').value='';render()},100);
-setTimeout(function(){document.getElementById('searchInput').value='';render()},500);
+  // setTimeout(function(){document.getElementById('searchInput').value='';render()},100); // REMOVED: render() not available at auth.js load time
+  // setTimeout(function(){document.getElementById('searchInput').value='';render()},500); // REMOVED: render() not available at auth.js load time
 if('serviceWorker' in navigator) var _pb=document.getElementById('pushBtn');if(_pb)_pb.style.display='';
 
 // ===== Startup Bootstrap =====

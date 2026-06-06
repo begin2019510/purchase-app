@@ -193,7 +193,7 @@ function render(){
   // Update FAB onclick
   var fab=document.getElementById('fabBtn');
   if(fab){
-    if(currentTab==='todo'){fab.onclick=function(){alert('TODO FAB CLICKED'); openTodoModal()}}
+    if(currentTab==='todo'){fab.onclick=function(){openTodoModal()}}
     else if(currentTab==='purchase'){fab.onclick=function(){openModal()}}
     else if(currentTab==='expense'){fab.onclick=function(){openExpenseModal()}}
     else{fab.style.display='none'}
