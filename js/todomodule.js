@@ -508,7 +508,6 @@ async function saveTodo() {
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); return; }
     toast(editingTodoId ? '已更新' : '已创建');
     closeTodoModal();
-    await loadTodos();
     render();
   } catch(e) {
     console.error('saveTodo error:', e);
@@ -644,7 +643,6 @@ async function completeTodo(id) {
   if (r.renewed) toast('✅ 已完成，已自动续期');
   else toast('✅ 已完成');
   closeTodoDetail();
-  await loadTodos();
   render();
 }
 

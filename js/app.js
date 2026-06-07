@@ -81,9 +81,11 @@ function setupSwipe(){
           const status=item['状态']||'待审批';
           const next=NEXT_STATUS[status];
           if(next){
-            await api('PATCH',{ids:[id],status:next});
-            toast(`已更新为"${next}"`);
-            await loadAll();
+            item['\u72b6\u6001']=next;
+            render();
+            const swipeR=await api('PATCH',{ids:[id],status:next});
+            if(swipeR&&swipeR.error){toast('\u66f4\u65b0\u5931\u8d25');await loadAll();}
+            else{}
           }else{toast('已是终态')}
         }
       }else{
@@ -161,49 +163,30 @@ async function cleanupOrphanExpenses(){
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
 async function loadAll(){
-  var _dbg=document.getElementById('debugBanner');
-  function _log(m){console.log('LOADALL:',m);if(_dbg){_dbg.style.display='block';_dbg.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0">'+m+'</div>'}}
-  _log('Starting loadAll, pin='+(getPin()?'YES':'NO'));
-  try{await loadBudgetFromServer()}catch(e){_log('budget error: '+e.message)}
+  var _dbg=document.getElementById("debugBanner");
+  function _log(m){console.log("LOADALL:",m);if(_dbg){_dbg.style.display="block";_dbg.innerHTML+="<div style=\"border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0\">"+m+"</div>"}}
+  _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
   showSkeleton();
   try{
-    _log('Fetching data...');
-    const [r, e] = await Promise.all([api('GET'),expenseApi('GET')]);
-    if(r && !r.error && Array.isArray(r)){items = r;_log('Items loaded: '+r.length)}
-    else{_log('Items result: '+JSON.stringify(r).substring(0,200))}
-    if(e && !e.error && Array.isArray(e)){expenses = e;_log('Expenses loaded: '+e.length)}
-    else{_log('Expenses result: '+JSON.stringify(e).substring(0,200))}
-  }catch(e){console.error('loadAll fetch error:', e);_log('FETCH ERROR: '+e.message)}
+    _log("Fetching data (parallel)...");
+    const [budgetOk, results, todoOk] = await Promise.all([
+      loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
+      Promise.all([api("GET"),expenseApi("GET")]),
+      loadTodos().catch(function(err){_log("todo err: "+err.message);return null})
+    ]);
+    var r=results[0], e=results[1];
+    if(r && !r.error && Array.isArray(r)){items = r;_log("Items loaded: "+r.length)}
+    else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
+    if(e && !e.error && Array.isArray(e)){expenses = e;_log("Expenses loaded: "+e.length)}
+    else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
+  }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
   isLoadingData=false;
-  try{await loadRecurringData()}catch(e){_log('recurring error: '+e.message)}
-  try{await checkRecurring()}catch(e){console.error('recurring err',e);_log('checkRecurring: '+e.message)}
-  try{await checkInstallments()}catch(e){console.error('install err',e);_log('checkInstallments: '+e.message)}
-  try{await cleanupOrphanExpenses()}catch(e){console.error('cleanup err',e);_log('cleanup: '+e.message)}
-    try{await loadTodos()}catch(e){console.error('todo err',e);_log('loadTodos: '+e.message)}
-  _log('Rendering, items='+items.length+', expenses='+expenses.length);
-  try{render()}catch(e){_log('RENDER ERROR: '+e.message);console.error('render error:',e)}
-  // Ensure correct tab visibility after initial render
-  try{switchTab(currentTab)}catch(e){}
-  _log('loadAll complete');
-  setTimeout(function(){
-    try{
-      var listEl=document.getElementById('list');
-      var expEl=document.getElementById('expenseContent');
-      var tabP=document.getElementById('tab-purchase');
-      var tabE=document.getElementById('tab-expense');
-      var authEl=document.getElementById('authScreen');
-      _log('DOM: list='+(listEl?listEl.innerHTML.length+'chars':'NULL')+' display='+(listEl?getComputedStyle(listEl).display:'?'));
-      _log('DOM: tab-purchase display='+(tabP?getComputedStyle(tabP).display:'?')+' visibility='+(tabP?getComputedStyle(tabP).visibility:'?'));
-      _log('DOM: tab-expense display='+(tabE?getComputedStyle(tabE).display:'?'));
-      _log('DOM: authScreen display='+(authEl?authEl.style.display:'?'));
-      _log('DOM: body scrollHeight='+document.body.scrollHeight+' clientHeight='+document.body.clientHeight);
-      if(listEl&&listEl.innerHTML.length>0){
-        _log('LIST sample: '+listEl.innerHTML.substring(0,200));
-      }
-    }catch(e){_log('DOM check error: '+e.message)}
-  },500);
+  Promise.all([loadRecurringData(), checkRecurring(), cleanupOrphanExpenses()])
+    .catch(function(ex){console.log("background tasks error:",ex.message)});
+  _log("Rendering, items="+items.length+", expenses="+expenses.length);
+  try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
+  _log("loadAll complete");
 }
-
 function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
