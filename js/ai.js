@@ -563,11 +563,15 @@ async function submitPurchase() {
     installmentAmount: instAmount,
     installmentStart: getThisMonth()
   };
-  const r = await api('POST', data);
-  if (r && r.error) { alert('添加失败: ' + r.error + (r.detail ? JSON.stringify(r.detail) : '')); return; }
-  toast('采购单已提交，进入待审批状态');
+  // Optimistic: add temp item immediately
+  var _tmp={id:'tmp_'+Date.now(),'商品名称':name,'平台':data.platform||'拼多多','单价':data.price,'数量':data.qty,'状态':'待审批','分类':data.category||'其他','备注':data.note||'','日期':Date.now(),'创建时间':'','分期期数':data.installments||0,'分期金额':0};
+  items.unshift(_tmp);
   closeModal();
-  await loadAll();
+  render();
+  const r = await api('POST', data);
+  if (r && r.error) { toast('添加失败'); items=items.filter(function(x){return x.id!==_tmp.id}); render(); return; }
+  if(r && r.id) _tmp.id = r.id;
+  toast('采购单已提交')
 }
 // --- AI 分析 ---
 // --- AI 自然语言查询 ---
