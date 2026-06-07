@@ -496,6 +496,13 @@ async function saveTodo() {
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
     var r;
+    // Optimistic: close modal and render first
+    if (editingTodoId) {
+      var _ti = todoList.findIndex(function(t){return t.id===editingTodoId});
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; }
+    }
+    closeTodoModal();
+    render();
     if (editingTodoId) {
       body.id = editingTodoId;
       r = await todoApi('PUT', body);
