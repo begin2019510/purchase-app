@@ -507,15 +507,17 @@ async function saveTodo() {
       body.id = editingTodoId;
       r = await todoApi('PUT', body);
     } else {
+      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,subtasks:body.subtasks,completedAt:null};
+      todoList.unshift(_tmpTodo);
+      render();
       r = await todoApi('POST', body);
+      if (r && r.id) _tmpTodo.id = r.id;
     }
     console.log('saveTodo: response', JSON.stringify(r));
 
     if (!r) { toast('保存失败: 服务器无响应'); return; }
-    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); return; }
+    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id}); render(); return; }
     toast(editingTodoId ? '已更新' : '已创建');
-    closeTodoModal();
-    render();
   } catch(e) {
     console.error('saveTodo error:', e);
     toast('保存失败: ' + e.message);
