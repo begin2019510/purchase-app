@@ -273,7 +273,7 @@ function showApprovalModal(id){
     var _item=items.find(function(x){return x.id===id});if(_item)_item['状态']=next;
     closeApprovalModal();render();
     var r=await api('PATCH',{ids:[id],status:next});
-    if(r&&r.error){toast('更新失败');await loadAll();}
+    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().catch(function(){})}
   };
   document.getElementById('approvalOverlay').classList.add('active');
 }
