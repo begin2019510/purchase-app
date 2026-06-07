@@ -257,7 +257,7 @@ async function loadLogs(date) {
   el.textContent = '加载中...';
   dateEl.textContent = logDateState;
   try {
-    const r = await fetch('/api/auth?action=list-logs&date=' + logDateState, {
+    const r = await fetch(API_BASE + '/api/auth?action=list-logs&date=' + logDateState, {
       headers: { 'Authorization': 'Bearer ' + getPin() }
     });
     const d = await r.json();
@@ -433,6 +433,26 @@ function settingsAction(action){
 setupPullToRefresh();
 setupSwipe();
 
+
+// ===== Capacitor Native Init =====
+if (IS_NATIVE) {
+  document.addEventListener('deviceready', async function() {
+    try {
+      if (window.Capacitor.Plugins.StatusBar) {
+        await window.Capacitor.Plugins.StatusBar.setStyle({ style: 'DARK' });
+      }
+      if (window.Capacitor.Plugins.SplashScreen) {
+        await window.Capacitor.Plugins.SplashScreen.hide();
+      }
+      if (window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.addListener('backButton', function() {
+          if (currentTab !== 'purchase') { switchTab('purchase'); }
+          else { window.Capacitor.Plugins.App.exitApp(); }
+        });
+      }
+    } catch(e) { console.log('Capacitor init error:', e); }
+  }, false);
+}
 // === App.app namespace exports ===
 App.app.setupSwipe = setupSwipe;
 App.app.showSkeleton = showSkeleton;

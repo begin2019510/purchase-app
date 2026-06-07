@@ -1,6 +1,6 @@
 ﻿// todo.js - Todo module
 
-var TODO_API = '/api/todos';
+var TODO_API = API_BASE + '/api/todos';
 var todoList = [];
 var todoView = 'list';
 var todoFilter = '全部';

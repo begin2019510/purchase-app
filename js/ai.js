@@ -15,7 +15,7 @@ function parseEvalNote(note) {
   } catch { return null; }
 }
 
-const AI_API='/api/ai';
+const AI_API=API_BASE+'/api/ai';
 let statsChatHistory = []; // Multi-turn chat history for stats AI
 
 async function aiRequest(action,data){
@@ -145,7 +145,7 @@ async function runPurchaseEval() {
   const reason = (document.getElementById('fReason') ? document.getElementById('fReason').value : '').trim();
   
   try {
-    const r = await fetch('/api/ai', {
+    const r = await fetch(API_BASE + '/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() },
       body: JSON.stringify({ action: 'evaluate', data: { productName: name, expectedPrice: null, platform: null, category: null, budgetMin, budgetMax, reason: reason || null } }),
@@ -204,7 +204,7 @@ async function sendPurchaseChat() {
   btn.disabled = true; btn.textContent = '...';
 
   try {
-    const r = await fetch('/api/ai', {
+    const r = await fetch(API_BASE + '/api/ai', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin()},
       body: JSON.stringify({
@@ -455,7 +455,7 @@ async function sendEvalChat() {
   const btn = document.getElementById('evalModalSendBtn');
   btn.disabled = true; btn.textContent = '...';
   try {
-    const r = await fetch('/api/ai', {
+    const r = await fetch(API_BASE + '/api/ai', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin()},
       body: JSON.stringify({

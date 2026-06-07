@@ -1,6 +1,6 @@
 ﻿// api.js - API Layer, Budget, Recurring
-const API='/api/items';
-const EXPENSE_API='/api/expenses';
+const API = API_BASE + '/api/items';
+const EXPENSE_API = API_BASE + '/api/expenses';
 var _budgetCache=null;
 function getBudgets(){if(_budgetCache)return _budgetCache;try{_budgetCache=JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{_budgetCache={}}return _budgetCache}
 function setBudgets(b){_budgetCache=b;localStorage.setItem('purchase_budgets',JSON.stringify(b));syncBudgetToServer(b)}
@@ -8,15 +8,15 @@ function getBudget(m){return getBudgets()[m]||0}
 async function syncBudgetToServer(b){
   try{
     var token=getPin();
-    var r=await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:b})});
-    if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch('/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:b})})}}
+    var r=await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:b})});
+    if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:b})})}}
   }catch(e){}
 }
 async function loadBudgetFromServer(){
   try{
     var token=getPin();
-    var r=await fetch('/api/budgets',{headers:{'Authorization':'Bearer '+token}});
-    if(r.status===401){var nt=await refreshAccessToken();if(nt){r=await fetch('/api/budgets',{headers:{'Authorization':'Bearer '+nt}})}}
+    var r=await fetch(API_BASE + '/api/budgets',{headers:{'Authorization':'Bearer '+token}});
+    if(r.status===401){var nt=await refreshAccessToken();if(nt){r=await fetch(API_BASE + '/api/budgets',{headers:{'Authorization':'Bearer '+nt}})}}
     if(!r.ok)return getBudgets();
     var d=await r.json();
     if(d&&d.data){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
@@ -99,7 +99,7 @@ async function analyzeBudget(){
   el.style.display='block';
   el.innerHTML='<div style="color:var(--muted)">AI 分析中...</div>';
   try{
-    const r=await (await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action:'budget-analyze',data:{prompt,month:m,totalBudget:total,weekBudgets:wo,expenses:expenses}})})).json();
+    const r=await (await fetch(API_BASE + '/api/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({action:'budget-analyze',data:{prompt,month:m,totalBudget:total,weekBudgets:wo,expenses:expenses}})})).json();
     if(r&&(r.reply||r.data||r.ok)){
       const reply=r.data||r.reply||r.result||'';el.innerHTML='<div style="white-space:pre-wrap;line-height:1.6">'+esc(reply)+'</div>';
       const btn=document.createElement('button');
@@ -156,7 +156,7 @@ if(r.status===401){return{error:'会话已过期，请刷新页面'}}
 }
 
 // ===== 固定支出 API =====
-const RECURRING_API = '/api/recurring';
+const RECURRING_API = API_BASE + '/api/recurring';
 async function recurringApi(method, data) {
   const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() } };
   if (data && method !== 'GET') opts.body = JSON.stringify(data);

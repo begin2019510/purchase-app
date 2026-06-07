@@ -19,7 +19,7 @@ async function refreshAccessToken() {
   isRefreshing = true;
   refreshPromise = (async () => {
     try {
-      const r = await fetch('/api/auth?action=refresh', {
+      const r = await fetch(API_BASE + '/api/auth?action=refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
@@ -45,7 +45,7 @@ async function refreshAccessToken() {
 async function doLoginAPI(username,password){
   document.getElementById('authError').textContent='登录中...';
   try{
-    const r=await fetch('/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const r=await fetch(API_BASE + '/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
@@ -58,7 +58,7 @@ async function doRegister(){
   if(!username||!password||!inviteCode){document.getElementById('regError').textContent='请填写所有字段';return}
   document.getElementById('regError').textContent='注册中...';
   try{
-    const r=await fetch('/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
+    const r=await fetch(API_BASE + '/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
     if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';loadAll();}
     else{document.getElementById('regError').textContent=d.error||'注册失败'}
@@ -74,7 +74,7 @@ document.getElementById('regInviteCode').addEventListener('keydown',e=>{if(e.key
 async function loadUserList(){
   const el=document.getElementById('userList');
   try{
-    const r=await fetch('/api/auth?action=list-users',{headers:{'Authorization':'Bearer '+getPin()}});
+    const r=await fetch(API_BASE + '/api/auth?action=list-users',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     if(!d.ok){el.textContent='加载失败';return}
     if(!d.users.length){el.textContent='暂无用户';return}
@@ -97,7 +97,7 @@ async function createInviteCodes(){
   const el=document.getElementById('newInviteCodes');
   el.textContent='生成中...';
   try{
-    const r=await fetch('/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
+    const r=await fetch(API_BASE + '/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
     if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
     else{el.textContent='❌ '+d.error}
@@ -106,7 +106,7 @@ async function createInviteCodes(){
 async function loadInviteList(){
   const el=document.getElementById('inviteList');
   try{
-    const r=await fetch('/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
+    const r=await fetch(API_BASE + '/api/auth?action=list-invites',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
     el.innerHTML=d.codes.map(c=>{
@@ -118,7 +118,7 @@ async function loadInviteList(){
 async function deleteUser(username){
   if(!confirm('确定删除用户 '+username+' ？\n（数据表会保留，仅删除账号）'))return;
   try{
-    const r=await fetch('/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
+    const r=await fetch(API_BASE + '/api/auth?action=delete-user',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({username})});
     const d=await r.json();
     if(d.ok){alert(d.message);loadInviteList();loadUserList();}
     else{alert(d.error)}
@@ -128,7 +128,7 @@ async function debugMyAuth(){
   const el=document.getElementById('debugResult');
   el.textContent='查询中...';
   try{
-    const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
+    const r=await fetch(API_BASE + '/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
   }catch(e){el.textContent='错误: '+e.message}
@@ -137,7 +137,7 @@ async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
   el.textContent='查询中...';
   try{
-    const r=await fetch('/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
+    const r=await fetch(API_BASE + '/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
     el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
   }catch(e){el.textContent='错误: '+e.message}
@@ -147,14 +147,14 @@ async function verifyAndLoad(){
   function _vl(m){console.log('VERIFY:',m);if(_vs){_vs.style.display='block';_vs.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0">'+m+'</div>'}}
   try{
     _vl('Verifying token...');
-    let r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
+    let r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
     _vl('Verify status: '+r.status);
     if(r.status===401){
       _vl('Token expired, trying refresh...');
       const newToken=await refreshAccessToken();
       _vl('Refresh: '+(newToken?'OK':'FAILED'));
       if(newToken){
-        r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
+        r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
         _vl('Re-verify status: '+r.status);
       }
     }
@@ -162,7 +162,7 @@ async function verifyAndLoad(){
       _vl('Auth FAILED, trying refresh one more time...');
       const retryToken=await refreshAccessToken();
       if(retryToken){
-        r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+retryToken}});
+        r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+retryToken}});
         _vl('Retry verify status: '+r.status);
       }
     }
@@ -185,7 +185,7 @@ async function verifyAndLoad(){
 function logout(){
   if(!confirm('确认退出登录？'))return;
   // 通知后端删除 refresh token（best effort）
-  fetch('/api/auth?action=logout',{
+  fetch(API_BASE + '/api/auth?action=logout',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({refreshToken:getRefreshToken()}),
@@ -199,7 +199,7 @@ function logout(){
 
 
 // ===== Service Worker（防循环加载） =====
-if('serviceWorker' in navigator){
+if('serviceWorker' in navigator && !IS_NATIVE){
   var swLoads=JSON.parse(localStorage.getItem('_sw_loads')||'[]');
   var now=Date.now();
   var recent=swLoads.filter(function(t){return now-t<5000});

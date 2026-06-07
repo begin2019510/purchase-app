@@ -1,5 +1,9 @@
-// === App Namespace ===
+﻿// === App Namespace ===
 const App = { utils: {}, auth: {}, api: {}, stats: {}, expense: {}, items: {}, ai: {}, budget: {}, app: {} };
+
+// ===== Platform Detection =====
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
 const APP_VERSION = '3.1.0';

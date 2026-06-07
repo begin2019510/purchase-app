@@ -1,0 +1,24 @@
+﻿{
+    "android":  {
+                    "allowMixedContent":  true
+                },
+    "plugins":  {
+                    "SplashScreen":  {
+                                         "showSpinner":  false,
+                                         "splashFullScreen":  true,
+                                         "launchAutoHide":  true,
+                                         "backgroundColor":  "#f8fafc",
+                                         "splashImmersive":  true
+                                     },
+                    "StatusBar":  {
+                                      "style":  "DARK",
+                                      "backgroundColor":  "#6366f1"
+                                  }
+                },
+    "appName":  "个人管家",
+    "server":  {
+                   "androidScheme":  "https"
+               },
+    "webDir":  ".",
+    "appId":  "com.home.app"
+}
