@@ -1,4 +1,4 @@
-// items.js - Purchase CRUD, Batch, Approval, Detail Modal
+﻿// items.js - Purchase CRUD, Batch, Approval, Detail Modal
 const STEPPER_STEPS=['待评估','待审批','已审批','已下单'];
 const STEPPER_ICONS={'待评估':'🤔','待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
 const STEP_TIME_FIELDS={'待评估':'创建时间','待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};

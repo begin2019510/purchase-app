@@ -159,7 +159,15 @@ async function verifyAndLoad(){
       }
     }
     if(!r.ok){
-      _vl('Auth FAILED, clearing tokens');
+      _vl('Auth FAILED, trying refresh one more time...');
+      const retryToken=await refreshAccessToken();
+      if(retryToken){
+        r=await fetch('/api/auth?action=verify',{headers:{'Authorization':'Bearer '+retryToken}});
+        _vl('Retry verify status: '+r.status);
+      }
+    }
+    if(!r.ok){
+      _vl('Auth FAILED after retry, clearing tokens');
       clearTokens();
       document.getElementById('authScreen').style.display='flex';
       return;

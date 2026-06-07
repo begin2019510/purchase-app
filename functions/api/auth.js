@@ -1,4 +1,4 @@
-// 多用户认证系统 v2
+﻿// 多用户认证系统 v2
 // 存储: Cloudflare KV (IMAGE_STORE)
 // 密码: SHA-256 + salt
 // 会话: JWT (HS256)
@@ -261,7 +261,7 @@ async function handleRegister(request, body, env, KV, JWT_SECRET, cors) {
   };
   await saveUser(KV, username, userData);
 
-  const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 1); // 1小时 access token
+  const token = await createJWT({ username, bitable: tables }, JWT_SECRET, 24); // 24小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
   await logOp(KV, 'register', username, '注册成功（邀请码: ' + inviteResult.type + '）', request).catch(() => {});
@@ -351,7 +351,7 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors, env) {
       await saveUser(KV, username, user);
     } catch (e) { console.error('Todo migration failed:', e.message); }
   }
-  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 1); // 1小时 access token
+  const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 24); // 24小时 access token
   const refreshToken = generateRefreshToken();
   await storeRefreshToken(KV, username, refreshToken);
   await logOp(KV, 'login', username, '登录成功', request).catch(() => {});

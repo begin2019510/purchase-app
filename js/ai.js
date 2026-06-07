@@ -343,9 +343,10 @@ async function cancelFromEval() {
   if (!confirm(reason ? '确定不买了？' + String.fromCharCode(10) + '理由: ' + reason : '确定不买了？')) return;
   try {
   var _cItem=items.find(function(x){return x.id===evalModalItemId});if(_cItem)_cItem['状态']='已取消';
+  if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==evalModalItemId});}
   document.getElementById('evalOverlay').classList.remove('active');
   render();
-  if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==evalModalItemId});}
+  if(currentTab==='todo')renderTodo();
     const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
     toast('已取消采购');

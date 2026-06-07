@@ -1,4 +1,4 @@
-// todo.js - Todo module
+﻿// todo.js - Todo module
 
 var TODO_API = '/api/todos';
 var todoList = [];
@@ -647,22 +647,23 @@ function closeTodoDetail() {
 }
 
 async function completeTodo(id) {
-  var r = await todoApi('PUT', { id: id, status: '已完成' });
-  if (r && r.error) { toast('操作失败: ' + r.error); return; }
-  if (r.renewed) toast('✅ 已完成，已自动续期');
-  else toast('✅ 已完成');
-  closeTodoDetail();
+  var t = todoList.find(function(x){ return x.id === id; });
+  if (t) { t.status = '已完成'; }
   render();
+  var r = await todoApi('PUT', { id: id, status: '已完成' });
+  if (r && r.error) { toast('操作失败: ' + r.error); loadTodos().then(function(){renderTodo()}); return; }
+  if (r.renewed) { toast('✅ 已完成，已自动续期'); loadTodos().then(function(){renderTodo()}); }
+  else toast('✅ 已完成');
 }
 
 async function deleteTodo(id) {
   if (!confirm('确定删除？')) return;
-  var r = await todoApi('DELETE', null, id);
-  if (r && r.error) { toast('删除失败: ' + r.error); return; }
-  toast('已删除');
   closeTodoDetail();
   todoList = todoList.filter(function(t){ return t.id !== id; });
   render();
+  var r = await todoApi('DELETE', null, id);
+  if (r && r.error) { toast('删除失败: ' + r.error); loadTodos().then(function(){renderTodo()}); return; }
+  toast('已删除');
 }
 
 async function toggleTodoSubtask(todoId, index) {
