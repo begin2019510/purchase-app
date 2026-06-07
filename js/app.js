@@ -85,7 +85,7 @@ function setupSwipe(){
             render();
             const swipeR=await api('PATCH',{ids:[id],status:next});
             if(swipeR&&swipeR.error){toast('\u66f4\u65b0\u5931\u8d25');await loadAll();}
-            else{loadTodos().then(function(){if(currentTab==='todo')renderTodo()}).catch(function(){})}
+            else{loadTodos().then(function(){renderTodo()}).catch(function(){})}
           }else{toast('已是终态')}
         }
       }else{

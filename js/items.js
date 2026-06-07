@@ -179,7 +179,7 @@ function doDetailModalAction(id,nextStatus){
   // Fire PATCH in background, don't block UI
   api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
     if(r&&r.error){toast('同步失败，请刷新');loadAll();}
-    else{loadTodos().then(function(){if(currentTab==='todo')renderTodo()}).catch(function(){})}
+    else{loadTodos().then(function(){renderTodo()}).catch(function(){})}
   }).catch(()=>{toast('网络错误，请刷新');loadAll();});
 }
 
@@ -274,7 +274,7 @@ function showApprovalModal(id){
     var _item=items.find(function(x){return x.id===id});if(_item)_item['状态']=next;
     closeApprovalModal();render();
     var r=await api('PATCH',{ids:[id],status:next});
-    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().then(function(){if(currentTab==='todo')renderTodo()}).catch(function(){})}if(next==='已取消'||next==='已退'){if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});if(currentTab==='todo')renderTodo()}}
+    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().then(function(){renderTodo()}).catch(function(){})}if(next==='已取消'||next==='已退'){if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});renderTodo()}}
   };
   document.getElementById('approvalOverlay').classList.add('active');
 }

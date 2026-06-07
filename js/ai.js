@@ -262,7 +262,7 @@ async function cancelPurchase(id) {
   item['状态']='已取消';
   if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});}
   render();
-  if(currentTab==='todo')renderTodo();
+  renderTodo();
   const r = await api('PATCH', { ids: [id], status: '已取消', note: note });
   if (r && r.error) { alert('操作失败: ' + r.error); return; }
   toast('已取消采购');
@@ -347,7 +347,7 @@ async function cancelFromEval() {
   if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==evalModalItemId});}
   document.getElementById('evalOverlay').classList.remove('active');
   render();
-  if(currentTab==='todo')renderTodo();
+  renderTodo();
     const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
     toast('已取消采购');
