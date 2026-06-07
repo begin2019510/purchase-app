@@ -519,7 +519,7 @@ async function handleRefresh(body, KV, JWT_SECRET, cors) {
   await deleteRefreshToken(KV, refreshToken);
 
   // 签发新 access token (1小时)
-  const accessToken = await createJWT({ username: tokenData.username, bitable: user.bitable }, JWT_SECRET, 1);
+  const accessToken = await createJWT({ username: tokenData.username, bitable: user.bitable }, JWT_SECRET, 24);
 
   // 签发新 refresh token
   const newRefreshToken = generateRefreshToken();

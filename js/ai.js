@@ -260,8 +260,9 @@ async function cancelPurchase(id) {
   if (reason) note += '\n===CANCEL_REASON===' + reason;
   
   item['状态']='已取消';
-  render();
   if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});}
+  render();
+  if(currentTab==='todo')renderTodo();
   const r = await api('PATCH', { ids: [id], status: '已取消', note: note });
   if (r && r.error) { alert('操作失败: ' + r.error); return; }
   toast('已取消采购');
