@@ -227,6 +227,8 @@ export async function onRequest(context) {
         context.waitUntil(freshPromise);
         return cached;
       }
+      const data = await feishuFetch("GET", "/bitable/v1/apps/" + APP + "/tables/" + TABLE + "/records?page_size=500", null, env);
+      if (data.code !== 0) return json({ error: "Feishu API error", detail: data }, 500);
       // DEBUG: log raw fields for first item with installments
       const rawItems = data.data?.items || [];
       for (const ri of rawItems) {
