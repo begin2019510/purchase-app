@@ -259,10 +259,12 @@ async function cancelPurchase(id) {
   let note = item['备注'] || '';
   if (reason) note += '\n===CANCEL_REASON===' + reason;
   
+  item['状态']='已取消';
+  render();
+  if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});}
   const r = await api('PATCH', { ids: [id], status: '已取消', note: note });
   if (r && r.error) { alert('操作失败: ' + r.error); return; }
   toast('已取消采购');
-  await loadAll();
 }
 
 // 提交评估：切换到详情页，显示预算区间和AI摘要
@@ -340,11 +342,13 @@ async function cancelFromEval() {
   const reason = document.getElementById('evalReasonInput') ? document.getElementById('evalReasonInput').value.trim() : '';
   if (!confirm(reason ? '确定不买了？' + String.fromCharCode(10) + '理由: ' + reason : '确定不买了？')) return;
   try {
+  var _cItem=items.find(function(x){return x.id===evalModalItemId});if(_cItem)_cItem['状态']='已取消';
+  document.getElementById('evalOverlay').classList.remove('active');
+  render();
+  if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==evalModalItemId});}
     const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
     toast('已取消采购');
-    document.getElementById('evalOverlay').classList.remove('active');
-    await loadAll();
   } catch (e) { toast('操作失败'); }
 }
 

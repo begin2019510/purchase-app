@@ -134,7 +134,7 @@ async function api(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-    if(r.status===401){clearTokens();document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+if(r.status===401){return{error:'会话已过期，请刷新页面'}}
   }
   return r.json();
 }
@@ -150,7 +150,7 @@ async function expenseApi(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-    if(r.status===401){clearTokens();document.getElementById('authScreen').style.display='flex';return{error:'unauthorized'}}
+if(r.status===401){return{error:'会话已过期，请刷新页面'}}
   }
   return r.json();
 }
