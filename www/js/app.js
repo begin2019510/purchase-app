@@ -181,9 +181,9 @@ async function loadAll(){
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
   }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
   isLoadingData=false;
-  // Load recurring data BEFORE render (needed for budget pool calculation)
-  await loadRecurringData().catch(function(ex){console.log("loadRecurringData error:",ex.message)});
-  // Background tasks (non-blocking)
+  loadRecurringData().then(function(){
+    if(currentTab==='expense'||currentTab==='stats') render();
+  }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
   _log("Rendering, items="+items.length+", expenses="+expenses.length);
