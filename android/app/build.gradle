@@ -9,6 +9,19 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+
+        manifestPlaceholders = [
+            JPUSH_PKGNAME : applicationId,
+            JPUSH_APPKEY : "34edba5ff632bfb4af65c6be",
+            JPUSH_CHANNEL : "developer-default",
+            VIVO_APPKEY : "6ea57758f1b54706cb5699ca",
+            VIVO_APPID : "150804"
+        ]
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

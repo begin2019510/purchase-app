@@ -1,4 +1,4 @@
-﻿// api.js - API Layer, Budget, Recurring
+// api.js - API Layer, Budget, Recurring
 const API = API_BASE + '/api/items';
 const EXPENSE_API = API_BASE + '/api/expenses';
 var _budgetCache=null;
@@ -323,7 +323,7 @@ function getBudgetPool(month) {
     .filter(function(e) {
       if (e['类型'] !== '支出' || getMonth(e['日期']) !== month) return false;
       var note = e['备注'] || '';
-      if (note.includes('[采购]') || note.includes('[采购分期]')) return false;
+      if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) return false;
       return true;
     })
     .reduce(function(s, e) { return s + Number(e['金额'] || 0); }, 0);
@@ -374,28 +374,21 @@ function getDynamicWeekBudget(month, weekIndex) {
   var today = now.toISOString().slice(0, 10);
   var currentWeek = getWeekForDate(today, month);
   if (currentWeek < 0) currentWeek = 0;
-  if (weekIndex < currentWeek) return 0;
 
-  // Spending from weeks before current week
+  // Past weeks: show original equal share
+  if (weekIndex < currentWeek) {
+    return pool.available / totalWeeks;
+  }
+
+  // Current + future weeks: equal share of remaining pool
   var priorSpent = 0;
   for (var i = 0; i < currentWeek; i++) {
     priorSpent += getWeekSpending(month, i);
   }
-
-  if (weekIndex === currentWeek) {
-    // Current week: stable budget, divide among all remaining weeks including current
-    var remainingWeeks = totalWeeks - currentWeek;
-    if (remainingWeeks <= 0) return 0;
-    return Math.max(pool.available - priorSpent, 0) / remainingWeeks;
-  } else {
-    // Future weeks: subtract current week spending, divide among weeks AFTER current
-    var currentWeekSpent = getWeekSpending(month, currentWeek);
-    var futureWeeks = totalWeeks - currentWeek - 1;
-    if (futureWeeks <= 0) return 0;
-    return Math.max(pool.available - priorSpent - currentWeekSpent, 0) / futureWeeks;
-  }
+  var remainingWeeks = totalWeeks - currentWeek;
+  if (remainingWeeks <= 0) return 0;
+  return Math.max(pool.available - priorSpent, 0) / remainingWeeks;
 }
-
 App.api.getWeekSpending = getWeekSpending;
 App.api.getDynamicWeekBudget = getDynamicWeekBudget;
 App.api.getBudgetPool = getBudgetPool;

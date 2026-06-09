@@ -1,10 +1,10 @@
-﻿{
+{
     "android":  {
                     "allowMixedContent":  true
                 },
     "plugins":  {
                     "JPush": {
-                        "appKey": "8ce0a7b66c9333eca649c1c2",
+                        "appKey": "34edba5ff632bfb4af65c6be",
                         "channel": "default"
                     },
                     "SplashScreen":  {

@@ -35,6 +35,7 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
+    
     </application>
 
     <!-- Permissions we actually need -->

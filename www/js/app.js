@@ -1,4 +1,4 @@
-﻿// Fallback: stubs for todo module functions (overwritten when todomodule.js loads)
+// Fallback: stubs for todo module functions (overwritten when todomodule.js loads)
 (function(){
   var _todoStub = function(){};
   var _todoAsyncStub = async function(){};
@@ -27,6 +27,10 @@ let currentWeekFilter=-1;
 let calYear, calMonth;
 let calSelectedDate=null;
 
+
+// ===== Pull-to-Refresh & Swipe =====
+let ptrRefreshing=false,ptrStartY=0,ptrDist=0,isPulling=false;
+let swipeEl=null,swipeStartX=0,swipeStartY=0,isSwiping=false,swipeDelta=0;
 // ===== Auth =====
 let isLoadingData=false;
 
@@ -105,47 +109,43 @@ function showSkeleton(){
   else el.innerHTML=skelStats()+skelCards(3);
 }
 function setupPullToRefresh(){
-  const wrapper=document.querySelector('.ptr-wrapper');
-  if(!wrapper)return;
-  const indicator=wrapper.querySelector('.ptr-indicator');
-  const spinner=indicator?.querySelector('.ptr-spinner');
-  const text=indicator?.querySelector('.ptr-text');
-  if(!indicator)return;
-  wrapper.addEventListener('touchstart',e=>{
-    if(window.scrollY>0||ptrRefreshing)return;
+  // Create pull indicator
+  var pullIndicator=document.createElement('div');
+  pullIndicator.id='pullIndicator';
+  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:50px;display:flex;align-items:center;justify-content:center;z-index:9999;transform:translateY(-50px);transition:transform .2s;background:var(--bg,#fff);';
+  pullIndicator.innerHTML='<span style="color:var(--text-muted,#888);font-size:14px">↓ Pull to refresh</span>';
+  document.body.appendChild(pullIndicator);
+
+  document.addEventListener('touchstart',e=>{
+    if(window.scrollY>5||ptrRefreshing)return;
     ptrStartY=e.touches[0].clientY;
     isPulling=true;
   },{passive:true});
-  wrapper.addEventListener('touchmove',e=>{
+  document.addEventListener('touchmove',e=>{
     if(!isPulling)return;
     ptrDist=Math.max(0,e.touches[0].clientY-ptrStartY);
     if(ptrDist>10){
-      const pull=Math.min(ptrDist*0.5,60);
-      indicator.style.transform=`translateY(${pull}px)`;
-      if(spinner)spinner.style.transform=`rotate(${ptrDist*2}deg)`;
-      if(text)text.textContent=pull>50?'松手刷新':'下拉刷新';
+      var pull=Math.min(ptrDist*0.5,60);
+      pullIndicator.style.transform='translateY('+pull+'px)';
+      pullIndicator.querySelector('span').textContent=pull>40?'↑ Release to refresh':'↓ Pull to refresh';
     }
   },{passive:true});
-  wrapper.addEventListener('touchend',async()=>{
+  document.addEventListener('touchend',async()=>{
     if(!isPulling)return;
     isPulling=false;
-    if(ptrDist>50&&!ptrRefreshing){
+    if(ptrDist>80&&!ptrRefreshing){
       ptrRefreshing=true;
-      if(spinner){spinner.classList.add('spinning');spinner.style.transform=''}
-      if(text)text.textContent='刷新中...';
-      indicator.style.transform='translateY(55px)';
-      showSkeleton();
+      pullIndicator.querySelector('span').textContent='Refreshing...';
+      pullIndicator.style.transform='translateY(50px)';
       await loadAll();
-      if(spinner)spinner.classList.remove('spinning');
-      if(text)text.textContent='已刷新';
-      setTimeout(()=>{indicator.style.transform='translateY(0)';ptrRefreshing=false},600);
+      pullIndicator.querySelector('span').textContent='✓ Done';
+      setTimeout(function(){pullIndicator.style.transform='translateY(-50px)';ptrRefreshing=false},600);
     }else{
-      indicator.style.transform='translateY(0)';
+      pullIndicator.style.transform='translateY(-50px)';
     }
     ptrDist=0;
   });
-}
-async function cleanupOrphanExpenses(){
+}async function cleanupOrphanExpenses(){
   try{
     // Delete ALL purchase-related expense records (purchases tracked via items data now)
     var toDelete=expenses.filter(function(e){
@@ -448,9 +448,36 @@ if (IS_NATIVE) {
       if (window.Capacitor.Plugins.JPush) {
         try {
           await window.Capacitor.Plugins.JPush.startJPush();
-          var regId = await window.Capacitor.Plugins.JPush.getRegistrationID();
-                    console.log("JPush RegistrationId:", regId.registrationId);
           await window.Capacitor.Plugins.JPush.requestPermissions();
+          console.log("JPush initialized, waiting for registration ID...");
+          // 延迟获取 registrationId，因为需要时间连接 JPush 服务器
+          setTimeout(async function() {
+            try {
+              var regId = await window.Capacitor.Plugins.JPush.getRegistrationID();
+              console.log("JPush RegistrationId:", regId.registrationId);
+              if (regId.registrationId) {
+                fetch('/api/push/jpush?action=register', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                  body: JSON.stringify({ registrationId: regId.registrationId })
+                }).then(function(r) { return r.json(); }).then(function(d) { console.log('JPush registered:', d); }).catch(function(e) { console.log('JPush register error:', e); });
+              } else {
+                console.log("JPush registration ID is empty, will retry...");
+                // 再次重试
+                setTimeout(async function() {
+                  var regId2 = await window.Capacitor.Plugins.JPush.getRegistrationID();
+                  console.log("JPush RegistrationId (retry):", regId2.registrationId);
+                  if (regId2.registrationId) {
+                    fetch('/api/push/jpush?action=register', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+                      body: JSON.stringify({ registrationId: regId2.registrationId })
+                    }).then(function(r) { return r.json(); }).then(function(d) { console.log('JPush registered:', d); }).catch(function(e) { console.log('JPush register error:', e); });
+                  }
+                }, 5000);
+              }
+            } catch(e) { console.log("JPush getRegistrationID error:", e); }
+          }, 3000);
         } catch(e) { console.log("JPush init error:", e); }
       }
       if (window.Capacitor.Plugins.App) {
