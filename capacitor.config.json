@@ -3,6 +3,10 @@
                     "allowMixedContent":  true
                 },
     "plugins":  {
+                    "JPush": {
+                        "appKey": "8ce0a7b66c9333eca649c1c2",
+                        "channel": "default"
+                    },
                     "SplashScreen":  {
                                          "showSpinner":  false,
                                          "splashFullScreen":  true,
@@ -19,6 +23,6 @@
     "server":  {
                    "androidScheme":  "https"
                },
-    "webDir":  ".",
+    "webDir": "www",
     "appId":  "com.home.app"
 }

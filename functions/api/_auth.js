@@ -1,5 +1,5 @@
-// Shared auth module - imported by all API functions
-export const CORS_ORIGINS = ['https://121212121.top'];
+﻿// Shared auth module - imported by all API functions
+export const CORS_ORIGINS = ['https://121212121.top', 'capacitor://localhost', 'https://localhost', 'http://localhost'];
 
 export function getCorsHeaders(request) {
   const origin = request.headers.get('Origin') || '';

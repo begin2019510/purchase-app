@@ -444,6 +444,23 @@ if (IS_NATIVE) {
       if (window.Capacitor.Plugins.SplashScreen) {
         await window.Capacitor.Plugins.SplashScreen.hide();
       }
+            // JPush
+      if (window.Capacitor.Plugins.JPush) {
+        try {
+          await window.Capacitor.Plugins.JPush.startJPush();
+          var regId = await window.Capacitor.Plugins.JPush.getRegistrationID();
+          console.log("JPush RegistrationId:", regId.registrationId);
+          await window.Capacitor.Plugins.JPush.requestPermissions();
+          // 保存 registrationId 到服务器
+          if (regId.registrationId) {
+            fetch('/api/push/jpush?action=register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+              body: JSON.stringify({ registrationId: regId.registrationId })
+            }).then(function(r) { return r.json(); }).then(function(d) { console.log('JPush registered:', d); }).catch(function(e) { console.log('JPush register error:', e); });
+          }
+        } catch(e) { console.log("JPush init error:", e); }
+      }
       if (window.Capacitor.Plugins.App) {
         window.Capacitor.Plugins.App.addListener('backButton', function() {
           if (currentTab !== 'purchase') { switchTab('purchase'); }

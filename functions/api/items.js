@@ -455,7 +455,19 @@ export async function onRequest(context) {
       const patchCacheSuffix = user.username ? `_${user.username}` : '';
       const patchCacheKey = new Request(url.origin + url.pathname + patchCacheSuffix);
       context.waitUntil(caches.default.delete(patchCacheKey));
-      return json({ results, updated: results.filter(r => r.ok).length });
+      
+      // Send JPush notification for status change
+      if (body.status && user.username) {
+        try {
+          const { handleSend } = await import('./push/jpush.js');
+          const statusEmoji = {'已审批':'✅','已下单':'📦','已到':'🎉','已退':'↩️','已取消':'❌','已归档':'📁'};
+          const emoji = statusEmoji[body.status] || '📋';
+          const pushTitle = emoji + ' 采购状态更新';
+          const pushContent = '采购单状态已变更为: ' + body.status;
+          await handleSend(env, user.username, pushTitle, pushContent, { type: 'status', status: body.status });
+        } catch(e) { console.log('JPush notification error:', e.message); }
+      }
+return json({ results, updated: results.filter(r => r.ok).length });
     }
 
     if (request.method === 'DELETE') {

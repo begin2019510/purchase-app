@@ -1,4 +1,4 @@
-// Todo API
+﻿// Todo API
 import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken } from './_auth.js';
 
 export async function onRequest(context) {
@@ -118,7 +118,16 @@ export async function onRequest(context) {
     });
     const d = await r.json();
     if (d.code !== 0) return json({ error: d.msg || 'Create failed', detail: d }, 500);
-    return json({ id: d.data?.record?.record_id, ok: true }, 201);
+    
+      // Send JPush notification for new todo
+      if (user.username && body.dueDate) {
+        try {
+          const { handleSend } = await import('./push/jpush.js');
+          const dueStr = new Date(body.dueDate).toLocaleDateString('zh-CN');
+          await handleSend(env, user.username, '📋 新待办', body.title + ' (截止: ' + dueStr + ')', { type: 'todo' });
+        } catch(e) { console.log('JPush todo notification error:', e.message); }
+      }
+return json({ id: d.data?.record?.record_id, ok: true }, 201);
   }
 
   if (method === 'PUT') {
