@@ -666,6 +666,11 @@ function openTodoModal(id) {
     document.getElementById("todoLinkType").value = t ? (t.linkType || "\u65e0") : "\u65e0";
     updateLinkOptions();
     document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
+    var projSel = document.getElementById("todoProjectId");
+    if (projSel && typeof getProjectOptions === "function") {
+      projSel.innerHTML = getProjectOptions();
+      projSel.value = t ? (t.projectId || "") : "";
+    }
     if (t && t.dueDate) {
       var d = new Date(t.dueDate);
       var h = d.getHours(), mi = d.getMinutes();
