@@ -462,16 +462,40 @@ setupSwipe();
 // ===== Modal Scroll Lock =====
 // Lock body scroll when any modal overlay is open
 (function(){
+  var scrollY = 0;
+  function lockScroll(){
+    scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + scrollY + 'px';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+  }
+  function unlockScroll(){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    window.scrollTo(0, scrollY);
+  }
   function updateScrollLock(){
     var hasActive = document.querySelector('.modal-overlay.active');
-    if(hasActive){
-      document.body.style.overflow='hidden';
-      document.body.style.touchAction='none';
-    }else{
-      document.body.style.overflow='';
-      document.body.style.touchAction='';
-    }
+    if(hasActive){ lockScroll(); } else { unlockScroll(); }
   }
+  // Intercept touchmove when modal is open to prevent background scroll
+  document.addEventListener('touchmove', function(e){
+    if(!document.querySelector('.modal-overlay.active')) return;
+    // Allow scrolling inside modal content
+    var modal = e.target.closest('.modal-overlay.active .modal');
+    if(!modal){
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, {passive:false});
+  // Watch for class changes
   var observer = new MutationObserver(function(mutations){
     for(var i=0;i<mutations.length;i++){
       var m=mutations[i];
@@ -482,11 +506,8 @@ setupSwipe();
     }
   });
   observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
-  // Also check on any touchstart as fallback
-  document.addEventListener('touchstart', function(){
-    setTimeout(updateScrollLock, 50);
-  }, {passive:true});
 })();
+
 
 
 
