@@ -465,44 +465,26 @@ setupSwipe();
 // ===== Modal Scroll Lock =====
 // Lock body scroll when any modal overlay is open
 (function(){
-  var scrollY = 0;
-  function lockScroll(){
-    scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-    document.body.style.position = 'fixed';
-    document.body.style.top = '-' + scrollY + 'px';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-  }
-  function unlockScroll(){
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.height = '';
-    document.body.style.overflow = '';
-    document.body.style.touchAction = '';
-    window.scrollTo(0, scrollY);
-  }
   function updateScrollLock(){
     var hasActive = document.querySelector('.modal-overlay.active');
-    if(hasActive){ lockScroll(); } else { unlockScroll(); }
+    if(hasActive){
+      document.body.classList.add('modal-open');
+    }else{
+      document.body.classList.remove('modal-open');
+    }
   }
   // Intercept touchmove when modal is open to prevent background scroll
   document.addEventListener('touchmove', function(e){
-    var _mo=document.querySelector('.modal-overlay.active');if(!_mo){return;}console.log('TOUCHMOVE: blocked by modal, target='+e.target.tagName);
-    // Allow scrolling inside modal content
-    var modal = e.target.closest('.modal-overlay.active .modal');
+    if(!document.querySelector('.modal-overlay.active')) return;
+    var modal = e.target.closest('.modal');
     if(!modal){
       e.preventDefault();
-      e.stopPropagation();
     }
   }, {passive:false});
-  // Watch for class changes
+  // Watch for class changes on modal overlays
   var observer = new MutationObserver(function(mutations){
     for(var i=0;i<mutations.length;i++){
-      var m=mutations[i];
-      if(m.attributeName==='class' && m.target.classList.contains('modal-overlay')){
+      if(mutations[i].attributeName==='class' && mutations[i].target.classList.contains('modal-overlay')){
         updateScrollLock();
         return;
       }
