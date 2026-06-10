@@ -730,7 +730,7 @@
 <input type="file" id="stageGalleryInput" accept="image/*" style="display:none" onchange="uploadDetailImage(this)">
 
 <!-- Project Modal -->
-<div class="overlay" id="projectModalOverlay" onclick="if(event.target===this)closeProjectModal()">
+<div class="modal-overlay" id="projectModalOverlay" onclick="if(event.target===this)closeProjectModal()">
   <div class="modal">
     <div class="modal-header">
       <h3 id="projectModalTitle">新建项目</h3>
@@ -771,7 +771,7 @@
 </div>
 
 <!-- Project Detail Overlay -->
-<div class="overlay" id="projectDetailOverlay" onclick="if(event.target===this)closeProjectDetail()">
+<div class="modal-overlay" id="projectDetailOverlay" onclick="if(event.target===this)closeProjectDetail()">
   <div class="modal" style="max-height:80vh;overflow-y:auto">
     <div class="modal-header">
       <h3>项目详情</h3>
