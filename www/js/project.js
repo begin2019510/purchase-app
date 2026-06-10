@@ -260,9 +260,6 @@ function getProjectOptions() {
     }
   });
   return html;
-}).map(function(p) {
-    return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
-  }).join('');
 }
 
 async function archiveProject(id) {
