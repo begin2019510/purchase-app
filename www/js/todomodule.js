@@ -689,19 +689,38 @@ function closeTodoModal() {
 function renderSubtaskRows() {
   var el = document.getElementById("todoSubtaskList");
   if (!el) return;
-  var html = "";
+  el.innerHTML = "";
   todoSubtaskRows.forEach(function(s, i) {
-    html += '<div class="subtask-row">';
-    html += '<input type="text" class="subtask-input" value="' + escAttr(s.text || "") + '" onchange="updateSubtaskText(' + i + ', this.value)">';
-    html += '<select class="subtask-pri-select" onchange="updateSubtaskPriority(' + i + ', this.value)">';
-    ["高","中","低"].forEach(function(p){
-      html += '<option value="' + p + '"' + ((s.priority||"中")===p?" selected":"") + '>' + p + '</option>';
+    var row = document.createElement("div");
+    row.className = "subtask-row";
+    
+    var input = document.createElement("input");
+    input.type = "text";
+    input.className = "subtask-input";
+    input.value = s.text || "";
+    input.onchange = function() { updateSubtaskText(i, this.value); };
+    row.appendChild(input);
+    
+    var sel = document.createElement("select");
+    sel.className = "subtask-pri-select";
+    sel.onchange = function() { updateSubtaskPriority(i, this.value); };
+    ["高","中","低"].forEach(function(p) {
+      var opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      if ((s.priority || "中") === p) opt.selected = true;
+      sel.appendChild(opt);
     });
-    html += '</select>';
-    html += '<button class="subtask-del" onclick="removeSubtask(' + i + ')">\u2715</button>';
-    html += '</div>';
+    row.appendChild(sel);
+    
+    var btn = document.createElement("button");
+    btn.className = "subtask-del";
+    btn.textContent = "✕";
+    btn.onclick = function() { removeSubtask(i); };
+    row.appendChild(btn);
+    
+    el.appendChild(row);
   });
-  el.innerHTML = html;
 }
 
 function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false}); renderSubtaskRows(); }
