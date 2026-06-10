@@ -187,6 +187,7 @@ function doDetailModalAction(id,nextStatus){
 
 // ============================================================
 function switchTab(t){
+  console.log("DBG_SWITCHTAB t="+t+" proj="+document.getElementById("tab-project")?.style.display);
   currentTab=t;
   try{localStorage.setItem('activeTab',t)}catch(e){}
   // 电脑端标签高亮
@@ -216,7 +217,9 @@ function switchTab(t){
   var fab=document.getElementById('fabBtn');
   if(fab){
     if(t==='todo'){fab.onclick=function(){openTodoModal()}}
-    else{fab.onclick=function(){currentTab==='purchase'?openModal():openExpenseModal()}}
+    else if(t==='project'){fab.onclick=function(){openProjectModal()}}
+    else if(t==='purchase'){fab.onclick=function(){openModal()}}
+    else{fab.onclick=function(){openExpenseModal()}}
   }
 }
 

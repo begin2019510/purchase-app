@@ -204,10 +204,10 @@ async function loadAll(){
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
     // Load projects (non-blocking)
-  if(typeof loadProjects==='function') loadProjects().then(function(){if(typeof renderProject==='function') renderProject()}).catch(function(e){console.log('projects:',e.message)});
+  if(typeof loadProjects==='function') loadProjects().then(function(){if(typeof renderProject==="function"){console.log("CALLING renderProject from loadProjects");renderProject()}}).catch(function(e){console.log('projects:',e.message)});
   _log("Rendering, items="+items.length+", expenses="+expenses.length);
   try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
-  _log("loadAll complete");
+  _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200)}));
 }
 
 function render(){
@@ -215,6 +215,7 @@ function render(){
   else if(currentTab==='expense') renderExpense();
   else if(currentTab==='stats') renderStats();
   else if(currentTab==='todo') renderTodo();
+  else if(currentTab==='project' && typeof renderProject==='function') renderProject();
   updateHeader();
   // Update FAB onclick
   var fab=document.getElementById('fabBtn');
