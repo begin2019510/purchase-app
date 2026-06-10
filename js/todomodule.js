@@ -6,6 +6,9 @@ var todoView = 'list';
 var todoFilter = '全部';
 var todoCalYear, todoCalMonth;
 var todoCalSelected = null;
+var ganttExpanded = {};
+var ganttViewMode = "week";
+var ganttWeekOffset = 0;
 
 async function todoApi(method, body, id) {
   var url = TODO_API;
@@ -204,6 +207,13 @@ function renderTodoCard(t) {
   }
 
   // Link
+  // Project link
+  if (t.projectId && typeof projectList !== 'undefined') {
+    var proj = projectList.find(function(p){ return p.id === t.projectId; });
+    if (proj) {
+      html += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
+    }
+  }
   if (t.linkType && t.linkType !== '无') {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
     if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' ➡</div>';
@@ -219,74 +229,275 @@ function renderTodoCard(t) {
   return h;
 }
 
-function buildGanttHtml() {
+﻿function buildGanttHtml() {
+  var now = new Date(Date.now()+8*3600000);
+  var todayStr = now.toISOString().slice(0,10);
+  var html = '';
+
+  html += '<div class="gantt-wrapper">';
+  html += '<div class="gantt-toolbar">';
+  html += '<div style="display:flex;align-items:center;gap:8px">';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(-1)">&#8592;</button>';
   
+  if (ganttViewMode === 'week') {
+    var weekStart = getGanttWeekStart();
+    var weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    var ws = (weekStart.getMonth()+1)+'/'+weekStart.getDate();
+    var we = (weekEnd.getMonth()+1)+'/'+weekEnd.getDate();
+    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + weekStart.getFullYear() + '\u5e74 ' + ws + ' - ' + we + '</span>';
+  } else {
+    if (!todoCalYear) { todoCalYear = now.getUTCFullYear(); todoCalMonth = now.getUTCMonth(); }
+    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + todoCalYear + '\u5e74' + (todoCalMonth+1) + '\u6708</span>';
+  }
+  
+  html += '<button class="cal-nav-btn" onclick="ganttNav(1)">&#8594;</button>';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(0)" style="font-size:11px;padding:3px 8px">\u4eca\u5929</button>';
+  html += '</div>';
+  html += '<div class="gantt-view-switcher">';
+  html += '<button class="gantt-view-btn' + (ganttViewMode==='week'?' active':'') + '" onclick="switchGanttView(\'week\')">\u5468</button>';
+  html += '<button class="gantt-view-btn' + (ganttViewMode==='month'?' active':'') + '" onclick="switchGanttView(\'month\')">\u6708</button>';
+  html += '</div>';
+  html += '</div>';
 
-  // Use same month as calendar
+  if (ganttViewMode === 'week') { html += buildGanttWeekView(); }
+  else { html += buildGanttMonthView(); }
+
+  html += '</div>';
+  return html;
+}
+
+function getGanttWeekStart() {
+  var now = new Date(Date.now()+8*3600000);
+  var day = now.getUTCDay();
+  var diff = day === 0 ? 6 : day - 1;
+  var monday = new Date(now);
+  monday.setDate(now.getDate() - diff + ganttWeekOffset * 7);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function ganttNav(dir) {
+  if (dir === 0) {
+    ganttWeekOffset = 0;
+    todoCalYear = null; todoCalMonth = null;
+  } else if (ganttViewMode === 'week') {
+    ganttWeekOffset += dir;
+  } else {
+    if (!todoCalYear) { var n = new Date(Date.now()+8*3600000); todoCalYear = n.getUTCFullYear(); todoCalMonth = n.getUTCMonth(); }
+    todoCalMonth += dir;
+    if (todoCalMonth > 11) { todoCalMonth = 0; todoCalYear++; }
+    if (todoCalMonth < 0) { todoCalMonth = 11; todoCalYear--; }
+  }
+  renderTodo();
+}
+
+function switchGanttView(mode) {
+  ganttViewMode = mode;
+  renderTodo();
+}
+
+function toggleGanttExpand(id) {
+  ganttExpanded[id] = !ganttExpanded[id];
+  renderTodo();
+}
+
+function buildGanttWeekView() {
+  var weekStart = getGanttWeekStart();
+  var today = new Date(Date.now()+8*3600000);
+  var todayStr = today.toISOString().slice(0,10);
+  var dayNames = ['\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d','\u65e5'];
+  var weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  
+  var weekTodos = todoList.filter(function(t) {
+    if (!t.dueDate) return false;
+    var d = new Date(t.dueDate);
+    return d >= weekStart && d < weekEnd;
+  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+  
+  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
+  var html = '<div class="gantt-container">';
+  html += '<div class="gantt-scroll">';
+  
+  html += '<div class="gantt-header">';
+  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    var dateStr = d.toISOString().slice(0,10);
+    var isToday = dateStr === todayStr;
+    var isWeekend = i >= 5;
+    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">';
+    html += '<div class="gantt-day-name">' + dayNames[i] + '</div>';
+    html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  
+  var allTodos = weekTodos.concat(noDueTodos);
+  if (allTodos.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u5468\u65e0\u5f85\u529e</div>';
+  }
+  
+  allTodos.forEach(function(t) {
+    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
+    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
+    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    var dueHour = dueDate ? dueDate.getUTCHours() : -1;
+    var dueMin = dueDate ? dueDate.getUTCMinutes() : 0;
+    var subs = [];
+    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
+    var hasSubs = subs.length > 0;
+    
+    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
+    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
+    html += '<div class="gantt-label">';
+    if (hasSubs) {
+      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
+    }
+    html += '<span class="gantt-label-text" style="' + (isDone ? 'text-decoration:line-through;opacity:.5' : '') + '">' + esc(t.title.slice(0,12)) + (t.title.length>12?'..':'') + '</span>';
+    html += '</div>';
+    
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(weekStart); d.setDate(d.getDate() + i);
+      var dateStr = d.toISOString().slice(0,10);
+      var isDueDay = dueDate && dueDate.toISOString().slice(0,10) === dateStr;
+      var isTodayCol = dateStr === todayStr;
+      html += '<div class="gantt-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
+      if (isDueDay) {
+        var barStyle = 'background:' + priColor + ';';
+        if (dueHour > 0) {
+          var leftPct = Math.round(dueHour / 24 * 100);
+          var widthPct = Math.max(8, Math.round((24 - dueHour) / 24 * 50));
+          barStyle += 'margin-left:' + leftPct + '%;width:' + widthPct + '%;';
+        }
+        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="' + barStyle + '">';
+        if (dueHour > 0) {
+          html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':' + String(dueMin).padStart(2,'0') + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    
+    if (hasSubs && ganttExpanded[t.id]) {
+      subs.forEach(function(sub) {
+        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
+        html += '<div class="gantt-sub-row">';
+        html += '<div class="gantt-label gantt-sub-label">';
+        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
+        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
+        html += '</div>';
+        for (var i = 0; i < 7; i++) {
+          var d2 = new Date(weekStart); d2.setDate(d2.getDate() + i);
+          html += '<div class="gantt-sub-cell gantt-cell">';
+          if (dueDate && dueDate.toISOString().slice(0,10) === d2.toISOString().slice(0,10)) {
+            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+  });
+  
+  html += '</div></div>';
+  return html;
+}
+
+function buildGanttMonthView() {
   if (!todoCalYear) { var now = new Date(Date.now()+8*3600000); todoCalYear = now.getUTCFullYear(); todoCalMonth = now.getUTCMonth(); }
-
   var year = todoCalYear, month = todoCalMonth;
   var daysInMonth = new Date(year, month+1, 0).getDate();
   var today = new Date(Date.now()+8*3600000).toISOString().slice(0,10);
-
-  // Get todos with due dates in this month
+  
   var monthTodos = todoList.filter(function(t) {
     if (!t.dueDate) return false;
     var d = new Date(t.dueDate);
     return d.getUTCFullYear() === year && d.getUTCMonth() === month;
   }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
-
-  var html = '';
-
-  // Month nav
-  html += '<div class="gantt-nav">';
-  html += '<button class="cal-nav-btn" onclick="todoCalPrev();renderTodoGantt()">←</button>';
-  html += '<span class="cal-nav-title">' + year + '年' + (month+1) + '月</span>';
-  html += '<button class="cal-nav-btn" onclick="todoCalNext();renderTodoGantt()">→</button>';
-  html += '</div>';
-
-  if (monthTodos.length === 0) {
-    html += '<div style="text-align:center;padding:40px;color:var(--muted)">本月无待办</div>';
-    return html;
-    return;
-  }
-
-  // Gantt chart
-  html += '<div class="gantt-container">';
+  
+  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
+  var allTodos = monthTodos.concat(noDueTodos);
+  
+  var html = '<div class="gantt-container">';
   html += '<div class="gantt-scroll">';
-
-  // Header row (days)
+  
   html += '<div class="gantt-header">';
-  html += '<div class="gantt-label-header">待办</div>';
+  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
   for (var d = 1; d <= daysInMonth; d++) {
     var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
     var isToday = dateStr === today;
-    var isWeekend = new Date(year, month, d).getDay() === 0 || new Date(year, month, d).getDay() === 6;
-    html += '<div class="gantt-day' + (isToday ? ' today' : '') + (isWeekend ? ' weekend' : '') + '">' + d + '</div>';
+    var dow = new Date(year, month, d).getDay();
+    var isWeekend = dow === 0 || dow === 6;
+    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">' + d + '</div>';
   }
   html += '</div>';
-
-  // Rows
-  monthTodos.forEach(function(t) {
-    var dueDate = new Date(t.dueDate);
-    var dueDay = dueDate.getUTCDate();
-    var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
-    var isDone = t.status === '已完成';
-
-    html += '<div class="gantt-row" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
-    html += '<div class="gantt-label">' + esc(t.title.slice(0,10)) + (t.title.length>10?'..':'') + '</div>';
+  
+  if (allTodos.length === 0) {
+    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u6708\u65e0\u5f85\u529e</div>';
+    html += '</div></div>';
+    return html;
+  }
+  
+  allTodos.forEach(function(t) {
+    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
+    var dueDay = dueDate ? dueDate.getUTCDate() : -1;
+    var dueHour = dueDate ? dueDate.getUTCHours() : -1;
+    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
+    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
+    var subs = [];
+    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
+    var hasSubs = subs.length > 0;
+    
+    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
+    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
+    html += '<div class="gantt-label">';
+    if (hasSubs) {
+      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
+    }
+    html += '<span class="gantt-label-text">' + esc(t.title.slice(0,10)) + (t.title.length>10?'..':'') + '</span>';
+    html += '</div>';
     for (var d = 1; d <= daysInMonth; d++) {
       var isDue = d === dueDay;
       html += '<div class="gantt-cell' + (isDue ? ' gantt-due' : '') + '">';
-      if (isDue) html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="background:' + priColor + '"></div>';
+      if (isDue) {
+        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="background:' + priColor + '">';
+        if (dueHour > 0) html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':00</span>';
+        html += '</div>';
+      }
       html += '</div>';
     }
     html += '</div>';
+    
+    if (hasSubs && ganttExpanded[t.id]) {
+      subs.forEach(function(sub) {
+        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
+        html += '<div class="gantt-sub-row">';
+        html += '<div class="gantt-label gantt-sub-label">';
+        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
+        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
+        html += '</div>';
+        for (var d = 1; d <= daysInMonth; d++) {
+          html += '<div class="gantt-sub-cell gantt-cell">';
+          if (d === dueDay) {
+            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+    }
+    html += '</div>';
   });
-
+  
   html += '</div></div>';
   return html;
 }
+
 
 function buildCalendarHtml() {
   
@@ -367,20 +578,21 @@ function todoCalPrev() { todoCalMonth--; if (todoCalMonth < 0) { todoCalMonth = 
 function todoCalNext() { todoCalMonth++; if (todoCalMonth > 11) { todoCalMonth = 0; todoCalYear++; } todoCalSelected = null; renderTodoCalendar(); }
 function selectTodoCalDay(dateStr) { todoCalSelected = todoCalSelected === dateStr ? null : dateStr; renderTodoCalendar(); }
 
-function formatDueDate(dueDate) {
-  if (!dueDate) return '';
-  var d = new Date(dueDate);
+function formatDueDate(d) {
+  if (!d) return "";
+  var dt = new Date(d);
   var now = new Date(Date.now() + 8*3600000);
-  var ds = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
-  var ns = now.toISOString().slice(0,10);
-  if (ds === ns) return '今天';
-  var tm = new Date(now.getTime() + 86400000);
-  var ts = tm.toISOString().slice(0,10);
-  if (ds === ts) return '明天';
-  var diff = Math.floor((new Date(ds) - new Date(ns)) / 86400000);
-  if (diff < 0) return '已过期 ' + Math.abs(diff) + '天';
-  if (diff <= 7) return diff + '天后';
-  return (d.getUTCMonth()+1) + '月' + d.getUTCDate() + '日';
+  var today = now.toISOString().slice(0,10);
+  var tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0,10);
+  var ds = dt.toISOString();
+  var dateStr = ds.slice(0,10);
+  var h = dt.getUTCHours(), m = dt.getUTCMinutes();
+  var timeStr = (h > 0 || m > 0) ? " " + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") : "";
+  if (dateStr === today) return "今天" + timeStr;
+  if (dateStr === tomorrow) return "明天" + timeStr;
+  var md = (dt.getUTCMonth()+1) + "月" + dt.getUTCDate() + "日";
+  if (dt.getUTCFullYear() !== now.getUTCFullYear()) md = dt.getUTCFullYear() + "年" + md;
+  return md + timeStr;
 }
 
 function getDueClass(dueDate, status) {
@@ -423,36 +635,36 @@ function updateLinkOptions() {
 
 function openTodoModal(id) {
   editingTodoId = id || null;
-  var overlay = document.getElementById('todoModalOverlay');
+  var overlay = document.getElementById("todoModalOverlay");
   if (!overlay) return;
-
   var t = null;
   if (id) t = todoList.find(function(x){ return x.id === id; });
-
-  document.getElementById('todoTitle').value = t ? t.title : '';
-  document.getElementById('todoDesc').value = t ? t.description : '';
-  document.getElementById('todoPriority').value = t ? t.priority : '中';
-  document.getElementById('todoCategory').value = t ? t.category : '其他';
-  document.getElementById('todoRepeat').value = t ? t.repeat : '无';
-  document.getElementById('todoLinkType').value = t ? (t.linkType || '无') : '无';
+  document.getElementById("todoTitle").value = t ? t.title : "";
+  document.getElementById("todoDesc").value = t ? t.description : "";
+  document.getElementById("todoPriority").value = t ? t.priority : "中";
+  document.getElementById("todoCategory").value = t ? t.category : "其他";
+  document.getElementById("todoRepeat").value = t ? t.repeat : "无";
+  document.getElementById("todoLinkType").value = t ? (t.linkType || "无") : "无";
   updateLinkOptions();
-  document.getElementById('todoLinkId').value = t ? (t.linkId || '') : '';
-
+  document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
   if (t && t.dueDate) {
     var d = new Date(t.dueDate);
-    document.getElementById('todoDueDate').value = d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+    var h = d.getUTCHours(), mi = d.getUTCMinutes();
+    document.getElementById("todoDueDate").value = d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0") + "T" + String(h).padStart(2,"0") + ":" + String(mi).padStart(2,"0");
   } else {
-    document.getElementById('todoDueDate').value = '';
+    document.getElementById("todoDueDate").value = "";
   }
-
-  // Subtasks
   todoSubtaskRows = [];
-  if (t && t.subtasks && t.subtasks !== '[]') {
-    try { todoSubtaskRows = JSON.parse(t.subtasks); } catch(e) {}
+  if (t && t.subtasks && t.subtasks !== "[]") {
+    try {
+      var parsed = JSON.parse(t.subtasks);
+      if (Array.isArray(parsed)) {
+        todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"中"}; });
+      }
+    } catch(e) {}
   }
   renderSubtaskRows();
-
-  overlay.classList.add('active');
+  overlay.classList.add("active");
 }
 
 function closeTodoModal() {
@@ -461,13 +673,18 @@ function closeTodoModal() {
 }
 
 function renderSubtaskRows() {
-  var el = document.getElementById('todoSubtaskList');
+  var el = document.getElementById("todoSubtaskList");
   if (!el) return;
-  var html = '';
+  var html = "";
   todoSubtaskRows.forEach(function(s, i) {
     html += '<div class="subtask-row">';
-    html += '<input type="text" class="subtask-input" value="' + esc(s.text || '') + '" onchange="updateSubtaskText(' + i + ', this.value)">' ;
-    html += '<button class="subtask-del" onclick="removeSubtask(' + i + ')">✕</button>';
+    html += '<input type="text" class="subtask-input" value="' + escAttr(s.text || "") + '" onchange="updateSubtaskText(' + i + ', this.value)">';
+    html += '<select class="subtask-pri-select" onchange="updateSubtaskPriority(' + i + ', this.value)">';
+    ["高","中","低"].forEach(function(p){
+      html += '<option value="' + p + '"' + ((s.priority||"中")===p?" selected":"") + '>' + p + '</option>';
+    });
+    html += '</select>';
+    html += '<button class="subtask-del" onclick="removeSubtask(' + i + ')">\u2715</button>';
     html += '</div>';
   });
   el.innerHTML = html;
@@ -476,6 +693,19 @@ function renderSubtaskRows() {
 function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false}); renderSubtaskRows(); }
 function removeSubtask(i) { todoSubtaskRows.splice(i, 1); renderSubtaskRows(); }
 function updateSubtaskText(i, v) { if (todoSubtaskRows[i]) todoSubtaskRows[i].text = v; }
+function updateSubtaskPriority(i, val) { if(todoSubtaskRows[i]) todoSubtaskRows[i].priority = val; }
+function sortSubtasks(arr) {
+  var pri = {"高":0,"中":1,"低":2};
+  return arr.slice().sort(function(a,b){
+    if(a.done!==b.done) return a.done?1:-1;
+    return (pri[a.priority||"中"]||1)-(pri[b.priority||"中"]||1);
+  });
+}
+function getSubtaskProgress(subtasks) {
+  if(!subtasks||subtasks==="[]")return null;
+  try{var arr=typeof subtasks==="string"?JSON.parse(subtasks):subtasks;if(!Array.isArray(arr)||arr.length===0)return null;var done=arr.filter(function(s){return s.done}).length;return{done:done,total:arr.length,pct:Math.round(done/arr.length*100)}}catch(e){return null}
+}
+
 
 async function saveTodo() {
   try {
@@ -490,6 +720,7 @@ async function saveTodo() {
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
       linkType: document.getElementById('todoLinkType').value,
+      projectId: (document.getElementById('todoProjectId')||{}).value || '',
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); }))
     };
@@ -499,7 +730,7 @@ async function saveTodo() {
     // Optimistic: close modal and render first
     if (editingTodoId) {
       var _ti = todoList.findIndex(function(t){return t.id===editingTodoId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
     }
     closeTodoModal();
     render();

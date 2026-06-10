@@ -89,8 +89,19 @@ async function createUserTables(env, username) {
     { field_name: '关联类型', type: 3, property: { options: [{ name: '无' }, { name: '采购' }, { name: '记账' }] } },
     { field_name: '关联ID', type: 1 },
     { field_name: '完成时间', type: 5 },
+    { field_name: '项目ID', type: 1 },
   ]);
-  return { purchaseApp, purchaseTable, expenseApp, expenseTable, todoApp, todoTable };
+
+    const projectApp = await createBitable(feishuToken, `[${username}] Projects`);
+  const projectTable = await createTable(feishuToken, projectApp, 'Projects', [
+    { field_name: '名称', type: 1 },
+    { field_name: '描述', type: 1 },
+    { field_name: '截止日期', type: 5 },
+    { field_name: '状态', type: 3, property: { options: [{ name: '进行中' }, { name: '已完成' }, { name: '已归档' }] } },
+    { field_name: '颜色', type: 1 },
+    { field_name: '进度', type: 2 },
+  ]);
+  return { purchaseApp, purchaseTable, expenseApp, expenseTable, todoApp, todoTable, projectApp, projectTable };
 }
 
 // ===== KV 存储 =====
@@ -350,6 +361,24 @@ async function handleLogin(request, body, KV, JWT_SECRET, cors, env) {
       user.bitable.todoTable = todoTable;
       await saveUser(KV, username, user);
     } catch (e) { console.error('Todo migration failed:', e.message); }
+  }
+  // Auto-migrate: create project table if missing
+  if (user.bitable && !user.bitable.projectApp) {
+    try {
+      const feishuToken2 = await getFeishuTokenDirect(env.FEISHU_APP_ID, env.FEISHU_APP_SECRET);
+      const projectApp = await createBitable(feishuToken2, `[${username}] Projects`);
+      const projectTable = await createTable(feishuToken2, projectApp, 'Projects', [
+        { field_name: '名称', type: 1 },
+        { field_name: '描述', type: 1 },
+        { field_name: '截止日期', type: 5 },
+        { field_name: '状态', type: 3, property: { options: [{ name: '进行中' }, { name: '已完成' }, { name: '已归档' }] } },
+        { field_name: '颜色', type: 1 },
+        { field_name: '进度', type: 2 },
+      ]);
+      user.bitable.projectApp = projectApp;
+      user.bitable.projectTable = projectTable;
+      await saveUser(KV, username, user);
+    } catch (e) { console.error('Project migration failed:', e.message); }
   }
   const token = await createJWT({ username, bitable: user.bitable }, JWT_SECRET, 24); // 24小时 access token
   const refreshToken = generateRefreshToken();

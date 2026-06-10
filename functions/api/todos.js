@@ -31,6 +31,7 @@ export async function onRequest(context) {
         {name:'子任务', type:1}, {name:'图片', type:1},
         {name:'关联类型', type:3, property:{options:[{name:'无'},{name:'采购'},{name:'记账'}]}},
         {name:'关联ID', type:1}, {name:'完成时间', type:5},
+        {name:'项目ID', type:1},
       ];
       for (const f of needed) {
         if (!names.includes(f.name)) {
@@ -65,6 +66,7 @@ export async function onRequest(context) {
       linkType: feishuStr(f['关联类型']) || '无',
       linkId: feishuStr(f['关联ID']),
       completedAt: f['完成时间'] || null,
+      projectId: feishuStr(f['项目ID']),
     };
   }
 
@@ -96,6 +98,7 @@ export async function onRequest(context) {
       '子任务': body.subtasks || '[]',
       '关联类型': body.linkType || '无',
       '关联ID': body.linkId || '',
+      '项目ID': body.projectId || '',
     };
     if (body.dueDate) fields['截止日期'] = new Date(body.dueDate).getTime();
     if (body.image && body.image.startsWith('data:')) {
@@ -159,6 +162,7 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
     if (body.subtasks !== undefined) fields['子任务'] = body.subtasks;
     if (body.linkType !== undefined) fields['关联类型'] = body.linkType;
     if (body.linkId !== undefined) fields['关联ID'] = body.linkId;
+    if (body.projectId !== undefined) fields['项目ID'] = body.projectId;
     if (body.image !== undefined) {
       if (body.image && body.image.startsWith('data:')) {
         const KV = env.IMAGE_STORE;

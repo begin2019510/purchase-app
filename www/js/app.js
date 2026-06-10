@@ -5,7 +5,7 @@
   var fns = [
     'renderTodo','renderTodoCalendar','loadTodos','openTodoModal','closeTodoModal',
     'saveTodo','openTodoDetail','closeTodoDetail','completeTodo','deleteTodo',
-    'toggleTodoSubtask','switchTodoView','switchTodoFilter','addSubtask',
+    'toggleTodoSubtask','switchTodoView','switchTodoFilter','addSubtask','renderProject','loadProjects','openProjectModal','closeProjectModal','saveProject','openProjectDetail','closeProjectDetail',
     'removeSubtask','updateSubtaskText','todoCalPrev','todoCalNext',
     'selectTodoCalDay','onTodoFab','formatDueDate','getDueClass'
   ];
@@ -109,39 +109,46 @@ function showSkeleton(){
   else el.innerHTML=skelStats()+skelCards(3);
 }
 function setupPullToRefresh(){
-  // Create pull indicator
   var pullIndicator=document.createElement('div');
   pullIndicator.id='pullIndicator';
-  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:50px;display:flex;align-items:center;justify-content:center;z-index:9999;transform:translateY(-50px);transition:transform .2s;background:var(--bg,#fff);';
-  pullIndicator.innerHTML='<span style="color:var(--text-muted,#888);font-size:14px">↓ Pull to refresh</span>';
+  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;justify-content:center;z-index:9999;transform:translateY(-60px);transition:transform .4s cubic-bezier(.25,.46,.45,.94);background:var(--bg,#fff);';
+  pullIndicator.innerHTML='<div class="ptr-spinner" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .2s">↓</div>';
   document.body.appendChild(pullIndicator);
+  var spinner=pullIndicator.querySelector('.ptr-spinner');
 
-  document.addEventListener('touchstart',e=>{
+  document.addEventListener('touchstart',function(e){
     if(window.scrollY>5||ptrRefreshing)return;
+    if(document.querySelector('.overlay.active,.modal-overlay.active'))return;
     ptrStartY=e.touches[0].clientY;
     isPulling=true;
   },{passive:true});
-  document.addEventListener('touchmove',e=>{
+  document.addEventListener('touchmove',function(e){
     if(!isPulling)return;
     ptrDist=Math.max(0,e.touches[0].clientY-ptrStartY);
     if(ptrDist>10){
-      var pull=Math.min(ptrDist*0.5,60);
+      var pull=Math.min(ptrDist*0.4,70);
       pullIndicator.style.transform='translateY('+pull+'px)';
-      pullIndicator.querySelector('span').textContent=pull>40?'↑ Release to refresh':'↓ Pull to refresh';
+      var deg=Math.min(ptrDist*2,360);
+      spinner.style.transform='rotate('+deg+'deg)';
+      spinner.textContent=pull>40?'↑':'↓';
+      spinner.style.color=pull>40?'var(--pri,#6366f1)':'var(--muted,#888)';
     }
   },{passive:true});
-  document.addEventListener('touchend',async()=>{
+  document.addEventListener('touchend',async function(){
     if(!isPulling)return;
     isPulling=false;
     if(ptrDist>80&&!ptrRefreshing){
       ptrRefreshing=true;
-      pullIndicator.querySelector('span').textContent='Refreshing...';
+      spinner.textContent='↻';
+      spinner.classList.add('ptr-spinning');
       pullIndicator.style.transform='translateY(50px)';
       await loadAll();
-      pullIndicator.querySelector('span').textContent='✓ Done';
-      setTimeout(function(){pullIndicator.style.transform='translateY(-50px)';ptrRefreshing=false},600);
+      spinner.classList.remove('ptr-spinning');
+      spinner.textContent='✓';
+      spinner.style.color='var(--green,#10b981)';
+      setTimeout(function(){pullIndicator.style.transform='translateY(-60px)';ptrRefreshing=false;spinner.style.color=''},500);
     }else{
-      pullIndicator.style.transform='translateY(-50px)';
+      pullIndicator.style.transform='translateY(-60px)';
     }
     ptrDist=0;
   });
@@ -162,11 +169,20 @@ function setupPullToRefresh(){
     }
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
+// Cache helpers
+function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);if(Date.now()-d.t>300000)return null;return d.v}catch(e){return null}}
+function setCachedData(key,val){try{localStorage.setItem('cache_'+key,JSON.stringify({t:Date.now(),v:val}))}catch(e){}}
+
 async function loadAll(){
   var _dbg=document.getElementById("debugBanner");
   function _log(m){console.log("LOADALL:",m);if(_dbg){_dbg.style.display="block";_dbg.innerHTML+="<div style=\"border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0\">"+m+"</div>"}}
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
-  showSkeleton();
+
+  // Stale-while-revalidate: show cached data first
+  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos');
+  if(ci&&ce){items=ci;expenses=ce;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){}}
+  else{showSkeleton()}
+
   try{
     _log("Fetching data (parallel)...");
     const [budgetOk, results, todoOk] = await Promise.all([
@@ -175,10 +191,11 @@ async function loadAll(){
       loadTodos().catch(function(err){_log("todo err: "+err.message);return null})
     ]);
     var r=results[0], e=results[1];
-    if(r && !r.error && Array.isArray(r)){items = r;_log("Items loaded: "+r.length)}
+    if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
     else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
-    if(e && !e.error && Array.isArray(e)){expenses = e;_log("Expenses loaded: "+e.length)}
+    if(e && !e.error && Array.isArray(e)){expenses=e;setCachedData('expenses',e);_log("Expenses loaded: "+e.length)}
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
+    if(todoOk&&Array.isArray(todoOk)){setCachedData('todos',todoOk)}
   }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
   isLoadingData=false;
   loadRecurringData().then(function(){
@@ -186,10 +203,13 @@ async function loadAll(){
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
+    // Load projects (non-blocking)
+  if(typeof loadProjects==='function') loadProjects().then(function(){if(typeof renderProject==='function') renderProject()}).catch(function(e){console.log('projects:',e.message)});
   _log("Rendering, items="+items.length+", expenses="+expenses.length);
   try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
   _log("loadAll complete");
 }
+
 function render(){
   if(currentTab==='purchase') renderPurchase();
   else if(currentTab==='expense') renderExpense();
@@ -200,6 +220,7 @@ function render(){
   var fab=document.getElementById('fabBtn');
   if(fab){
     if(currentTab==='todo'){fab.onclick=function(){openTodoModal()}}
+    else if(currentTab==='project'){fab.onclick=function(){openProjectModal()}}
     else if(currentTab==='purchase'){fab.onclick=function(){openModal()}}
     else if(currentTab==='expense'){fab.onclick=function(){openExpenseModal()}}
     else{fab.style.display='none'}
