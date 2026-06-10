@@ -118,7 +118,10 @@ function setupPullToRefresh(){
 
   document.addEventListener('touchstart',function(e){
     if(window.scrollY>5||ptrRefreshing)return;
-    if(document.querySelector('.overlay.active,.modal-overlay.active'))return;
+    if(document.querySelector('.overlay.active,.modal-overlay.active')){console.log('PTR: BLOCKED by modal');return;}
+    // Block PTR when on todo/project/stats tab with content
+    if((currentTab==='todo'||currentTab==='project'||currentTab==='stats')&&document.getElementById(currentTab==='todo'?'todoContent':currentTab==='project'?'projectContent':'statsContent')?.innerHTML?.length>0){console.log('PTR: BLOCKED on '+currentTab+' tab');return;}
+    console.log('PTR: allowed, modals='+document.querySelectorAll('.modal-overlay.active').length);
     ptrStartY=e.touches[0].clientY;
     isPulling=true;
   },{passive:true});
@@ -487,7 +490,7 @@ setupSwipe();
   }
   // Intercept touchmove when modal is open to prevent background scroll
   document.addEventListener('touchmove', function(e){
-    if(!document.querySelector('.modal-overlay.active')) return;
+    var _mo=document.querySelector('.modal-overlay.active');if(!_mo){return;}console.log('TOUCHMOVE: blocked by modal, target='+e.target.tagName);
     // Allow scrolling inside modal content
     var modal = e.target.closest('.modal-overlay.active .modal');
     if(!modal){

@@ -664,11 +664,11 @@ function openTodoModal(id) {
     } catch(e) {}
   }
   renderSubtaskRows();
-  overlay.classList.add("active");
+  overlay.classList.add("active");console.log("TODO_MODAL: opened, overlay classes="+overlay.className+", modals active="+document.querySelectorAll(".modal-overlay.active").length);
 }
 
 function closeTodoModal() {
-  document.getElementById('todoModalOverlay').classList.remove('active');
+  document.getElementById("todoModalOverlay").classList.remove("active");console.log("TODO_MODAL: closed");
   editingTodoId = null;
 }
 
