@@ -706,6 +706,7 @@ function renderSubtaskRows() {
   todoSubtaskRows.forEach(function(s, i) {
     var row = document.createElement("div");
     row.className = "subtask-row";
+    row.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;align-items:center;width:100%";
     
     var input = document.createElement("input");
     input.type = "text";
@@ -715,21 +716,49 @@ function renderSubtaskRows() {
     input.onchange = function() { updateSubtaskText(i, this.value); };
     row.appendChild(input);
     
+    var dateBtn = document.createElement("button");
+    dateBtn.textContent = "\ud83d\udcc5";
+    dateBtn.style.cssText = "width:28px;height:28px;border:none;background:" + (s.dueDate ? "color-mix(in srgb,var(--pri) 20%,var(--card))" : "var(--bg)") + ";border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0";
+    dateBtn.title = s.dueDate || "\u8bbe\u7f6e\u65e5\u671f";
+    dateBtn.onclick = function(e) {
+      e.stopPropagation();
+      var existing = row.querySelector(".subtask-date-row");
+      if (existing) { existing.remove(); return; }
+      var dateRow = document.createElement("div");
+      dateRow.className = "subtask-date-row";
+      dateRow.style.cssText = "display:flex;align-items:center;gap:4px;width:100%;padding:2px 0";
+      var di = document.createElement("input");
+      di.type = "date";
+      di.value = s.dueDate || "";
+      di.style.cssText = "flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text)";
+      di.onchange = function() { todoSubtaskRows[i].dueDate = this.value || null; renderSubtaskRows(); };
+      dateRow.appendChild(di);
+      if (s.dueDate) {
+        var clr = document.createElement("button");
+        clr.textContent = "\u2715";
+        clr.style.cssText = "border:none;background:#fef2f2;color:#ef4444;border-radius:4px;cursor:pointer;font-size:11px;padding:2px 6px";
+        clr.onclick = function() { todoSubtaskRows[i].dueDate = null; renderSubtaskRows(); };
+        dateRow.appendChild(clr);
+      }
+      row.appendChild(dateRow);
+    };
+    row.appendChild(dateBtn);
+    
     var sel = document.createElement("select");
     sel.className = "subtask-pri-select";
     sel.onchange = function() { updateSubtaskPriority(i, this.value); };
-    ["高","中","低"].forEach(function(p) {
+    ["\u9ad8","\u4e2d","\u4f4e"].forEach(function(p) {
       var opt = document.createElement("option");
       opt.value = p;
       opt.textContent = p;
-      if ((s.priority || "中") === p) opt.selected = true;
+      if ((s.priority || "\u4e2d") === p) opt.selected = true;
       sel.appendChild(opt);
     });
     row.appendChild(sel);
     
     var btn = document.createElement("button");
     btn.className = "subtask-del";
-    btn.textContent = "✕";
+    btn.textContent = "\u2715";
     btn.onclick = function() { removeSubtask(i); };
     row.appendChild(btn);
     
@@ -737,7 +766,7 @@ function renderSubtaskRows() {
   });
 }
 
-function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false}); renderSubtaskRows(); }
+function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false, priority: "中", dueDate: null}); renderSubtaskRows(); }
 function removeSubtask(i) { todoSubtaskRows.splice(i, 1); renderSubtaskRows(); }
 function updateSubtaskText(i, v) { if (todoSubtaskRows[i]) todoSubtaskRows[i].text = v; }
 function updateSubtaskPriority(i, val) { if(todoSubtaskRows[i]) todoSubtaskRows[i].priority = val; }

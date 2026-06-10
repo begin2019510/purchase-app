@@ -36,7 +36,6 @@ function renderProject() {
 
   var html = '';
   
-  // Filter chips
   html += '<div class="chips">';
   ['全部','进行中','已完成','已归档'].forEach(function(c) {
     var cnt = c === '全部' ? projectList.length : projectList.filter(function(p){ return p.status === c; }).length;
@@ -44,7 +43,6 @@ function renderProject() {
   });
   html += '</div>';
 
-  // Stats
   html += '<div class="todo-compact-header"><div class="todo-stats-row">';
   var active = projectList.filter(function(p){ return p.status === '进行中'; }).length;
   var done = projectList.filter(function(p){ return p.status === '已完成'; }).length;
@@ -60,35 +58,56 @@ function renderProject() {
     return;
   }
 
-  filtered.forEach(function(p) {
-    var linkedTodos = todoList.filter(function(t){ return t.projectId === p.id && t.status !== '已取消'; });
-    var totalTodos = linkedTodos.length;
-    var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完成'; }).length;
-    var pct = totalTodos > 0 ? Math.round(doneTodos / totalTodos * 100) : 0;
-    var priColor = p.color || '#6366f1';
-    var isDone = p.status === '已完成' || p.status === '已归档';
-
-    html += '<div class="todo-card' + (isDone ? ' todo-done' : '') + '" onclick="openProjectDetail(\'' + p.id + '\')">';
-    html += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
-    html += '<div class="todo-card-inner"><div class="todo-card-main"><div class="todo-card-content">';
-    html += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + esc(p.name) + '</div>';
-    if (p.description) html += '<div style="font-size:12px;color:var(--muted);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + esc(p.description) + '</div>';
-    html += '<div class="todo-card-meta">';
-    html += '<span class="todo-tag status-' + p.status + '">' + p.status + '</span>';
-    if (p.dueDate) { html += '<span class="todo-card-due">📅 ' + formatDueDate(p.dueDate) + '</span>'; }
-    html += '<span class="todo-card-progress">📋 ' + doneTodos + '/' + totalTodos + '</span>';
-    html += '</div>';
-    html += '<div class="todo-card-progress-bar"><div class="todo-card-progress-fill" style="width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + '"></div></div>';
-    // Quick archive button for completed projects
-    if (p.status === '已完成') {
-      html += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" style="margin-top:6px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer">📦 归档</button>';
-    }
-    html += '</div></div></div></div>';
+  // Build hierarchy: parent projects first, then children
+  var parents = filtered.filter(function(p){ return !p.parentId; });
+  var children = filtered.filter(function(p){ return p.parentId; });
+  
+  parents.forEach(function(p) {
+    html += renderProjectCard(p, false);
+    // Render children indented
+    var kids = children.filter(function(c){ return c.parentId === p.id; });
+    kids.forEach(function(k) {
+      html += renderProjectCard(k, true, p.name);
+    });
+  });
+  
+  // Orphan children (parent not in filtered)
+  var orphanKids = children.filter(function(c){ return !parents.some(function(p){ return p.id === c.parentId; }); });
+  orphanKids.forEach(function(k) {
+    html += renderProjectCard(k, false);
   });
 
   el.innerHTML = html;
 }
 
+function renderProjectCard(p, isChild, parentName) {
+  var linkedTodos = todoList.filter(function(t){ return t.projectId === p.id && t.status !== '已取消'; });
+  var totalTodos = linkedTodos.length;
+  var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完成'; }).length;
+  var pct = totalTodos > 0 ? Math.round(doneTodos / totalTodos * 100) : 0;
+  var priColor = p.color || '#6366f1';
+  var isDone = p.status === '已完成' || p.status === '已归档';
+
+  var h = '<div class="todo-card' + (isDone ? ' todo-done' : '') + (isChild ? ' project-child-card' : '') + '" onclick="openProjectDetail(\'' + p.id + '\')">';
+  h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
+  h += '<div class="todo-card-inner"><div class="todo-card-main"><div class="todo-card-content">';
+  if (isChild && parentName) {
+    h += '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + esc(parentName) + ' ›</div>';
+  }
+  h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + (isChild ? '📋 ' : '📁 ') + esc(p.name) + '</div>';
+  if (p.description) h += '<div style="font-size:12px;color:var(--muted);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + esc(p.description) + '</div>';
+  h += '<div class="todo-card-meta">';
+  h += '<span class="todo-tag status-' + p.status + '">' + p.status + '</span>';
+  if (p.dueDate) h += '<span class="todo-card-due">📅 ' + formatDueDate(p.dueDate) + '</span>';
+  h += '<span class="todo-card-progress">📋 ' + doneTodos + '/' + totalTodos + '</span>';
+  h += '</div>';
+  h += '<div class="todo-card-progress-bar"><div class="todo-card-progress-fill" style="width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + '"></div></div>';
+  if (p.status === '已完成') {
+    h += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" style="margin-top:6px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer">📦 归档</button>';
+  }
+  h += '</div></div></div></div>';
+  return h;
+}
 function openProjectModal(id) {
   var overlay = document.getElementById('projectModalOverlay');
   if (!overlay) return;
@@ -120,6 +139,7 @@ async function saveProject() {
     dueDate: document.getElementById('projectDueDate').value || null,
     status: document.getElementById('projectStatus').value,
     color: document.getElementById('projectColor').value,
+      parentId: (document.getElementById('projectParentId') || {}).value || '',
   };
 
   closeProjectModal();
@@ -224,7 +244,23 @@ function closeProjectDetail() {
 }
 
 function getProjectOptions() {
-  return projectList.filter(function(p){ return p.status !== '\u5df2\u5f52\u6863'; }).map(function(p) {
+  var parents = projectList.filter(function(p){ return !p.parentId && p.status !== '已归档'; });
+  var children = projectList.filter(function(p){ return p.parentId && p.status !== '已归档'; });
+  var html = '<option value="">无</option>';
+  parents.forEach(function(p) {
+    var kids = children.filter(function(c){ return c.parentId === p.id; });
+    if (kids.length > 0) {
+      html += '<optgroup label="📁 ' + esc(p.name) + '">';
+      kids.forEach(function(k) {
+        html += '<option value="' + k.id + '">└ 📋 ' + esc(k.name) + '</option>';
+      });
+      html += '</optgroup>';
+    } else {
+      html += '<option value="' + p.id + '">📁 ' + esc(p.name) + '</option>';
+    }
+  });
+  return html;
+}).map(function(p) {
     return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
   }).join('');
 }
@@ -260,4 +296,12 @@ async function unlinkTodoFromProject(todoId) {
     if (body) { var h3 = body.querySelector('h3'); if (h3) { var pName = h3.textContent; var p = projectList.find(function(x){ return x.name === pName; }); if (p) openProjectDetail(p.id); } }
   }
   toast('已解除关联');
+}
+
+function openProjectModalForParent(parentId) {
+  openProjectModal();
+  setTimeout(function() {
+    var sel = document.getElementById('projectParentId');
+    if (sel) sel.value = parentId;
+  }, 100);
 }

@@ -1229,3 +1229,10 @@ input, textarea {
 
 /* Dark mode overrides */
 body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
+
+/* === Sub-project card indentation === */
+.project-child-card{margin-left:20px;border-left:3px solid color-mix(in srgb,var(--pri) 20%,var(--border))}
+.project-child-card .todo-card-accent{display:none}
+
+/* === Subtask date picker === */
+.subtask-date-row{display:flex;align-items:center;gap:4px;width:100%;padding:2px 0}
