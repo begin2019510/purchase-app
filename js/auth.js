@@ -143,42 +143,27 @@ async function debugMyAuthStats(){
   }catch(e){el.textContent='错误: '+e.message}
 }
 async function verifyAndLoad(){
-  var _vs=document.getElementById('debugBanner');
-  function _vl(m){console.log('VERIFY:',m);if(_vs){_vs.style.display='block';_vs.innerHTML+='<div style="border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0">'+m+'</div>'}}
   try{
-    _vl('Verifying token...');
-    let r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
-    _vl('Verify status: '+r.status);
-    if(r.status===401){
-      _vl('Token expired, trying refresh...');
-      const newToken=await refreshAccessToken();
-      _vl('Refresh: '+(newToken?'OK':'FAILED'));
-      if(newToken){
-        r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
-        _vl('Re-verify status: '+r.status);
-      }
-    }
-    if(!r.ok){
-      _vl('Auth FAILED, trying refresh one more time...');
-      const retryToken=await refreshAccessToken();
-      if(retryToken){
-        r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+retryToken}});
-        _vl('Retry verify status: '+r.status);
-      }
-    }
-    if(!r.ok){
-      _vl('Auth FAILED after retry, clearing tokens');
-      clearTokens();
-      document.getElementById('authScreen').style.display='flex';
-      return;
-    }
-    const d=await r.json();
-    _vl('Auth OK, user='+d.username);
+    console.log('VERIFY: Starting loadAll immediately (skip verify)');
     document.getElementById('authScreen').style.display='none';
-    if(d.ok&&d.username==='admin'){var _ab2=document.getElementById('adminBtn');if(_ab2)_ab2.style.display='';}
-    loadAll();
+    await loadAll();
+    // Verify in background for admin button
+    fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}}).then(function(r){
+      if(!r.ok) throw new Error('verify failed');
+      return r.json();
+    }).then(function(d){
+      if(d&&d.ok&&d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}
+    }).catch(function(){
+      // Verify failed - token may be expired, try refresh
+      refreshAccessToken().then(function(nt){
+        if(!nt){
+          clearTokens();
+          document.getElementById('authScreen').style.display='flex';
+        }
+      });
+    });
   }catch(e){
-    _vl('EXCEPTION: '+e.message);
+    console.log('VERIFY: EXCEPTION: '+e.message);
     document.getElementById('authScreen').style.display='flex';
   }
 }

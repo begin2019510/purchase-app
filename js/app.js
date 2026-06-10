@@ -188,7 +188,8 @@ async function loadAll(){
     const [budgetOk, results, todoOk] = await Promise.all([
       loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
       Promise.all([api("GET"),expenseApi("GET")]),
-      loadTodos().catch(function(err){_log("todo err: "+err.message);return null})
+      loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
+      (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
     ]);
     var r=results[0], e=results[1];
     if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
@@ -204,7 +205,7 @@ async function loadAll(){
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
     // Load projects (non-blocking)
-  if(typeof loadProjects==='function') loadProjects().then(function(){if(typeof renderProject==="function"){console.log("CALLING renderProject from loadProjects");renderProject()}}).catch(function(e){console.log('projects:',e.message)});
+  // loadProjects now runs in parallel above
   _log("Rendering, items="+items.length+", expenses="+expenses.length);
   try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
   _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200)}));
