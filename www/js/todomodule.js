@@ -102,7 +102,8 @@ function renderTodo() {
   // Content based on view
   if (todoView === 'calendar') {
     html += buildCalendarHtml();
-    el.innerHTML = html;
+    console.log("renderSubtaskRows: rows=" + todoSubtaskRows.length + ", firstText=" + (todoSubtaskRows[0]||{}).text + ", html=" + html.substring(0,300));
+  el.innerHTML = html;
     return;
   }
   if (todoView === 'gantt') {
