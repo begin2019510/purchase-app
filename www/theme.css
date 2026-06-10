@@ -1004,7 +1004,7 @@ body.dark .week-card{border-color:var(--border)}
 .cal-todo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .gantt-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .gantt-container{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:14px;background:var(--card)}
-.gantt-scroll{min-width:750px}
+.gantt-scroll{min-width:750px;position:relative}
 .gantt-header{display:flex;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1}
 .gantt-label-header{width:140px;min-width:140px;padding:10px 12px;font-size:12px;font-weight:700;color:var(--muted);border-right:1px solid var(--border)}
 .gantt-day{flex:1;min-width:40px;text-align:center;padding:10px 4px;font-size:12px;font-weight:600;color:var(--muted);border-right:1px solid color-mix(in srgb,var(--border) 50%,transparent)}
