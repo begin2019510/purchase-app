@@ -459,6 +459,36 @@ function settingsAction(action){
 setupPullToRefresh();
 setupSwipe();
 
+// ===== Modal Scroll Lock =====
+// Lock body scroll when any modal overlay is open
+(function(){
+  function updateScrollLock(){
+    var hasActive = document.querySelector('.modal-overlay.active');
+    if(hasActive){
+      document.body.style.overflow='hidden';
+      document.body.style.touchAction='none';
+    }else{
+      document.body.style.overflow='';
+      document.body.style.touchAction='';
+    }
+  }
+  var observer = new MutationObserver(function(mutations){
+    for(var i=0;i<mutations.length;i++){
+      var m=mutations[i];
+      if(m.attributeName==='class' && m.target.classList.contains('modal-overlay')){
+        updateScrollLock();
+        return;
+      }
+    }
+  });
+  observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
+  // Also check on any touchstart as fallback
+  document.addEventListener('touchstart', function(){
+    setTimeout(updateScrollLock, 50);
+  }, {passive:true});
+})();
+
+
 
 // ===== Capacitor Native Init =====
 if (IS_NATIVE) {
