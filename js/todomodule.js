@@ -634,37 +634,48 @@ function updateLinkOptions() {
 }
 
 function openTodoModal(id) {
-  editingTodoId = id || null;
-  var overlay = document.getElementById("todoModalOverlay");
-  if (!overlay) return;
-  var t = null;
-  if (id) t = todoList.find(function(x){ return x.id === id; });
-  document.getElementById("todoTitle").value = t ? t.title : "";
-  document.getElementById("todoDesc").value = t ? t.description : "";
-  document.getElementById("todoPriority").value = t ? t.priority : "中";
-  document.getElementById("todoCategory").value = t ? t.category : "其他";
-  document.getElementById("todoRepeat").value = t ? t.repeat : "无";
-  document.getElementById("todoLinkType").value = t ? (t.linkType || "无") : "无";
-  updateLinkOptions();
-  document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
-  if (t && t.dueDate) {
-    var d = new Date(t.dueDate);
-    var h = d.getUTCHours(), mi = d.getUTCMinutes();
-    document.getElementById("todoDueDate").value = d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0") + "T" + String(h).padStart(2,"0") + ":" + String(mi).padStart(2,"0");
-  } else {
-    document.getElementById("todoDueDate").value = "";
+  try {
+    console.log("openTodoModal called, id=" + id);
+    editingTodoId = id || null;
+    var overlay = document.getElementById("todoModalOverlay");
+    if (!overlay) { console.log("ERROR: todoModalOverlay not found"); return; }
+    var t = null;
+    if (id) {
+      t = todoList.find(function(x){ return x.id === id; });
+      console.log("Found todo: " + (t ? "YES, title=" + t.title + ", subtasks=" + (t.subtasks||"").substring(0,100) : "NOT FOUND, todoList.length=" + todoList.length));
+    }
+    document.getElementById("todoTitle").value = t ? t.title : "";
+    document.getElementById("todoDesc").value = t ? t.description : "";
+    document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
+    document.getElementById("todoCategory").value = t ? t.category : "\u5176\u4ed6";
+    document.getElementById("todoRepeat").value = t ? t.repeat : "\u65e0";
+    document.getElementById("todoLinkType").value = t ? (t.linkType || "\u65e0") : "\u65e0";
+    updateLinkOptions();
+    document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
+    if (t && t.dueDate) {
+      var d = new Date(t.dueDate);
+      var h = d.getUTCHours(), mi = d.getUTCMinutes();
+      document.getElementById("todoDueDate").value = d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0") + "T" + String(h).padStart(2,"0") + ":" + String(mi).padStart(2,"0");
+    } else {
+      document.getElementById("todoDueDate").value = "";
+    }
+    todoSubtaskRows = [];
+    if (t && t.subtasks && t.subtasks !== "[]") {
+      try {
+        var parsed = JSON.parse(t.subtasks);
+        if (Array.isArray(parsed)) {
+          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d"}; });
+          console.log("Loaded " + todoSubtaskRows.length + " subtask rows");
+        }
+      } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
+    }
+    renderSubtaskRows();
+    overlay.classList.add("active");
+    console.log("openTodoModal: form populated, title=" + document.getElementById("todoTitle").value);
+  } catch(e) {
+    console.error("openTodoModal ERROR: " + e.message + " at " + e.stack);
+    toast("\u6253\u5f00\u5931\u8d25: " + e.message);
   }
-  todoSubtaskRows = [];
-  if (t && t.subtasks && t.subtasks !== "[]") {
-    try {
-      var parsed = JSON.parse(t.subtasks);
-      if (Array.isArray(parsed)) {
-        todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"中"}; });
-      }
-    } catch(e) {}
-  }
-  renderSubtaskRows();
-  overlay.classList.add("active");console.log("TODO_MODAL: opened, overlay classes="+overlay.className+", modals active="+document.querySelectorAll(".modal-overlay.active").length);
 }
 
 function closeTodoModal() {
