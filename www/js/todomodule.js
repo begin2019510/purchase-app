@@ -763,13 +763,14 @@ async function saveTodo() {
     var r;
     // Optimistic: close modal and render first
     if (editingTodoId) {
-      var _ti = todoList.findIndex(function(t){return t.id===editingTodoId});
+      var _ti = todoList.findIndex(function(t){return t.id===_editId});
       if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
     }
+    var _editId = editingTodoId;
     closeTodoModal();
     render();
-    if (editingTodoId) {
-      body.id = editingTodoId;
+    if (_editId) {
+      body.id = _editId;
       r = await todoApi('PUT', body);
     } else {
       var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,subtasks:body.subtasks,completedAt:null};
