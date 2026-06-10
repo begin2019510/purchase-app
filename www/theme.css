@@ -1211,8 +1211,8 @@ input, textarea {
 .todo-quick-check.doing{border-color:var(--pri);background:linear-gradient(90deg,var(--pri) 50%,transparent 50%)}
 
 /* === Gantt Enhancements === */
-.gantt-now-line{position:absolute;top:0;bottom:0;width:1.5px;background:rgba(148,163,184,.4);z-index:10;pointer-events:none}
-.gantt-now-dot{position:absolute;top:-3px;left:-3px;width:6px;height:6px;border-radius:50%;background:rgba(148,163,184,.5)}
+.gantt-now-line{position:absolute;top:36px;bottom:0;width:1.5px;background:rgba(148,163,184,.4);z-index:10;pointer-events:none}
+.gantt-now-dot{display:none}
 .gantt-overdue-bar{background:#fef2f2;color:#ef4444;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:8px;font-weight:600}
 .gantt-dot{width:10px;height:10px;border-radius:50%;opacity:.85;flex-shrink:0}
 .gantt-dot.done{opacity:.4}
