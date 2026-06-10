@@ -671,6 +671,8 @@ function openTodoModal(id) {
       } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
     }
     renderSubtaskRows();
+    var _subEl = document.getElementById("todoSubtaskList");
+    console.log("AFTER renderSubtaskRows: el=" + !!_subEl + ", html=" + (_subEl ? _subEl.innerHTML.length : "null") + ", rows=" + todoSubtaskRows.length + ", firstText=" + ((todoSubtaskRows[0]||{}).text||"EMPTY"));
     overlay.classList.add("active");
     console.log("openTodoModal: form populated, title=" + document.getElementById("todoTitle").value);
   } catch(e) {
