@@ -191,7 +191,7 @@ function switchTab(t){
   try{localStorage.setItem('activeTab',t)}catch(e){}
   // 电脑端标签高亮
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  var tabIndex=t==='purchase'?1:t==='expense'?2:t==='stats'?3:4;
+  var tabIndex=t==='purchase'?1:t==='expense'?2:t==='stats'?3:t==='todo'?4:5;
   var desktopTab=document.querySelector('.tabs .tab:nth-child('+tabIndex+')');
   if(desktopTab)desktopTab.classList.add('active');
   // 手机端底部导航高亮
@@ -202,11 +202,13 @@ function switchTab(t){
   document.getElementById('tab-expense').style.display=t==='expense'?'':'none';
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
     var todoTab=document.getElementById('tab-todo');if(todoTab)todoTab.style.display=t==='todo'?'':'none';
-  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense'||t==='todo')?'':'none';
+  var projTab=document.getElementById('tab-project');if(projTab)projTab.style.display=t==='project'?'':'none';
+  document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense'||t==='todo'||t==='project')?'':'none';
   var ap=document.getElementById('actionPurchase');if(ap)ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
   var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
   var as=document.getElementById('actionStats');if(as)as.className=t==='stats'?'desktop-only':'desktop-only hidden';
     var at=document.getElementById('actionTodo');if(at)at.className=t==='todo'?'desktop-only':'desktop-only hidden';
+  var ap2=document.getElementById('actionProject');if(ap2)ap2.className=t==='project'?'desktop-only':'desktop-only hidden';
   if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();

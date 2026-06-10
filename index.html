@@ -63,6 +63,7 @@
   <div class="tab" onclick="switchTab('expense')">💰 记账</div>
   <div class="tab" onclick="switchTab('stats')">📊 统计</div>
   <div class="tab" onclick="switchTab('todo')">📋 待办</div>
+<div class="tab" onclick="switchTab('project')">📁 项目</div>
 </div>
 
 <!-- Settings Overlay - Mobile only -->
@@ -157,6 +158,10 @@
     <span class="nav-icon">📋</span>
     <span class="nav-label">待办</span>
   </div>
+  <div class="nav-item" onclick="switchTab('project')" data-tab="project">
+    <span class="nav-icon">📁</span>
+    <span class="nav-label">项目</span>
+  </div>
 </nav>
 
 <!-- 采购 Tab -->
@@ -232,6 +237,14 @@
     <button class="action-btn" onclick="openTodoModal()">➕ 新建待办</button>
   </div>
   <div id="todoContent"></div>
+</div>
+
+<!-- 项目 Tab -->
+<div id="tab-project" style="display:none">
+  <div class="desktop-only" id="actionProject" style="display:none">
+    <button class="action-btn" onclick="openProjectModal()">➕ 新建项目</button>
+  </div>
+  <div id="projectContent"></div>
 </div>
 
 <!-- 管理员面板 -->
@@ -576,7 +589,7 @@
         <div class="form-row">
           <div class="form-group" style="flex:1">
             <label>截止日期</label>
-            <input type="date" id="todoDueDate">
+            <input type="datetime-local" id="todoDueDate">
           </div>
           <div class="form-group" style="flex:1">
             <label>优先级</label>
@@ -616,6 +629,12 @@
         <div class="form-row">
           <div class="form-group" style="flex:1">
             <label>关联类型</label>
+          <div class="form-group">
+            <label>关联项目</label>
+            <select id="todoProjectId" class="form-input">
+              <option value="">无</option>
+            </select>
+          </div>
             <select id="todoLinkType" onchange="updateLinkOptions()">
               <option value="无" selected>无</option>
               <option value="采购">🛒 采购</option>
@@ -647,6 +666,7 @@
 <script src="js/ai.js?v=3.7.0"></script>
 <script src="js/budget.js?v=3.7.0"></script>
 <script src="js/todomodule.js?v=3.7.0"></script>
+  <script src="js/project.js?v=3.7.0"></script>
 <script src="js/app.js?v=3.7.0"></script>
 
 
@@ -708,6 +728,58 @@
 <!-- Detail modal image upload inputs -->
 <input type="file" id="stageCameraInput" accept="image/*" capture="environment" style="display:none" onchange="uploadDetailImage(this)">
 <input type="file" id="stageGalleryInput" accept="image/*" style="display:none" onchange="uploadDetailImage(this)">
+
+<!-- Project Modal -->
+<div class="overlay" id="projectModalOverlay" onclick="if(event.target===this)closeProjectModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="projectModalTitle">新建项目</h3>
+      <button class="modal-close" onclick="closeProjectModal()">&times;</button>
+    </div>
+    <input type="hidden" id="projectId">
+    <div class="form-group">
+      <label>项目名称</label>
+      <input id="projectName" class="form-input" placeholder="输入项目名称">
+    </div>
+    <div class="form-group">
+      <label>描述</label>
+      <textarea id="projectDesc" class="form-input" rows="2" placeholder="项目描述"></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="form-group" style="flex:1">
+        <label>截止日期</label>
+        <input type="datetime-local" id="projectDueDate" class="form-input">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>状态</label>
+        <select id="projectStatus" class="form-input">
+          <option>进行中</option>
+          <option>已完成</option>
+          <option>已归档</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>标诉色</label>
+      <input type="color" id="projectColor" class="form-input" value="#6366f1" style="height:40px;padding:4px">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeProjectModal()">取消</button>
+      <button class="btn-save" onclick="saveProject()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Project Detail Overlay -->
+<div class="overlay" id="projectDetailOverlay" onclick="if(event.target===this)closeProjectDetail()">
+  <div class="modal" style="max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3>项目详情</h3>
+      <button class="modal-close" onclick="closeProjectDetail()">&times;</button>
+    </div>
+    <div id="projectDetailBody"></div>
+  </div>
+</div>
 </body>
 </html>
 
