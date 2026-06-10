@@ -1,3 +1,4 @@
+if(typeof onNoteInput==='undefined'){function onNoteInput(){}}
 ﻿// ai.js - AI Assistant, Evaluation, Analysis
 function parseEvalNote(note) {
   if (!note || !note.includes('===BUDGET===')) return null;

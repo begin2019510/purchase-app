@@ -244,7 +244,7 @@ document.getElementById('searchInput').value='';
 if('serviceWorker' in navigator) var _pb=document.getElementById('pushBtn');if(_pb)_pb.style.display='';
 
 // ===== Startup Bootstrap =====
-if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}
+function _bootstrap(){if(typeof loadAll==='undefined'){setTimeout(_bootstrap,50);return}if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}}if(document.readyState==='complete'||document.readyState==='interactive'){_bootstrap()}else{document.addEventListener('DOMContentLoaded',_bootstrap)}
 // === App.auth namespace exports ===
 App.auth.getPin = getPin;
 App.auth.setPin = setPin;
