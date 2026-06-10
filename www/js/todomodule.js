@@ -697,6 +697,7 @@ function renderSubtaskRows() {
     var input = document.createElement("input");
     input.type = "text";
     input.className = "subtask-input";
+    input.style.cssText = "flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box";
     input.value = s.text || "";
     input.onchange = function() { updateSubtaskText(i, this.value); };
     row.appendChild(input);
