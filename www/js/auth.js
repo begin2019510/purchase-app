@@ -144,24 +144,27 @@ async function debugMyAuthStats(){
 }
 async function verifyAndLoad(){
   try{
-    console.log('VERIFY: Starting loadAll immediately (skip verify)');
+    console.log('VERIFY: Quick token check...');
+    // Fast check: just verify token validity (1 call), then loadAll
+    let r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}});
+    if(r.status===401){
+      console.log('VERIFY: Token expired, trying refresh...');
+      const newToken=await refreshAccessToken();
+      if(newToken){
+        r=await fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+newToken}});
+      }
+    }
+    if(!r.ok){
+      console.log('VERIFY: Auth failed, showing login');
+      clearTokens();
+      document.getElementById('authScreen').style.display='flex';
+      return;
+    }
+    const d=await r.json();
+    console.log('VERIFY: OK, user='+d.username+', starting loadAll');
     document.getElementById('authScreen').style.display='none';
-    await loadAll();
-    // Verify in background for admin button
-    fetch(API_BASE + '/api/auth?action=verify',{headers:{'Authorization':'Bearer '+getPin()}}).then(function(r){
-      if(!r.ok) throw new Error('verify failed');
-      return r.json();
-    }).then(function(d){
-      if(d&&d.ok&&d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}
-    }).catch(function(){
-      // Verify failed - token may be expired, try refresh
-      refreshAccessToken().then(function(nt){
-        if(!nt){
-          clearTokens();
-          document.getElementById('authScreen').style.display='flex';
-        }
-      });
-    });
+    if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}
+    loadAll();
   }catch(e){
     console.log('VERIFY: EXCEPTION: '+e.message);
     document.getElementById('authScreen').style.display='flex';
