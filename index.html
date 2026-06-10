@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="3.7.0">
+<meta name="app-version" content="3.7.3">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=3.7.2">
+<link rel="stylesheet" href="theme.css?v=3.7.3">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="3.7.0">
+<meta http-equiv="Expires" content="3.7.3">
 </head>
 <body>
 <script>
 (function(){
-  var V='3.7.0';
+  var V='3.7.3';
   try{
     var s=sessionStorage.getItem('app_ver');
     if(s&&s!==V){
@@ -30,9 +30,10 @@
     sessionStorage.setItem('app_ver',V);
   }catch(e){}
   if('serviceWorker'in navigator){
-    navigator.serviceWorker.getRegistrations().then(function(r){
-      r.forEach(function(reg){reg.update()})
-    })
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      reg.update();
+    });
+    navigator.serviceWorker.addEventListener('controllerchange',function(){window.location.reload()});
   }
 })();
 </script>
@@ -659,17 +660,17 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=3.7.2"></script>
-<script src="js/auth.js?v=3.7.2"></script>
-<script src="js/api.js?v=3.7.2"></script>
-<script src="js/stats.js?v=3.7.2"></script>
-<script src="js/expense.js?v=3.7.2"></script>
-<script src="js/items.js?v=3.7.2"></script>
-<script src="js/ai.js?v=3.7.2"></script>
-<script src="js/budget.js?v=3.7.2"></script>
-<script src="js/todomodule.js?v=3.7.2"></script>
-  <script src="js/project.js?v=3.7.2"></script>
-<script src="js/app.js?v=3.7.2"></script>
+<script src="js/utils.js?v=3.7.3"></script>
+<script src="js/auth.js?v=3.7.3"></script>
+<script src="js/api.js?v=3.7.3"></script>
+<script src="js/stats.js?v=3.7.3"></script>
+<script src="js/expense.js?v=3.7.3"></script>
+<script src="js/items.js?v=3.7.3"></script>
+<script src="js/ai.js?v=3.7.3"></script>
+<script src="js/budget.js?v=3.7.3"></script>
+<script src="js/todomodule.js?v=3.7.3"></script>
+  <script src="js/project.js?v=3.7.3"></script>
+<script src="js/app.js?v=3.7.3"></script>
 
 
 

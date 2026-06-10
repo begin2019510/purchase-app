@@ -1,5 +1,5 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v58';
+var CACHE = 'purchase-cache-v60';
 var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', function(e) {
@@ -10,7 +10,7 @@ self.addEventListener('install', function(e) {
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+      return Promise.all(keys.filter(function(k) { return true; }).map(function(k) { return caches.delete(k); }));
     }).then(function() { return clients.claim(); }).then(function() {
       return clients.matchAll({ type: 'window' }).then(function(ws) {
         ws.forEach(function(c) { c.postMessage({ type: 'SW_RELOAD' }); });

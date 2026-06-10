@@ -1,3 +1,4 @@
+if(typeof suggestCategory==='undefined'){function suggestCategory(){return ''}}
 if(typeof onNoteInput==='undefined'){function onNoteInput(){}}
 ﻿// ai.js - AI Assistant, Evaluation, Analysis
 function parseEvalNote(note) {
