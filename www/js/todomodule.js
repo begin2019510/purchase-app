@@ -761,12 +761,12 @@ async function saveTodo() {
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
     var r;
+    var _editId = editingTodoId;
     // Optimistic: close modal and render first
-    if (editingTodoId) {
+    if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
       if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
     }
-    var _editId = editingTodoId;
     closeTodoModal();
     render();
     if (_editId) {
@@ -783,7 +783,8 @@ async function saveTodo() {
 
     if (!r) { toast('保存失败: 服务器无响应'); return; }
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id}); render(); return; }
-    toast(editingTodoId ? '已更新' : '已创建');
+    toast(_editId ? '已更新' : '已创建');
+    render();
   } catch(e) {
     console.error('saveTodo error:', e);
     toast('保存失败: ' + e.message);
