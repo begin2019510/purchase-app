@@ -755,6 +755,7 @@ App.ai.runAIAnalysis = runAIAnalysis;
 App.ai.runAIProfile = runAIProfile;
 App.ai.onNoteInput = onNoteInput;
 App.ai.suggestCategory = suggestCategory;
+function applyAICat(cat){}
 App.ai.applyAICat = applyAICat;
 App.ai.generateTodoSuggestions = generateTodoSuggestions;
 App.ai.clearChatHistory = clearChatHistory;

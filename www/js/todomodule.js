@@ -6,6 +6,7 @@ var todoView = 'list';
 var todoFilter = '全部';
 var todoCalYear, todoCalMonth;
 var todoCalSelected = null;
+var todoSearch = "";
 var ganttExpanded = {};
 var ganttViewMode = "week";
 var ganttWeekOffset = 0;
@@ -47,6 +48,23 @@ function renderTodo() {
   if (todoFilter !== '全部') {
     if (todoFilter === '高优先级') filtered = todoList.filter(function(t){ return t.priority === '高' && t.status !== '已完成' && t.status !== '已取消'; });
     else filtered = todoList.filter(function(t){ return t.status === todoFilter; });
+  }
+  // Search filter
+  if (todoSearch && todoSearch.trim()) {
+    var q = todoSearch.trim().toLowerCase();
+    filtered = filtered.filter(function(t) {
+      if (t.title && t.title.toLowerCase().indexOf(q) >= 0) return true;
+      if (t.description && t.description.toLowerCase().indexOf(q) >= 0) return true;
+      if (t.subtasks) {
+        try {
+          var subs = typeof t.subtasks === "string" ? JSON.parse(t.subtasks) : t.subtasks;
+          for (var i = 0; i < subs.length; i++) {
+            if (subs[i].text && subs[i].text.toLowerCase().indexOf(q) >= 0) return true;
+          }
+        } catch(e) {}
+      }
+      return false;
+    });
   }
 
   var now = Date.now();
@@ -100,7 +118,7 @@ function renderTodo() {
 
   // Filter chips (smaller)
   html += '<div class="chips-wrap" style="margin:8px 0 10px">';
-  var chips = ['全部', '待办', '进行中', '已完成', '高优先级'];
+  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消'];
   chips.forEach(function(c) {
     html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
   });
