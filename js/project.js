@@ -213,8 +213,24 @@ function openProjectDetail(id) {
   // Progress bar
   html += '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:20px"><div style="height:100%;width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + ';border-radius:4px;transition:width .3s"></div></div>';
 
+  // Sub-projects
+  var subProjects = projectList.filter(function(sp){ return sp.parentId === id; });
+  if (subProjects.length > 0) {
+    html += '<h4 style="margin:0 0 10px;font-size:14px">\ud83d\udcc1 \u5b50\u9879\u76ee</h4>';
+    subProjects.forEach(function(sp) {
+      var spTodos = todoList.filter(function(t){ return t.projectId === sp.id && t.status !== '\u5df2\u53d6\u6d88'; });
+      var spDone = spTodos.filter(function(t){ return t.status === '\u5df2\u5b8c\u6210'; }).length;
+      var spPct = spTodos.length > 0 ? Math.round(spDone / spTodos.length * 100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="closeProjectDetail();openProjectDetail(\'' + sp.id + '\')">';
+      html += '<div style="width:10px;height:10px;border-radius:50%;background:' + (sp.color || priColor) + '"></div>';
+      html += '<span style="flex:1;font-size:13px">\ud83d\udccb ' + esc(sp.name) + '</span>';
+      html += '<span style="font-size:11px;color:var(--muted)">' + spDone + '/' + spTodos.length + '</span>';
+      html += '</div>';
+    });
+  }
+
   // Linked todos
-  html += '<h4 style="margin:0 0 10px;font-size:14px">\u5173\u8054\u5f85\u529e</h4>';
+  html += '<h4 style="margin:12px 0 10px;font-size:14px">\u5173\u8054\u5f85\u529e</h4>';
   if (linkedTodos.length === 0) {
     html += '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">\u6682\u65e0\u5173\u8054\u5f85\u529e</div>';
   } else {
@@ -231,6 +247,8 @@ function openProjectDetail(id) {
 
   // Actions
   html += '<div class="detail-actions" style="margin-top:16px">';
+  html += '<button class="btn-action btn-complete" onclick="closeProjectDetail();openProjectModalForParent(\'' + id + '\')">\u2795 \u65b0\u5efa\u5b50\u9879\u76ee</button>';
+  html += '<button class="btn-action btn-complete" onclick="closeProjectDetail();openTodoModalForProject(\'' + id + '\')">\u2795 \u65b0\u5efa\u5f85\u529e</button>';
   html += '<button class="btn-action btn-edit" onclick="closeProjectDetail();openProjectModal(\'' + id + '\')">\u270f\ufe0f \u7f16\u8f91</button>';
   html += '<button class="btn-action btn-delete" onclick="deleteProject(\'' + id + '\')">\ud83d\uddd1\ufe0f \u5220\u9664</button>';
   html += '</div>';
