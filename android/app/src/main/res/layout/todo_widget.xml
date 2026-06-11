@@ -9,7 +9,7 @@
         android:id="@+id/widgetTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="?? ????"
+        android:text="Today's Todos"
         android:textSize="16sp"
         android:textStyle="bold"
         android:textColor="#1F2937"
@@ -23,8 +23,7 @@
         android:id="@+id/widgetAddBtn"
         android:layout_width="match_parent"
         android:layout_height="36dp"
-        android:text="? ????"
+        android:text="Add Todo"
         android:textSize="12sp"
-        android:backgroundTint="#6366F1"
         android:layout_marginTop="8dp" />
 </LinearLayout>
