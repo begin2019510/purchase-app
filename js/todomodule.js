@@ -814,7 +814,8 @@ async function saveTodo() {
       projectId: (document.getElementById('todoProjectId')||{}).value || '',
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
-      tags: JSON.stringify(todoTags)
+      tags: JSON.stringify(todoTags),
+      reminders: JSON.stringify(todoReminders)
     };
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
@@ -876,6 +877,11 @@ function openTodoDetail(id) {
   if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
 
   if (t.description) html += '<div class="detail-desc">' + esc(t.description) + '</div>';
+
+  // Image preview
+  if (t.image) {
+    html += '<div style="margin:10px 0"><img src="' + (t.image.startsWith('http') ? t.image : t.image) + '" style="max-width:100%;max-height:200px;border-radius:10px;cursor:pointer" onclick="showFullImage(this.src)" onerror="this.style.display=\'none\'"/></div>';
+  }
 
   if (t.subtasks && t.subtasks !== '[]') {
     try {
@@ -989,6 +995,8 @@ function cycleTodoStatus(id) {
       if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){renderTodo();}); }
       else toast(nextStatus === '已完成' ? '✅ 已完成' : nextStatus === '进行中' ? '▶ 进行中' : '↩ 已恢复待办');
       if (t.projectId) checkProjectAutoStatus(t.projectId);
+      if (nextStatus === '已完成' || nextStatus === '已取消') cancelLocalNotification(t);
+      else if (t.reminders) scheduleLocalNotification(t);
     } catch(e) { t.status = oldStatus; render(); toast('操作失败: ' + e.message); }
   })();
 }
@@ -1110,4 +1118,183 @@ function addTagFromInput() {
     renderTagChips();
   }
   input.value = '';
+}
+
+function showFullImage(src) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.onclick = function() { overlay.remove(); };
+  var img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:95%;max-height:95%;border-radius:8px';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+}
+
+function renderReminderUI() {
+  var el = document.getElementById('todoReminderChips');
+  if (!el) return;
+  var html = '';
+  var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
+  todoReminders.forEach(function(r, i) {
+    var opt = options.find(function(o){ return o.v === String(r); });
+    html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:color-mix(in srgb,var(--pri) 12%,var(--card));color:var(--pri);margin:2px">' + (opt ? opt.l : r + '分钟') + '<span onclick="todoReminders.splice(' + i + ',1);renderReminderUI()" style="cursor:pointer;font-weight:700">×</span></span>';
+  });
+  var unused = options.filter(function(o){ return todoReminders.indexOf(parseInt(o.v)) < 0; });
+  if (unused.length > 0) {
+    html += '<div style="margin-top:4px">';
+    unused.forEach(function(o) {
+      html += '<span onclick="todoReminders.push(' + o.v + ');renderReminderUI()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + o.l + '</span>';
+    });
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function scheduleLocalNotification(todo) {
+  if (!todo.dueDate || !todo.reminders) return;
+  if (typeof Capacitor === 'undefined' || !Capacitor.Plugins || !Capacitor.Plugins.LocalNotifications) return;
+  try {
+    var reminders = JSON.parse(todo.reminders || '[]');
+    var dueTime = new Date(todo.dueDate).getTime();
+    var ids = [];
+    reminders.forEach(function(minutesBefore, i) {
+      var fireTime = dueTime - minutesBefore * 60000;
+      if (fireTime > Date.now()) {
+        var notifId = parseInt(todo.id.replace(/\D/g,'').slice(-8)) * 10 + i;
+        ids.push(notifId);
+        Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{
+          id: notifId,
+          title: '\ud83d\udcc5 ' + todo.title,
+          body: minutesBefore >= 60 ? '\u8fd8有' + Math.round(minutesBefore/60) + '\u5c0f\u65f6\u5230\u622a\u6b62\u65e5\u671f' : '\u8fd8\u6709' + minutesBefore + '\u5206\u949f\u5230\u622a\u6b62\u65e5\u671f',
+          schedule: { at: new Date(fireTime) }
+        }]});
+      }
+    });
+    todo._notifIds = ids;
+  } catch(e) { console.log('scheduleLocalNotification error:', e); }
+}
+
+function cancelLocalNotification(todo) {
+  if (!todo._notifIds || typeof Capacitor === 'undefined') return;
+  try {
+    Capacitor.Plugins.LocalNotifications.cancel({ notifications: todo._notifIds.map(function(id){ return {id:id}; }) });
+  } catch(e) {}
+}
+
+function parseNaturalInput(text) {
+  var result = { title: text, dueDate: null, priority: null, repeat: null, tags: [], needAI: false };
+  
+  // Extract tags: #tagname
+  var tagMatch = text.match(/#([一-龥a-zA-Z0-9_]+)/g);
+  if (tagMatch) {
+    tagMatch.forEach(function(m) { result.tags.push(m.slice(1)); });
+    result.title = result.title.replace(/#[一-龥a-zA-Z0-9_]+/g, '').trim();
+  }
+  
+  // Extract priority
+  var priMatch = text.match(/[!]([高中低])/);
+  if (priMatch) { result.priority = priMatch[1]; result.title = result.title.replace(/[!][高中低]/, '').trim(); }
+  if (text.indexOf('高优先级') >= 0) { result.priority = '高'; result.title = result.title.replace('高优先级', '').trim(); }
+  
+  // Extract repeat
+  if (text.indexOf('每天') >= 0) { result.repeat = '每天'; result.title = result.title.replace('每天', '').trim(); }
+  else if (text.indexOf('每周') >= 0) { result.repeat = '每周'; result.title = result.title.replace('每周', '').trim(); }
+  else if (text.indexOf('每月') >= 0) { result.repeat = '每月'; result.title = result.title.replace('每月', '').trim(); }
+  
+  // Extract date/time
+  var now = new Date();
+  var dateSet = false;
+  var h = -1, mi = 0;
+  
+  // Time patterns
+  var timeMatch = text.match(/(上午|下午|晚上)?(d{1,2})[点时:](d{1,2})?[分钟]?/);
+  if (timeMatch) {
+    h = parseInt(timeMatch[2]);
+    mi = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+    if (timeMatch[1] === '下午' && h < 12) h += 12;
+    if (timeMatch[1] === '晚上' && h < 12) h += 12;
+    result.title = result.title.replace(timeMatch[0], '').trim();
+  }
+  
+  // Date patterns
+  if (text.indexOf('今天') >= 0 || text.indexOf('今儿') >= 0) {
+    result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    dateSet = true; result.title = result.title.replace(/今天|今儿/, '').trim();
+  } else if (text.indexOf('明天') >= 0 || text.indexOf('明儿') >= 0) {
+    result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    dateSet = true; result.title = result.title.replace(/明天|明儿/, '').trim();
+  } else if (text.indexOf('后天') >= 0) {
+    result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+    dateSet = true; result.title = result.title.replace('后天', '').trim();
+  } else if (text.indexOf('大后天') >= 0) {
+    result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+    dateSet = true; result.title = result.title.replace('大后天', '').trim();
+  } else {
+    var weekMatch = text.match(/下周([一二三四五六日天])/);
+    if (weekMatch) {
+      var dayMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0,'天':0};
+      var targetDay = dayMap[weekMatch[1]];
+      var diff = (targetDay - now.getDay() + 7) % 7 + 7;
+      result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      dateSet = true; result.title = result.title.replace(weekMatch[0], '').trim();
+    }
+  }
+  
+  // If date was set, apply time
+  if (dateSet && result.dueDate && h >= 0) {
+    result.dueDate.setHours(h, mi, 0, 0);
+  }
+  
+  // Check if AI is needed (fuzzy expressions)
+  var fuzzyWords = ['左右', '大概', '月底', '年前', '过几天', '近几天', '改天', '有空'];
+  if (fuzzyWords.some(function(w){ return text.indexOf(w) >= 0; })) {
+    result.needAI = true;
+  }
+  
+  return result;
+}
+
+var _nlpTimer = null;
+function onTodoTitleInput(value) {
+  if (_nlpTimer) clearTimeout(_nlpTimer);
+  _nlpTimer = setTimeout(function() {
+    var parsed = parseNaturalInput(value);
+    var chipEl = document.getElementById('nlpChips');
+    if (!chipEl) return;
+    var chips = '';
+    if (parsed.dueDate) {
+      chips += '<span class="nlp-chip" onclick="document.getElementById(\'todoDueDate\').value=\'\';this.remove()">📅 ' + formatDueDate(parsed.dueDate.toISOString()) + '</span>';
+      var dt = parsed.dueDate;
+      var ds = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0') + 'T' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+      document.getElementById('todoDueDate').value = ds;
+    }
+    if (parsed.priority) {
+      chips += '<span class="nlp-chip" onclick="document.getElementById(\'todoPriority\').value=\'中\';this.remove()">' + (parsed.priority==='高'?'🔴':'⚪') + ' ' + parsed.priority + '</span>';
+      document.getElementById('todoPriority').value = parsed.priority;
+    }
+    if (parsed.repeat) {
+      chips += '<span class="nlp-chip" onclick="document.getElementById(\'todoRepeat\').value=\'无\';this.remove()">🔄 ' + parsed.repeat + '</span>';
+      document.getElementById('todoRepeat').value = parsed.repeat;
+    }
+    parsed.tags.forEach(function(tag) {
+      if (todoTags.indexOf(tag) < 0) { todoTags.push(tag); renderTagChips(); }
+    });
+    chipEl.innerHTML = chips;
+    // AI fallback for fuzzy expressions
+    if (parsed.needAI && typeof todoApi !== 'undefined') {
+      var aiBody = { action: 'parse-todo', text: value };
+      fetch(API_BASE + '/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (typeof getPin === 'function' ? getPin() : '') }, body: JSON.stringify(aiBody) })
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+          if (data.dueDate) { document.getElementById('todoDueDate').value = data.dueDate.slice(0,16); }
+          if (data.priority) { document.getElementById('todoPriority').value = data.priority; }
+          if (data.repeat) { document.getElementById('todoRepeat').value = data.repeat; }
+          if (data.tags) { data.tags.forEach(function(tag){ if (todoTags.indexOf(tag)<0) { todoTags.push(tag); renderTagChips(); } }); }
+          // Update NLP chips
+          var ce = document.getElementById('nlpChips'); if (ce) ce.innerHTML += '<span class="nlp-chip">🤖 AI解析</span>';
+        })
+        .catch(function(){})
+    }
+  }, 500);
 }

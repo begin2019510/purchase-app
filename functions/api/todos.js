@@ -34,6 +34,7 @@ export async function onRequest(context) {
         {name:'项目ID', type:1},
         {name:'标签', type:1},
         {name:'排序', type:2},
+        {name:'提醒', type:1},
       ];
       for (const f of needed) {
         if (!names.includes(f.name)) {
@@ -71,6 +72,7 @@ export async function onRequest(context) {
       projectId: feishuStr(f['项目ID']),
       tags: feishuStr(f['标签']),
       order: Number(f['排序']) || 0,
+      reminders: feishuStr(f['提醒']),
     };
   }
 
@@ -169,6 +171,8 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
     if (body.projectId !== undefined) fields['项目ID'] = body.projectId;
     if (body.tags !== undefined) fields['标签'] = body.tags;
     if (body.order !== undefined) fields['排序'] = body.order;
+    if (body.reminders) fields['提醒'] = body.reminders;
+    if (body.reminders !== undefined) fields['提醒'] = body.reminders;
     if (body.image !== undefined) {
       if (body.image && body.image.startsWith('data:')) {
         const KV = env.IMAGE_STORE;
