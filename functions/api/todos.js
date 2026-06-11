@@ -106,6 +106,8 @@ export async function onRequest(context) {
       '关联类型': body.linkType || '无',
       '关联ID': body.linkId || '',
       '项目ID': body.projectId || '',
+      '标签': body.tags || '[]',
+      '排序': body.order || 0,
     };
     if (body.dueDate) { fields['截止日期'] = new Date(body.dueDate).getTime(); fields['截止日期ISO'] = body.dueDate; }
     if (body.image && body.image.startsWith('data:')) {
@@ -172,7 +174,6 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
     if (body.projectId !== undefined) fields['项目ID'] = body.projectId;
     if (body.tags !== undefined) fields['标签'] = body.tags;
     if (body.order !== undefined) fields['排序'] = body.order;
-    if (body.reminders) fields['提醒'] = body.reminders;
     if (body.reminders !== undefined) fields['提醒'] = body.reminders;
     if (body.image !== undefined) {
       if (body.image && body.image.startsWith('data:')) {

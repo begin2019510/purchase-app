@@ -7,7 +7,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sa
 @media(prefers-color-scheme:dark){:root:not(.light){--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}}
 body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}
 body.dark .tabs,body.dark .search-bar,body.dark .batch-bar,body.dark .search-input,body.dark .chip{background:var(--card);color:var(--text)}
-body.dark .chip.active{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 8px rgba(99,102,241,.4)}
+body.dark .chip.active{background:var(--pri)!important;color:#fff!important;border-color:var(--pri)!important;box-shadow:0 2px 8px rgba(99,102,241,.4)!important}
 
 body.dark .ex-section{background:var(--card)}
 body.dark .ex-entry{background:var(--bg)}
@@ -26,10 +26,10 @@ body.dark .badge-已归档{background:rgba(243,244,265,.15);color:#9ca3af}
 body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 body.dark .bottom-nav{background:var(--card);border-top-color:var(--border);box-shadow:0 -2px 10px rgba(0,0,0,.2)}
 body.dark .nav-item{color:var(--muted)}
-body.dark .nav-item.active{color:#a5b4fc;background:rgba(99,102,241,.15);border-radius:12px}
+body.dark .nav-item.active{color:#a5b4fc!important;background:rgba(99,102,241,.15)!important;border-radius:12px}
 
 body.dark .tab{color:var(--muted)}
-body.dark .tab.active{color:#a5b4fc;border-bottom-color:var(--pri);background:rgba(99,102,241,.18);font-weight:800}
+body.dark .tab.active{color:#a5b4fc!important;border-bottom-color:var(--pri)!important;background:rgba(99,102,241,.18)!important;font-weight:800}
 body.dark .tabs{background:var(--card);border-bottom-color:var(--border)}
 body.dark .nav-item.active .nav-icon{filter:drop-shadow(0 0 6px var(--pri))}
 body.dark .nav-item.active .nav-label{color:#a5b4fc;font-weight:700}
@@ -87,7 +87,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .chips{display:flex;gap:6px;padding:6px 14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .chips::-webkit-scrollbar{display:none}
 .chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s}
-.chip.active{background:var(--pri);color:#fff;border-color:var(--pri);box-shadow:0 2px 8px rgba(99,102,241,.3)}
+.chip.active{background:var(--pri)!important;color:#fff!important;border-color:var(--pri)!important;box-shadow:0 2px 8px rgba(99,102,241,.3)!important}
 .chip:active{transform:scale(.95)}
 
 /* ===== Container ===== */
@@ -1145,7 +1145,7 @@ input, textarea {
 .todo-filter-chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
 .todo-filter-chips::-webkit-scrollbar { display: none; }
 .todo-chip { padding: 5px 12px; border: 1.5px solid var(--border); background: transparent; border-radius: 16px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; transition: .2s; }
-.todo-chip.active { background: var(--pri); color: #fff; border-color: var(--pri); }
+.todo-chip.active { background: var(--pri) !important; color: #fff !important; border-color: var(--pri) !important; }
 
 /* Subtask priority selector */
 .subtask-pri-select { padding: 6px 4px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; background: var(--bg); color: var(--text); flex-shrink: 0; width: 48px; }
@@ -1156,7 +1156,7 @@ input, textarea {
 .gantt-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
 .gantt-view-switcher { display: flex; gap: 4px; }
 .gantt-view-btn { padding: 4px 10px; border: 1.5px solid var(--border); background: transparent; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; }
-.gantt-view-btn.active { background: var(--pri); color: #fff; border-color: var(--pri); }
+.gantt-view-btn.active { background: var(--pri) !important; color: #fff !important; border-color: var(--pri) !important; }
 .gantt-day-name { font-size: 10px; color: var(--muted); }
 .gantt-day-num { font-size: 13px; font-weight: 700; }
 .gantt-row-wrap { border-bottom: 1px solid color-mix(in srgb, var(--border) 30%, transparent); }

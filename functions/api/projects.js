@@ -30,6 +30,7 @@ export async function onRequest(context) {
         {name:'\u72b6\u6001', type:3, property:{options:[{name:'\u8fdb\u884c\u4e2d'},{name:'\u5df2\u5b8c\u6210'},{name:'\u5df2\u5f52\u6863'}]}},
         {name:'\u989c\u8272', type:1},
         {name:'\u8fdb\u5ea6', type:2},
+        {name:'\u7236\u9879\u76eeID', type:1},
       ];
       for (const f of needed) {
         if (!names.includes(f.name)) {
@@ -57,6 +58,7 @@ export async function onRequest(context) {
       status: feishuStr(f['\u72b6\u6001']) || '\u8fdb\u884c\u4e2d',
       color: feishuStr(f['\u989c\u8272']) || '#6366f1',
       progress: Number(f['\u8fdb\u5ea6']) || 0,
+      parentId: feishuStr(f['\u7236\u9879\u76eeID']),
     };
   }
 
@@ -86,6 +88,7 @@ export async function onRequest(context) {
       '\u8fdb\u5ea6': 0,
     };
     if (body.dueDate) { fields['\u622a\u6b62\u65e5\u671f'] = new Date(body.dueDate).getTime(); fields['\u622a\u6b62\u65e5\u671fISO'] = body.dueDate; }
+    if (body.parentId) fields['\u7236\u9879\u76eeID'] = body.parentId;
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },
@@ -106,6 +109,7 @@ export async function onRequest(context) {
     if (body.status !== undefined) fields['\u72b6\u6001'] = body.status;
     if (body.color !== undefined) fields['\u989c\u8272'] = body.color;
     if (body.progress !== undefined) fields['\u8fdb\u5ea6'] = body.progress;
+    if (body.parentId !== undefined) fields['\u7236\u9879\u76eeID'] = body.parentId || '';
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
       method: 'PUT',
       headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },

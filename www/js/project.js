@@ -1,5 +1,4 @@
-if(typeof App==="undefined"){var App={utils:{},auth:{},api:{},stats:{},expense:{},items:{},ai:{},budget:{},app:{}};}
-�?/ project.js - Project management module
+﻿// project.js - Project management module
 
 var PROJECT_API = API_BASE + '/api/projects';
 var projectList = [];
@@ -38,23 +37,23 @@ function renderProject() {
   var html = '';
   
   html += '<div class="chips">';
-  ['全部','进行�?,'已完�?,'已归�?].forEach(function(c) {
+  ['全部','进行中','已完成','已归档'].forEach(function(c) {
     var cnt = c === '全部' ? projectList.length : projectList.filter(function(p){ return p.status === c; }).length;
     html += '<span class="chip' + (projectFilter === c ? ' active' : '') + '" onclick="projectFilter=' + "'" + c + "'" + ';renderProject()" style="font-size:12px">' + c + ' ' + cnt + '</span>';
   });
   html += '</div>';
 
   html += '<div class="todo-compact-header"><div class="todo-stats-row">';
-  var active = projectList.filter(function(p){ return p.status === '进行�?; }).length;
-  var done = projectList.filter(function(p){ return p.status === '已完�?; }).length;
+  var active = projectList.filter(function(p){ return p.status === '进行中'; }).length;
+  var done = projectList.filter(function(p){ return p.status === '已完成'; }).length;
   html += '<div class="todo-stat"><span class="todo-stat-num">' + projectList.length + '</span><span class="todo-stat-lbl">全部</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + active + '</span><span class="todo-stat-lbl">进行�?/span></div>';
+  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + active + '</span><span class="todo-stat-lbl">进行中</span></div>';
   html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#16a34a">' + done + '</span><span class="todo-stat-lbl">完成</span></div>';
   html += '</div></div>';
 
   if (filtered.length === 0) {
     html += '<div class="todo-empty"><div class="todo-empty-icon">📁</div>';
-    html += '<div class="todo-empty-text">' + (projectFilter === '全部' ? '暂无项目' : '�? + projectFilter + '的项�?) + '</div></div>';
+    html += '<div class="todo-empty-text">' + (projectFilter === '全部' ? '暂无项目' : '无' + projectFilter + '的项目') + '</div></div>';
     el.innerHTML = html;
     return;
   }
@@ -82,18 +81,18 @@ function renderProject() {
 }
 
 function renderProjectCard(p, isChild, parentName) {
-  var linkedTodos = todoList.filter(function(t){ return t.projectId === p.id && t.status !== '已取�?; });
+  var linkedTodos = todoList.filter(function(t){ return t.projectId === p.id && t.status !== '已取消'; });
   var totalTodos = linkedTodos.length;
-  var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完�?; }).length;
+  var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完成'; }).length;
   var pct = totalTodos > 0 ? Math.round(doneTodos / totalTodos * 100) : 0;
   var priColor = p.color || '#6366f1';
-  var isDone = p.status === '已完�? || p.status === '已归�?;
+  var isDone = p.status === '已完成' || p.status === '已归档';
 
   var h = '<div class="todo-card' + (isDone ? ' todo-done' : '') + (isChild ? ' project-child-card' : '') + '" onclick="openProjectDetail(\'' + p.id + '\')">';
   h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
   h += '<div class="todo-card-inner"><div class="todo-card-main"><div class="todo-card-content">';
   if (isChild && parentName) {
-    h += '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + esc(parentName) + ' �?/div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + esc(parentName) + ' ›</div>';
   }
   h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + (isChild ? '📋 ' : '📁 ') + esc(p.name) + '</div>';
   if (p.description) h += '<div style="font-size:12px;color:var(--muted);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + esc(p.description) + '</div>';
@@ -103,15 +102,13 @@ function renderProjectCard(p, isChild, parentName) {
   h += '<span class="todo-card-progress">📋 ' + doneTodos + '/' + totalTodos + '</span>';
   h += '</div>';
   h += '<div class="todo-card-progress-bar"><div class="todo-card-progress-fill" style="width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + '"></div></div>';
-  if (p.status === '已完�?) {
+  if (p.status === '已完成') {
     h += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" style="margin-top:6px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer">📦 归档</button>';
   }
   h += '</div></div></div></div>';
   return h;
 }
-function openProjectModal(id, parentId) {
-  // Store parentId for reliable save
-  window._projectParentId = parentId || null;
+function openProjectModal(id) {
   var overlay = document.getElementById('projectModalOverlay');
   if (!overlay) return;
 
@@ -124,21 +121,24 @@ function openProjectModal(id, parentId) {
   document.getElementById('projectStatus').value = p ? p.status : '\u8fdb\u884c\u4e2d';
   document.getElementById('projectColor').value = p ? p.color : '#6366f1';
 
-  overlay.style.display = "flex";
-  // POPULATE_PARENT_OPTIONS
-  var parentSel = document.getElementById('projectParentId');
-  if (parentSel) {
-    var curVal = parentId || parentSel.value;
-    parentSel.innerHTML = '<option value="">\u65e0\uff08\u4e00\u7ea7\u9879\u76ee\uff09</option>';
-    projectList.filter(function(p){ return !p.parentId && p.status !== '\u5df2\u5f52\u6863' && p.id !== id; }).forEach(function(p) {
-      parentSel.innerHTML += '<option value="' + p.id + '">\ud83d\udcc1 ' + esc(p.name) + '</option>';
-    });
-    if (curVal) parentSel.value = curVal;
+  // Read pending parentId (Bug #3 fix)
+  if (!id && window._pendingParentId) {
+    var pSel = document.getElementById('projectParentId');
+    if (pSel) pSel.value = window._pendingParentId;
+    window._pendingParentId = '';
   }
+  // Read pending projectId for todo modal
+  if (window._pendingProjectId) {
+    var todoSel = document.getElementById('todoProjectId');
+    if (todoSel) todoSel.value = window._pendingProjectId;
+    window._pendingProjectId = '';
+  }
+
+  overlay.classList.add('active');
 }
 
 function closeProjectModal() {
-  document.getElementById('projectModalOverlay').style.display = "none";
+  document.getElementById('projectModalOverlay').classList.remove('active');
 }
 
 async function saveProject() {
@@ -152,7 +152,7 @@ async function saveProject() {
     dueDate: (function(){ var v = document.getElementById('projectDueDate').value; return v ? new Date(v).toISOString() : null; })(),
     status: document.getElementById('projectStatus').value,
     color: document.getElementById('projectColor').value,
-      parentId: (document.getElementById('projectParentId') || {}).value || window._projectParentId || '',
+      parentId: (document.getElementById('projectParentId') || {}).value || '',
   };
 
   closeProjectModal();
@@ -163,8 +163,8 @@ async function saveProject() {
     if (p) { Object.assign(p, data); }
     renderProject();
     var r = await projectApi('PUT', data);
-    if (r && r.error) { toast('\u66f4\u65b0\u5931\u8d25: ' + r.error); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.style.display !== "none") { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
-    else { toast('\u2705 \u5df2\u66f4\u65b0'); setTimeout(function(){ openProjectDetail(id); }, 100); }
+    if (r && r.error) { toast('\u66f4\u65b0\u5931\u8d25: ' + r.error); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.classList.contains('active')) { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
+    else toast('\u2705 \u5df2\u66f4\u65b0');
   } else {
     var r = await projectApi('POST', data);
     if (r && r.ok) {
@@ -175,7 +175,7 @@ async function saveProject() {
       toast('\u2705 \u5df2\u521b\u5efa');
     } else {
       toast('\u521b\u5efa\u5931\u8d25: ' + (r.error || '\u672a\u77e5\u9519\u8bef'));
-      loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.style.display !== "none") { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } });
+      loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.classList.contains('active')) { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } });
     }
   }
 }
@@ -186,7 +186,7 @@ async function deleteProject(id) {
   projectList = projectList.filter(function(p){ return p.id !== id; });
   renderProject();
   var r = await projectApi('DELETE', null, id);
-  if (r && r.error) { toast('\u5220\u9664\u5931\u8d25: ' + r.error); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.style.display !== "none") { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
+  if (r && r.error) { toast('\u5220\u9664\u5931\u8d25: ' + r.error); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.classList.contains('active')) { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
   else toast('\u5df2\u5220\u9664');
 }
 
@@ -267,11 +267,11 @@ function openProjectDetail(id) {
   html += '</div>';
 
   document.getElementById('projectDetailBody').innerHTML = html;
-  overlay.style.display = "flex";
+  overlay.classList.add('active');
 }
 
 function closeProjectDetail() {
-  document.getElementById('projectDetailOverlay').style.display = "none";
+  document.getElementById('projectDetailOverlay').classList.remove('active');
 }
 
 function getProjectOptions() {
@@ -279,19 +279,16 @@ function getProjectOptions() {
   var children = projectList.filter(function(p){ return p.parentId && p.status !== '已归档'; });
   var html = '<option value="">无</option>';
   parents.forEach(function(p) {
+    // Parent always selectable (Bug #3 fix)
+    html += '<option value="' + p.id + '">' + '📁 ' + esc(p.name) + '</option>';
     var kids = children.filter(function(c){ return c.parentId === p.id; });
-    // Always include parent as a selectable option
-    html += '<option value="' + p.id + '">📁 ' + esc(p.name) + '</option>';
-    if (kids.length > 0) {
-      kids.forEach(function(k) {
-        html += '<option value="' + k.id + '">  └ 📋 ' + esc(k.name) + '</option>';
-      });
-    }
+    kids.forEach(function(k) {
+      html += '<option value="' + k.id + '">&nbsp;&nbsp;└ ' + '📋 ' + esc(k.name) + '</option>';
+    });
   });
-  // Also include orphan children
-  var parentIds = parents.map(function(p){ return p.id; });
-  children.filter(function(c){ return parentIds.indexOf(c.parentId) < 0; }).forEach(function(k) {
-    html += '<option value="' + k.id + '">📋 ' + esc(k.name) + '</option>';
+  // Orphan children (parent archived/missing)
+  children.filter(function(c){ return !parents.some(function(p){ return p.id === c.parentId; }); }).forEach(function(k) {
+    html += '<option value="' + k.id + '">' + '📋 ' + esc(k.name) + '</option>';
   });
   return html;
 }
@@ -299,21 +296,16 @@ function getProjectOptions() {
 async function archiveProject(id) {
   var p = projectList.find(function(x){ return x.id === id; });
   if (!p) return;
-  p.status = '已归�?;
+  p.status = '已归档';
   renderProject();
-  var r = await projectApi('PUT', { id: id, status: '已归�? });
-  if (r && r.error) { toast('归档失败'); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.style.display !== "none") { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
-  else toast('已归�?);
+  var r = await projectApi('PUT', { id: id, status: '已归档' });
+  if (r && r.error) { toast('归档失败'); loadProjects().then(function(){ renderProject(); /* Refresh detail if open */ var dO = document.getElementById('projectDetailOverlay'); if (dO && dO.classList.contains('active')) { var pid = document.getElementById('projectId').value; if (pid) openProjectDetail(pid); } }); }
+  else toast('已归档');
 }
 
 function openTodoModalForProject(projectId) {
-  // Store pending projectId before opening modal (openTodoModal resets the select)
   window._pendingProjectId = projectId;
   openTodoModal();
-  // Set projectId after modal is populated (openTodoModal calls getProjectOptions)
-  var sel = document.getElementById('todoProjectId');
-  if (sel) { sel.value = projectId; sel.dispatchEvent(new Event('change')); }
-  window._pendingProjectId = null;
 }
 
 async function unlinkTodoFromProject(todoId) {
@@ -328,9 +320,10 @@ async function unlinkTodoFromProject(todoId) {
     var body = document.getElementById('projectDetailBody');
     if (body) { var h3 = body.querySelector('h3'); if (h3) { var pName = h3.textContent; var p = projectList.find(function(x){ return x.name === pName; }); if (p) openProjectDetail(p.id); } }
   }
-  toast('已解除关�?);
+  toast('已解除关联');
 }
 
 function openProjectModalForParent(parentId) {
-  openProjectModal(null, parentId);
+  window._pendingParentId = parentId;
+  openProjectModal();
 }
