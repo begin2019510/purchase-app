@@ -432,7 +432,7 @@ function buildGanttWeekView() {
     for (var i = 0; i < 7; i++) {
       var d = new Date(weekStart); d.setDate(d.getDate() + i);
       var dateStr = localDateStr(d);
-      var isDueDay = dueDate && localDateStr(dueDate) === dateStr;
+      var isDueDay = dueDate && localDateStr(new Date(t.dueDate)) === todoCalSelected;
       var isTodayCol = dateStr === todayStr;
       html += '<div class="gantt-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
       if (isDueDay) {
@@ -602,7 +602,7 @@ function buildCalendarHtml() {
     var dayTodos = todoList.filter(function(t) {
     if (t.dueDate) { var dd = localDateStr(new Date(t.dueDate)); if (dd === dateStr) return true; }
     // Also check subtasks with independent dates
-    try { var subs = JSON.parse(t.subtasks || '[]'); if (subs.some(function(s){ return s.dueDate && localDateStr(new Date(s.dueDate)) === dateStr; })) return true; } catch(e) {}
+    try { var subs = JSON.parse(t.subtasks || '[]'); if (subs.some(function(s){ return s.dueDate && localDateStr(new Date(s.dueDate)) === todoCalSelected; })) return true; } catch(e) {}
     return false;
   });
 
@@ -623,8 +623,8 @@ function buildCalendarHtml() {
   // Selected day detail
   if (todoCalSelected) {
     var selTodos = todoList.filter(function(t) {
-    if (t.dueDate && localDateStr(dueDate) === dateStr) return true;
-    try { var subs = JSON.parse(t.subtasks || '[]'); if (subs.some(function(s){ return s.dueDate && localDateStr(new Date(s.dueDate)) === dateStr; })) return true; } catch(e) {}
+    if (t.dueDate && localDateStr(new Date(t.dueDate)) === todoCalSelected) return true;
+    try { var subs = JSON.parse(t.subtasks || '[]'); if (subs.some(function(s){ return s.dueDate && localDateStr(new Date(s.dueDate)) === todoCalSelected; })) return true; } catch(e) {}
     return false;
   });
     html += '<div class="cal-detail">';
@@ -644,6 +644,7 @@ function buildCalendarHtml() {
   return html;
 }
 
+function renderTodoCalendar() { renderTodo(); }
 function todoCalPrev() { todoCalMonth--; if (todoCalMonth < 0) { todoCalMonth = 11; todoCalYear--; } todoCalSelected = null; renderTodoCalendar(); }
 function todoCalNext() { todoCalMonth++; if (todoCalMonth > 11) { todoCalMonth = 0; todoCalYear++; } todoCalSelected = null; renderTodoCalendar(); }
 function todoCalToday() { var n = new Date(); todoCalYear = n.getFullYear(); todoCalMonth = n.getMonth(); todoCalSelected = localDateStr(n); renderTodo(); }
@@ -1263,7 +1264,7 @@ function parseNaturalInput(text) {
   var h = -1, mi = 0;
   
   // Time patterns
-  var timeMatch = text.match(/(上午|下午|晚上)?(d{1,2})[点时:](d{1,2})?[分钟]?/);
+  var timeMatch = text.match(/(上午|下午|晚上)?(\\d{1,2})[点时:](\\d{1,2})?[分钟]?/);
   if (timeMatch) {
     h = parseInt(timeMatch[2]);
     mi = timeMatch[3] ? parseInt(timeMatch[3]) : 0;

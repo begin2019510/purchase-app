@@ -1,5 +1,5 @@
-if(typeof suggestCategory==='undefined'){function suggestCategory(){return ''}}
-if(typeof onNoteInput==='undefined'){function onNoteInput(){}}
+var suggestCategory = (typeof suggestCategory !== 'undefined') ? suggestCategory : function(){return '';};
+var onNoteInput = (typeof onNoteInput !== 'undefined') ? onNoteInput : function(){};
 ﻿// ai.js - AI Assistant, Evaluation, Analysis
 function parseEvalNote(note) {
   if (!note || !note.includes('===BUDGET===')) return null;
