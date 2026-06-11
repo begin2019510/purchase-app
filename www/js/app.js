@@ -211,7 +211,7 @@ async function loadAll(){
   // loadProjects now runs in parallel above
   _log("Rendering, items="+items.length+", expenses="+expenses.length);
   try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
-  _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200)}));
+  _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200),todoHTML:document.getElementById("todoContent")?.innerHTML?.length,todoErr:window._todoRenderErr}));
 }
 
 function render(){

@@ -235,14 +235,27 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
   if (method === 'DELETE') {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
+    const action = url.searchParams.get('action');
     if (!id) return json({ error: 'Missing id' }, 400);
+    // Hard purge
+    if (action === 'purge') {
+      const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + feishuToken },
+      });
+      const d = await r.json();
+      if (d.code !== 0) return json({ error: d.msg || 'Purge failed' }, 500);
+      return json({ ok: true, purged: true });
+    }
+    // Soft delete: set status to 已删除
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: 'Bearer ' + feishuToken },
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + feishuToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { '状态': '已删除' } }),
     });
     const d = await r.json();
     if (d.code !== 0) return json({ error: d.msg || 'Delete failed' }, 500);
-    return json({ ok: true });
+    return json({ ok: true, softDeleted: true });
   }
 
   if (method === 'PATCH') {

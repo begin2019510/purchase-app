@@ -1147,28 +1147,6 @@ input, textarea {
 .todo-chip { padding: 5px 12px; border: 1.5px solid var(--border); background: transparent; border-radius: 16px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; transition: .2s; }
 .todo-chip.active { background: var(--pri); color: #fff; border-color: var(--pri); }
 
-/* Todo card - TickTick style */
-.todo-list { display: flex; flex-direction: column; gap: 6px; }
-.todo-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--card); border-radius: 12px; cursor: pointer; transition: .15s; position: relative; overflow: hidden; }
-.todo-card:active { transform: scale(.98); }
-.todo-card.done { opacity: .6; }
-.todo-card-check { flex-shrink: 0; padding-top: 2px; }
-.todo-checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; color: transparent; transition: .2s; }
-.todo-checkbox.checked { background: var(--green); border-color: var(--green); color: #fff; }
-.todo-card-body { flex: 1; min-width: 0; }
-.todo-card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
-.todo-card-title.strikethrough { text-decoration: line-through; color: var(--muted); }
-.todo-card-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.todo-card-due { font-size: 11px; color: var(--muted); }
-.todo-card-due.due-overdue { color: var(--red); font-weight: 700; }
-.todo-card-due.due-today { color: var(--orange); font-weight: 700; }
-.todo-card-cat { font-size: 11px; color: var(--muted); }
-.todo-card-progress { font-size: 11px; color: var(--pri); font-weight: 600; }
-.todo-card-link { font-size: 11px; color: var(--blue); }
-.todo-card-progress-bar { height: 3px; background: var(--bg); border-radius: 2px; overflow: hidden; margin-top: 6px; }
-.todo-card-progress-fill { height: 100%; background: var(--pri-g); border-radius: 2px; }
-.todo-card-pri { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
-
 /* Subtask priority selector */
 .subtask-pri-select { padding: 6px 4px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; background: var(--bg); color: var(--text); flex-shrink: 0; width: 48px; }
 .subtask-pri-tag { font-size: 10px; padding: 1px 4px; border-radius: 4px; }

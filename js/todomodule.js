@@ -46,10 +46,12 @@ function renderTodo() {
 
   var filtered = todoList;
   if (todoFilter !== '全部') {
-    if (todoFilter === '高优先级') filtered = todoList.filter(function(t){ return t.priority === '高' && t.status !== '已完成' && t.status !== '已取消'; });
+    if (todoFilter === '高优先级') filtered = todoList.filter(function(t){ return t.priority === '高' && t.status !== '已完成' && t.status !== '已取消' && t.status !== '已删除'; });
+    else if (todoFilter === '回收站') filtered = todoList.filter(function(t){ return t.status === '已删除'; });
     else filtered = todoList.filter(function(t){ return t.status === todoFilter; });
+  } else {
+    filtered = todoList.filter(function(t){ return t.status !== '已删除'; });
   }
-  // Search filter
   if (todoSearch && todoSearch.trim()) {
     var q = todoSearch.trim().toLowerCase();
     filtered = filtered.filter(function(t) {
@@ -79,7 +81,7 @@ function renderTodo() {
   });
 
   // Stats
-  var total=todoList.length, pending=0, doing=0, done=0, overdue=0;
+  var total=todoList.filter(function(t){return t.status!=='已删除'}).length, pending=0, doing=0, done=0, overdue=0;
   todoList.forEach(function(t){
     if(t.status==='待办') pending++;
     if(t.status==='进行中') doing++;
@@ -118,7 +120,7 @@ function renderTodo() {
 
   // Filter chips (smaller)
   html += '<div class="chips-wrap" style="margin:8px 0 10px">';
-  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消'];
+  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消', '回收站'];
   chips.forEach(function(c) {
     html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
   });
@@ -164,6 +166,27 @@ function renderTodo() {
       el.style.width = el.getAttribute('data-width') + '%';
     });
   }, 50);
+
+  // Init SortableJS drag sort
+  if (typeof Sortable !== 'undefined' && todoView === 'list' && todoFilter !== '回收站') {
+    var container = el.querySelector('.todo-list-container');
+    if (container) {
+      Sortable.create(container, {
+        animation: 200,
+        ghostClass: 'todo-drag-ghost',
+        handle: '.todo-card',
+        onEnd: function(evt) {
+          var cards = container.querySelectorAll('.todo-card');
+          var order = 0;
+          cards.forEach(function(card) {
+            var id = card.getAttribute('data-id');
+            var t = todoList.find(function(x){ return x.id === id; });
+            if (t) { t.order = order; todoApi('PUT', { id: id, order: order }); order++; }
+          });
+        }
+      });
+    }
+  }
 }
 
 function getLinkDisplay(linkType, linkId) {
@@ -258,6 +281,13 @@ function renderTodoCard(t) {
   h += '<div class="todo-pri-dot" style="background:' + priColor + '"></div>';
 
   h += '</div>'; // main
+  // Recycle bin actions
+  if (t.status === '已删除') {
+    h += '<div style="display:flex;gap:8px;padding:8px 18px 12px;border-top:1px solid var(--border)">';
+    h += '<button onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid var(--pri);color:var(--pri);border-radius:8px;background:transparent;cursor:pointer;font-size:12px">↩ 恢复</button>';
+    h += '<button onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;cursor:pointer;font-size:12px">🗑️ 彻底删除</button>';
+    h += '</div>';
+  }
   h += '</div></div>'; // inner + card
   return h;
 }
@@ -1022,13 +1052,14 @@ function cycleTodoStatus(id) {
 async function deleteTodo(id) {
   if (!confirm('确定删除？')) return;
   closeTodoDetail();
-  todoList = todoList.filter(function(t){ return t.id !== id; });
+  var t = todoList.find(function(x){ return x.id === id; });
+  var oldStatus = t ? t.status : null;
+  if (t) { t.status = '已删除'; }
   render();
   var r = await todoApi('DELETE', null, id);
-  if (r && r.error) { toast('删除失败: ' + r.error); loadTodos().then(function(){renderTodo()}); return; }
-  toast('已删除');
+  if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; render(); return; }
+  toast('已移入回收站');
 }
-
 async function toggleTodoSubtask(todoId, index) {
   var t = todoList.find(function(x){ return x.id === todoId; });
   if (!t) return;
@@ -1079,13 +1110,19 @@ function restoreTodo(id) {
   toast('已恢复');
 }
 
+
 async function purgeTodo(id) {
   if (!confirm('彻底删除后无法恢复，确定？')) return;
   todoList = todoList.filter(function(t){ return t.id !== id; });
   render();
-  var r = await todoApi('DELETE', null, id);
-  if (r && r.error) { toast('彻底删除失败'); loadTodos(); }
-  else toast('已彻底删除');
+  try {
+    var url = TODO_API + '?id=' + id + '&action=purge';
+    var opts = { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() } };
+    var r = await fetch(url, opts);
+    var d = await r.json();
+    if (d && d.error) { toast('彻底删除失败'); loadTodos(); }
+    else toast('已彻底删除');
+  } catch(e) { toast('彻底删除失败'); loadTodos(); }
 }
 
 function stringHashColor(str) {
