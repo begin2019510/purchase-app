@@ -854,7 +854,7 @@ async function saveTodo() {
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
-      dueDate: document.getElementById('todoDueDate').value || null,
+      dueDate: (function(){ var v = document.getElementById('todoDueDate').value; return v ? new Date(v).toISOString() : null; })(),
       priority: document.getElementById('todoPriority').value,
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
@@ -1342,7 +1342,7 @@ function onTodoTitleInput(value) {
       fetch(API_BASE + '/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (typeof getPin === 'function' ? getPin() : '') }, body: JSON.stringify(aiBody) })
         .then(function(r){ return r.json(); })
         .then(function(data) {
-          if (data.dueDate) { document.getElementById('todoDueDate').value = data.dueDate.slice(0,16); }
+          if (data.dueDate) { var _d = new Date(data.dueDate + 'T00:00:00'); document.getElementById('todoDueDate').value = _d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0')+'T00:00'; }
           if (data.priority) { document.getElementById('todoPriority').value = data.priority; }
           if (data.repeat) { document.getElementById('todoRepeat').value = data.repeat; }
           if (data.tags) { data.tags.forEach(function(tag){ if (todoTags.indexOf(tag)<0) { todoTags.push(tag); renderTagChips(); } }); }

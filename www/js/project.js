@@ -117,7 +117,7 @@ function openProjectModal(id) {
   document.getElementById('projectId').value = p ? p.id : '';
   document.getElementById('projectName').value = p ? p.name : '';
   document.getElementById('projectDesc').value = p ? p.description : '';
-  document.getElementById('projectDueDate').value = p && p.dueDate ? new Date(p.dueDate).toISOString().slice(0,16) : '';
+  if (p && p.dueDate) { var d = new Date(p.dueDate); document.getElementById('projectDueDate').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); } else { document.getElementById('projectDueDate').value = ''; }
   document.getElementById('projectStatus').value = p ? p.status : '\u8fdb\u884c\u4e2d';
   document.getElementById('projectColor').value = p ? p.color : '#6366f1';
 
@@ -136,7 +136,7 @@ async function saveProject() {
   var data = {
     name: name,
     description: document.getElementById('projectDesc').value.trim(),
-    dueDate: document.getElementById('projectDueDate').value || null,
+    dueDate: (function(){ var v = document.getElementById('projectDueDate').value; return v ? new Date(v).toISOString() : null; })(),
     status: document.getElementById('projectStatus').value,
     color: document.getElementById('projectColor').value,
       parentId: (document.getElementById('projectParentId') || {}).value || '',
