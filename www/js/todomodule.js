@@ -216,7 +216,7 @@ function renderTodoCard(t) {
   if (t.projectId && typeof projectList !== 'undefined') {
     var proj = projectList.find(function(p){ return p.id === t.projectId; });
     if (proj) {
-      html += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
+      h += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
     }
   }
   if (t.linkType && t.linkType !== '无') {
