@@ -73,6 +73,9 @@ function renderTodo() {
   var html = '';
 
   // === Compact header: segmented control + progress ===
+  // Search box
+  html += '<div style="margin-bottom:10px"><input type="text" placeholder="搜索待办..." value="' + esc(todoSearch) + '" oninput="todoSearch=this.value;renderTodo()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box"></div>';
+
   html += '<div class="todo-compact-header">';
   
   // View switcher (segmented control)
@@ -171,7 +174,7 @@ function renderTodoCard(t) {
   var isDone = t.status === '已完成' || t.status === '已取消';
   var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
 
-  var h = '<div class="todo-card ' + statusClass + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
+  var h = '<div class="todo-card ' + statusClass + '" data-id="' + t.id + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
   h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
   h += '<div class="todo-card-inner">';
   h += '<div class="todo-card-main">';
@@ -199,6 +202,13 @@ function renderTodoCard(t) {
   h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
   h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
   if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
+    try {
+      var tags = JSON.parse(t.tags || '[]');
+      tags.forEach(function(tag) {
+        var tagColor = stringHashColor(tag);
+        h += '<span class="todo-tag" style="background:' + tagColor.bg + ';color:' + tagColor.text + ';font-size:10px">' + esc(tag) + '</span>';
+      });
+    } catch(e) {}
   h += '</div>';
 
   // Subtask progress
@@ -803,7 +813,8 @@ async function saveTodo() {
       linkType: document.getElementById('todoLinkType').value,
       projectId: (document.getElementById('todoProjectId')||{}).value || '',
       linkId: document.getElementById('todoLinkId').value || '',
-      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); }))
+      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
+      tags: JSON.stringify(todoTags)
     };
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
@@ -1032,4 +1043,71 @@ function checkProjectAutoStatus(projectId) {
     p.status = '进行中';
     projectApi('PUT', { id: projectId, status: '进行中' });
   }
+}
+
+function restoreTodo(id) {
+  var t = todoList.find(function(x){ return x.id === id; });
+  if (t) { t.status = '待办'; }
+  render();
+  todoApi('PUT', { id: id, status: '待办' });
+  toast('已恢复');
+}
+
+async function purgeTodo(id) {
+  if (!confirm('彻底删除后无法恢复，确定？')) return;
+  todoList = todoList.filter(function(t){ return t.id !== id; });
+  render();
+  var r = await todoApi('DELETE', null, id);
+  if (r && r.error) { toast('彻底删除失败'); loadTodos(); }
+  else toast('已彻底删除');
+}
+
+function stringHashColor(str) {
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  var h = Math.abs(hash) % 360;
+  return { bg: 'hsl(' + h + ',60%,92%)', text: 'hsl(' + h + ',60%,35%)' };
+}
+
+function getAllTags() {
+  var tagSet = {};
+  todoList.forEach(function(t) {
+    try {
+      var tags = JSON.parse(t.tags || '[]');
+      tags.forEach(function(tag) { tagSet[tag] = true; });
+    } catch(e) {}
+  });
+  return Object.keys(tagSet);
+}
+
+function renderTagChips() {
+  var el = document.getElementById('todoTagChips');
+  if (!el) return;
+  var html = '';
+  todoTags.forEach(function(tag, i) {
+    var c = stringHashColor(tag);
+    html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:' + c.bg + ';color:' + c.text + ';margin:2px">' + esc(tag) + '<span onclick="todoTags.splice(' + i + ',1);renderTagChips()" style="cursor:pointer;font-weight:700">×</span></span>';
+  });
+  // Quick add from existing tags
+  var allTags = getAllTags();
+  var unused = allTags.filter(function(t){ return todoTags.indexOf(t) < 0; });
+  if (unused.length > 0) {
+    html += '<div style="margin-top:4px">';
+    unused.forEach(function(tag) {
+      html += '<span onclick="todoTags.push(\'' + tag + '\');renderTagChips()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + esc(tag) + '</span>';
+    });
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function addTagFromInput() {
+  var input = document.getElementById('todoTagInput');
+  if (!input) return;
+  var val = input.value.trim();
+  if (val && todoTags.indexOf(val) < 0) {
+    todoTags.push(val);
+    renderTagChips();
+  }
+  input.value = '';
 }
