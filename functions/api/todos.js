@@ -35,6 +35,7 @@ export async function onRequest(context) {
         {name:'标签', type:1},
         {name:'排序', type:2},
         {name:'提醒', type:1},
+        {name:'截止日期ISO', type:1},
       ];
       for (const f of needed) {
         if (!names.includes(f.name)) {
@@ -59,7 +60,7 @@ export async function onRequest(context) {
       id: rec.record_id,
       title: feishuStr(f['标题']),
       description: feishuStr(f['描述']),
-      dueDate: f['截止日期'] || null,
+      dueDate: feishuStr(f['截止日期ISO']) || f['截止日期'] || null,
       priority: feishuStr(f['优先级']) || '中',
       category: feishuStr(f['分类']) || '其他',
       status: feishuStr(f['状态']) || '待办',
@@ -106,7 +107,7 @@ export async function onRequest(context) {
       '关联ID': body.linkId || '',
       '项目ID': body.projectId || '',
     };
-    if (body.dueDate) fields['截止日期'] = new Date(body.dueDate).getTime();
+    if (body.dueDate) { fields['截止日期'] = new Date(body.dueDate).getTime(); fields['截止日期ISO'] = body.dueDate; }
     if (body.image && body.image.startsWith('data:')) {
       const KV = env.IMAGE_STORE;
       if (KV) {
@@ -157,7 +158,7 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
 
     if (body.title !== undefined) fields['标题'] = body.title;
     if (body.description !== undefined) fields['描述'] = body.description;
-    if (body.dueDate !== undefined) fields['截止日期'] = body.dueDate ? new Date(body.dueDate).getTime() : null;
+    if (body.dueDate !== undefined) { fields['截止日期'] = body.dueDate ? new Date(body.dueDate).getTime() : null; fields['截止日期ISO'] = body.dueDate || ''; }
     if (body.priority !== undefined) fields['优先级'] = body.priority;
     if (body.category !== undefined) fields['分类'] = body.category;
     if (body.status !== undefined) {
@@ -212,7 +213,7 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
         const renewFields = {
           '标题': existingRecord.title,
           '描述': existingRecord.description,
-          '截止日期': oldDue.getTime(),
+          '截止日期': oldDue.getTime(), '截止日期ISO': oldDue.toISOString(),
           '优先级': existingRecord.priority,
           '分类': existingRecord.category,
           '状态': '待办',
