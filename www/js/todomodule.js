@@ -1,4 +1,5 @@
-﻿// todo.js - Todo module
+if(typeof App==="undefined"){var App={utils:{},auth:{},api:{},stats:{},expense:{},items:{},ai:{},budget:{},app:{}};}
+�?/ todo.js - Todo module
 
 var TODO_API = API_BASE + '/api/todos';
 var todoList = [];
@@ -7,6 +8,70 @@ var todoFilter = '全部';
 var todoCalYear, todoCalMonth;
 var todoCalSelected = null;
 var todoSearch = "";
+var _searchTimer = null;
+
+async function refreshTodos() {
+  await loadTodos();
+  if (typeof loadProjects === 'function') await loadProjects();
+  renderTodo();
+  toast('已刷新');
+}
+
+// Notification system - check for due/overdue todos
+function checkTodoNotifications() {
+  if (!todoList || todoList.length === 0) return;
+  var now = new Date();
+  var notified = JSON.parse(localStorage.getItem('todo_notified') || '{}');
+  var today = localDateStr(now);
+
+  todoList.forEach(function(t) {
+    if (!t.dueDate || t.status === '已完成' || t.status === '已取消' || t.status === '已删除') return;
+    var due = new Date(t.dueDate);
+    var dueStr = localDateStr(due);
+    var notifKey = t.id + '_' + dueStr;
+
+    // Skip if already notified today for this todo
+    if (notified[notifKey] === today) return;
+
+    var diffMs = due.getTime() - now.getTime();
+    var diffMin = Math.round(diffMs / 60000);
+
+    // Check reminders
+    try {
+      var reminders = JSON.parse(t.reminders || '[]');
+      reminders.forEach(function(minutesBefore) {
+        if (diffMin <= minutesBefore && diffMin > (minutesBefore - 5)) {
+          var msg = minutesBefore >= 60 ? '还有' + Math.round(minutesBefore/60) + '小时到截止日期' : '还有' + minutesBefore + '分钟到截止日期';
+          showTodoNotification('📅 ' + t.title, msg);
+          notified[notifKey] = today;
+        }
+      });
+    } catch(e) {}
+
+    // Overdue notification
+    if (diffMin < 0 && diffMin > -1440) {
+      showTodoNotification('⚠️ 已过期', t.title + ' 已过期');
+      notified[notifKey] = today;
+    }
+  });
+
+  localStorage.setItem('todo_notified', JSON.stringify(notified));
+}
+function showTodoNotification(title, body) {
+  // Try native notification first
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body: body, icon: '/icon-192.png' }); } catch(e) {}
+  }
+  // Always show toast as fallback
+  toast(title + ' ' + body);
+}
+
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+var todoReminders = [];
 var ganttExpanded = {};
 var ganttViewMode = "week";
 var ganttWeekOffset = 0;
@@ -44,13 +109,21 @@ function renderTodo() {
   var el = document.getElementById('todoContent');
   if (!el) return;
 
+  // Initialize persistent search input (once, outside dynamic content)
+  var searchArea = document.getElementById('todoSearchArea');
+  if (searchArea && !searchArea.querySelector('#todoSearchInput')) {
+    searchArea.innerHTML = '<input type="text" placeholder="��������..." value="' + esc(todoSearch) + '" id="todoSearchInput" oninput="onTodoSearchInput(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box">';
+  }
+  var _savedSearchValue = todoSearch;
+  var _savedSearchFocused = false;
+
   var filtered = todoList;
   if (todoFilter !== '全部') {
-    if (todoFilter === '高优先级') filtered = todoList.filter(function(t){ return t.priority === '高' && t.status !== '已完成' && t.status !== '已取消' && t.status !== '已删除'; });
-    else if (todoFilter === '回收站') filtered = todoList.filter(function(t){ return t.status === '已删除'; });
+    if (todoFilter === '高优先级') filtered = todoList.filter(function(t){ return t.priority === '�? && t.status !== '已完�? && t.status !== '已取�? && t.status !== '已删�?; });
+    else if (todoFilter === '回收�?) filtered = todoList.filter(function(t){ return t.status === '已删�?; });
     else filtered = todoList.filter(function(t){ return t.status === todoFilter; });
   } else {
-    filtered = todoList.filter(function(t){ return t.status !== '已删除'; });
+    filtered = todoList.filter(function(t){ return t.status !== '已删�?; });
   }
   if (todoSearch && todoSearch.trim()) {
     var q = todoSearch.trim().toLowerCase();
@@ -71,21 +144,21 @@ function renderTodo() {
 
   var now = Date.now();
   filtered.sort(function(a, b) {
-    if (a.status === '已完成' && b.status !== '已完成') return 1;
-    if (a.status !== '已完成' && b.status === '已完成') return -1;
+    if (a.status === '已完�? && b.status !== '已完�?) return 1;
+    if (a.status !== '已完�? && b.status === '已完�?) return -1;
     var da = a.dueDate ? new Date(a.dueDate).getTime() : 9999999999999;
     var db = b.dueDate ? new Date(b.dueDate).getTime() : 9999999999999;
     if (da !== db) return da - db;
-    var pri = { '高': 0, '中': 1, '低': 2 };
+    var pri = { '�?: 0, '�?: 1, '�?: 2 };
     return (pri[a.priority] || 1) - (pri[b.priority] || 1);
   });
 
   // Stats
-  var total=todoList.filter(function(t){return t.status!=='已删除'}).length, pending=0, doing=0, done=0, overdue=0;
+  var total=todoList.filter(function(t){return t.status!=='已删�?}).length, pending=0, doing=0, done=0, overdue=0;
   todoList.forEach(function(t){
     if(t.status==='待办') pending++;
-    if(t.status==='进行中') doing++;
-    if(t.status==='已完成') done++;
+    if(t.status==='进行�?) doing++;
+    if(t.status==='已完�?) done++;
     if(t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue') overdue++;
   });
   var activeTotal = pending + doing + done; var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
@@ -94,7 +167,7 @@ function renderTodo() {
 
   // === Compact header: segmented control + progress ===
   // Search box
-  html += '<div style="margin-bottom:10px"><input type="text" placeholder="搜索待办..." value="' + esc(todoSearch) + '" oninput="todoSearch=this.value;renderTodo()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box"></div>';
+  
 
   html += '<div class="todo-compact-header">';
   
@@ -102,14 +175,14 @@ function renderTodo() {
   html += '<div class="todo-view-switcher">';
   html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView(\x27list\x27)">📋 列表</button>';
   html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView(\x27calendar\x27)">📅 日历</button>';
-  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView(\x27gantt\x27)">📊 甘特图</button>';
+  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView(\x27gantt\x27)">📊 甘特�?/button>';
   html += '</div>';
 
   // Stats row (compact)
   html += '<div class="todo-stats-row">';
   html += '<div class="todo-stat"><span class="todo-stat-num">' + total + '</span><span class="todo-stat-lbl">全部</span></div>';
   html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#f59e0b">' + pending + '</span><span class="todo-stat-lbl">待办</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + doing + '</span><span class="todo-stat-lbl">进行中</span></div>';
+  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + doing + '</span><span class="todo-stat-lbl">进行�?/span></div>';
   if(overdue>0) html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#ef4444">' + overdue + '</span><span class="todo-stat-lbl">过期</span></div>';
   html += '<div class="todo-stat" style="margin-left:auto"><span class="todo-stat-num" style="color:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+';font-size:18px">' + pct + '%</span><span class="todo-stat-lbl">完成</span></div>';
   html += '</div>';
@@ -120,7 +193,7 @@ function renderTodo() {
 
   // Filter chips (smaller)
   html += '<div class="chips-wrap" style="margin:8px 0 10px">';
-  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消', '回收站'];
+  var chips = ['全部', '待办', '进行�?, '已完�?, '高优先级', '已取�?, '回收�?];
   chips.forEach(function(c) {
     html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
   });
@@ -130,12 +203,14 @@ function renderTodo() {
   if (todoView === 'calendar') {
     html += buildCalendarHtml();
     console.log("renderSubtaskRows: rows=" + todoSubtaskRows.length + ", firstText=" + (todoSubtaskRows[0]||{}).text + ", html=" + html.substring(0,300));
-  el.innerHTML = html;
+    el.innerHTML = html;
+    
     return;
   }
   if (todoView === 'gantt') {
     html += buildGanttHtml();
     el.innerHTML = html;
+    
     return;
   }
 
@@ -144,21 +219,24 @@ function renderTodo() {
     html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';
     html += '<div style="font-size:56px;margin-bottom:16px;opacity:0.6">📋</div>';
     html += '<div style="font-size:16px;font-weight:700;margin-bottom:6px">暂无待办</div>';
-    html += '<div style="font-size:13px;opacity:0.7">点击右下角 + 新建</div>';
+    html += '<div style="font-size:13px;opacity:0.7">点击右下�?+ 新建</div>';
     html += '</div>';
   } else {
-    var active = filtered.filter(function(t){ return t.status !== '已完成' && t.status !== '已取消'; });
-    var completed = filtered.filter(function(t){ return t.status === '已完成' || t.status === '已取消'; });
+    var active = filtered.filter(function(t){ return t.status !== '已完�? && t.status !== '已取�?; });
+    var completed = filtered.filter(function(t){ return t.status === '已完�? || t.status === '已取�?; });
+    html += '<div class="todo-list-container">';
     if (active.length > 0) {
       active.forEach(function(t) { html += renderTodoCard(t); });
     }
     if (completed.length > 0) {
-      html += '<div class="todo-section-title">✅ 已完成 <span class="todo-section-count">'+completed.length+'</span></div>';
+      html += '<div class="todo-section-title">�?已完�?<span class="todo-section-count">'+completed.length+'</span></div>';
       completed.forEach(function(t) { html += renderTodoCard(t); });
     }
+    html += '</div>';
   }
 
   el.innerHTML = html;
+  
 
   // Animate progress bar
   setTimeout(function() {
@@ -168,7 +246,7 @@ function renderTodo() {
   }, 50);
 
   // Init SortableJS drag sort
-  if (typeof Sortable !== 'undefined' && todoView === 'list' && todoFilter !== '回收站') {
+  if (typeof Sortable !== 'undefined' && todoView === 'list' && todoFilter !== '回收�?) {
     var container = el.querySelector('.todo-list-container');
     if (container) {
       Sortable.create(container, {
@@ -190,7 +268,7 @@ function renderTodo() {
 }
 
 function getLinkDisplay(linkType, linkId) {
-  if (!linkType || linkType === '无' || !linkId) return '';
+  if (!linkType || linkType === '�? || !linkId) return '';
   if (linkType === '采购' && typeof items !== 'undefined') {
     var it = items.find(function(x){ return x.id === linkId; });
     if (it) {
@@ -210,10 +288,10 @@ function getLinkDisplay(linkType, linkId) {
 }
 
 function renderTodoCard(t) {
-  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
+  var priColor = t.priority === '�? ? '#ef4444' : t.priority === '�? ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
-  var isDone = t.status === '已完成' || t.status === '已取消';
-  var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
+  var isDone = t.status === '已完�? || t.status === '已取�?;
+  var statusClass = t.status === '已完�? ? 'todo-done' : t.status === '已取�? ? 'todo-cancelled' : '';
 
   var h = '<div class="todo-card ' + statusClass + '" data-id="' + t.id + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
   h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
@@ -222,10 +300,13 @@ function renderTodoCard(t) {
 
   // Checkbox (quick complete)
   if (isDone) {
-    h += '<div class="todo-quick-check done" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')">✅</div>';
+    h += '<div class="todo-quick-check done" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')">�?/div>';
   } else {
     h += '<div class="todo-quick-check" style="border-color:' + priColor + '" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')"></div>';
   }
+
+  // Drag handle
+  h += '<div class="todo-drag-handle" style="touch-action:none;cursor:grab;padding:4px 2px;color:var(--muted);font-size:14px;opacity:0.4;user-select:none;flex-shrink:0" onclick="event.stopPropagation()">??</div>';
 
   // Content
   h += '<div class="todo-card-content">';
@@ -242,7 +323,7 @@ function renderTodoCard(t) {
   h += '<div class="todo-card-tags">';
   h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
   h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
-  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
+  if (t.repeat && t.repeat !== '�?) h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
     try {
       var tags = JSON.parse(t.tags || '[]');
       tags.forEach(function(tag) {
@@ -267,12 +348,12 @@ function renderTodoCard(t) {
   if (t.projectId && typeof projectList !== 'undefined') {
     var proj = projectList.find(function(p){ return p.id === t.projectId; });
     if (proj) {
-      h += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
+      h += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' �?/span></div>';
     }
   }
-  if (t.linkType && t.linkType !== '无') {
+  if (t.linkType && t.linkType !== '�?) {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-    if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' ➡</div>';
+    if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' �?/div>';
   }
 
   h += '</div>'; // content
@@ -282,10 +363,10 @@ function renderTodoCard(t) {
 
   h += '</div>'; // main
   // Recycle bin actions
-  if (t.status === '已删除') {
+  if (t.status === '已删�?) {
     h += '<div style="display:flex;gap:8px;padding:8px 18px 12px;border-top:1px solid var(--border)">';
-    h += '<button onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid var(--pri);color:var(--pri);border-radius:8px;background:transparent;cursor:pointer;font-size:12px">↩ 恢复</button>';
-    h += '<button onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;cursor:pointer;font-size:12px">🗑️ 彻底删除</button>';
+    h += '<button onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid var(--pri);color:var(--pri);border-radius:8px;background:transparent;cursor:pointer;font-size:12px">�?恢复</button>';
+    h += '<button onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;cursor:pointer;font-size:12px">🗑�?彻底删除</button>';
     h += '</div>';
   }
   h += '</div></div>'; // inner + card
@@ -405,6 +486,17 @@ function buildGanttWeekView() {
   html += '</div>';
   html += '<div class="gantt-now-line" style="left:calc(80px + ' + nowLeftPct + '% * (1 - 80px/100%))"><div class="gantt-now-dot"></div></div>';
   
+  // Overdue reminders
+  var overdueTodos = todoList.filter(function(t) { return t.dueDate && new Date(t.dueDate) < weekStart && t.status !== "已完�? && t.status !== "已取�? && t.status !== "已删�?; });
+  if (overdueTodos.length > 0) {
+    html += '<div style="background:rgba(239,68,68,.08);border-left:3px solid #ef4444;padding:8px 12px;margin:8px 0;border-radius:0 8px 8px 0">';
+    html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:4px">⚠️ 过期未完�?(' + overdueTodos.length + ')</div>';
+    overdueTodos.forEach(function(t) {
+      html += '<div style="font-size:11px;color:var(--muted);padding:2px 0;cursor:pointer" onclick="openTodoDetail(\x27' + t.id + '\x27)">' + esc(t.title) + '<span style="color:#ef4444;margin-left:6px">' + formatDueDate(t.dueDate) + '</span></div>';
+    });
+    html += '</div>';
+  }
+
   var allTodos = weekTodos.concat(noDueTodos);
   if (allTodos.length === 0) {
     html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u5468\u65e0\u5f85\u529e</div>';
@@ -432,7 +524,7 @@ function buildGanttWeekView() {
     for (var i = 0; i < 7; i++) {
       var d = new Date(weekStart); d.setDate(d.getDate() + i);
       var dateStr = localDateStr(d);
-      var isDueDay = dueDate && localDateStr(new Date(t.dueDate)) === todoCalSelected;
+      var isDueDay = dueDate && localDateStr(new Date(t.dueDate)) === dateStr;
       var isTodayCol = dateStr === todayStr;
       html += '<div class="gantt-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
       if (isDueDay) {
@@ -580,13 +672,13 @@ function buildCalendarHtml() {
   var html = '';
   html += '<div class="cal-nav">';
   html += '<button class="cal-nav-btn" onclick="todoCalPrev()">◀</button>';
-  html += '<span class="cal-nav-title">' + todoCalYear + '年' + (todoCalMonth+1) + '月</span>';
-  html += '<button class="cal-nav-btn" onclick="todoCalNext()">▶</button>';
+  html += '<span class="cal-nav-title">' + todoCalYear + '�? + (todoCalMonth+1) + '�?/span>';
+  html += '<button class="cal-nav-btn" onclick="todoCalNext()">�?/button>';
   html += '<button class="cal-nav-btn" onclick="todoCalToday()" style="font-size:11px;padding:3px 8px">今天</button>';
   html += '</div>';
 
   html += '<div class="cal-grid">';
-  var weekDays = ['一','二','三','四','五','六','日'];
+  var weekDays = ['一','�?,'�?,'�?,'�?,'�?,'�?];
   weekDays.forEach(function(d) { html += '<div class="cal-header">' + d + '</div>'; });
 
   var firstDay = new Date(todoCalYear, todoCalMonth, 1).getDay();
@@ -611,7 +703,7 @@ function buildCalendarHtml() {
     if (dayTodos.length) {
       html += '<div class="cal-dots">';
       dayTodos.slice(0, 3).forEach(function(t) {
-        var dc = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
+        var dc = t.priority === '�? ? '#ef4444' : t.priority === '�? ? '#9ca3af' : '#f59e0b';
         html += '<span class="cal-dot" style="background:' + dc + '"></span>';
       });
       html += '</div>';
@@ -628,13 +720,13 @@ function buildCalendarHtml() {
     return false;
   });
     html += '<div class="cal-detail">';
-    html += '<div class="cal-detail-title">' + todoCalSelected + ' 的待办</div>';
+    html += '<div class="cal-detail-title">' + todoCalSelected + ' 的待�?/div>';
     if (selTodos.length === 0) {
       html += '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">暂无待办</div>';
     } else {
       selTodos.forEach(function(t) {
-        var priIcon = t.priority === '高' ? '🔴' : t.priority === '低' ? '⚪' : '🟡';
-        var doneMark = t.status === '已完成' ? '✅' : '⬜';
+        var priIcon = t.priority === '�? ? '🔴' : t.priority === '�? ? '�? : '🟡';
+        var doneMark = t.status === '已完�? ? '�? : '�?;
         html += '<div class="cal-todo-item" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">' + doneMark + ' ' + priIcon + ' ' + esc(t.title) + '</div>';
       });
     }
@@ -663,13 +755,13 @@ function formatDueDate(d) {
   var timeStr = (h > 0 || m > 0) ? " " + String(h).padStart(2,"0") + ":" + String(m).padStart(2,"0") : "";
   if (dateStr === today) return "今天" + timeStr;
   if (dateStr === tomorrow) return "明天" + timeStr;
-  var md = (dt.getMonth()+1) + "月" + dt.getDate() + "日";
-  if (dt.getFullYear() !== now.getFullYear()) md = dt.getFullYear() + "年" + md;
+  var md = (dt.getMonth()+1) + "�? + dt.getDate() + "�?;
+  if (dt.getFullYear() !== now.getFullYear()) md = dt.getFullYear() + "�? + md;
   return md + timeStr;
 }
 
 function getDueClass(dueDate, status) {
-  if (status === '已完成' || status === '已取消') return '';
+  if (status === '已完�? || status === '已取�?) return '';
   if (!dueDate) return '';
   var d = new Date(dueDate);
   var now = new Date();
@@ -685,6 +777,18 @@ function getDueClass(dueDate, status) {
 function switchTodoView(v) { todoView = v; renderTodo(); }
 function switchTodoFilter(f) { todoFilter = f; renderTodo(); }
 
+function _restoreSearch(el, savedValue, wasFocused) {
+  var searchWrap = el.querySelector('#todoSearchWrap');
+  if (!searchWrap) return;
+  searchWrap.innerHTML = '<input type="text" placeholder="搜索待办..." value="' + esc(savedValue || '') + '" id="todoSearchInput" oninput="onTodoSearchInput(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;background:var(--card);color:var(--text);box-sizing:border-box">';
+  if (wasFocused) {
+    requestAnimationFrame(function() {
+      var inp = document.getElementById('todoSearchInput');
+      if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    });
+  }
+}
+
 var editingTodoId = null;
 var todoSubtaskRows = [];
 
@@ -692,7 +796,7 @@ var todoSubtaskRows = [];
 function updateLinkOptions() {
   var linkType = document.getElementById('todoLinkType').value;
   var sel = document.getElementById('todoLinkId');
-  sel.innerHTML = '<option value="">无</option>';
+  sel.innerHTML = '<option value="">�?/option>';
   if (linkType === '采购' && typeof items !== 'undefined') {
     items.forEach(function(it) {
       var label = (it['商品名称'] || it['名称'] || it.id) + ' (¥' + (Number(it['单价']||0)*Number(it['数量']||1)).toFixed(0) + ')';
@@ -728,7 +832,8 @@ function openTodoModal(id) {
     var projSel = document.getElementById("todoProjectId");
     if (projSel && typeof getProjectOptions === "function") {
       projSel.innerHTML = getProjectOptions();
-      projSel.value = t ? (t.projectId || "") : "";
+      var _projVal = t ? (t.projectId || "") : (window._pendingProjectId || "");
+      projSel.value = _projVal;
     }
     if (t && t.dueDate) {
       var d = new Date(t.dueDate);
@@ -742,15 +847,28 @@ function openTodoModal(id) {
       try {
         var parsed = JSON.parse(t.subtasks);
         if (Array.isArray(parsed)) {
-          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d"}; });
+          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d",dueDate:s.dueDate||null}; });
           console.log("Loaded " + todoSubtaskRows.length + " subtask rows");
         }
       } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
     }
     renderSubtaskRows();
+    // Load tags
+    todoTags = [];
+    try { if (t && t.tags) { var parsed = JSON.parse(t.tags); if (Array.isArray(parsed)) todoTags = parsed; } } catch(e) {}
+    renderTodoTagChips();
+    // Load reminders
+    todoReminders = [];
+    try { if (t && t.reminders) { var parsed = JSON.parse(t.reminders); if (Array.isArray(parsed)) todoReminders = parsed; } } catch(e) {}
+    renderReminderUI();
+    // Load image
+    todoImage = (t && t.image) ? t.image : null;
+    var imgWrap = document.getElementById("todoImageWrap");
+    var imgPrev = document.getElementById("todoImagePreview");
+    if (imgWrap && imgPrev) { if (todoImage) { imgPrev.src = todoImage; imgWrap.style.display = "block"; } else { imgWrap.style.display = "none"; } }
     var _subEl = document.getElementById("todoSubtaskList");
     console.log("AFTER renderSubtaskRows: el=" + !!_subEl + ", html=" + (_subEl ? _subEl.innerHTML.length : "null") + ", rows=" + todoSubtaskRows.length + ", firstText=" + ((todoSubtaskRows[0]||{}).text||"EMPTY"));
-    overlay.classList.add("active");
+    overlay.style.display = "flex";
     console.log("openTodoModal: form populated, title=" + document.getElementById("todoTitle").value);
   } catch(e) {
     console.error("openTodoModal ERROR: " + e.message + " at " + e.stack);
@@ -759,7 +877,7 @@ function openTodoModal(id) {
 }
 
 function closeTodoModal() {
-  document.getElementById("todoModalOverlay").classList.remove("active");console.log("TODO_MODAL: closed");
+  document.getElementById("todoModalOverlay").style.display = "none";console.log("TODO_MODAL: closed");
   editingTodoId = null;
 }
 
@@ -830,15 +948,15 @@ function renderSubtaskRows() {
   });
 }
 
-function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false, priority: "中", dueDate: null}); renderSubtaskRows(); }
+function addSubtask() { if (todoSubtaskRows.length >= 20) return; todoSubtaskRows.push({text: "", done: false, priority: "�?, dueDate: null}); renderSubtaskRows(); }
 function removeSubtask(i) { todoSubtaskRows.splice(i, 1); renderSubtaskRows(); }
 function updateSubtaskText(i, v) { if (todoSubtaskRows[i]) todoSubtaskRows[i].text = v; }
 function updateSubtaskPriority(i, val) { if(todoSubtaskRows[i]) todoSubtaskRows[i].priority = val; }
 function sortSubtasks(arr) {
-  var pri = {"高":0,"中":1,"低":2};
+  var pri = {"�?:0,"�?:1,"�?:2};
   return arr.slice().sort(function(a,b){
     if(a.done!==b.done) return a.done?1:-1;
-    return (pri[a.priority||"中"]||1)-(pri[b.priority||"中"]||1);
+    return (pri[a.priority||"�?]||1)-(pri[b.priority||"�?]||1);
   });
 }
 function getSubtaskProgress(subtasks) {
@@ -850,12 +968,12 @@ function getSubtaskProgress(subtasks) {
 async function saveTodo() {
   try {
     var title = document.getElementById('todoTitle').value.trim();
-    if (!title) return toast('请输入标题');
+    if (!title) return toast('请输入标�?);
 
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
-      dueDate: (function(){ var v = document.getElementById('todoDueDate').value; return v ? new Date(v).toISOString() : null; })(),
+      dueDate: (function(){ var v = document.getElementById('todoDueDate').value; if(!v) return null; var p=v.split(/[-T:/ ]/); return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]),parseInt(p[3]||'0'),parseInt(p[4]||'0'),0,0).toISOString(); })(),
       priority: document.getElementById('todoPriority').value,
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
@@ -864,7 +982,8 @@ async function saveTodo() {
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
       tags: JSON.stringify(todoTags),
-      reminders: JSON.stringify(todoReminders)
+      reminders: JSON.stringify(todoReminders),
+      image: todoImage || ''
     };
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
@@ -873,7 +992,7 @@ async function saveTodo() {
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; todoList[_ti].tags = body.tags; }
     }
     closeTodoModal();
     render();
@@ -891,8 +1010,9 @@ async function saveTodo() {
 
     if (!r) { toast('保存失败: 服务器无响应'); return; }
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id}); render(); return; }
-    toast(_editId ? '已更新' : '已创建');
+    toast(_editId ? '已更�? : '已创�?);
     render();
+    setTimeout(function(){ render(); }, 100);
   } catch(e) {
     console.error('saveTodo error:', e);
     toast('保存失败: ' + e.message);
@@ -905,7 +1025,7 @@ function openTodoDetail(id) {
   var overlay = document.getElementById('todoDetailOverlay');
   if (!overlay) return;
 
-  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
+  var priColor = t.priority === '�? ? '#ef4444' : t.priority === '�? ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
 
   var html = '';
@@ -914,18 +1034,31 @@ function openTodoDetail(id) {
 
   html += '<div class="detail-header">';
   html += '<h2>' + esc(t.title) + '</h2>';
-  html += '<button class="close-btn" onclick="closeTodoDetail()">✕</button>';
+  html += '<button class="close-btn" onclick="closeTodoDetail()">�?/button>';
   html += '</div>';
 
   html += '<div class="detail-body">';
 
-  html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">状�?/span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">优先�?/span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';
-  if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
+  if (t.repeat && t.repeat !== '�?) html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
 
   if (t.description) html += '<div class="detail-desc">' + esc(t.description) + '</div>';
+
+  // Tags display
+  try {
+    var detailTags = JSON.parse(t.tags || '[]');
+    if (Array.isArray(detailTags) && detailTags.length > 0) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0">';
+      detailTags.forEach(function(tag) {
+        var tc = stringHashColor(tag);
+        html += '<span style="padding:3px 10px;border-radius:12px;font-size:11px;background:' + tc.bg + ';color:' + tc.text + '">' + esc(tag) + '</span>';
+      });
+      html += '</div>';
+    }
+  } catch(e) {}
 
   // Image preview
   if (t.image) {
@@ -937,7 +1070,7 @@ function openTodoDetail(id) {
       var subs = JSON.parse(t.subtasks);
       var doneCount = subs.filter(function(s){ return s.done; }).length;
       html += '<div class="detail-subtasks">';
-      html += '<div class="detail-subtasks-title">子任务 · ' + doneCount + '/' + subs.length + '</div>';
+      html += '<div class="detail-subtasks-title">子任�?· ' + doneCount + '/' + subs.length + '</div>';
       subs.forEach(function(s, i) {
         var ck = s.done ? 'checked' : '';
         var txtCls = s.done ? ' class="done-text"' : '';
@@ -947,28 +1080,28 @@ function openTodoDetail(id) {
     } catch(e) {}
   }
 
-  if (t.linkType && t.linkType !== '无') {
+  if (t.linkType && t.linkType !== '�?) {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="showLinkPreview(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' ➡</span></div>';
+  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="showLinkPreview(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' �?/span></div>';
   }
 
   if (t.completedAt) {
     var cd = new Date(t.completedAt);
-    html += '<div class="detail-row"><span class="detail-label">完成时间</span><span class="detail-value">✅ ' + localDateStr(new Date(cd)) + '</span></div>';
+    html += '<div class="detail-row"><span class="detail-label">完成时间</span><span class="detail-value">�?' + localDateStr(new Date(cd)) + '</span></div>';
   }
 
   html += '</div>';
 
   html += '<div class="detail-actions">';
-  if (t.status !== '已完成' && t.status !== '已取消') {
-    html += '<button class="btn-action btn-complete" onclick="cycleTodoStatus(' + "'" + id + "'" + ')">✅ 完成</button>';
+  if (t.status !== '已完�? && t.status !== '已取�?) {
+    html += '<button class="btn-action btn-complete" onclick="cycleTodoStatus(' + "'" + id + "'" + ')">�?完成</button>';
     html += '<button class="btn-action btn-edit" onclick="closeTodoDetail();openTodoModal(' + "'" + id + "'" + ')">✏️ 编辑</button>';
   }
-  html += '<button class="btn-action btn-delete" onclick="deleteTodo(' + "'" + id + "'" + ')">🗑️ 删除</button>';
+  html += '<button class="btn-action btn-delete" onclick="deleteTodo(' + "'" + id + "'" + ')">🗑�?删除</button>';
   html += '</div>';
 
   document.getElementById('todoDetailBody').innerHTML = html;
-  overlay.classList.add('active');
+  overlay.style.display = 'flex';
 }
 
 function showLinkPreview(type, id) {
@@ -983,10 +1116,10 @@ function showLinkPreview(type, id) {
     if (!it) return;
     var name = it['商品名称'] || it['名称'] || '';
     var price = (Number(it['单价']||0) * Number(it['数量']||1)).toFixed(0);
-    var status = it['状态'] || '';
+    var status = it['状�?] || '';
     html = '<div style="font-weight:700;font-size:15px;margin-bottom:6px">🛒 ' + esc(name) + '</div>';
     html += '<div style="color:var(--pri);font-weight:800;font-size:18px;margin-bottom:4px">¥' + price + '</div>';
-    html += '<div style="font-size:12px;color:var(--muted)">状态: ' + status + '</div>';
+    html += '<div style="font-size:12px;color:var(--muted)">状�? ' + status + '</div>';
     jumpFn = "switchTab('purchase');closeTodoDetail();";
   } else if (type === '记账' && typeof expenses !== 'undefined') {
     var ex = expenses.find(function(x){ return x.id === id; });
@@ -1002,7 +1135,7 @@ function showLinkPreview(type, id) {
   var pop = document.createElement('div');
   pop.id = 'linkPreviewPopover';
   pop.className = 'link-preview-popover';
-  pop.innerHTML = html + '<button onclick="' + jumpFn + 'this.closest(\x22#linkPreviewPopover\x22).remove()" style="margin-top:10px;width:100%;padding:8px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">查看详情 ➡</button>';
+  pop.innerHTML = html + '<button onclick="' + jumpFn + 'this.closest(\x22#linkPreviewPopover\x22).remove()" style="margin-top:10px;width:100%;padding:8px;background:var(--pri);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">查看详情 �?/button>';
   document.body.appendChild(pop);
 
   // Close on click outside
@@ -1023,39 +1156,39 @@ function jumpToLink(type, id) {
 }
 
 function closeTodoDetail() {
-  document.getElementById('todoDetailOverlay').classList.remove('active');
+  document.getElementById('todoDetailOverlay').style.display = "none";
 }
 
 function cycleTodoStatus(id) {
   var t = todoList.find(function(x){ return x.id === id; });
   if (!t) return;
   var oldStatus = t.status;
-  var nextStatus = oldStatus === '待办' ? '进行中' : oldStatus === '进行中' ? '已完成' : '待办';
-  var completedAt = nextStatus === '已完成' ? Date.now() : null;
+  var nextStatus = oldStatus === '待办' ? '进行�? : oldStatus === '进行�? ? '已完�? : '待办';
+  var completedAt = nextStatus === '已完�? ? Date.now() : null;
   t.status = nextStatus;
   if (completedAt) t.completedAt = completedAt;
   render();
   var detailOverlay = document.getElementById('todoDetailOverlay');
-  if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+  if (detailOverlay && detailOverlay.style.display !== 'none') openTodoDetail(id);
   (async function() {
     try {
       var r = await todoApi('PUT', { id: id, status: nextStatus, completedAt: completedAt });
       if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; render(); return; }
-      if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){renderTodo();}); }
-      else toast(nextStatus === '已完成' ? '✅ 已完成' : nextStatus === '进行中' ? '▶ 进行中' : '↩ 已恢复待办');
+      if (r.renewed) { toast('�?已完成，已自动创建下一�?); loadTodos().then(function(){renderTodo();}); }
+      else toast(nextStatus === '已完�? ? '�?已完�? : nextStatus === '进行�? ? '�?进行�? : '�?已恢复待�?);
       if (t.projectId) checkProjectAutoStatus(t.projectId);
-      if (nextStatus === '已完成' || nextStatus === '已取消') cancelLocalNotification(t);
+      if (nextStatus === '已完�? || nextStatus === '已取�?) cancelLocalNotification(t);
       else if (t.reminders) scheduleLocalNotification(t);
     } catch(e) { t.status = oldStatus; render(); toast('操作失败: ' + e.message); }
   })();
 }
 
 async function deleteTodo(id) {
-  if (!confirm('确定删除？')) return;
+  if (!confirm('确定删除�?)) return;
   closeTodoDetail();
   var t = todoList.find(function(x){ return x.id === id; });
   var oldStatus = t ? t.status : null;
-  if (t) { t.status = '已删除'; }
+  if (t) { t.status = '已删�?; }
   render();
   var r = await todoApi('DELETE', null, id);
   if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; render(); return; }
@@ -1069,37 +1202,51 @@ async function toggleTodoSubtask(todoId, index) {
     if (subs[index]) subs[index].done = !subs[index].done;
     var newSubs = JSON.stringify(subs);
     t.subtasks = newSubs;
-    render();
-    await todoApi('PUT', { id: todoId, subtasks: newSubs });
-    // Auto status: all done -> complete, undo -> back to doing
+
+    // Check auto-complete BEFORE rendering (optimistic update)
     var allDone = subs.length > 0 && subs.every(function(s){ return s.done; });
     var anyUndone = subs.some(function(s){ return !s.done; });
-    if (allDone && t.status !== '已完成') {
-      cycleTodoStatus(todoId);
+    var statusChanged = false;
+    if (allDone && t.status !== '已完成' && t.status !== '已取消') {
+      t.status = '已完成';
+      t.completedAt = Date.now();
+      statusChanged = true;
     } else if (anyUndone && t.status === '已完成') {
       t.status = '进行中';
-      render();
+      t.completedAt = null;
+      statusChanged = true;
+    }
+
+    render();
+    // Refresh detail view if open
+    var detailOverlay = document.getElementById('todoDetailOverlay');
+    if (detailOverlay && detailOverlay.style.display !== 'none') openTodoDetail(todoId);
+
+    // Persist to API
+    await todoApi('PUT', { id: todoId, subtasks: newSubs });
+    if (statusChanged && t.status === '已完成') {
+      await todoApi('PUT', { id: todoId, status: '已完成', completedAt: t.completedAt });
+      toast('✅ 所有子任务完成');
+      if (t.projectId) checkProjectAutoStatus(t.projectId);
+    } else if (statusChanged && t.status === '进行中') {
       await todoApi('PUT', { id: todoId, status: '进行中' });
     }
-    // Refresh detail if open
-    var detailOverlay = document.getElementById('todoDetailOverlay');
-    if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(todoId);
-  } catch(e) {}
+  } catch(e) { console.error('toggleTodoSubtask error:', e); }
 }
 // Project auto-status check
 function checkProjectAutoStatus(projectId) {
   if (!projectId || typeof projectList === 'undefined') return;
   var linked = todoList.filter(function(t){ return t.projectId === projectId; });
   if (linked.length === 0) return;
-  var allDone = linked.every(function(t){ return t.status === '已完成'; });
+  var allDone = linked.every(function(t){ return t.status === '已完�?; });
   var p = projectList.find(function(x){ return x.id === projectId; });
   if (!p) return;
-  if (allDone && p.status !== '已完成') {
-    p.status = '已完成';
-    projectApi('PUT', { id: projectId, status: '已完成' });
-  } else if (!allDone && p.status === '已完成') {
-    p.status = '进行中';
-    projectApi('PUT', { id: projectId, status: '进行中' });
+  if (allDone && p.status !== '已完�?) {
+    p.status = '已完�?;
+    projectApi('PUT', { id: projectId, status: '已完�? });
+  } else if (!allDone && p.status === '已完�?) {
+    p.status = '进行�?;
+    projectApi('PUT', { id: projectId, status: '进行�? });
   }
 }
 
@@ -1108,12 +1255,12 @@ function restoreTodo(id) {
   if (t) { t.status = '待办'; }
   render();
   todoApi('PUT', { id: id, status: '待办' });
-  toast('已恢复');
+  toast('已恢�?);
 }
 
 
 async function purgeTodo(id) {
-  if (!confirm('彻底删除后无法恢复，确定？')) return;
+  if (!confirm('彻底删除后无法恢复，确定�?)) return;
   todoList = todoList.filter(function(t){ return t.id !== id; });
   render();
   try {
@@ -1122,7 +1269,7 @@ async function purgeTodo(id) {
     var r = await fetch(url, opts);
     var d = await r.json();
     if (d && d.error) { toast('彻底删除失败'); loadTodos(); }
-    else toast('已彻底删除');
+    else toast('已彻底删�?);
   } catch(e) { toast('彻底删除失败'); loadTodos(); }
 }
 
@@ -1144,37 +1291,10 @@ function getAllTags() {
   return Object.keys(tagSet);
 }
 
-function renderTagChips() {
-  var el = document.getElementById('todoTagChips');
-  if (!el) return;
-  var html = '';
-  todoTags.forEach(function(tag, i) {
-    var c = stringHashColor(tag);
-    html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:' + c.bg + ';color:' + c.text + ';margin:2px">' + esc(tag) + '<span onclick="todoTags.splice(' + i + ',1);renderTagChips()" style="cursor:pointer;font-weight:700">×</span></span>';
-  });
-  // Quick add from existing tags
-  var allTags = getAllTags();
-  var unused = allTags.filter(function(t){ return todoTags.indexOf(t) < 0; });
-  if (unused.length > 0) {
-    html += '<div style="margin-top:4px">';
-    unused.forEach(function(tag) {
-      html += '<span onclick="todoTags.push(\'' + tag + '\');renderTagChips()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + esc(tag) + '</span>';
-    });
-    html += '</div>';
-  }
-  el.innerHTML = html;
-}
+function renderTagChips() { renderTodoTagChips(); }
 
-function addTagFromInput() {
-  var input = document.getElementById('todoTagInput');
-  if (!input) return;
-  var val = input.value.trim();
-  if (val && todoTags.indexOf(val) < 0) {
-    todoTags.push(val);
-    renderTagChips();
-  }
-  input.value = '';
-}
+
+function addTagFromInput() { addTodoTagFromInput(); }
 
 function showFullImage(src) {
   var overlay = document.createElement('div');
@@ -1191,7 +1311,7 @@ function renderReminderUI() {
   var el = document.getElementById('todoReminderChips');
   if (!el) return;
   var html = '';
-  var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
+  var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1�?}];
   todoReminders.forEach(function(r, i) {
     var opt = options.find(function(o){ return o.v === String(r); });
     html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:color-mix(in srgb,var(--pri) 12%,var(--card));color:var(--pri);margin:2px">' + (opt ? opt.l : r + '分钟') + '<span onclick="todoReminders.splice(' + i + ',1);renderReminderUI()" style="cursor:pointer;font-weight:700">×</span></span>';
@@ -1222,7 +1342,7 @@ function scheduleLocalNotification(todo) {
         Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{
           id: notifId,
           title: '\ud83d\udcc5 ' + todo.title,
-          body: minutesBefore >= 60 ? '\u8fd8有' + Math.round(minutesBefore/60) + '\u5c0f\u65f6\u5230\u622a\u6b62\u65e5\u671f' : '\u8fd8\u6709' + minutesBefore + '\u5206\u949f\u5230\u622a\u6b62\u65e5\u671f',
+          body: minutesBefore >= 60 ? '\u8fd8�? + Math.round(minutesBefore/60) + '\u5c0f\u65f6\u5230\u622a\u6b62\u65e5\u671f' : '\u8fd8\u6709' + minutesBefore + '\u5206\u949f\u5230\u622a\u6b62\u65e5\u671f',
           schedule: { at: new Date(fireTime) }
         }]});
       }
@@ -1251,7 +1371,7 @@ function parseNaturalInput(text) {
   // Extract priority
   var priMatch = text.match(/[!]([高中低])/);
   if (priMatch) { result.priority = priMatch[1]; result.title = result.title.replace(/[!][高中低]/, '').trim(); }
-  if (text.indexOf('高优先级') >= 0) { result.priority = '高'; result.title = result.title.replace('高优先级', '').trim(); }
+  if (text.indexOf('高优先级') >= 0) { result.priority = '�?; result.title = result.title.replace('高优先级', '').trim(); }
   
   // Extract repeat
   if (text.indexOf('每天') >= 0) { result.repeat = '每天'; result.title = result.title.replace('每天', '').trim(); }
@@ -1283,13 +1403,13 @@ function parseNaturalInput(text) {
   } else if (text.indexOf('后天') >= 0) {
     result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
     dateSet = true; result.title = result.title.replace('后天', '').trim();
-  } else if (text.indexOf('大后天') >= 0) {
+  } else if (text.indexOf('大后�?) >= 0) {
     result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
-    dateSet = true; result.title = result.title.replace('大后天', '').trim();
+    dateSet = true; result.title = result.title.replace('大后�?, '').trim();
   } else {
     var weekMatch = text.match(/下周([一二三四五六日天])/);
     if (weekMatch) {
-      var dayMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0,'天':0};
+      var dayMap = {'一':1,'�?:2,'�?:3,'�?:4,'�?:5,'�?:6,'�?:0,'�?:0};
       var targetDay = dayMap[weekMatch[1]];
       var diff = (targetDay - now.getDay() + 7) % 7 + 7;
       result.dueDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
@@ -1303,7 +1423,7 @@ function parseNaturalInput(text) {
   }
   
   // Check if AI is needed (fuzzy expressions)
-  var fuzzyWords = ['左右', '大概', '月底', '年前', '过几天', '近几天', '改天', '有空'];
+  var fuzzyWords = ['左右', '大概', '月底', '年前', '过几�?, '近几�?, '改天', '有空'];
   if (fuzzyWords.some(function(w){ return text.indexOf(w) >= 0; })) {
     result.needAI = true;
   }
@@ -1312,6 +1432,77 @@ function parseNaturalInput(text) {
 }
 
 var _nlpTimer = null;
+function onTodoSearchInput(value) {
+  todoSearch = value; // Update immediately for state
+  if (_searchTimer) clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(function() {
+    renderTodo();
+    // Re-focus search input after render (for desktop)
+    var el2 = document.getElementById("todoSearchInput");
+    if (el2 && document.activeElement !== el2) { el2.focus(); el2.setSelectionRange(value.length, value.length); }
+  }, 300);
+}
+
+var todoTags = [];
+var todoImage = null;
+
+function addTodoTagFromInput() {
+  var input = document.getElementById("todoTagInput");
+  if (!input) return;
+  var tag = input.value.trim();
+  if (!tag) return;
+  if (todoTags.indexOf(tag) < 0) todoTags.push(tag);
+  input.value = "";
+  renderTodoTagChips();
+}
+
+function removeTodoTag(idx) {
+  todoTags.splice(idx, 1);
+  renderTodoTagChips();
+}
+
+function renderTodoTagChips() {
+  var el = document.getElementById("todoTagChips");
+  if (!el) return;
+  el.innerHTML = "";
+  todoTags.forEach(function(tag, i) {
+    var c = stringHashColor(tag);
+    el.innerHTML += '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;background:' + c.bg + ';color:' + c.text + '">' + esc(tag) + '<span onclick="removeTodoTag(' + i + ')" style="cursor:pointer;font-weight:700">\u00d7</span></span>';
+  });
+  // Show tag suggestions
+  var sugEl = document.getElementById("todoTagSuggestions");
+  if (sugEl) {
+    var allTags = getAllTags();
+    var unused = allTags.filter(function(t){ return todoTags.indexOf(t) < 0; }).slice(0, 6);
+    sugEl.innerHTML = "";
+    unused.forEach(function(tag) {
+      var c = stringHashColor(tag);
+      sugEl.innerHTML += '<span onclick="todoTags.push(\x27' + esc(tag) + '\x27);renderTodoTagChips()" style="padding:2px 8px;border-radius:10px;font-size:10px;background:' + c.bg + ';color:' + c.text + ';cursor:pointer;opacity:.7">+ ' + esc(tag) + '</span>';
+    });
+  }
+}
+
+function handleTodoImage(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    todoImage = e.target.result;
+    var preview = document.getElementById("todoImagePreview");
+    var wrap = document.getElementById("todoImageWrap");
+    if (preview) preview.src = todoImage;
+    if (wrap) wrap.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+  input.value = "";
+}
+
+function clearTodoImage() {
+  todoImage = null;
+  var wrap = document.getElementById("todoImageWrap");
+  if (wrap) wrap.style.display = "none";
+}
+
 function onTodoTitleInput(value) {
   if (_nlpTimer) clearTimeout(_nlpTimer);
   _nlpTimer = setTimeout(function() {
@@ -1326,7 +1517,7 @@ function onTodoTitleInput(value) {
       document.getElementById('todoDueDate').value = ds;
     }
     if (parsed.priority) {
-      chips += '<span class="nlp-chip" onclick="document.getElementById(\'todoPriority\').value=\'中\';this.remove()">' + (parsed.priority==='高'?'🔴':'⚪') + ' ' + parsed.priority + '</span>';
+      chips += '<span class="nlp-chip" onclick="document.getElementById(\'todoPriority\').value=\'中\';this.remove()">' + (parsed.priority==='�??'🔴':'�?) + ' ' + parsed.priority + '</span>';
       document.getElementById('todoPriority').value = parsed.priority;
     }
     if (parsed.repeat) {
