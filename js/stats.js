@@ -187,7 +187,7 @@ function animateNumber(el, target, duration) {
 }
 
 function renderStats() { console.log('renderStats START');
-  const thisMonth = getThisMonth();
+  const thisMonth = getViewMonth();
   const pool = getBudgetPool(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
@@ -221,6 +221,12 @@ function renderStats() { console.log('renderStats START');
   const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
 
   let html = '';
+  const _isCur = thisMonth===getThisMonth();
+  html += '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">'
+    + '<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 12px">‹</div>'
+    + '<div class="chip active" style="min-width:100px;text-align:center">'+monthLabel(thisMonth)+'</div>'
+    + '<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 12px'+(_isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
+    + '</div>';
 
   // ===== 预算池瀑布流 =====
   if (pool.totalBudget > 0) {

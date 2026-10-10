@@ -248,8 +248,7 @@ function renderTodoCard(t) {
   var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
 
   var h = '<div class="todo-card ' + statusClass + '" data-id="' + t.id + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
-  h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
-  h += '<div class="todo-card-inner">';
+  h += '<div class="todo-card-inner" style="padding:12px 14px">';
   h += '<div class="todo-card-main">';
 
   // Checkbox (quick complete)
@@ -272,7 +271,8 @@ function renderTodoCard(t) {
 
   // Tags row
   h += '<div class="todo-card-tags">';
-  h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
+  var _sb = t.status==='已完成'?'a-badge-green':t.status==='进行中'?'a-badge-blue':(t.status==='已取消'||t.status==='已删除')?'a-badge-gray':'a-badge-orange';
+    h += '<span class="a-badge ' + _sb + '">' + t.status + '</span>';
   h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
   if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
     try {
@@ -310,14 +310,14 @@ function renderTodoCard(t) {
   h += '</div>'; // content
 
   // Priority dot (right side)
-  h += '<div class="todo-pri-dot" style="background:' + priColor + '"></div>';
+  if(t.priority==='高'&&!isDone) h += '<div class="todo-pri-dot" style="background:' + priColor + ';width:6px;height:6px;margin-top:6px"></div>';
 
   h += '</div>'; // main
   // Recycle bin actions
   if (t.status === '已删除') {
     h += '<div style="display:flex;gap:8px;padding:8px 18px 12px;border-top:1px solid var(--border)">';
-    h += '<button onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid var(--pri);color:var(--pri);border-radius:8px;background:transparent;cursor:pointer;font-size:12px">↩ 恢复</button>';
-    h += '<button onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;cursor:pointer;font-size:12px">🗑️ 彻底删除</button>';
+    h += '<button class="a-btn a-btn-secondary" onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;min-height:36px;font-size:13px">恢复</button>';
+    h += '<button class="a-btn a-btn-danger" onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;min-height:36px;font-size:13px;border:1px solid rgba(255,59,48,.3)">彻底删除</button>';
     h += '</div>';
   }
   h += '</div></div>'; // inner + card

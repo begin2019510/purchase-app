@@ -26,7 +26,7 @@ function openDetailModal(id){
     <div class="detail-price">¥${price.toFixed(2)}${qty>1?` × ${qty} = ¥${total.toFixed(2)}`:''}</div>
     <div class="detail-meta">
       <span>🏪 ${esc(item['平台']||'')}</span>
-      <span class="badge badge-${status}">${status}</span>
+      <span class="a-badge ${status=='已到'||status=='已完成'||status=='已归档'?'a-badge-green':status=='已退'?'a-badge-red':status=='待审批'?'a-badge-blue':'a-badge-orange'}">${status}</span>
       <span class="cat-badge">${item['分类']||'其他'}</span>
       ${ds?`<span>📅 ${ds}</span>`:''}
     </div>

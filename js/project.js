@@ -97,13 +97,14 @@ function renderProjectCard(p, isChild, parentName) {
   h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + (isChild ? '📋 ' : '📁 ') + esc(p.name) + '</div>';
   if (p.description) h += '<div style="font-size:12px;color:var(--muted);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + esc(p.description) + '</div>';
   h += '<div class="todo-card-meta">';
-  h += '<span class="todo-tag status-' + p.status + '">' + p.status + '</span>';
+  var _ps = p.status=='已完成'?'a-badge-green':p.status=='已归档'?'a-badge-gray':'a-badge-blue';
+  h += '<span class="a-badge ' + _ps + '">' + p.status + '</span>';
   if (p.dueDate) h += '<span class="todo-card-due">📅 ' + formatDueDate(p.dueDate) + '</span>';
   h += '<span class="todo-card-progress">📋 ' + doneTodos + '/' + totalTodos + '</span>';
   h += '</div>';
   h += '<div class="todo-card-progress-bar"><div class="todo-card-progress-fill" style="width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + '"></div></div>';
   if (p.status === '已完成') {
-    h += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" style="margin-top:6px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer">📦 归档</button>';
+    h += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" class="a-btn a-btn-secondary" style="margin-top:6px;min-height:30px;font-size:12px;padding:0 12px">归档</button>';
   }
   h += '</div></div></div></div>';
   return h;

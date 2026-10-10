@@ -12,11 +12,16 @@ function formatDay(dayStr) {
 function renderExpense(){
   if(expenseViewMode==='calendar'){renderExpenseCalendar();return}
   if(expenseViewMode==='week'){renderExpenseWeek();return}
-  const thisMonth=getThisMonth();
+  const thisMonth=getViewMonth();
+  const isCur=thisMonth===getThisMonth();
   const monthWeeks=getMonthWeeks(thisMonth);
   const chipsEl=document.getElementById('expenseChips');
   if(chipsEl){
-    let ch='<div class="chip '+(currentWeekFilter===-1?'active':'')+'" onclick="currentWeekFilter=-1;render()">本月</div>';
+    let ch='<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 10px">‹</div>'
+      +'<div class="chip '+(isCur?'active':'')+'" onclick="shiftViewMonth(0);viewMonth=null;render()" style="min-width:88px;text-align:center">'+monthLabel(thisMonth)+'</div>'
+      +'<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 10px'+(isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
+      +'<span style="width:1px;background:var(--border);flex-shrink:0;margin:0 2px"></span>'
+      +'<div class="chip '+(currentWeekFilter===-1&&!isCur?'active':'')+'" onclick="currentWeekFilter=-1;render()">'+(isCur?'本月':'全月')+'</div>';
     monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</div>'});
     ch+='<span style="width:1px;background:var(--border);flex-shrink:0"></span>';
     ch+='<div class="chip '+(expenseTypeFilter==='all'?'active':'')+'" onclick="expenseTypeFilter='+'\'all\''+';render()">全部</div>';
@@ -50,46 +55,46 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
   const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudgetNum(thisMonth);
   const budgetWb=currentWeekFilter>=0?wb:getBudgetNum(thisMonth);
   const br=Math.max(budgetWb-budgetTotalOut,0);
-  html+=`<div class="ex-header">
-    <div class="ex-total-card ex-out"><div class="ex-total-icon">💸</div><div class="ex-total-info"><div class="ex-total-label">${pl}支出</div><div class="ex-total-val">¥${budgetTotalOut.toFixed(0)}</div><div style="font-size:10px;color:var(--muted);margin-top:2px">采购 ¥${purchaseOut.toFixed(0)} · 记账 ¥${totalOut.toFixed(0)}</div></div></div>
-    ${wb>0?`<div class="ex-total-card ex-net"><div class="ex-total-icon">🎯</div><div class="ex-total-info"><div class="ex-total-label">${pl}预算</div><div class="ex-total-val">¥${wb.toFixed(0)}</div></div></div><div class="ex-total-card ${br>0?'ex-in':'ex-out'}"><div class="ex-total-icon">${br>0?'✅':'⚠️'}</div><div class="ex-total-info"><div class="ex-total-label">剩余</div><div class="ex-total-val">¥${br.toFixed(0)}</div></div></div>`:`<div class="ex-total-card ex-count"><div class="ex-total-icon">📝</div><div class="ex-total-info"><div class="ex-total-label">笔数</div><div class="ex-total-val">${count}笔</div></div></div>`}
+  html+=`<div class="ex-header" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    <div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:var(--fs-xs,11px);color:var(--muted)">${pl}支出</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${budgetTotalOut.toFixed(0)}</div><div style="font-size:10px;color:var(--muted-2);margin-top:2px">采¥${purchaseOut.toFixed(0)} 记¥${totalOut.toFixed(0)}</div></div>
+    ${wb>0?`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">${pl}预算</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${wb.toFixed(0)}</div></div><div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">剩余</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px;color:${br>0?'var(--green)':'var(--red)'}">¥${br.toFixed(0)}</div></div>`:`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">笔数</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">${count}</div></div><div class="a-card" style="padding:12px 10px;text-align:center;grid-column:span 2"><div style="font-size:11px;color:var(--muted)">记账支出</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">¥${totalOut.toFixed(0)}</div></div>`}
   </div>`;
   // Budget dashboard
   if(wb>0){
     const pct=Math.min(budgetTotalOut/budgetWb*100,100);
     const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
     const rem=Math.max(budgetWb-budgetTotalOut,0);
-    html+=`<div class="ex-budget" style="margin:0 0 10px;border-radius:14px;padding:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;font-weight:700">${pl}预算</span>
-        <span style="font-size:12px;color:var(--muted)">剩余 <b style="color:${bc}">¥${rem.toFixed(0)}</b></span>
+    html+=`<div class="a-card" style="margin:0 0 10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:var(--fs-md);font-weight:700;color:var(--muted)">${pl}预算</span>
+        <span style="font-size:var(--fs-md);color:var(--muted)">剩余 <b style="color:${bc}" class="a-num">¥${rem.toFixed(0)}</b></span>
       </div>
-      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
-        <span style="font-size:28px;font-weight:900;color:var(--pri)">¥${wb.toFixed(0)}</span>
-        <span style="font-size:12px;color:var(--muted)">已用 ¥${budgetTotalOut.toFixed(0)}</span>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:32px;font-weight:800;letter-spacing:-1px" class="a-num">¥${wb.toFixed(0)}</span>
+        <span style="font-size:var(--fs-sm);color:var(--muted)" class="a-num">已用 ¥${budgetTotalOut.toFixed(0)}</span>
       </div>
-      <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:6px">
-        <div style="width:${pct}%;height:100%;background:${bc};border-radius:4px;transition:width .5s"></div>
+      <div style="height:6px;background:rgba(120,120,128,.16);border-radius:3px;overflow:hidden;margin:10px 0 6px">
+        <div style="width:${pct}%;height:100%;background:${bc};border-radius:3px;transition:width .5s"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+      <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--muted)">
         <span>${pct.toFixed(0)}% 已用</span>
         <span>${currentWeekFilter>=0?(function(){var ws=getMonthWeeks(thisMonth);return '第'+ws[currentWeekFilter].num+'周('+ws[currentWeekFilter].start+'-'+ws[currentWeekFilter].end+'日)'})():'月度预算'}</span>
       </div>
     </div>`;
   } else {
-    html+=`<div style="text-align:center;padding:12px;margin:0 0 10px;background:var(--card);border-radius:14px;border:1.5px dashed var(--border)">
-      <div style="font-size:13px;color:var(--muted);margin-bottom:8px">💡 未设置预算</div>
-      <button onclick="openBudgetModal()" style="padding:8px 20px;border:none;background:var(--pri-g);color:#fff;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">🎯 设置预算</button>
+    html+=`<div class="a-card" style="text-align:center;padding:14px;margin:0 0 10px">
+      <div style="font-size:var(--fs-md);color:var(--muted);margin-bottom:10px">设置本月预算，掌控开销</div>
+      <button class="a-btn a-btn-secondary" onclick="openBudgetModal()" style="min-height:36px;font-size:var(--fs-md);display:inline-flex">设置预算</button>
     </div>`;
   }
   
   if(catEntries.length){
-    html+=`<div class="ex-section"><div class="ex-section-title">📂 支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
+    html+=`<div class="ex-section" style="background:var(--card);border-radius:var(--r-lg,16px);box-shadow:var(--shadow-1)"><div class="ex-section-title" style="font-size:var(--fs-sm);color:var(--muted);font-weight:600;text-transform:none;letter-spacing:.2px">支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
   }
   const dayGroups={};
   searched.forEach(e=>{let day='未知日期';if(e['日期']){try{day=e['日期'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
-  html+=`<div class="ex-section"><div class="ex-section-title">📅 消费记录</div><div class="ex-timeline">`;
-  if(!searched.length) html+=`<div class="ex-empty"><div class="ex-empty-icon">💰</div><div class="ex-empty-text">本月暂无记账</div><div class="ex-empty-hint">点右下角 + 记一笔</div></div>`;
+  html+=`<div class="ex-section" style="background:var(--card);border-radius:var(--r-lg,16px);box-shadow:var(--shadow-1)"><div class="ex-section-title" style="font-size:var(--fs-sm);color:var(--muted);font-weight:600">消费记录</div><div class="ex-timeline">`;
+  if(!searched.length) html+=`<div class="a-empty"><div class="a-empty-icon">💰</div><div class="a-empty-title">该月暂无记账</div><div class="a-empty-sub">点右下角 + 记一笔</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
     const dayTotal=list.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
     const {date,weekday,day:dayNum}=formatDay(day);
@@ -97,17 +102,17 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
       <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
       const isOut=e['类型']==='支出'||e['类型']==='采购';
-      const typeBadge=e['类型']==='采购'?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(99,102,241,.15);color:#6366f1;margin-left:4px">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;margin-left:4px">📊 '+e['分摊周数']+'周</span>':'';
+      const typeBadge=e['类型']==='采购'?'<span class="a-badge a-badge-purple" style="margin-left:6px">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span class="a-badge a-badge-orange" style="margin-left:4px">'+e['分摊周数']+'周</span>':'';
       const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
       // ===== 图片显示 =====
 // kv:前缀 -> KV key -> /api/images?key=xxx
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
-        <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><div class="ex-entry swipe-card" data-id="${e.id}" data-type="expense" style="border-left:none;background:transparent;border-radius:0;padding:10px 4px;box-shadow:none">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat" style="font-size:var(--fs-lg);font-weight:500">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-amount a-num ${isOut?'ex-amount-out':'ex-amount-in'}" style="font-size:var(--fs-lg);font-weight:600;${isOut?'color:var(--text)':'color:var(--green)'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
+        <button class="ex-entry-del" data-expense-edit="${e.id}" title="编辑" style="font-size:15px;padding:8px;min-width:36px;min-height:36px">⋯</button></div></div>`;
     });
     html+=`</div></div>`;
   }

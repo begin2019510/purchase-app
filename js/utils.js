@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.9.4";
+const APP_VERSION = "4.0.0";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.0',date:'2026-10-10',items:['UI全站改版：Apple 风精简设计语言，删除粉色贴纸风图层','设计 Token 系统：圆角/间距/阴影/色板统一','背景主题可调：设置里 8 种背景色可选','记账/统计新增月份切换，历史数据可查','待办/项目/采购卡片对齐新组件，徽章统一']},
   {v:'2.10.0',date:'2026-05-27',items:['采购评估流程优化：新增购买理由输入、评估摘要窗口、取消采购归档']},
   {v:'2.9.0',date:'2026-05-27',items:['安全加固：登录限流(5次/15分钟)、图片大小后端校验(2MB)、金额上限校验(999999)','XSS修复：内联onclick改为事件委托+data属性','AI提示注入防护：用户数据用<<<DATA>>>分隔符包裹','图片API移除URL中的PIN参数，仅用JWT认证','debug接口收紧为仅管理员可访问','飞书API错误日志增强','SW版本号v38更新']},
   {v:'2.8.5',date:'2026-05-26',items:['评估卡片显示预算+AI摘要','评估弹窗支持续聊+保存+跳转需求填写','评估页可跳过直接填写']},
@@ -46,6 +47,17 @@ function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;')
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
 function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}
+let viewMonth=null; // null = 本月; 'YYYY-MM' = 用户浏览的历史月
+function getViewMonth(){return viewMonth||getThisMonth()}
+function shiftViewMonth(delta){
+  const cur=getViewMonth().split('-').map(Number);
+  let y=cur[0],m=cur[1]+delta;
+  if(m<1){m=12;y--} if(m>12){m=1;y++}
+  const next=y+'-'+String(m).padStart(2,'0');
+  viewMonth=(next===getThisMonth())?null:next;
+  if(typeof render==='function')render();
+}
+function monthLabel(m){const p=m.split('-');return p[0]+'年'+Number(p[1])+'月'}
 function totalCost(l){return l.reduce((s,i)=>s+(i['单价']||0)*(i['数量']||1),0)}
 
 function skelCards(n){

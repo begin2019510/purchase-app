@@ -443,6 +443,7 @@ function settingsAction(action){
   closeSettings();
   switch(action){
     case 'darkMode': toggleDarkMode(); break;
+    case 'background': toggleBgPicker(); break;
     case 'admin': openAdminPanel(); break;
     case 'logs': openLogsPanel(); break;
     case 'help': window.open('/help','_blank'); break;
@@ -583,4 +584,36 @@ App.app.deleteRecurringItem = deleteRecurringItem;
 App.app.toggleRecurringActive = toggleRecurringActive;
 App.app.openSettings = openSettings;
 App.app.closeSettings = closeSettings;
+// ===== Background theme picker =====
+const BG_PRESETS = [
+  ['default','默认','#f2f2f7'],['white','纯白','#ffffff'],['paper','纸感','#faf9f6'],
+  ['mist','雾灰','#eef2f7'],['lavender','淡紫','#f3f0ff'],['mint','薄荷','#eefaf3'],
+  ['peach','蜜桃','#fff5ee'],['slate','岩灰','#e8eaf0']
+];
+function applyBgTheme(name){
+  try{
+    document.body.removeAttribute('data-bg');
+    if(name && name!=='default') document.body.setAttribute('data-bg', name);
+    localStorage.setItem('bg_theme', name||'default');
+    document.querySelectorAll('#bgSwatches .bg-sw').forEach(function(el){
+      el.style.outline = (el.dataset.bg===(name||'default')) ? '2px solid var(--pri)' : 'none';
+      el.style.outlineOffset = '2px';
+    });
+  }catch(e){}
+}
+function toggleBgPicker(){
+  var box = document.getElementById('bgSwatches');
+  if(!box) return;
+  if(box.style.display==='none' || !box.style.display){
+    var cur = localStorage.getItem('bg_theme')||'default';
+    box.innerHTML = BG_PRESETS.map(function(p){
+      return '<div class="bg-sw" data-bg="'+p[0]+'" title="'+p[1]+'" onclick="applyBgTheme(\''+p[0]+'\')" style="width:34px;height:34px;border-radius:50%;background:'+p[2]+';cursor:pointer;border:1px solid var(--border);box-shadow:'+(p[0]===cur?'2px solid var(--pri)':'none')+';outline:'+(p[0]===cur?'2px solid var(--pri)':'none')+';outline-offset:2px"></div>';
+    }).join('');
+    box.style.display='flex';
+  } else {
+    box.style.display='none';
+  }
+}
+(function(){ try{ var b=localStorage.getItem('bg_theme'); if(b&&b!=='default'){document.body.setAttribute('data-bg',b);} }catch(e){} })();
+
 App.app.settingsAction = settingsAction;
