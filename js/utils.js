@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.1";
+const APP_VERSION = "4.0.2";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.2',date:'2026-10-10',items:['修复：记账月预算剩余与统计不一致（如预算2000含分期500、已用1000，应剩500却显示1000）——列表视图改用与统计相同的预算池口径：剩余=总预算−固定−分期−支出']},
 {v:'4.0.1',date:'2026-10-10',items:['修复：分期还款不自动进位（9月第1期，10月仍显示第1期）——已还期数改为按时间自动推进，取存储值与月份差的较大者']},
 {v:'4.0.0',date:'2026-10-10',items:['UI全站改版：Apple 风精简设计语言，删除粉色贴纸风图层','设计 Token 系统：圆角/间距/阴影/色板统一','背景主题可调：设置里 8 种背景色可选','记账/统计新增月份切换，历史数据可查','待办/项目/采购卡片对齐新组件，徽章统一']},
   {v:'2.10.0',date:'2026-05-27',items:['采购评估流程优化：新增购买理由输入、评估摘要窗口、取消采购归档']},

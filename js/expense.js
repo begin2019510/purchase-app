@@ -40,11 +40,13 @@ const sq=document.getElementById('expenseSearch')?document.getElementById('expen
 let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes(sq)||(e['分类']||'').toLowerCase().includes(sq)):monthExpenses;
   if(expenseTypeFilter!=='all'){searched=searched.filter(e=>e['类型']===expenseTypeFilter)}
   const totalOut=searched.filter(e=>e['类型']==='支出').reduce((s,e)=>s+Number(e['金额']||0),0);
-  const purchaseOut=typeof getMonthPurchaseTotal==='function'?getMonthPurchaseTotal(thisMonth):0;
-  const budgetTotalOut=totalOut+purchaseOut;
+  // 统一口径：月视图与统计模块同用 getBudgetPool（总预算−固定−分期−已花 = 剩余）
+  const isMonthView=currentWeekFilter<0;
+  const _pool=isMonthView?getBudgetPool(thisMonth):null;
+  const purchaseOut=isMonthView?_pool.directPurchaseSpend:0;
+  const budgetTotalOut=isMonthView?_pool.totalSpend:totalOut;
   const totalIn=0;
   const net=-totalOut;
-  const budget=getBudgetNum(thisMonth);
   const count=searched.length;
   const periodLabel=currentWeekFilter>=0?'本周':'本月';
   const catMap={};
@@ -52,18 +54,18 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
   const catEntries=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
   let html='';
   const pl=currentWeekFilter>=0?'本周':'本月';
-  const wb=currentWeekFilter>=0?getWeekBudget(thisMonth,currentWeekFilter):getBudgetNum(thisMonth);
-  const budgetWb=currentWeekFilter>=0?wb:getBudgetNum(thisMonth);
-  const br=Math.max(budgetWb-budgetTotalOut,0);
+  const wb=isMonthView?_pool.totalBudget:getWeekBudget(thisMonth,currentWeekFilter);
+  const budgetUsed=isMonthView?(_pool.totalDeduction+_pool.totalSpend):totalOut;
+  const br=isMonthView?_pool.remaining:Math.max(wb-totalOut,0);
   html+=`<div class="ex-header" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-    <div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:var(--fs-xs,11px);color:var(--muted)">${pl}支出</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${budgetTotalOut.toFixed(0)}</div><div style="font-size:10px;color:var(--muted-2);margin-top:2px">采¥${purchaseOut.toFixed(0)} 记¥${totalOut.toFixed(0)}</div></div>
-    ${wb>0?`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">${pl}预算</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${wb.toFixed(0)}</div></div><div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">剩余</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px;color:${br>0?'var(--green)':'var(--red)'}">¥${br.toFixed(0)}</div></div>`:`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">笔数</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">${count}</div></div><div class="a-card" style="padding:12px 10px;text-align:center;grid-column:span 2"><div style="font-size:11px;color:var(--muted)">记账支出</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">¥${totalOut.toFixed(0)}</div></div>`}
+    <div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:var(--fs-xs,11px);color:var(--muted)">${pl}支出</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${budgetTotalOut.toFixed(0)}</div><div style="font-size:10px;color:var(--muted-2);margin-top:2px">采¥${purchaseOut.toFixed(0)} 记¥${(isMonthView?_pool.expenseSpend:totalOut).toFixed(0)}</div></div>
+    ${wb>0?`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">${pl}预算</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px">¥${wb.toFixed(0)}</div>${isMonthView&&_pool.totalDeduction>0?`<div style="font-size:10px;color:var(--muted-2);margin-top:2px">扣固定+分期 ¥${_pool.totalDeduction.toFixed(0)}</div>`:''}</div><div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">剩余</div><div class="a-num" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-top:2px;color:${br>0?'var(--green)':'var(--red)'}">¥${br.toFixed(0)}</div></div>`:`<div class="a-card" style="padding:12px 10px;text-align:center"><div style="font-size:11px;color:var(--muted)">笔数</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">${count}</div></div><div class="a-card" style="padding:12px 10px;text-align:center;grid-column:span 2"><div style="font-size:11px;color:var(--muted)">记账支出</div><div class="a-num" style="font-size:22px;font-weight:800;margin-top:2px">¥${totalOut.toFixed(0)}</div></div>`}
   </div>`;
   // Budget dashboard
   if(wb>0){
-    const pct=Math.min(budgetTotalOut/budgetWb*100,100);
+    const pct=Math.min(budgetUsed/wb*100,100);
     const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
-    const rem=Math.max(budgetWb-budgetTotalOut,0);
+    const rem=br;
     html+=`<div class="a-card" style="margin:0 0 10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:var(--fs-md);font-weight:700;color:var(--muted)">${pl}预算</span>
@@ -71,14 +73,15 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
       </div>
       <div style="display:flex;align-items:baseline;gap:8px">
         <span style="font-size:32px;font-weight:800;letter-spacing:-1px" class="a-num">¥${wb.toFixed(0)}</span>
-        <span style="font-size:var(--fs-sm);color:var(--muted)" class="a-num">已用 ¥${budgetTotalOut.toFixed(0)}</span>
+        <span style="font-size:var(--fs-sm);color:var(--muted)" class="a-num">已用 ¥${budgetUsed.toFixed(0)}</span>
+        ${isMonthView&&_pool.totalDeduction>0?`<span style="font-size:var(--fs-xs);color:var(--muted-2)" class="a-num">含固定+分期 ¥${_pool.totalDeduction.toFixed(0)}</span>`:''}
       </div>
       <div style="height:6px;background:rgba(120,120,128,.16);border-radius:3px;overflow:hidden;margin:10px 0 6px">
         <div style="width:${pct}%;height:100%;background:${bc};border-radius:3px;transition:width .5s"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--muted)">
         <span>${pct.toFixed(0)}% 已用</span>
-        <span>${currentWeekFilter>=0?(function(){var ws=getMonthWeeks(thisMonth);return '第'+ws[currentWeekFilter].num+'周('+ws[currentWeekFilter].start+'-'+ws[currentWeekFilter].end+'日)'})():'月度预算'}</span>
+        <span>${currentWeekFilter>=0?(function(){var ws=getMonthWeeks(thisMonth);return '第'+ws[currentWeekFilter].num+'周('+ws[currentWeekFilter].start+'-'+ws[currentWeekFilter].end+'日)'})():'剩余 = 总预算 − 固定 − 分期 − 支出'}</span>
       </div>
     </div>`;
   } else {
