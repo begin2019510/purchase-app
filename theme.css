@@ -1237,3 +1237,19 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 .week-detail-info b{font-size:13px;font-weight:600}
 .week-detail-info em{font-size:11px;color:var(--muted);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-detail-amt{font-size:13px;font-weight:600;flex-shrink:0}
+
+/* Week detail brief */
+.wd-brief{font-size:11px;color:var(--muted);margin-bottom:8px;letter-spacing:.2px}
+.wd-bars{display:flex;align-items:flex-end;gap:4px;height:44px;margin-bottom:8px}
+.wd-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px}
+.wd-bar{width:100%;max-width:18px;border-radius:3px 3px 0 0;background:rgba(120,120,128,.15);transition:height .2s}
+.wd-bar.has{background:var(--pri-g)}
+.wd-bar-col span{font-size:9px;color:var(--muted-2);line-height:1}
+.wd-row{display:flex;align-items:center;gap:7px;padding:6px 4px;border-radius:8px;cursor:pointer;font-size:13px;transition:background .12s}
+.wd-row:active{background:var(--bg)}
+.wd-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.wd-date{font-size:11px;color:var(--muted);width:34px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.wd-main{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-2)}
+.wd-amt{font-weight:600;flex-shrink:0;font-size:13px}
+.wd-amt.in{color:var(--green)}
+.wd-more{text-align:center;font-size:12px;color:var(--pri);font-weight:600;padding:7px 0 2px;cursor:pointer}

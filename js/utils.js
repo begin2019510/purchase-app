@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.4";
+const APP_VERSION = "4.0.5";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.5',date:'2026-10-10',items:['周明细改为简报样式：一行统计 + 每日迷你条形图 + 最多5条单行明细，「展开全部」再看完整列表，展开区域大幅收窄']},
 {v:'4.0.4',date:'2026-10-10',items:['周视图重做：点击周卡片在卡片内展开该周明细（按日分组+跨周分摊），不再跳转日视图','明细行点击可直接编辑记账，再点标题收起']},
 {v:'4.0.3',date:'2026-10-10',items:['周视图：点击周卡片可进入该周明细（此前有按压反馈但未绑定点击）','周卡片加 › 指示可点']},
 {v:'4.0.2',date:'2026-10-10',items:['修复：记账月预算剩余与统计不一致（如预算2000含分期500、已用1000，应剩500却显示1000）——列表视图改用与统计相同的预算池口径：剩余=总预算−固定−分期−支出']},

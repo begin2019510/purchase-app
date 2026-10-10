@@ -5,6 +5,7 @@ const CAT_COLORS = {'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','�
 const WEEKDAYS=['日','一','二','三','四','五','六'];
 let expenseTypeFilter='all';
 let expandedWeek=-1; // 周视图内联展开的周序号
+let weekDetailFull=false; // 展开区是否显示全部明细（默认简报：最多5条）
 function formatDay(dayStr) {
   if (!dayStr) return { date: '??', weekday: '?' };
   try { const d = new Date(dayStr); return { date: `${((d.getMonth()+1)+'').padStart(2,'0')}月${(d.getDate()+'').padStart(2,'0')}日`, weekday: '周'+WEEKDAYS[d.getDay()], day: d.getDate() }; } catch { return { date: dayStr.slice(5), weekday: '?', day: 0 }; }
@@ -209,48 +210,74 @@ function renderExpenseWeek(){
       });
       html+='</div>';
     }
-    // ===== 内联展开：该周明细（不离开周视图）=====
+    // ===== 内联展开：简报模式（不离开周视图）=====
     if(expandedWeek===i){
       const inWeek=weekExpenses.filter(e=>{try{return getWeekForDate(e['日期'],thisMonth)===i}catch{return false}});
       const splitIn=weekExpenses.filter(e=>{try{return getWeekForDate(e['日期'],thisMonth)!==i}catch{return false}});
       html+='<div class="week-detail">';
       if(!inWeek.length&&!splitIn.length){
-        html+='<div style="text-align:center;padding:14px 0;color:var(--muted);font-size:13px">本周暂无记账</div>';
-      }
-      // 按日分组
-      const dayGroups={};
-      inWeek.forEach(e=>{const d=(e['日期']||'').slice(0,10);if(!dayGroups[d])dayGroups[d]=[];dayGroups[d].push(e)});
-      Object.keys(dayGroups).sort().forEach(function(d){
-        const list=dayGroups[d];
-        const dayTotal=list.filter(e=>e['类型']==='支出'||e['类型']==='采购').reduce((s,e)=>s+Number(e['金额']||0),0);
-        const fd=formatDay(d);
-        html+='<div class="week-detail-day"><span>'+fd.date+' '+fd.weekday+'</span><span class="a-num">-'+dayTotal.toFixed(2)+'</span></div>';
-        list.forEach(function(e){
+        html+='<div style="text-align:center;padding:10px 0;color:var(--muted);font-size:12px">本周暂无记账</div>';
+      } else {
+        const allRows=inWeek.slice().sort((a,b)=>(b['日期']||'')<(a['日期']||'')?-1:1);
+        const n=allRows.length+splitIn.length;
+        const sumWeek=weekOut;
+        const dayAvg=sumWeek/Math.max(w.end-w.start+1,1);
+        // 简报行
+        html+='<div class="wd-brief">'+n+'笔 · 日均 ¥'+dayAvg.toFixed(0);
+        const topCat=catEntries.length?catEntries[0]:null;
+        if(topCat)html+=' · 最大 '+esc(topCat[0])+' ¥'+topCat[1].toFixed(0);
+        html+='</div>';
+        // 每日迷你条形
+        const daily=[];
+        for(let d=w.start;d<=w.end;d++){
+          const ds=thisMonth+'-'+String(d).padStart(2,'0');
+          const v=inWeek.filter(e=>(e['日期']||'').slice(0,10)===ds&&e['类型']!=='收入').reduce((s,e)=>s+Number(e['金额']||0),0);
+          daily.push({d:d,v:v});
+        }
+        const maxV=Math.max.apply(null,daily.map(x=>x.v).concat([1]));
+        html+='<div class="wd-bars">';
+        daily.forEach(function(x){
+          const h=x.v>0?Math.max(4,Math.round(x.v/maxV*30)):2;
+          html+='<div class="wd-bar-col" title="'+x.d+'日 ¥'+x.v.toFixed(0)+'"><div class="wd-bar'+(x.v>0?' has':'')+'" style="height:'+h+'px"></div><span>'+x.d+'</span></div>';
+        });
+        html+='</div>';
+        // 明细：默认最多5条
+        const limit=weekDetailFull?999:5;
+        const shown=allRows.slice(0,limit);
+        shown.forEach(function(e){
           const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
           const isOut=e['类型']==='支出'||e['类型']==='采购';
-          const icon=CAT_ICONS[e['分类']||'其他']||'📌';
-          html+='<div class="week-detail-row" data-expense-edit="'+e.id+'" title="点击编辑">'
-            +'<span class="week-detail-icon" style="background:'+cc+'22;color:'+cc+'">'+icon+'</span>'
-            +'<span class="week-detail-info"><b>'+esc(e['分类']||'其他')+'</b>'+(e['备注']?'<em>'+esc(e['备注'])+'</em>':'')+'</span>'
-            +'<span class="a-num week-detail-amt" style="color:'+(isOut?'var(--text)':'var(--green)')+'">'+(isOut?'-':'+')+'¥'+Number(e['金额']||0).toFixed(2)+'</span>'
+          const dd=(e['日期']||'').slice(5,10).replace('-','/');
+          html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
+            +'<span class="wd-dot" style="background:'+cc+'"></span>'
+            +'<span class="wd-date">'+dd+'</span>'
+            +'<span class="wd-main">'+esc(e['分类']||'其他')+(e['备注']?' · '+esc(e['备注']):'')+'</span>'
+            +'<span class="wd-amt a-num'+(isOut?'':' in')+'">'+(isOut?'-':'+')+Number(e['金额']||0).toFixed(0)+'</span>'
             +'</div>';
         });
-      });
-      // 跨周分摊进本周的部分
-      if(splitIn.length){
-        html+='<div class="week-detail-day"><span>跨周分摊</span><span></span></div>';
-        splitIn.forEach(function(e){
-          const amt=getExpenseWeekAmount(e,w.startDate,thisMonth,i);
-          if(amt<=0)return;
-          const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
-          const icon=CAT_ICONS[e['分类']||'其他']||'📌';
-          const sw=Number(e['分摊周数'])||0;
-          html+='<div class="week-detail-row" data-expense-edit="'+e.id+'" title="点击编辑">'
-            +'<span class="week-detail-icon" style="background:'+cc+'22;color:'+cc+'">'+icon+'</span>'
-            +'<span class="week-detail-info"><b>'+esc(e['分类']||'其他')+'</b><em>'+esc(e['备注']||'')+(sw>0?' · 每周分摊':'')+'</em></span>'
-            +'<span class="a-num week-detail-amt">¥'+amt.toFixed(2)+'</span>'
-            +'</div>';
-        });
+        // 分摊行（少量展示）
+        if(weekDetailFull||splitIn.length<=2){
+          splitIn.forEach(function(e){
+            const amt=getExpenseWeekAmount(e,w.startDate,thisMonth,i);
+            if(amt<=0)return;
+            const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+            html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
+              +'<span class="wd-dot" style="background:'+cc+'"></span>'
+              +'<span class="wd-date">分摊</span>'
+              +'<span class="wd-main">'+esc(e['分类']||'其他')+'</span>'
+              +'<span class="wd-amt a-num">-'+amt.toFixed(0)+'</span>'
+              +'</div>';
+          });
+        }
+        // 折叠/展开其余
+        const rest=allRows.length-shown.length+(weekDetailFull?0:0);
+        if(allRows.length>5||splitIn.length>2){
+          if(!weekDetailFull){
+            html+='<div class="wd-more" onclick="event.stopPropagation();weekDetailFull=true;renderExpenseWeek()">展开全部 '+n+' 笔</div>';
+          } else {
+            html+='<div class="wd-more" onclick="event.stopPropagation();weekDetailFull=false;renderExpenseWeek()">收起</div>';
+          }
+        }
       }
       html+='</div>';
     }
@@ -268,7 +295,8 @@ function initCalMonth(){
 function toggleWeekDetail(i,e){
   // 点击明细行内部（编辑等）不折叠
   if(e&&e.target&&e.target.closest&&e.target.closest('.week-detail')&&!(e.target.closest('.week-card-header')))return;
-  expandedWeek=(expandedWeek===i)?-1:i;
+  if(expandedWeek===i){expandedWeek=-1;}
+  else{expandedWeek=i;weekDetailFull=false;}
   if(expenseViewMode==='week')renderExpenseWeek();
   else render();
 }
