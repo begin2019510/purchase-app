@@ -1,5 +1,5 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v62';
+var CACHE = 'purchase-cache-v63';
 var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', function(e) {
