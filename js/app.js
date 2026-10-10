@@ -202,6 +202,7 @@ async function loadAll(){
     if(todoOk&&Array.isArray(todoOk)){setCachedData('todos',todoOk)}
   }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
   isLoadingData=false;
+  if(typeof loadExpenseCats==='function')loadExpenseCats().catch(function(){});
   loadRecurringData().then(function(){
     if(currentTab==='expense'||currentTab==='stats') render();
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
@@ -393,7 +394,7 @@ function showAddRecurring(){
   if(isNaN(amount)||amount<=0)return alert('请输入有效金额');
   var day=parseInt(prompt('每月几号扣款? (1-28)', '1'));
   if(isNaN(day)||day<1||day>28)day=1;
-  var cats=['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
+  var cats=(typeof getExpenseCats==='function')?getExpenseCats():['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
   var cat=prompt('分类: '+cats.join(', '), '居住');
   if(!cat)cat='其他';
   var note=prompt('备注 (选填)')||'';
@@ -453,6 +454,7 @@ function settingsAction(action){
       break;
     case 'batch': toggleBatch(); break;
     case 'budget': openBudgetModal(); break;
+    case 'cats': openCatManager(); break;
     case 'push': setupPush(); break;
     case 'changelog': openChangelog(); break;
     case 'recurring': openRecurringModal(); break;

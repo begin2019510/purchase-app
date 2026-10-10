@@ -4,6 +4,117 @@ const CAT_ICONS={'餐饮':'🍜','交通':'🚗','购物':'🛍️','娱乐':'�
 const CAT_COLORS = {'日用':'#6366f1','服饰':'#8b5cf6','饮食':'#10b981','电子':'#3b82f6','交通':'#f59e0b','其他':'#94a3b8','餐饮':'#ef4444','购物':'#ec4899','娱乐':'#8b5cf6','居住':'#10b981','医疗':'#f59e0b','教育':'#3b82f6'};
 const WEEKDAYS=['日','一','二','三','四','五','六'];
 let expenseTypeFilter='all';
+// ===== 记账分类（默认 + 自定义）=====
+const DEFAULT_EXPENSE_CATS=['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
+let customExpenseCats=[]; // [{n:'咖啡',e:'☕'}]
+function getExpenseCatMap(){var m={};customExpenseCats.forEach(function(c){if(c&&c.n)m[c.n]=c.e||''});return m}
+function getExpenseCats(){
+  const set=[];const add=c=>{if(c&&!set.includes(c))set.push(c)};
+  DEFAULT_EXPENSE_CATS.filter(c=>c!=='其他').forEach(add);
+  customExpenseCats.forEach(c=>add(c&&c.n));
+  add('其他');return set;
+}
+const _catPalette=['#6366f1','#10b981','#f59e0b','#ec4899','#3b82f6','#8b5cf6','#14b8a6','#f43f5e','#84cc16','#f97316','#0ea5e9','#a855f7'];
+function catColor(name){
+  name=name||'其他';
+  if(CAT_COLORS[name])return CAT_COLORS[name];
+  let h=0;for(let i=0;i<name.length;i++)h=(h*33+name.charCodeAt(i))>>>0;
+  return _catPalette[h%_catPalette.length];
+}
+function catIcon(name){
+  name=name||'其他';
+  if(CAT_ICONS[name])return CAT_ICONS[name];
+  const e=getExpenseCatMap()[name];
+  return e||'🏷️';
+}
+async function loadExpenseCats(){
+  try{
+    let r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+getPin()}});
+    if(r.status===401){const nt=await refreshAccessToken();if(nt)r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+nt}})}
+    const j=await r.json();
+    customExpenseCats=(j&&j.data&&j.data.list)||[];
+  }catch(e){console.log('loadExpenseCats:',e.message)}
+}
+async function saveExpenseCats(){
+  try{
+    const body=JSON.stringify({data:{list:customExpenseCats}});
+    let r=await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:body});
+    if(r.status===401){const nt=await refreshAccessToken();if(nt)await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:body})}
+    return true;
+  }catch(e){toast('保存失败');return false}
+}
+function fillExpenseCatSelect(prefer){
+  const el=document.getElementById('eCategory');if(!el)return;
+  const cur=prefer||el.value||'餐饮';
+  const cats=getExpenseCats();
+  if(cur&&!cats.includes(cur))cats.splice(Math.max(cats.length-1,0),0,cur);
+  const imap=getExpenseCatMap();
+  el.innerHTML=cats.map(c=>'<option value="'+escAttr(c)+'">'+(imap[c]?esc(imap[c])+' ':'')+esc(c)+'</option>').join('')
+    +'<option value="__new__">➕ 新分类…</option>';
+  if(cats.includes(cur))el.value=cur;
+}
+function onExpenseCatChange(sel){
+  if(sel.value==='__new__'){
+    const prev=sel.dataset.prev||'餐饮';
+    addCustomCatFlow(function(){ fillExpenseCatSelect(prev); sel.value=prev; });
+    sel.value=prev;
+  }else{ sel.dataset.prev=sel.value; }
+}
+// ===== 分类管理 =====
+const CAT_EMOJI_PICKS=['☕','🧋','🍰','🍜','💊','✈️','📦','🎬','🐾','🎮','🏋️','📶','🍼','💇','🔧','🌱','🎓','🎁'];
+function openCatManager(){ renderCatManager(); document.getElementById('catOverlay').classList.add('active'); }
+function closeCatManager(){ document.getElementById('catOverlay').classList.remove('active'); }
+function renderCatManager(){
+  const box=document.getElementById('catMgrList');if(!box)return;
+  const imap=getExpenseCatMap();
+  let html='<div class="wd-brief" style="margin-bottom:10px">默认分类不可删（历史记录不受影响）</div>';
+  DEFAULT_EXPENSE_CATS.forEach(function(c){
+    html+='<div class="wd-row" style="cursor:default"><span class="wd-dot" style="background:'+catColor(c)+'"></span>'
+      +'<span class="wd-main">'+(CAT_ICONS[c]?CAT_ICONS[c]+' ':'')+esc(c)+'</span>'
+      +'<span style="font-size:11px;color:var(--muted-2)">默认</span></div>';
+  });
+  if(customExpenseCats.length){
+    html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">自定义分类</div>';
+    customExpenseCats.forEach(function(c,idx){
+      html+='<div class="wd-row"><span class="wd-dot" style="background:'+catColor(c.n)+'"></span>'
+        +'<span class="wd-main">'+(c.e?esc(c.e)+' ':'')+esc(c.n)+'</span>'
+        +'<button class="ex-entry-del" onclick="delCustomCat('+idx+')" title="删除" style="font-size:14px;min-width:32px;min-height:32px">🗑️</button></div>';
+    });
+  }
+  box.innerHTML=html;
+  const ep=document.getElementById('catEmojiPick');
+  if(ep&&!ep.dataset.ready){
+    ep.innerHTML=CAT_EMOJI_PICKS.map(e=>'<span class="cat-emo" onclick="pickCatEmoji(\''+e+'\')" style="cursor:pointer;font-size:18px;padding:4px 6px;border-radius:8px">'+e+'</span>').join('')
+      +'<span class="cat-emo" onclick="pickCatEmoji(\'\')" style="cursor:pointer;font-size:14px;padding:4px 6px;border-radius:8px;color:var(--muted)">无</span>';
+    ep.dataset.ready='1';
+  }
+}
+function pickCatEmoji(e){
+  const i=document.getElementById('catEmojiInput');if(i)i.value=e;
+  document.querySelectorAll('#catEmojiPick .cat-emo').forEach(el=>el.style.background='');
+  if(e&&event&&event.target)event.target.style.background='var(--pri-light)';
+}
+async function addCustomCat(){
+  const ni=document.getElementById('catNameInput');const ei=document.getElementById('catEmojiInput');
+  const name=(ni.value||'').trim();const emo=(ei&&ei.value)||'';
+  if(!name){toast('请输入分类名');return}
+  if(getExpenseCats().includes(name)){toast('分类已存在');return}
+  customExpenseCats.push({n:name,e:emo});
+  if(await saveExpenseCats()){ni.value='';if(ei)ei.value='';renderCatManager();toast('已添加：'+name)}
+  else customExpenseCats.pop();
+}
+async function delCustomCat(idx){
+  const removed=customExpenseCats.splice(idx,1)[0];
+  if(await saveExpenseCats()){renderCatManager();toast('已删除：'+(removed&&removed.n))}
+  else if(removed)customExpenseCats.splice(idx,0,removed);
+}
+// 记一笔里快速新建分类
+function addCustomCatFlow(after){
+  const name=prompt('新分类名称（如：咖啡、宠物、通讯）');if(!name||!name.trim())return;
+  const emo=prompt('配个 emoji 图标（可留空）','🏷️')||'';
+  customExpenseCats.push({n:name.trim(),e:emo.trim()});
+  saveExpenseCats().then(function(ok){ if(ok){toast('已添加：'+name.trim());if(after)after();} else customExpenseCats.pop(); });
+}
 let expandedWeek=-1; // 周视图内联展开的周序号
 let weekDetailFull=false; // 展开区是否显示全部明细（默认简报：最多5条）
 function formatDay(dayStr) {
@@ -108,13 +219,13 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
     list.forEach(e=>{
       const isOut=e['类型']==='支出'||e['类型']==='采购';
       const typeBadge=e['类型']==='采购'?'<span class="a-badge a-badge-purple" style="margin-left:6px">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span class="a-badge a-badge-orange" style="margin-left:4px">'+e['分摊周数']+'周</span>':'';
-      const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+      const cc=catColor(e['分类']||'其他');
       // ===== 图片显示 =====
 // kv:前缀 -> KV key -> /api/images?key=xxx
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><div class="ex-entry swipe-card" data-id="${e.id}" data-type="expense" style="border-left:none;background:transparent;border-radius:0;padding:10px 4px;box-shadow:none">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><div class="ex-entry swipe-card" data-id="${e.id}" data-type="expense" style="border-left:none;background:transparent;border-radius:0;padding:10px 4px;box-shadow:none">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}">${catIcon(e['分类']||'其他')}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat" style="font-size:var(--fs-lg);font-weight:500">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount a-num ${isOut?'ex-amount-out':'ex-amount-in'}" style="font-size:var(--fs-lg);font-weight:600;${isOut?'color:var(--text)':'color:var(--green)'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" data-expense-edit="${e.id}" title="编辑" style="font-size:15px;padding:8px;min-width:36px;min-height:36px">⋯</button></div></div>`;
@@ -245,7 +356,7 @@ function renderExpenseWeek(){
         const limit=weekDetailFull?999:5;
         const shown=allRows.slice(0,limit);
         shown.forEach(function(e){
-          const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+          const cc=catColor(e['分类']||'其他');
           const isOut=e['类型']==='支出'||e['类型']==='采购';
           const dd=(e['日期']||'').slice(5,10).replace('-','/');
           html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
@@ -260,7 +371,7 @@ function renderExpenseWeek(){
           splitIn.forEach(function(e){
             const amt=getExpenseWeekAmount(e,w.startDate,thisMonth,i);
             if(amt<=0)return;
-            const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+            const cc=catColor(e['分类']||'其他');
             html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
               +'<span class="wd-dot" style="background:'+cc+'"></span>'
               +'<span class="wd-date">分摊</span>'
@@ -427,10 +538,10 @@ function renderExpenseCalendar(){
     }
     dd.entries.forEach(e=>{
       const isOut=e['类型']==='支出';
-      const cc=CAT_COLORS[e['分类']||'其他']||'#94a3b8';
+      const cc=catColor(e['分类']||'其他');
       const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
       const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${CAT_ICONS[e['分类']||'其他']||'📌'}</div>
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${catIcon(e['分类']||'其他')}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
         <button class="ex-entry-del" style="opacity:.25" data-expense-edit="${e.id}" title="编辑">✏️</button><button class="ex-entry-del" data-expense-del="${e.id}" title="删除">🗑️</button></div></div>`;
@@ -470,6 +581,9 @@ function openExpenseModal(id){
     if(_si)_si.value=sw||'';
     updateSplitPreview();
   }
+  fillExpenseCatSelect();
+  const _catSel=document.getElementById('eCategory');
+  if(_catSel){_catSel.dataset.prev=_catSel.value||'餐饮';_catSel.onchange=function(){onExpenseCatChange(_catSel)}}
   if(id){
     const e=expenses.find(x=>x.id===id);
     if(!e)return;
@@ -478,7 +592,7 @@ function openExpenseModal(id){
     document.getElementById('eAmount').value=Number(e['金额']||0);
     document.getElementById('eNote').value=e['备注']||'';
     document.getElementById('eType').value=e['类型']||'支出';
-    document.getElementById('eCategory').value=e['分类']||'餐饮';
+    fillExpenseCatSelect(e['分类']||'餐饮');
     let d='';
     if(e['日期']){
       try{
@@ -513,7 +627,7 @@ function openExpenseModal(id){
     document.getElementById('eAmount').value='';
     document.getElementById('eNote').value='';
     document.getElementById('eType').value='支出';
-    document.getElementById('eCategory').value='餐饮';
+    fillExpenseCatSelect('餐饮');
     resetSplit();
     const now=new Date(Date.now()+8*3600*1000);
     const pad=n=>String(n).padStart(2,'0');
@@ -596,6 +710,18 @@ App.expense.selectCalDay = selectCalDay;
 App.expense.addExpenseForDate = addExpenseForDate;
 App.expense.renderExpenseCalendar = renderExpenseCalendar;
 App.expense.openExpenseModal = openExpenseModal;
+App.expense.getExpenseCats = getExpenseCats;
+App.expense.loadExpenseCats = loadExpenseCats;
+App.expense.catColor = catColor;
+App.expense.catIcon = catIcon;
+App.expense.openCatManager = openCatManager;
+App.expense.closeCatManager = closeCatManager;
+App.expense.renderCatManager = renderCatManager;
+App.expense.addCustomCat = addCustomCat;
+App.expense.delCustomCat = delCustomCat;
+App.expense.pickCatEmoji = pickCatEmoji;
+App.expense.onExpenseCatChange = onExpenseCatChange;
+App.expense.fillExpenseCatSelect = fillExpenseCatSelect;
 App.expense.closeExpenseModal = closeExpenseModal;
 App.expense.exportExpenses = exportExpenses;
 App.expense.deleteExpenseImage = deleteExpenseImage;
