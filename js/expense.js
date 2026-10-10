@@ -188,10 +188,10 @@ function renderExpenseWeek(){
     const catMap={};
     weekExpenses.filter(function(e){return e['类型']==='支出'}).forEach(function(e){var c=e['分类']||'其他';catMap[c]=(catMap[c]||0)+getExpenseWeekAmount(e,w.startDate,thisMonth,i)});
     const catEntries=Object.entries(catMap).sort(function(a,b){return b[1]-a[1]});
-    html+='<div class="week-card">';
+    html+='<div class="week-card" onclick="openWeekDetail('+i+')">';
     html+='<div class="week-card-header">';
     html+='<div><span class="week-card-title">第'+w.num+'周</span><span class="week-card-dates">'+w.start+'-'+w.end+'日</span></div>';
-    html+='<span class="week-card-amount">¥'+weekOut.toFixed(0)+'</span>';
+    html+='<span style="display:flex;align-items:center;gap:6px"><span class="week-card-amount">¥'+weekOut.toFixed(0)+'</span><span style="color:var(--muted-2);font-size:14px">›</span></span>';
     html+='</div>';
     if(weekBudget>0){
       const wpct=Math.min(weekOut/weekBudget*100,100);
@@ -218,6 +218,11 @@ function initCalMonth(){
   const now=new Date(Date.now()+8*3600*1000);
   calYear=now.getUTCFullYear(); calMonth=now.getUTCMonth();
   calSelectedDate=null;
+}
+function openWeekDetail(i){
+  switchExpenseView('day');   // 切到日视图（内部会 reset currentWeekFilter 并 render）
+  currentWeekFilter=i;        // 再套上周筛选
+  render();                   // 带筛选重新渲染 → 该周明细
 }
 function switchExpenseView(mode){
   expenseViewMode=mode;
@@ -509,6 +514,7 @@ App.expense.renderExpense = renderExpense;
 App.expense.renderExpenseWeek = renderExpenseWeek;
 App.expense.initCalMonth = initCalMonth;
 App.expense.switchExpenseView = switchExpenseView;
+App.expense.openWeekDetail = openWeekDetail;
 App.expense.calNav = calNav;
 App.expense.selectCalDay = selectCalDay;
 App.expense.addExpenseForDate = addExpenseForDate;

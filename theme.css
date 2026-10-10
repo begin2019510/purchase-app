@@ -862,7 +862,7 @@ span.desktop-only.hidden { display: none !important; }
 
 
 /* ===== 周视图卡片 ===== */
-.week-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--border);transition:.15s}
+.week-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--border);transition:.15s;cursor:pointer}
 .week-card:active{transform:scale(.99)}
 .week-card-header{display:flex;justify-content:space-between;align-items:center}
 .week-card-title{font-size:15px;font-weight:700}
