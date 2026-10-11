@@ -240,16 +240,26 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删�
 function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fReason').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';if(typeof purchaseImageData!=='undefined'){purchaseImageData={};var evW=document.getElementById('evImageWrap');if(evW)evW.style.display='none'}document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';var peW=document.getElementById('peImageWrap');if(peW)peW.style.display='none';document.getElementById('overlay').classList.add('active')}
 
 // ===== 极速采购（免审直通，状态直接=已到）=====
+function getQuickPrefs(){try{return JSON.parse(localStorage.getItem('quick_purchase_prefs')||'{}')}catch(e){return{}}}
+function saveQuickPrefs(p){try{localStorage.setItem('quick_purchase_prefs',JSON.stringify(p))}catch(e){}}
 function openQuickPurchaseModal(){
   const d=new Date(Date.now()+8*3600000);
   const pad=n=>String(n).padStart(2,'0');
   const el=id=>document.getElementById(id);
   if(!el('qName'))return;
+  const prefs=getQuickPrefs();
   el('qName').value='';el('qPrice').value='';el('qQty').value='1';
-  el('qPlatform').value='京东';el('qCategory').value='日用';
+  el('qPlatform').value=prefs.platform||'京东';
+  el('qCategory').value=prefs.category||'日用';
   el('qNote').value='';
   el('qDate').value=d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());
   el('quickOverlay').classList.add('active');
+  // 移动端：自动聚焦 + 回车即保存
+  ['qName','qPrice','qQty','qNote'].forEach(function(id){
+    const e2=el(id);
+    if(e2)e2.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();saveQuickPurchase()}};
+  });
+  setTimeout(function(){el('qName').focus()},60);
 }
 function closeQuickPurchase(){document.getElementById('quickOverlay').classList.remove('active')}
 async function saveQuickPurchase(){
@@ -264,6 +274,7 @@ async function saveQuickPurchase(){
     note:(el('qNote').value||'').trim()||null, date:el('qDate').value||null,
     status:'已到', quick:true
   };
+  saveQuickPrefs({platform:data.platform,category:data.category});
   closeQuickPurchase();
   const r=await api('POST',data);
   if(r&&r.error){toast('添加失败: '+r.error);return}

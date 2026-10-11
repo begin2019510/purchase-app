@@ -123,6 +123,9 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 /* ===== FAB ===== */
 .fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:24px;width:58px;height:58px;border-radius:16px;background:var(--pri-g);color:#fff;border:none;font-size:28px;box-shadow:0 4px 16px rgba(99,102,241,.45);cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center;transition:.2s}
 .fab:active{transform:scale(.9)}
+.fab-quick{position:fixed;bottom:calc(98px + env(safe-area-inset-bottom));right:30px;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;border:none;font-size:21px;box-shadow:0 4px 14px rgba(16,185,129,.45);cursor:pointer;z-index:30;display:flex;align-items:center;justify-content:center;transition:.2s}
+.fab-quick:active{transform:scale(.9)}
+.fab-quick[style*="display:none"]{transform:scale(.6);opacity:0;pointer-events:none}
 
 /* ===== Batch Bar ===== */
 .batch-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 16px;display:none;align-items:center;gap:10px;z-index:60;box-shadow:0 -2px 8px rgba(0,0,0,.06)}
@@ -676,6 +679,7 @@ span.desktop-only.hidden { display: none !important; }
   .chips { max-width: 900px; margin: 0 auto; }
   .modal { max-width: 560px; }
   .fab { width: 64px; height: 64px; font-size: 30px; }
+  .fab-quick { width: 54px; height: 54px; font-size: 24px; bottom: calc(106px + env(safe-area-inset-bottom)); }
   .trend-chart { min-height: 280px; }
   .trend-svg { max-height: 340px; }
   .stats-bar-track { height: 18px !important; }
@@ -790,6 +794,7 @@ span.desktop-only.hidden { display: none !important; }
 
   /* FAB: С??? */
   .fab { bottom: calc(60px + env(safe-area-inset-bottom)) !important; width: 46px; height: 46px; font-size: 22px; border-radius: 14px; }
+  .fab-quick { bottom: calc(114px + env(safe-area-inset-bottom)) !important; width: 42px; height: 42px; font-size: 18px; border-radius: 12px; right: 26px; }
 
   /* Modal */
   .modal { max-width: 100%; margin: 0 8px; border-radius: 18px !important; }

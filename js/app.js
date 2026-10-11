@@ -231,6 +231,14 @@ function render(){
     else if(currentTab==='expense'){fab.onclick=function(){openExpenseModal()}}
     else{fab.style.display='none'}
   }
+  // 极速采购副 FAB：仅采购/记账页显示（拇指区双按钮）
+  var fabQ=document.getElementById('fabQuickBtn');
+  if(fabQ){
+    if(currentTab==='purchase'||currentTab==='expense'){
+      fabQ.style.display='flex';
+      fabQ.onclick=function(){openQuickPurchaseModal()};
+    } else {fabQ.style.display='none'}
+  }
   // DEBUG: 在页面顶部显示状态
   // 延迟检测：3秒后再检查一次
 }
