@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.11";
+const APP_VERSION = "4.0.12";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.12',date:'2026-10-10',items:['⚡极速采购：免审直通单，最少字段直接生成「已到」状态采购记录（记账页/采购页均有入口）','采购卡片左上角绿色「极速免审」角标，详情页同步显示','统计走现有采购链路：预算池/分类饼图/月汇总自动计入，零改动零双算']},
 {v:'4.0.11',date:'2026-10-10',items:['修复分类"已存在"误报：管理页打开时强制刷新数据，加载完成后自动重绘列表（此前页面显示旧空列表但内存已有，重加即误报）','保存增加 HTTP 状态校验（404 不再静默成功）；401/失败响应不再清空本地分类；防双击重复提交']},
 {v:'4.0.10',date:'2026-10-10',items:['修复：上传的分类图标在记账里不显示——周视图明细行加上图标位（默认视图之前只有色点）','分类数据加载完成后自动重渲染；改图标立即刷新记录列表']},
 {v:'4.0.9',date:'2026-10-10',items:['分类图标支持粘贴/拖拽：截图后 Ctrl+V 直接生效，无需打开文件管理器','点图标=选中目标（高亮），双击才弹文件选择；新增分类区粘贴即预览']},

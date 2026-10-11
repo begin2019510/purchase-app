@@ -17,7 +17,7 @@ async function ensureEvalFields(APP, TABLE, env) {
     const names = (existing.data?.items || []).map(f => f.field_name);
     const needed = [
       {name:'评估摘要', type:1}, {name:'购买理由', type:1}, {name:'预算区间', type:1}, {name:'取消原因', type:1},
-      {name:'分期期数', type:1}, {name:'分期金额', type:1}, {name:'分期开始月', type:1}, {name:'分期已还', type:1}, {name:'图片', type:1}
+      {name:'分期期数', type:1}, {name:'分期金额', type:1}, {name:'分期开始月', type:1}, {name:'分期已还', type:1}, {name:'极速', type:1}, {name:'图片', type:1}
     ];
     for (const f of needed) {
       if (!names.includes(f.name)) {
@@ -80,6 +80,7 @@ function recordToItem(r) {
     '分期金额': feishuNum(f['分期金额']),
     '分期开始月': feishuStr(f['分期开始月']),
     '分期已还': feishuNum(f['分期已还']),
+    '极速': feishuStr(f['极速']),
   };
 }
 
@@ -260,10 +261,11 @@ export async function onRequest(context) {
         '平台': body.platform || '拼多多',
         '单价': body.price || 0,
         '数量': body.qty || 1,
-        '状态': body.status || '待审批',
+        '状态': body.status || (body.quick ? '已到' : '待审批'),
         '分类': body.category || '其他',
         '备注': body.note || '',
         '创建时间': nowBjStr(),
+        ...(body.quick ? { '极速': '1', '到货时间': nowBjStr() } : {}),
         '日期': Date.now(),
         '评估摘要': body.evalSummary || '',
         '购买理由': body.buyReason || '',
