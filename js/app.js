@@ -202,7 +202,7 @@ async function loadAll(){
     if(todoOk&&Array.isArray(todoOk)){setCachedData('todos',todoOk)}
   }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
   isLoadingData=false;
-  if(typeof loadExpenseCats==='function')loadExpenseCats().catch(function(){});
+  if(typeof loadExpenseCats==='function')loadExpenseCats().then(function(){try{if(typeof render==='function')render()}catch(ex){}}).catch(function(){});
   loadRecurringData().then(function(){
     if(currentTab==='expense'||currentTab==='stats') render();
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});

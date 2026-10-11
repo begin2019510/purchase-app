@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.9";
+const APP_VERSION = "4.0.10";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.10',date:'2026-10-10',items:['修复：上传的分类图标在记账里不显示——周视图明细行加上图标位（默认视图之前只有色点）','分类数据加载完成后自动重渲染；改图标立即刷新记录列表']},
 {v:'4.0.9',date:'2026-10-10',items:['分类图标支持粘贴/拖拽：截图后 Ctrl+V 直接生效，无需打开文件管理器','点图标=选中目标（高亮），双击才弹文件选择；新增分类区粘贴即预览']},
 {v:'4.0.8',date:'2026-10-10',items:['分类集中管理中心：默认+自定义分类统一列表，全部可点图标上传图片、✏️改 emoji、✖️清除图片','图标覆盖存 KV（icons 字段），仅影响当前用户，默认分类数据不动']},
 {v:'4.0.7',date:'2026-10-10',items:['分类支持上传图片做图标：自动裁剪压缩为 96×96 小图标，列表/明细直接显示','管理页点已有分类的图标可随时更换图片或改用 emoji']},

@@ -106,7 +106,7 @@ function handleCatIconImage(file){
     const oldOv=JSON.parse(JSON.stringify(catIconOverrides[name]||{}));
     catIconOverrides[name]={img:url};
     saveExpenseCats().then(function(ok){
-      if(ok){renderCatManager();toast('「'+name+'」图标已更新')}
+      if(ok){renderCatManager();try{render()}catch(_){}toast('「'+name+'」图标已更新')}
       else catIconOverrides[name]=oldOv;
     });
   });
@@ -473,7 +473,7 @@ function renderExpenseWeek(){
     if(catEntries.length>0){
       html+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';
       catEntries.slice(0,4).forEach(function(ce){
-        html+='<span class="cat-mini-badge">'+esc(ce[0])+' ¥'+ce[1].toFixed(0)+'</span>';
+        html+='<span class="cat-mini-badge">'+esc(catIconEmoji(ce[0]))+' '+esc(ce[0])+' ¥'+ce[1].toFixed(0)+'</span>';
       });
       html+='</div>';
     }
@@ -516,7 +516,7 @@ function renderExpenseWeek(){
           const isOut=e['类型']==='支出'||e['类型']==='采购';
           const dd=(e['日期']||'').slice(5,10).replace('-','/');
           html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
-            +'<span class="wd-dot" style="background:'+cc+'"></span>'
+            +'<span class="wd-ico" style="background:'+cc+'22">'+catIcon(e['分类']||'其他')+'</span>'
             +'<span class="wd-date">'+dd+'</span>'
             +'<span class="wd-main">'+esc(e['分类']||'其他')+(e['备注']?' · '+esc(e['备注']):'')+'</span>'
             +'<span class="wd-amt a-num'+(isOut?'':' in')+'">'+(isOut?'-':'+')+Number(e['金额']||0).toFixed(0)+'</span>'
@@ -529,7 +529,7 @@ function renderExpenseWeek(){
             if(amt<=0)return;
             const cc=catColor(e['分类']||'其他');
             html+='<div class="wd-row" data-expense-edit="'+e.id+'" title="点击编辑">'
-              +'<span class="wd-dot" style="background:'+cc+'"></span>'
+              +'<span class="wd-ico" style="background:'+cc+'22">'+catIcon(e['分类']||'其他')+'</span>'
               +'<span class="wd-date">分摊</span>'
               +'<span class="wd-main">'+esc(e['分类']||'其他')+'</span>'
               +'<span class="wd-amt a-num">-'+amt.toFixed(0)+'</span>'
