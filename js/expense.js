@@ -23,12 +23,36 @@ function catColor(name){
 }
 function catIcon(name){
   name=name||'其他';
-  if(CAT_ICONS[name])return CAT_ICONS[name];
-  const c=customExpenseCats.find(x=>x&&x.n===name);
-  if(c&&c.img&&typeof c.img==='string'&&c.img.startsWith('data:image/')){
-    return '<img class="cat-img-icon" src="'+c.img+'" alt="">';
+  const ov=catIconOverrides[name];
+  if(ov){
+    if(ov.img&&typeof ov.img==='string'&&ov.img.startsWith('data:image/'))
+      return '<img class="cat-img-icon" src="'+ov.img+'" alt="">';
+    if(ov.e)return ov.e;
   }
+  const c=customExpenseCats.find(x=>x&&x.n===name);
+  if(c&&c.img&&typeof c.img==='string'&&c.img.startsWith('data:image/'))
+    return '<img class="cat-img-icon" src="'+c.img+'" alt="">';
+  if(CAT_ICONS[name])return CAT_ICONS[name];
   return (c&&c.e)||'🏷️';
+}
+function catIconEmoji(name){ // 纯文本版（select option 等）
+  name=name||'其他';
+  const ov=catIconOverrides[name];
+  if(ov&&ov.e&&!ov.img)return ov.e;
+  const c=customExpenseCats.find(x=>x&&x.n===name);
+  if(ov&&ov.img)return (c&&c.e)||'🖼️';
+  if(c&&c.img)return c.e||'🖼️';
+  if(c&&c.e)return c.e;
+  return CAT_ICONS[name]||'🏷️';
+}
+function editCatEmoji(name){
+  const cur=(catIconOverrides[name]&&catIconOverrides[name].e)||catIconEmoji(name);
+  const v=prompt('「'+name+'」的 emoji 图标（留空恢复默认）',cur);
+  if(v===null)return;
+  const oldOv=JSON.parse(JSON.stringify(catIconOverrides[name]||{}));
+  if(v.trim()===''){delete catIconOverrides[name];}
+  else{catIconOverrides[name]={e:v.trim()};} // 改 emoji 即清除图片覆盖
+  saveExpenseCats().then(function(ok){ if(ok){renderCatManager();toast(ok?'已更新图标':'')} else catIconOverrides[name]=oldOv; });
 }
 // 图片 → 96x96 图标 dataURL
 function catImgToIconDataUrl(file,cb){
@@ -52,7 +76,7 @@ function catImgToIconDataUrl(file,cb){
   reader.readAsDataURL(file);
 }
 // 图标上传目标：null=新分类草稿；数字=已有自定义分类下标
-let _catIconTarget=null;
+let _catIconTarget='new'; // 'new' = 新分类草稿；字符串 = 分类名（含默认分类）
 let _catIconDraft='';
 function pickCatIconFile(target){
   _catIconTarget=target;
@@ -64,35 +88,37 @@ function onCatIconFile(input){
   if(!file)return;
   catImgToIconDataUrl(file,function(url){
     if(!url){toast('图片读取失败');return}
-    if(_catIconTarget===null||_catIconTarget==='new'){
+    if(_catIconTarget==='new'){
       _catIconDraft=url;
       const pv=document.getElementById('catNewIconPreview');
       if(pv){pv.src=url;pv.style.display='inline-block'}
       const ei=document.getElementById('catEmojiInput');
       if(ei)ei.value='';
-    }else{
-      const idx=Number(_catIconTarget);
-      if(customExpenseCats[idx]){
-        customExpenseCats[idx].img=url;
-        saveExpenseCats().then(function(ok){
-          if(ok){renderCatManager();toast('图标已更新')}
-          else customExpenseCats[idx].img='';
-        });
-      }
+      return;
     }
+    // 指定分类：写入覆盖表（默认分类也可换，仅影响当前用户）
+    const name=String(_catIconTarget);
+    const oldOv=JSON.parse(JSON.stringify(catIconOverrides[name]||{}));
+    catIconOverrides[name]={img:url};
+    saveExpenseCats().then(function(ok){
+      if(ok){renderCatManager();toast('「'+name+'」图标已更新')}
+      else catIconOverrides[name]=oldOv;
+    });
   });
 }
+let catIconOverrides={}; // {分类名: {e?, img?}} — 集中改图标（含默认分类，仅影响自己）
 async function loadExpenseCats(){
   try{
     let r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+getPin()}});
     if(r.status===401){const nt=await refreshAccessToken();if(nt)r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+nt}})}
     const j=await r.json();
     customExpenseCats=(j&&j.data&&j.data.list)||[];
+    catIconOverrides=(j&&j.data&&j.data.icons)||{};
   }catch(e){console.log('loadExpenseCats:',e.message)}
 }
 async function saveExpenseCats(){
   try{
-    const body=JSON.stringify({data:{list:customExpenseCats}});
+    const body=JSON.stringify({data:{list:customExpenseCats,icons:catIconOverrides}});
     let r=await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:body});
     if(r.status===401){const nt=await refreshAccessToken();if(nt)await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:body})}
     return true;
@@ -103,8 +129,7 @@ function fillExpenseCatSelect(prefer){
   const cur=prefer||el.value||'餐饮';
   const cats=getExpenseCats();
   if(cur&&!cats.includes(cur))cats.splice(Math.max(cats.length-1,0),0,cur);
-  const imap=getExpenseCatMap();
-  el.innerHTML=cats.map(c=>'<option value="'+escAttr(c)+'">'+(imap[c]?esc(imap[c])+' ':'')+esc(c)+'</option>').join('')
+  el.innerHTML=cats.map(c=>'<option value="'+escAttr(c)+'">'+esc(catIconEmoji(c))+' '+esc(c)+'</option>').join('')
     +'<option value="__new__">➕ 新分类…</option>';
   if(cats.includes(cur))el.value=cur;
 }
@@ -121,23 +146,19 @@ function openCatManager(){ renderCatManager(); document.getElementById('catOverl
 function closeCatManager(){ document.getElementById('catOverlay').classList.remove('active'); }
 function renderCatManager(){
   const box=document.getElementById('catMgrList');if(!box)return;
-  const imap=getExpenseCatMap();
-  let html='<div class="wd-brief" style="margin-bottom:10px">默认分类不可删（历史记录不受影响）</div>';
-  DEFAULT_EXPENSE_CATS.forEach(function(c){
-    html+='<div class="wd-row" style="cursor:default"><span class="wd-dot" style="background:'+catColor(c)+'"></span>'
-      +'<span class="wd-main">'+(CAT_ICONS[c]?CAT_ICONS[c]+' ':'')+esc(c)+'</span>'
-      +'<span style="font-size:11px;color:var(--muted-2)">默认</span></div>';
+  const isDefault=DEFAULT_EXPENSE_CATS;
+  const customNames=customExpenseCats.map(c=>c.n);
+  let html='<div class="wd-brief" style="margin-bottom:10px">点图标上传图片 · 点 ✏️ 改 emoji · 自定义分类可删除</div>';
+  // 默认分类
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">默认分类</div>';
+  isDefault.forEach(function(c){
+    html+=catMgrRow(c,true);
   });
+  // 自定义
   if(customExpenseCats.length){
     html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">自定义分类</div>';
-    customExpenseCats.forEach(function(c,idx){
-      const iconHtml=(c.img&&c.img.startsWith('data:image/'))
-        ?'<img class="cat-img-icon" style="width:18px;height:18px" src="'+c.img+'" onclick="event.stopPropagation();pickCatIconFile('+idx+')" title="点击更换图片图标">'
-        :'<span onclick="pickCatIconFile('+idx+')" title="点击上传图片图标" style="cursor:pointer">'+(c.e?esc(c.e):'🏷️')+'</span>';
-      html+='<div class="wd-row"><span class="wd-dot" style="background:'+catColor(c.n)+'"></span>'
-        +iconHtml
-        +'<span class="wd-main">'+esc(c.n)+'</span>'
-        +'<button class="ex-entry-del" onclick="delCustomCat('+idx+')" title="删除" style="font-size:14px;min-width:32px;min-height:32px">🗑️</button></div>';
+    customExpenseCats.forEach(function(c){
+      html+=catMgrRow(c.n,false);
     });
   }
   box.innerHTML=html;
@@ -147,6 +168,32 @@ function renderCatManager(){
       +'<span class="cat-emo" onclick="pickCatEmoji(\'\')" style="cursor:pointer;font-size:14px;padding:4px 6px;border-radius:8px;color:var(--muted)">无</span>';
     ep.dataset.ready='1';
   }
+}
+function catMgrRow(name,isDef){
+  const icon=catIcon(name);
+  const hasImg=icon.indexOf('<img')===0;
+  const idx=customExpenseCats.findIndex(c=>c.n===name);
+  let h='<div class="wd-row">'
+    +'<span class="wd-dot" style="background:'+catColor(name)+'"></span>'
+    +'<span onclick="pickCatIconFile(\''+String(name).replace(/'/g,'')+'\')" title="点击上传图片图标" style="cursor:pointer;width:22px;text-align:center;display:inline-block">'
+    +icon+'</span>'
+    +'<span class="wd-main">'+esc(name)+'</span>';
+  h+='<button class="ex-entry-del" onclick="editCatEmoji(\''+String(name).replace(/'/g,'')+'\')" title="修改 emoji" style="font-size:13px;min-width:30px;min-height:30px">✏️</button>';
+  if(hasImg){
+    h+='<button class="ex-entry-del" onclick="clearCatImg(\''+String(name).replace(/'/g,'')+'\')" title="清除图片（恢复 emoji）" style="font-size:13px;min-width:30px;min-height:30px">✖️</button>';
+  }
+  if(!isDef&&idx>=0){
+    h+='<button class="ex-entry-del" onclick="delCustomCat('+idx+')" title="删除分类" style="font-size:14px;min-width:30px;min-height:30px">🗑️</button>';
+  } else {
+    h+='<span style="font-size:10px;color:var(--muted-2);width:30px;text-align:center">默认</span>';
+  }
+  h+='</div>';
+  return h;
+}
+function clearCatImg(name){
+  const oldOv=JSON.parse(JSON.stringify(catIconOverrides[name]||{}));
+  if(catIconOverrides[name]){delete catIconOverrides[name].img; if(!catIconOverrides[name].e)delete catIconOverrides[name];}
+  saveExpenseCats().then(function(ok){ if(ok){renderCatManager();toast('已恢复')} else catIconOverrides[name]=oldOv; });
 }
 function pickCatEmoji(e){
   const i=document.getElementById('catEmojiInput');if(i)i.value=e;
@@ -159,13 +206,14 @@ async function addCustomCat(){
   if(!name){toast('请输入分类名');return}
   if(getExpenseCats().includes(name)){toast('分类已存在');return}
   const item={n:name,e:emo};
-  if(_catIconDraft){item.img=_catIconDraft}
   customExpenseCats.push(item);
+  let hadDraft=false;
+  if(_catIconDraft){catIconOverrides[name]={img:_catIconDraft};hadDraft=true}
   if(await saveExpenseCats()){
     ni.value='';if(ei)ei.value='';_catIconDraft='';
     const pv=document.getElementById('catNewIconPreview');if(pv){pv.src='';pv.style.display='none'}
     renderCatManager();toast('已添加：'+name);
-  } else customExpenseCats.pop();
+  } else {customExpenseCats.pop();if(hadDraft)delete catIconOverrides[name];}
 }
 async function delCustomCat(idx){
   const removed=customExpenseCats.splice(idx,1)[0];
@@ -787,6 +835,10 @@ App.expense.pickCatEmoji = pickCatEmoji;
 App.expense.onExpenseCatChange = onExpenseCatChange;
 App.expense.fillExpenseCatSelect = fillExpenseCatSelect;
 App.expense.pickCatIconFile = pickCatIconFile;
+App.expense.editCatEmoji = editCatEmoji;
+App.expense.clearCatImg = clearCatImg;
+App.expense.catMgrRow = catMgrRow;
+App.expense.catIconEmoji = catIconEmoji;
 App.expense.onCatIconFile = onCatIconFile;
 App.expense.catImgToIconDataUrl = catImgToIconDataUrl;
 App.expense.closeExpenseModal = closeExpenseModal;
