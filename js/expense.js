@@ -78,14 +78,19 @@ function catImgToIconDataUrl(file,cb){
 // 图标上传目标：null=新分类草稿；数字=已有自定义分类下标
 let _catIconTarget='new'; // 'new' = 新分类草稿；字符串 = 分类名（含默认分类）
 let _catIconDraft='';
+function selectCatIconTarget(name){
+  _catIconTarget=name;
+  renderCatManager();
+  toast('已选中「'+name+'」：Ctrl+V 粘贴截图 / 拖入图片 / 双击图标选文件');
+}
 function pickCatIconFile(target){
   _catIconTarget=target;
   const f=document.getElementById('catIconFile');
   if(f){f.value='';f.click();}
 }
-function onCatIconFile(input){
-  const file=input.files&&input.files[0];
-  if(!file)return;
+// 统一入口：文件选择 / 粘贴 / 拖拽 都走这里
+function handleCatIconImage(file){
+  if(!file||!(file.type||'').startsWith('image/'))return;
   catImgToIconDataUrl(file,function(url){
     if(!url){toast('图片读取失败');return}
     if(_catIconTarget==='new'){
@@ -94,9 +99,9 @@ function onCatIconFile(input){
       if(pv){pv.src=url;pv.style.display='inline-block'}
       const ei=document.getElementById('catEmojiInput');
       if(ei)ei.value='';
+      toast('已粘贴，填名称后点添加');
       return;
     }
-    // 指定分类：写入覆盖表（默认分类也可换，仅影响当前用户）
     const name=String(_catIconTarget);
     const oldOv=JSON.parse(JSON.stringify(catIconOverrides[name]||{}));
     catIconOverrides[name]={img:url};
@@ -104,6 +109,38 @@ function onCatIconFile(input){
       if(ok){renderCatManager();toast('「'+name+'」图标已更新')}
       else catIconOverrides[name]=oldOv;
     });
+  });
+}
+function onCatIconFile(input){
+  const file=input.files&&input.files[0];
+  if(file)handleCatIconImage(file);
+}
+// 弹窗打开时：Ctrl+V 粘贴截图 / 拖拽图片
+function setupCatPaste(){
+  if(document._catPasteBound)return;
+  document._catPasteBound=true;
+  document.addEventListener('paste',function(ev){
+    const ov=document.getElementById('catOverlay');
+    if(!ov||!ov.classList.contains('active'))return;
+    const items=(ev.clipboardData&&ev.clipboardData.items)||[];
+    for(let i=0;i<items.length;i++){
+      if(items[i].type&&items[i].type.indexOf('image/')===0){
+        const file=items[i].getAsFile();
+        if(file){ev.preventDefault();handleCatIconImage(file);}
+        break;
+      }
+    }
+  });
+  document.addEventListener('dragover',function(ev){
+    const ov=document.getElementById('catOverlay');
+    if(ov&&ov.classList.contains('active'))ev.preventDefault();
+  });
+  document.addEventListener('drop',function(ev){
+    const ov=document.getElementById('catOverlay');
+    if(!ov||!ov.classList.contains('active'))return;
+    const dt=ev.dataTransfer;if(!dt||!dt.files||!dt.files.length)return;
+    const f=dt.files[0];
+    if(f&&(f.type||'').startsWith('image/')){ev.preventDefault();handleCatIconImage(f);}
   });
 }
 let catIconOverrides={}; // {分类名: {e?, img?}} — 集中改图标（含默认分类，仅影响自己）
@@ -142,13 +179,18 @@ function onExpenseCatChange(sel){
 }
 // ===== 分类管理 =====
 const CAT_EMOJI_PICKS=['☕','🧋','🍰','🍜','💊','✈️','📦','🎬','🐾','🎮','🏋️','📶','🍼','💇','🔧','🌱','🎓','🎁'];
-function openCatManager(){ renderCatManager(); document.getElementById('catOverlay').classList.add('active'); }
+function openCatManager(){
+  setupCatPaste();
+  _catIconTarget='new';
+  renderCatManager();
+  document.getElementById('catOverlay').classList.add('active');
+}
 function closeCatManager(){ document.getElementById('catOverlay').classList.remove('active'); }
 function renderCatManager(){
   const box=document.getElementById('catMgrList');if(!box)return;
   const isDefault=DEFAULT_EXPENSE_CATS;
   const customNames=customExpenseCats.map(c=>c.n);
-  let html='<div class="wd-brief" style="margin-bottom:10px">点图标上传图片 · 点 ✏️ 改 emoji · 自定义分类可删除</div>';
+  let html='<div class="wd-brief" style="margin-bottom:10px">点图标选中 → <b>截图 Ctrl+V</b> / 拖入图片（双击图标=选文件） · ✏️改emoji · 自定义可删</div>';
   // 默认分类
   html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">默认分类</div>';
   isDefault.forEach(function(c){
@@ -173,11 +215,12 @@ function catMgrRow(name,isDef){
   const icon=catIcon(name);
   const hasImg=icon.indexOf('<img')===0;
   const idx=customExpenseCats.findIndex(c=>c.n===name);
-  let h='<div class="wd-row">'
+  const sel=(_catIconTarget===name);
+  let h='<div class="wd-row" style="'+(sel?'background:var(--pri-light);box-shadow:inset 0 0 0 1px var(--pri)':'')+'">'
     +'<span class="wd-dot" style="background:'+catColor(name)+'"></span>'
-    +'<span onclick="pickCatIconFile(\''+String(name).replace(/'/g,'')+'\')" title="点击上传图片图标" style="cursor:pointer;width:22px;text-align:center;display:inline-block">'
+    +'<span onclick="selectCatIconTarget(\''+String(name).replace(/'/g,'')+'\')" ondblclick="pickCatIconFile(\''+String(name).replace(/'/g,'')+'\')" title="点击选中(可粘贴) · 双击选文件" style="cursor:pointer;width:24px;height:24px;text-align:center;display:inline-flex;align-items:center;justify-content:center">'
     +icon+'</span>'
-    +'<span class="wd-main">'+esc(name)+'</span>';
+    +'<span class="wd-main">'+esc(name)+(sel?'<em style="font-style:normal;font-size:10px;color:var(--pri);margin-left:6px">已选中</em>':'')+'</span>';
   h+='<button class="ex-entry-del" onclick="editCatEmoji(\''+String(name).replace(/'/g,'')+'\')" title="修改 emoji" style="font-size:13px;min-width:30px;min-height:30px">✏️</button>';
   if(hasImg){
     h+='<button class="ex-entry-del" onclick="clearCatImg(\''+String(name).replace(/'/g,'')+'\')" title="清除图片（恢复 emoji）" style="font-size:13px;min-width:30px;min-height:30px">✖️</button>';
@@ -212,6 +255,7 @@ async function addCustomCat(){
   if(await saveExpenseCats()){
     ni.value='';if(ei)ei.value='';_catIconDraft='';
     const pv=document.getElementById('catNewIconPreview');if(pv){pv.src='';pv.style.display='none'}
+    _catIconTarget='new';
     renderCatManager();toast('已添加：'+name);
   } else {customExpenseCats.pop();if(hadDraft)delete catIconOverrides[name];}
 }
@@ -835,11 +879,14 @@ App.expense.pickCatEmoji = pickCatEmoji;
 App.expense.onExpenseCatChange = onExpenseCatChange;
 App.expense.fillExpenseCatSelect = fillExpenseCatSelect;
 App.expense.pickCatIconFile = pickCatIconFile;
+App.expense.selectCatIconTarget = selectCatIconTarget;
 App.expense.editCatEmoji = editCatEmoji;
 App.expense.clearCatImg = clearCatImg;
 App.expense.catMgrRow = catMgrRow;
 App.expense.catIconEmoji = catIconEmoji;
 App.expense.onCatIconFile = onCatIconFile;
+App.expense.handleCatIconImage = handleCatIconImage;
+App.expense.setupCatPaste = setupCatPaste;
 App.expense.catImgToIconDataUrl = catImgToIconDataUrl;
 App.expense.closeExpenseModal = closeExpenseModal;
 App.expense.exportExpenses = exportExpenses;
