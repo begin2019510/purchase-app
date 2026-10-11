@@ -145,7 +145,12 @@ function openDetailModal(id){
       <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">📦 确认收货</button>
       <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货归档</button>
     </div>`;
-  }else if(status==='已到'||status==='已退'){
+  }else if(status==='已到'){
+    html+=`<div style="margin-top:16px;display:flex;gap:10px">
+      <button class="detail-action-btn" style="background:var(--pri);flex:1" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button>
+      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货</button>
+    </div>`;
+  }else if(status==='已退'){
     html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button></div>`;
   }
 
