@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="4.0.6">
+<meta name="app-version" content="4.0.7">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=4.0.6">
+<link rel="stylesheet" href="theme.css?v=4.0.7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="4.0.6">
+<meta http-equiv="Expires" content="4.0.7">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='4.0.6';
+  var V='4.0.7';
   try{
     var s=sessionStorage.getItem('app_ver');
     if(s&&s!==V){
@@ -675,17 +675,17 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=4.0.6"></script>
-<script src="js/auth.js?v=4.0.6"></script>
-<script src="js/api.js?v=4.0.6"></script>
-<script src="js/stats.js?v=4.0.6"></script>
-<script src="js/expense.js?v=4.0.6"></script>
-<script src="js/items.js?v=4.0.6"></script>
-<script src="js/ai.js?v=4.0.6"></script>
-<script src="js/budget.js?v=4.0.6"></script>
-<script src="js/todomodule.js?v=4.0.6"></script>
-  <script src="js/project.js?v=4.0.6"></script>
-<script src="js/app.js?v=4.0.6"></script>
+<script src="js/utils.js?v=4.0.7"></script>
+<script src="js/auth.js?v=4.0.7"></script>
+<script src="js/api.js?v=4.0.7"></script>
+<script src="js/stats.js?v=4.0.7"></script>
+<script src="js/expense.js?v=4.0.7"></script>
+<script src="js/items.js?v=4.0.7"></script>
+<script src="js/ai.js?v=4.0.7"></script>
+<script src="js/budget.js?v=4.0.7"></script>
+<script src="js/todomodule.js?v=4.0.7"></script>
+  <script src="js/project.js?v=4.0.7"></script>
+<script src="js/app.js?v=4.0.7"></script>
 
 
 
@@ -748,6 +748,11 @@
         <input id="catEmojiInput" type="text" value="" maxlength="2" placeholder="emoji" style="width:64px;text-align:center;font-size:16px">
       </div>
       <div id="catEmojiPick" style="display:flex;flex-wrap:wrap;gap:2px;margin-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="a-btn a-btn-secondary" style="min-height:36px;font-size:13px" onclick="pickCatIconFile('new')">🖼️ 上传图片当图标</button>
+        <img id="catNewIconPreview" src="" style="display:none;width:28px;height:28px;border-radius:7px;object-fit:cover;border:1px solid var(--border)">
+      </div>
+      <input type="file" id="catIconFile" accept="image/*" style="display:none" onchange="onCatIconFile(this)">
       <button class="a-btn a-btn-primary" style="width:100%;margin-top:12px" onclick="addCustomCat()">添加</button>
     </div>
     <div class="btn-row" style="margin-top:14px">

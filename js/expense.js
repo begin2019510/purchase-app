@@ -24,8 +24,63 @@ function catColor(name){
 function catIcon(name){
   name=name||'其他';
   if(CAT_ICONS[name])return CAT_ICONS[name];
-  const e=getExpenseCatMap()[name];
-  return e||'🏷️';
+  const c=customExpenseCats.find(x=>x&&x.n===name);
+  if(c&&c.img&&typeof c.img==='string'&&c.img.startsWith('data:image/')){
+    return '<img class="cat-img-icon" src="'+c.img+'" alt="">';
+  }
+  return (c&&c.e)||'🏷️';
+}
+// 图片 → 96x96 图标 dataURL
+function catImgToIconDataUrl(file,cb){
+  if(!file||!file.type.startsWith('image/')){cb(null);return}
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const img=new Image();
+    img.onload=function(){
+      const S=96;
+      const canvas=document.createElement('canvas');
+      canvas.width=S;canvas.height=S;
+      const ctx=canvas.getContext('2d');
+      // cover 裁剪成方形
+      const s=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,S,S);
+      cb(canvas.toDataURL('image/jpeg',0.85));
+    };
+    img.onerror=function(){cb(null)};
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+// 图标上传目标：null=新分类草稿；数字=已有自定义分类下标
+let _catIconTarget=null;
+let _catIconDraft='';
+function pickCatIconFile(target){
+  _catIconTarget=target;
+  const f=document.getElementById('catIconFile');
+  if(f){f.value='';f.click();}
+}
+function onCatIconFile(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  catImgToIconDataUrl(file,function(url){
+    if(!url){toast('图片读取失败');return}
+    if(_catIconTarget===null||_catIconTarget==='new'){
+      _catIconDraft=url;
+      const pv=document.getElementById('catNewIconPreview');
+      if(pv){pv.src=url;pv.style.display='inline-block'}
+      const ei=document.getElementById('catEmojiInput');
+      if(ei)ei.value='';
+    }else{
+      const idx=Number(_catIconTarget);
+      if(customExpenseCats[idx]){
+        customExpenseCats[idx].img=url;
+        saveExpenseCats().then(function(ok){
+          if(ok){renderCatManager();toast('图标已更新')}
+          else customExpenseCats[idx].img='';
+        });
+      }
+    }
+  });
 }
 async function loadExpenseCats(){
   try{
@@ -76,8 +131,12 @@ function renderCatManager(){
   if(customExpenseCats.length){
     html+='<div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 4px">自定义分类</div>';
     customExpenseCats.forEach(function(c,idx){
+      const iconHtml=(c.img&&c.img.startsWith('data:image/'))
+        ?'<img class="cat-img-icon" style="width:18px;height:18px" src="'+c.img+'" onclick="event.stopPropagation();pickCatIconFile('+idx+')" title="点击更换图片图标">'
+        :'<span onclick="pickCatIconFile('+idx+')" title="点击上传图片图标" style="cursor:pointer">'+(c.e?esc(c.e):'🏷️')+'</span>';
       html+='<div class="wd-row"><span class="wd-dot" style="background:'+catColor(c.n)+'"></span>'
-        +'<span class="wd-main">'+(c.e?esc(c.e)+' ':'')+esc(c.n)+'</span>'
+        +iconHtml
+        +'<span class="wd-main">'+esc(c.n)+'</span>'
         +'<button class="ex-entry-del" onclick="delCustomCat('+idx+')" title="删除" style="font-size:14px;min-width:32px;min-height:32px">🗑️</button></div>';
     });
   }
@@ -99,9 +158,14 @@ async function addCustomCat(){
   const name=(ni.value||'').trim();const emo=(ei&&ei.value)||'';
   if(!name){toast('请输入分类名');return}
   if(getExpenseCats().includes(name)){toast('分类已存在');return}
-  customExpenseCats.push({n:name,e:emo});
-  if(await saveExpenseCats()){ni.value='';if(ei)ei.value='';renderCatManager();toast('已添加：'+name)}
-  else customExpenseCats.pop();
+  const item={n:name,e:emo};
+  if(_catIconDraft){item.img=_catIconDraft}
+  customExpenseCats.push(item);
+  if(await saveExpenseCats()){
+    ni.value='';if(ei)ei.value='';_catIconDraft='';
+    const pv=document.getElementById('catNewIconPreview');if(pv){pv.src='';pv.style.display='none'}
+    renderCatManager();toast('已添加：'+name);
+  } else customExpenseCats.pop();
 }
 async function delCustomCat(idx){
   const removed=customExpenseCats.splice(idx,1)[0];
@@ -722,6 +786,9 @@ App.expense.delCustomCat = delCustomCat;
 App.expense.pickCatEmoji = pickCatEmoji;
 App.expense.onExpenseCatChange = onExpenseCatChange;
 App.expense.fillExpenseCatSelect = fillExpenseCatSelect;
+App.expense.pickCatIconFile = pickCatIconFile;
+App.expense.onCatIconFile = onCatIconFile;
+App.expense.catImgToIconDataUrl = catImgToIconDataUrl;
 App.expense.closeExpenseModal = closeExpenseModal;
 App.expense.exportExpenses = exportExpenses;
 App.expense.deleteExpenseImage = deleteExpenseImage;
