@@ -148,18 +148,28 @@ async function loadExpenseCats(){
   try{
     let r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+getPin()}});
     if(r.status===401){const nt=await refreshAccessToken();if(nt)r=await fetch(API_BASE+'/api/cats',{headers:{'Authorization':'Bearer '+nt}})}
+    if(!r.ok) throw new Error('HTTP '+r.status); // 不拿失败响应清空本地
     const j=await r.json();
-    customExpenseCats=(j&&j.data&&j.data.list)||[];
-    catIconOverrides=(j&&j.data&&j.data.icons)||{};
+    if(!j||!j.ok||!j.data) throw new Error('bad payload');
+    // 仅在服务端确认返回 list 时才覆盖，防止 401/404 把已加载数据清掉
+    if(Array.isArray(j.data.list)) customExpenseCats=j.data.list;
+    catIconOverrides=(j.data.icons)||{};
+    // 分类管理页开着 → 立即重绘（否则用户看到旧/空列表，重加会误报"已存在"）
+    const ov=document.getElementById('catOverlay');
+    if(ov&&ov.classList.contains('active')&&typeof renderCatManager==='function')renderCatManager();
   }catch(e){console.log('loadExpenseCats:',e.message)}
 }
 async function saveExpenseCats(){
   try{
     const body=JSON.stringify({data:{list:customExpenseCats,icons:catIconOverrides}});
-    let r=await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:body});
-    if(r.status===401){const nt=await refreshAccessToken();if(nt)await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:body})}
+    const doFetch=async tok=>await fetch(API_BASE+'/api/cats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:body});
+    let r=await doFetch(getPin());
+    if(r.status===401){const nt=await refreshAccessToken();if(nt)r=await doFetch(nt);}
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json().catch(()=>null);
+    if(j&&j.ok===false) throw new Error(j.error||'server rejected');
     return true;
-  }catch(e){toast('保存失败');return false}
+  }catch(e){toast('保存失败（'+(e.message||'网络错误')+'）');return false}
 }
 function fillExpenseCatSelect(prefer){
   const el=document.getElementById('eCategory');if(!el)return;
@@ -182,8 +192,10 @@ const CAT_EMOJI_PICKS=['☕','🧋','🍰','🍜','💊','✈️','📦','🎬',
 function openCatManager(){
   setupCatPaste();
   _catIconTarget='new';
-  renderCatManager();
+  renderCatManager(); // 先用内存渲染，避免闪空
   document.getElementById('catOverlay').classList.add('active');
+  // 再拉一次最新；成功后 loadExpenseCats 内部会重绘管理页
+  loadExpenseCats();
 }
 function closeCatManager(){ document.getElementById('catOverlay').classList.remove('active'); }
 function renderCatManager(){
@@ -243,21 +255,26 @@ function pickCatEmoji(e){
   document.querySelectorAll('#catEmojiPick .cat-emo').forEach(el=>el.style.background='');
   if(e&&event&&event.target)event.target.style.background='var(--pri-light)';
 }
+let _catSaving=false;
 async function addCustomCat(){
+  if(_catSaving)return; // 防双击：第一次提交还在进行时忽略连点
   const ni=document.getElementById('catNameInput');const ei=document.getElementById('catEmojiInput');
   const name=(ni.value||'').trim();const emo=(ei&&ei.value)||'';
   if(!name){toast('请输入分类名');return}
-  if(getExpenseCats().includes(name)){toast('分类已存在');return}
+  if(getExpenseCats().includes(name)){toast('分类已存在：「'+name+'」');return}
+  _catSaving=true;
   const item={n:name,e:emo};
   customExpenseCats.push(item);
   let hadDraft=false;
   if(_catIconDraft){catIconOverrides[name]={img:_catIconDraft};hadDraft=true}
-  if(await saveExpenseCats()){
-    ni.value='';if(ei)ei.value='';_catIconDraft='';
-    const pv=document.getElementById('catNewIconPreview');if(pv){pv.src='';pv.style.display='none'}
-    _catIconTarget='new';
-    renderCatManager();toast('已添加：'+name);
-  } else {customExpenseCats.pop();if(hadDraft)delete catIconOverrides[name];}
+  try{
+    if(await saveExpenseCats()){
+      ni.value='';if(ei)ei.value='';_catIconDraft='';
+      const pv=document.getElementById('catNewIconPreview');if(pv){pv.src='';pv.style.display='none'}
+      _catIconTarget='new';
+      renderCatManager();toast('已添加：'+name);
+    } else {customExpenseCats.pop();if(hadDraft)delete catIconOverrides[name];renderCatManager();}
+  } finally {_catSaving=false;}
 }
 async function delCustomCat(idx){
   const removed=customExpenseCats.splice(idx,1)[0];
