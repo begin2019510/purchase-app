@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.18";
+const APP_VERSION = "4.0.19";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.19',date:'2026-10-12',items:['冷加载提速：缓存有效期5分钟→7天（重开秒开、骨架仅首次真冷启动可见）','首绘只等采购+记账两路数据，待办/项目/预算后台补齐；数据无变化不重渲染不闪','iOS 版本自动更新：回前台/聚焦时强制检查 Service Worker 新版本']},
 {v:'4.0.18',date:'2026-10-12',items:['系统通知诊断：不支持时显示缺少哪项能力/UA/主屏状态（通知须在 iPhone 主屏 App 内开启）']},
 {v:'4.0.17',date:'2026-10-12',items:['iOS 灵动岛适配：viewport-fit、状态栏全屏、头部/下拉刷新避让刘海安全区','系统通知：接入 Web Push（苹果官方 APNs 通道），设置→系统通知一键开启；iOS 需先添加到主屏幕','服务器定时发送（每日 12:05/18:05），订阅过期自动清理']},
 {v:'4.0.16',date:'2026-10-11',items:['静默刷新：回窗口/前台轮询仅比对数据，无变动完全不打扰，有变动自动更新（手机电脑通用）','刷新不再闪骨架屏（仅首次冷启动显示）；电脑端顶部新增 🔄 手动刷新按钮，无变动不提示']},

@@ -209,7 +209,8 @@ function setupPullToRefresh(){
 // ===== 静默刷新：无变动零打扰，有变动自动更新（手机/电脑通用）=====
 var _silentBusy=false,_lastSilentAt=0;
 function _snap(){return JSON.stringify([items||[],expenses||[],
-  (typeof todoList!=='undefined'?todoList:[]),(typeof projectList!=='undefined'?projectList:[])])}
+  (typeof todoList!=='undefined'?todoList:[]),(typeof projectList!=='undefined'?projectList:[]),
+  (typeof getBudgets==='function'?getBudgets():{})])}
 async function silentRefresh(force){
   if(_silentBusy)return false;
   if(!force&&Date.now()-_lastSilentAt<30000)return false;  // 30s 节流
@@ -271,7 +272,7 @@ async function cleanupOrphanExpenses(){
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
 // Cache helpers
-function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);if(Date.now()-d.t>300000)return null;return d.v}catch(e){return null}}
+function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);if(Date.now()-d.t>7*24*3600*1000)return null;return d.v}catch(e){return null}}  // 7天SWR缓存：重开秒开，后台静默校验
 function setCachedData(key,val){try{localStorage.setItem('cache_'+key,JSON.stringify({t:Date.now(),v:val}))}catch(e){}}
 
 async function loadAll(){
@@ -280,37 +281,45 @@ async function loadAll(){
   function _log(m){console.log("LOADALL:",m);if(_dbg){_dbg.style.display="block";_dbg.innerHTML+="<div style=\"border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0\">"+m+"</div>"}}
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
 
-  // Stale-while-revalidate: show cached data first
+  // Stale-while-revalidate: 缓存秒开（7天有效），后台校验，仅真首次冷启动见骨架
   var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos');
-  if(ci&&ce){items=ci;expenses=ce;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){}}
-  else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}  // 仅首次冷启动显示骨架，刷新永不闪
+  var renderedFromCache=false;
+  if(ci&&ce){items=ci;expenses=ce;if(ct)todoList=ct;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){} renderedFromCache=true}
+  else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}
+  var preSnap=_snap();
 
   try{
-    _log("Fetching data (parallel)...");
-    const [budgetOk, results, todoOk] = await Promise.all([
-      loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
-      Promise.all([api("GET"),expenseApi("GET")]),
-      loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
-      (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
-    ]);
+    _log("Fetching critical (items+expenses)...");
+    const results=await Promise.all([api("GET"),expenseApi("GET")]);
     var r=results[0], e=results[1];
     if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
     else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
     if(e && !e.error && Array.isArray(e)){expenses=e;setCachedData('expenses',e);_log("Expenses loaded: "+e.length)}
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
-    if(todoOk&&Array.isArray(todoOk)){setCachedData('todos',todoOk)}
-  }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
-  isLoadingData=false;
+    isLoadingData=false;
+    // 关键数据到齐即可首绘（骨架/缓存路径按需），不等待办/项目/预算
+    var postCritical=_snap();
+    if(!renderedFromCache||postCritical!==preSnap){try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}}
+  }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message);isLoadingData=false;
+    if(!renderedFromCache){try{switchTab(currentTab)}catch(e2){}}}  // 离线兜底：展示空态而非卡在骨架
+
+  try{
+    await Promise.all([
+      loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
+      loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
+      (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
+    ]);
+    // 次要数据有变化才补一帧渲染（无变化零打扰）
+    if(_snap()!==postCritical){try{switchTab(currentTab)}catch(ex){}}
+  }catch(ex){_log("secondary fetch error: "+(ex&&ex.message))}
+
   if(typeof loadExpenseCats==='function')loadExpenseCats().then(function(){try{if(typeof render==='function')render()}catch(ex){}}).catch(function(){});
   loadRecurringData().then(function(){
     if(currentTab==='expense'||currentTab==='stats') render();
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
-    // Load projects (non-blocking)
-  // loadProjects now runs in parallel above
-  _log("Rendering, items="+items.length+", expenses="+expenses.length);
-  try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
+  _log("loadAll done, items="+items.length+", expenses="+expenses.length);
   _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200),todoHTML:document.getElementById("todoContent")?.innerHTML?.length,todoErr:window._todoRenderErr}));
 }
 
