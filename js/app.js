@@ -206,22 +206,53 @@ function setupPullToRefresh(){
   });
   document.addEventListener('mouseup',function(){if(active)onRelease()});
 }
-// 电脑：切回窗口时数据超过 5 分钟未更新则自动刷新
-(function setupFocusAutoRefresh(){
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden)return;
-    if(!getPin||!getPin())return;
-    if(typeof _lastAllAt!=='undefined'&&Date.now()-_lastAllAt>5*60*1000&&typeof loadAll==='function'){
-      loadAll();
+// ===== 静默刷新：无变动零打扰，有变动自动更新（手机/电脑通用）=====
+var _silentBusy=false,_lastSilentAt=0;
+function _snap(){return JSON.stringify([items||[],expenses||[],
+  (typeof todoList!=='undefined'?todoList:[]),(typeof projectList!=='undefined'?projectList:[])])}
+async function silentRefresh(force){
+  if(_silentBusy)return false;
+  if(!force&&Date.now()-_lastSilentAt<30000)return false;  // 30s 节流
+  if(!getPin||!getPin())return false;
+  _silentBusy=true;_lastSilentAt=Date.now();
+  try{
+    var snap=_snap();
+    await Promise.all([
+      api('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))items=r}),
+      expenseApi('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))expenses=r}),
+      (typeof loadTodos==='function'?loadTodos():Promise.resolve()),
+      (typeof loadProjects==='function'?loadProjects():Promise.resolve())
+    ]);
+    var changed=_snap()!==snap;
+    if(changed){
+      try{setCachedData('items',items);setCachedData('expenses',expenses)}catch(e){}
+      if(typeof render==='function'){try{render()}catch(e){}}
+      window._lastAllAt=Date.now();
     }
-  });
-  window.addEventListener('focus',function(){
-    if(!getPin||!getPin())return;
-    if(typeof _lastAllAt!=='undefined'&&Date.now()-_lastAllAt>5*60*1000&&typeof loadAll==='function'){
-      loadAll();
-    }
-  });
+    return changed;
+  }catch(e){console.log('silentRefresh:',e&&e.message);return false}
+  finally{_silentBusy=false}
+}
+// 自动刷新：回到窗口 / 页面可见时静默比对；前台每 2 分钟轻量轮询（有变动才动界面）
+(function setupAutoRefresh(){
+  function maybe(){ if(document.hidden)return; silentRefresh(); }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)maybe()});
+  window.addEventListener('focus',maybe);
+  setInterval(function(){if(!document.hidden)silentRefresh();},120000);
 })();
+// 电脑端手动刷新按钮（🔄）
+async function manualRefresh(){
+  var b=document.getElementById('refreshBtn');
+  if(!b||b.dataset.busy)return;
+  b.dataset.busy='1';b.classList.add('spinning');
+  try{
+    var changed=await silentRefresh(true);
+    if(changed)toast('数据已更新');
+    // 无变动：静默结束，不打扰
+  }finally{
+    b.classList.remove('spinning');delete b.dataset.busy;
+  }
+}
 async function cleanupOrphanExpenses(){
   try{
     // Delete ALL purchase-related expense records (purchases tracked via items data now)
@@ -252,7 +283,7 @@ async function loadAll(){
   // Stale-while-revalidate: show cached data first
   var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos');
   if(ci&&ce){items=ci;expenses=ce;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){}}
-  else{showSkeleton()}
+  else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}  // 仅首次冷启动显示骨架，刷新永不闪
 
   try{
     _log("Fetching data (parallel)...");

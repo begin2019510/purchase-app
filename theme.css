@@ -1271,3 +1271,6 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 .quick-badge{position:absolute;top:0;left:0;z-index:5;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;font-size:10px;font-weight:800;padding:3px 9px 4px;border-radius:12px 0 12px 0;letter-spacing:.5px;box-shadow:0 1px 4px rgba(16,185,129,.45);pointer-events:none}
 .card:has(.quick-badge){padding-top:28px}
 .batch-mode .card:has(.quick-badge){padding-top:40px}
+
+/* Desktop refresh button */
+#refreshBtn.spinning{animation:ptr-spin .7s linear infinite}

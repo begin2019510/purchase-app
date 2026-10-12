@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="app-version" content="4.0.15">
+<meta name="app-version" content="4.0.16">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="theme.css?v=4.0.15">
+<link rel="stylesheet" href="theme.css?v=4.0.16">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="4.0.15">
+<meta http-equiv="Expires" content="4.0.16">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='4.0.15';
+  var V='4.0.16';
   try{
     var s=sessionStorage.getItem('app_ver');
     if(s&&s!==V){
@@ -48,6 +48,7 @@
       <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge" onclick="openChangelog()" style="cursor:pointer"></sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
+      <button class="icon-btn desktop-only" onclick="manualRefresh()" id="refreshBtn" title="刷新数据">🔄</button>
       <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
       
       
@@ -676,17 +677,17 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=4.0.15"></script>
-<script src="js/auth.js?v=4.0.15"></script>
-<script src="js/api.js?v=4.0.15"></script>
-<script src="js/stats.js?v=4.0.15"></script>
-<script src="js/expense.js?v=4.0.15"></script>
-<script src="js/items.js?v=4.0.15"></script>
-<script src="js/ai.js?v=4.0.15"></script>
-<script src="js/budget.js?v=4.0.15"></script>
-<script src="js/todomodule.js?v=4.0.15"></script>
-  <script src="js/project.js?v=4.0.15"></script>
-<script src="js/app.js?v=4.0.15"></script>
+<script src="js/utils.js?v=4.0.16"></script>
+<script src="js/auth.js?v=4.0.16"></script>
+<script src="js/api.js?v=4.0.16"></script>
+<script src="js/stats.js?v=4.0.16"></script>
+<script src="js/expense.js?v=4.0.16"></script>
+<script src="js/items.js?v=4.0.16"></script>
+<script src="js/ai.js?v=4.0.16"></script>
+<script src="js/budget.js?v=4.0.16"></script>
+<script src="js/todomodule.js?v=4.0.16"></script>
+  <script src="js/project.js?v=4.0.16"></script>
+<script src="js/app.js?v=4.0.16"></script>
 
 
 
