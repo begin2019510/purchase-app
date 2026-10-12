@@ -237,8 +237,22 @@ async function setupWebPush(){
       alert('iPhone 需先添加到主屏幕：\n\nSafari 打开本页 → 分享 → 添加到主屏幕\n再从桌面图标打开本页，回来点这里开启通知');
       return;
     }
-    if(!('Notification' in window)||!('serviceWorker' in window)||!('PushManager' in window)){
-      alert('当前浏览器不支持系统通知');return;
+    const sup={
+      Notification:('Notification' in window),
+      serviceWorker:('serviceWorker' in navigator),
+      PushManager:('PushManager' in window)
+    };
+    if(!sup.Notification||!sup.serviceWorker||!sup.PushManager){
+      var missing=Object.keys(sup).filter(function(k){return !sup[k]}).join(', ');
+      var ua=navigator.userAgent;
+      var hint='当前环境不支持系统通知\n\n'
+        +'缺少能力: '+missing+'\n'
+        +'iOS主屏: '+(typeof navigator.standalone==='boolean'?navigator.standalone:'非Safari')+'\n'
+        +'浏览器: '+ua.slice(0,90)+'\n\n'
+        +'📌 开启通知请在 iPhone 上操作：\n'
+        +'Safari 打开本页 → 分享 → 添加到主屏幕\n'
+        +'再从桌面图标打开 → 设置 → 系统通知';
+      alert(hint);return;
     }
     let perm=await Notification.requestPermission();
     if(perm!=='granted'){alert('未获得通知权限，请在系统设置中允许');return}

@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.17";
+const APP_VERSION = "4.0.18";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.18',date:'2026-10-12',items:['系统通知诊断：不支持时显示缺少哪项能力/UA/主屏状态（通知须在 iPhone 主屏 App 内开启）']},
 {v:'4.0.17',date:'2026-10-12',items:['iOS 灵动岛适配：viewport-fit、状态栏全屏、头部/下拉刷新避让刘海安全区','系统通知：接入 Web Push（苹果官方 APNs 通道），设置→系统通知一键开启；iOS 需先添加到主屏幕','服务器定时发送（每日 12:05/18:05），订阅过期自动清理']},
 {v:'4.0.16',date:'2026-10-11',items:['静默刷新：回窗口/前台轮询仅比对数据，无变动完全不打扰，有变动自动更新（手机电脑通用）','刷新不再闪骨架屏（仅首次冷启动显示）；电脑端顶部新增 🔄 手动刷新按钮，无变动不提示']},
 {v:'4.0.15',date:'2026-10-11',items:['下拉刷新重做：iOS 风悬浮圆徽章（箭头随手旋转180°到位变绿→转圈→✓），拖动1:1跟手不再黏滞，替换原文字符号横条','电脑支持鼠标下拉刷新；切回窗口超5分钟自动刷新','防误触：输入框/文字选中/小幅移动不触发']},
