@@ -279,7 +279,7 @@ function openReportModal(){
   var box=document.getElementById('reportBody');
   if(!box)return;
   var W=d.period==='weekly'?'周报':'月报';
-  var bigW=d.period==='weekly'?'本周':(d.label||'上月');
+  var bigW=(d.label||'');
   var deltaColor=d.deltaGood===true?'var(--green)':d.deltaGood===false?'var(--red)':'var(--muted)';
   var gt=new Date(d.generatedAt+8*3600000);
   var gts=String(gt.getUTCMonth()+1).padStart(2,'0')+'-'+String(gt.getUTCDate()).padStart(2,'0')+' '+String(gt.getUTCHours()).padStart(2,'0')+':'+String(gt.getUTCMinutes()).padStart(2,'0');

@@ -226,6 +226,11 @@ function renderStats() { console.log('renderStats START');
     window._myReport=null;
     if(typeof fetchMyReport==='function'){fetchMyReport().then(function(){if(currentTab==='stats'){try{renderStats()}catch(e){}}});}
   }
+  if(!window._myReport){
+    html += '<div class="stats-section" style="margin-bottom:12px;opacity:.75">'
+      + '<div style="font-size:13px;font-weight:700">📊 周报 / 月报</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:6px">每段周结束及每月1日晚8点后生成，生成后此处可查看并自动弹窗</div></div>';
+  }
   if(window._myReport&&window._myReport.data){
     var _d=window._myReport.data;
     var _dc=_d.deltaGood===true?'var(--green)':_d.deltaGood===false?'var(--red)':'var(--muted)';

@@ -8,6 +8,14 @@ const MS = 86400000, TZ = 8 * 3600000;
 const ACTIVE_BUY = ['已下单', '已到', '已归档'];
 
 function dayStartBJ(ts) { return Math.floor((ts + TZ) / MS) * MS - TZ; }
+// 与前端 getMonthWeeks 一致：整月切4段（如31天→8/8/8/7）
+function monthBlocks(y, m0) {
+  const ld = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
+  const base = Math.floor(ld / 4), rem = ld % 4;
+  const arr = []; let s = 1;
+  for (let i = 0; i < 4; i++) { const days = base + (i < rem ? 1 : 0); arr.push({ num: i + 1, start: s, end: s + days - 1 }); s += days; }
+  return arr;
+}
 function parseWhen(v) {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return v;
@@ -42,13 +50,34 @@ async function feishuList(app, table, token) {
 
 function range(period, now) {
   if (period === 'weekly') {
-    const bjDay = new Date(now + TZ).getUTCDay();          // 0=周日
-    const fromMon = (bjDay + 6) % 7;
-    const start = dayStartBJ(now) - fromMon * MS;          // 本周一 00:00 (BJ)
-    const endD = new Date(start + 6 * MS + TZ);
-    const rangeText = (new Date(start + TZ).getUTCMonth() + 1) + '月' + new Date(start + TZ).getUTCDate() + '日 - '
-      + (endD.getUTCMonth() + 1) + '月' + endD.getUTCDate() + '日';
-    return { start, end: now, prevStart: start - 7 * MS, prevEnd: start, label: '本周', prevLabel: '上周', rangeText };
+    // 周 = 当月第N段（与周视图/动态周预算完全同口径：4段，每段7~8天）
+    const bj = new Date(now + TZ);
+    const y = bj.getUTCFullYear(), m = bj.getUTCMonth(), d = bj.getUTCDate();
+    // 找「最近已结束」的段：end < 今天；若今天还在第1段内 → 取上月最后一段
+    const endedList = [];
+    monthBlocks(y, m).forEach(b => { if (b.end < d) endedList.push({ ...b, y, m }); });
+    if (!endedList.length) {
+      const pm = m === 0 ? { y: y - 1, m: 11 } : { y, m: m - 1 };
+      monthBlocks(pm.y, pm.m).forEach(b => endedList.push({ ...b, y: pm.y, m: pm.m }));
+    }
+    const ended = endedList[endedList.length - 1];
+    let prevB = null;
+    if (endedList.length >= 2) prevB = endedList[endedList.length - 2];
+    else {
+      // 结束段是上月最后一段 → 再往前 = 上月倒数第二段
+      const pm = ended.m === 0 ? { y: ended.y - 1, m: 11 } : { y: ended.y, m: ended.m - 1 };
+      const pb = monthBlocks(pm.y, pm.m);
+      prevB = { ...pb[2], y: pm.y, m: pm.m }; // 倒数第二段
+      if (ended.num === 1) prevB = { ...pb[2], y: pm.y, m: pm.m };
+    }
+    const start = Date.UTC(ended.y, ended.m, ended.start) - TZ;
+    const end = Date.UTC(ended.y, ended.m, ended.end + 1) - TZ;
+    const rangeText = (ended.m + 1) + '月' + ended.start + '日 - ' + (ended.m + 1) + '月' + ended.end + '日';
+    const prevStart = prevB ? Date.UTC(prevB.y, prevB.m, prevB.start) - TZ : start - 7 * MS;
+    const prevEnd = prevB ? Date.UTC(prevB.y, prevB.m, prevB.end + 1) - TZ : start;
+    const label = '第' + ended.num + '周';
+    const prevLabel = prevB ? '第' + prevB.num + '周' : '上一段';
+    return { start, end, prevStart, prevEnd, label, prevLabel, rangeText };
   }
   // 月报 = 上一个完整自然月（在 1 日生成时不会变成空报告）
   const bj = new Date(now + TZ);
@@ -150,7 +179,7 @@ async function computeForUser(env, username, r) {
   if (budgetInfo) lines.push(`预算 ¥${budgetInfo.total} · 已用 ${budgetInfo.pct}%`);
 
   const bjNow = new Date(Date.now() + TZ);
-  const title = r.period === 'weekly' ? '📊 本周账单' : '📊 ' + R.label + '账单';
+  const title = r.period === 'weekly' ? '📊 ' + R.label + '账单' : '📊 ' + R.label + '账单';
   const data = {
     period: r.period,
     rangeText: R.rangeText,
