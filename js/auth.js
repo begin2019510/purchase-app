@@ -219,6 +219,53 @@ if('serviceWorker' in navigator && !IS_NATIVE){
 // ===== 推送 - 飞书机器人（国内可用） =====
 // 无需浏览器权限，配置飞书机器人 webhook 即可
 // 配置方法：Cloudflare 环境变量 FEISHU_BOT_WEBHOOK
+// ===== 系统通知（Web Push / Apple APNs）=====
+const WEBPUSH_VAPID_PUBLIC='BL7C5cLuGUMB2jXlRUtpZsKX0ZQxOh9qF6XdK0puPtIJJBMc0cZ7rcIA1CNwPXei5bvOojXhjkdj1CR0EOTh5bE';
+function _urlB64ToUint8(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64);
+  const outputArray=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;++i)outputArray[i]=raw.charCodeAt(i);
+  return outputArray;
+}
+async function setupWebPush(){
+  try{
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    const standalone=(typeof navigator.standalone==='boolean')?navigator.standalone:window.matchMedia('(display-mode: standalone)').matches;
+    if(isIOS&&!standalone){
+      alert('iPhone 需先添加到主屏幕：\n\nSafari 打开本页 → 分享 → 添加到主屏幕\n再从桌面图标打开本页，回来点这里开启通知');
+      return;
+    }
+    if(!('Notification' in window)||!('serviceWorker' in window)||!('PushManager' in window)){
+      alert('当前浏览器不支持系统通知');return;
+    }
+    let perm=await Notification.requestPermission();
+    if(perm!=='granted'){alert('未获得通知权限，请在系统设置中允许');return}
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:_urlB64ToUint8(WEBPUSH_VAPID_PUBLIC)
+    });
+    let r=await fetch(API_BASE+'/api/push/subscribe',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},
+      body:JSON.stringify({subscription:sub.toJSON()})
+    });
+    if(r.status===401){
+      const nt=await refreshAccessToken();
+      if(nt)r=await fetch(API_BASE+'/api/push/subscribe',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},
+        body:JSON.stringify({subscription:sub.toJSON()})
+      });
+    }
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    localStorage.setItem('webpush_on','1');
+    alert('✅ 系统通知已开启\n\n记账提醒将直接推送到系统通知中心（苹果官方 APNs 通道）');
+  }catch(e){
+    console.error('setupWebPush',e);
+    alert('开启失败：'+(e&&e.message||'未知错误'));
+  }
+}
 async function setupPush(){
   const msg = '推送使用飞书机器人\n\n操作步骤：\n1. 飞书打开一个群聊\n2. 群设置 → 群机器人 → 添加机器人\n3. 选择自定义机器人 → 复制 Webhook 地址\n4. 在 Cloudflare Pages 设置中添加环境变量：\n   FEISHU_BOT_WEBHOOK = 复制的地址\n5. 然后 GitHub Actions 每天 20:00 自动发提醒';
   alert(msg);
@@ -257,3 +304,4 @@ App.auth.debugMyAuthStats = debugMyAuthStats;
 App.auth.verifyAndLoad = verifyAndLoad;
 App.auth.logout = logout;
 App.auth.setupPush = setupPush;
+App.auth.setupWebPush = setupWebPush;

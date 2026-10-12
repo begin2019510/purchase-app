@@ -58,6 +58,13 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 
 /* ===== Header ===== */
 .header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* Dynamic Island / notch: standalone web-app top inset */
+@supports (padding-top: env(safe-area-inset-top)){
+  .header{padding-top:calc(20px + env(safe-area-inset-top,0px))}
+  @media (max-width:767px){
+    .header{padding-top:calc(6px + env(safe-area-inset-top,0px)) !important}
+  }
+}
 .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .header h1{font-size:20px;font-weight:800;letter-spacing:-.3px}
 .header-version{font-size:9px;background:rgba(255,255,255,.15);padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:700;letter-spacing:.3px;vertical-align:middle}

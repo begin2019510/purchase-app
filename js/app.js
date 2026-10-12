@@ -114,7 +114,7 @@ function setupPullToRefresh(){
   pullIndicator.id='pullIndicator';
   pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:0;z-index:9999;pointer-events:none;transform:translateY(-70px);transition:transform .4s cubic-bezier(.25,.46,.54,1.02)';
   pullIndicator.innerHTML=
-    '<div class="ptr-badge" style="position:absolute;top:12px;left:50%;margin-left:-19px;width:38px;height:38px;border-radius:50%;background:var(--card,#fff);box-shadow:0 3px 12px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;border:1px solid var(--border,#e2e8f0)">'
+    '<div class="ptr-badge" style="position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:50%;margin-left:-19px;width:38px;height:38px;border-radius:50%;background:var(--card,#fff);box-shadow:0 3px 12px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;border:1px solid var(--border,#e2e8f0)">'
     +'<svg class="ptr-arrow" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted,#8e8e93);transition:color .15s"><path d="M12 5v14M5 12l7 7 7-7"/></svg>'
     +'<div class="ptr-ring" style="display:none;width:18px;height:18px;border:2.5px solid var(--border,#e2e8f0);border-top-color:var(--pri,#6366f1);border-radius:50%;animation:ptr-spin .7s linear infinite"></div>'
     +'<svg class="ptr-check" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:none;color:var(--green,#10b981)"><path d="M20 6L9 17l-5-5"/></svg>'
@@ -552,6 +552,7 @@ function settingsAction(action){
   switch(action){
     case 'darkMode': toggleDarkMode(); break;
     case 'background': toggleBgPicker(); break;
+    case 'webpush': setupWebPush(); break;
     case 'admin': openAdminPanel(); break;
     case 'logs': openLogsPanel(); break;
     case 'help': window.open('/help','_blank'); break;
