@@ -45,12 +45,21 @@ function range(period, now) {
     const bjDay = new Date(now + TZ).getUTCDay();          // 0=周日
     const fromMon = (bjDay + 6) % 7;
     const start = dayStartBJ(now) - fromMon * MS;          // 本周一 00:00 (BJ)
-    return { start, end: now, prevStart: start - 7 * MS, prevEnd: start, label: '本周', prevLabel: '上周' };
+    const endD = new Date(start + 6 * MS + TZ);
+    const rangeText = (new Date(start + TZ).getUTCMonth() + 1) + '月' + new Date(start + TZ).getUTCDate() + '日 - '
+      + (endD.getUTCMonth() + 1) + '月' + endD.getUTCDate() + '日';
+    return { start, end: now, prevStart: start - 7 * MS, prevEnd: start, label: '本周', prevLabel: '上周', rangeText };
   }
-  const y = new Date(now + TZ).getUTCFullYear(), m = new Date(now + TZ).getUTCMonth();
-  const start = Date.UTC(y, m, 1) - TZ;
+  // 月报 = 上一个完整自然月（在 1 日生成时不会变成空报告）
+  const bj = new Date(now + TZ);
+  const y = bj.getUTCFullYear(), m = bj.getUTCMonth();
+  const start = Date.UTC(y, m, 1) - TZ;                    // 本月 1 日 00:00 → 上月结束边界
   const ps = Date.UTC(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1, 1) - TZ;
-  return { start, end: now, prevStart: ps, prevEnd: start, label: '本月', prevLabel: '上月' };
+  const daysInPrev = Math.round((start - ps) / MS);
+  const prevM = new Date(ps + TZ);
+  const rangeText = (prevM.getUTCMonth() + 1) + '月1日 - ' + (prevM.getUTCMonth() + 1) + daysInPrev + '日';
+  return { start: ps, end: start, prevStart: ps - (start - ps), prevEnd: ps,
+    label: (prevM.getUTCMonth() + 1) + '月', prevLabel: ((prevM.getUTCMonth() === 0 ? 12 : prevM.getUTCMonth()) ) + '月', rangeText };
 }
 
 async function computeForUser(env, username, r) {
@@ -109,29 +118,51 @@ async function computeForUser(env, username, r) {
   const cur = aggregate(R.start, R.end);
   const prev = aggregate(R.prevStart, R.prevEnd);
 
-  let delta = '持平';
+  let deltaText = '持平', deltaGood = null;
   if (prev.total > 0) {
     const d = Math.round((cur.total - prev.total) / prev.total * 100);
-    delta = d > 0 ? '↑' + d + '%' : d < 0 ? '↓' + Math.abs(d) + '%' : '持平';
-  } else if (cur.total > 0) delta = '新增';
+    deltaText = d > 0 ? '↑' + d + '%' : d < 0 ? '↓' + Math.abs(d) + '%' : '持平';
+    deltaGood = d < 0 ? true : d > 0 ? false : null;
+  } else if (cur.total > 0) { deltaText = '新增'; deltaGood = null; }
 
-  const yuan = n => '¥' + Math.round(n);
-  const lines = [];
-  if (r.period === 'weekly') {
-    lines.push(`${R.label}支出 ${yuan(cur.total)}（较${R.prevLabel}${delta}）· 采${yuan(cur.buy)} 记${yuan(cur.exp)} · ${cur.count}笔`);
-    if (cur.topCats.length) lines.push('Top: ' + cur.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
-    if (cur.topDay) lines.push('最高一天：' + cur.topDay[0] + ' ' + yuan(cur.topDay[1]));
-  } else {
-    lines.push(`${R.label}支出 ${yuan(cur.total)}（较${R.prevLabel}${delta}）· 采${yuan(cur.buy)} 记${yuan(cur.exp)} · ${cur.count}笔`);
-    if (cur.topCats.length) lines.push('Top: ' + cur.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
+  const yuan = n => '¥' + Math.round(n).toLocaleString('zh-CN');
+  const topDayText = cur.topDay ? (() => {
+    const dt = new Date(Date.parse('2026-' + cur.topDay[0] + 'T00:00:00+08:00') || 0);
+    const w = ['日', '一', '二', '三', '四', '五', '六'][dt.getUTCDay()];
+    return (dt.getUTCMonth() + 1) + '月' + dt.getUTCDate() + '日 周' + w;
+  })() : null;
+
+  let budgetInfo = null;
+  if (r.period === 'monthly') {
     const bRaw = await KV.get('budget:' + username, 'json');
-    const mb = bRaw && bRaw[`${new Date(Date.now() + TZ).getUTCFullYear()}-${String(new Date(Date.now() + TZ).getUTCMonth() + 1).padStart(2, '0')}`];
+    const key = R.label; // '10月' → key is YYYY-MM — derive from range start
+    const bjS = new Date(R.start + TZ);
+    const bkey = bjS.getUTCFullYear() + '-' + String(bjS.getUTCMonth() + 1).padStart(2, '0');
+    const mb = bRaw && bRaw[bkey];
     const budget = typeof mb === 'number' ? mb : (mb && mb.total) || 0;
-    if (budget > 0) lines.push(`预算 ¥${budget} · 已用 ${Math.round(cur.total / budget * 100)}%`);
+    if (budget > 0) budgetInfo = { total: budget, pct: Math.min(Math.round(cur.total / budget * 100), 999) };
   }
 
-  const title = r.period === 'weekly' ? '📊 本周账单' : '📊 ' + (new Date(Date.now() + TZ).getUTCMonth() + 1) + '月账单';
-  const report = { period: r.period, generatedAt: Date.now(), title, body: lines.join('\n'), url: '/' };
+  const lines = [];
+  lines.push(`${R.label}支出 ${yuan(cur.total)}（较${R.prevLabel}${deltaText}）· 采${yuan(cur.buy)} 记${yuan(cur.exp)} · ${cur.count}笔`);
+  if (cur.topCats.length) lines.push('Top: ' + cur.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
+  if (topDayText) lines.push('最高一天：' + topDayText + ' ' + yuan(cur.topDay[1]));
+  if (budgetInfo) lines.push(`预算 ¥${budgetInfo.total} · 已用 ${budgetInfo.pct}%`);
+
+  const bjNow = new Date(Date.now() + TZ);
+  const title = r.period === 'weekly' ? '📊 本周账单' : '📊 ' + R.label + '账单';
+  const data = {
+    period: r.period,
+    rangeText: R.rangeText,
+    generatedAt: Date.now(),
+    label: R.label, prevLabel: R.prevLabel,
+    total: Math.round(cur.total), buy: Math.round(cur.buy), exp: Math.round(cur.exp),
+    count: cur.count, deltaText, deltaGood,
+    topCats: cur.topCats.map(c => [c[0], Math.round(c[1])]),
+    topDay: cur.topDay ? { text: topDayText, val: Math.round(cur.topDay[1]) } : null,
+    budget: budgetInfo,
+  };
+  const report = { period: r.period, generatedAt: Date.now(), title, body: lines.join('\n'), url: '/', data };
   await KV.put('report:latest:' + username, JSON.stringify(report), { expirationTtl: 60 * 86400 });
   return { username, report };
 }
@@ -162,11 +193,11 @@ export async function onRequest(context) {
       const reports = [];
       for (const k of userKeys) {
         const u = k.name.slice(5);
-        const sub = await KV.get('webpush:' + u, 'json');
-        if (!sub) continue;
         try {
           const res = await computeForUser(env, u, { period });
-          if (res) reports.push({ username: u, subscription: sub, title: res.report.title, body: res.report.body, url: res.report.url });
+          if (!res) continue;
+          const sub = await KV.get('webpush:' + u, 'json');
+          reports.push({ username: u, subscription: sub, title: res.report.title, body: res.report.body, url: res.report.url });
         } catch (e) { console.error('report user ' + u + ':', e.message); }
       }
       return json({ ok: true, period, reports }, 200, headers);

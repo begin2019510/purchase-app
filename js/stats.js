@@ -221,29 +221,23 @@ function renderStats() { console.log('renderStats START');
   const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
 
   let html = '';
-  // 最新周报/月报卡片（懒加载一次）
+  // 最新周报/月报卡片（点击进入专属界面；数据由 fetchMyReport 缓存）
   if(window._myReport===undefined){
     window._myReport=null;
-    try{
-      fetch(API_BASE+'/api/push/report?mine=1',{headers:{'Authorization':'Bearer '+getPin()}})
-        .then(function(r){
-          if(r.status!==401) return r;
-          return refreshAccessToken().then(function(t){
-            if(!t) return null;
-            return fetch(API_BASE+'/api/push/report?mine=1',{headers:{'Authorization':'Bearer '+t}});
-          });
-        })
-        .then(function(r){return (r&&r.json)?r.json():null})
-        .then(function(j){window._myReport=(j&&j.report)||null; if(currentTab==='stats'){try{renderStats()}catch(e){}}})
-        .catch(function(){window._myReport=null});
-    }catch(e){window._myReport=null}
+    if(typeof fetchMyReport==='function'){fetchMyReport().then(function(){if(currentTab==='stats'){try{renderStats()}catch(e){}}});}
   }
-  if(window._myReport&&window._myReport.body){
-    var _r=window._myReport;
-    var _rt=new Date(_r.generatedAt+8*3600000);
-    var _rts=_rt.getUTCFullYear()+'-'+String(_rt.getUTCMonth()+1).padStart(2,'0')+'-'+String(_rt.getUTCDate()).padStart(2,'0')+' '+String(_rt.getUTCHours()).padStart(2,'0')+':'+String(_rt.getUTCMinutes()).padStart(2,'0');
-    html += '<div class="stats-section" style="margin-bottom:12px"><div class="stats-section-title">'+(_r.period==='weekly'?'📊 周报':'📊 月报')+' <span style="float:right;font-weight:400;font-size:11px;color:var(--muted)">'+_rts+' 生成</span></div>'
-      + '<div style="font-size:13px;line-height:1.7;white-space:pre-line;color:var(--text)">'+esc(_r.body)+'</div></div>';
+  if(window._myReport&&window._myReport.data){
+    var _d=window._myReport.data;
+    var _dc=_d.deltaGood===true?'var(--green)':_d.deltaGood===false?'var(--red)':'var(--muted)';
+    html += '<div class="stats-section" style="margin-bottom:12px;cursor:pointer" onclick="openReportModal()">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<div style="font-size:13px;font-weight:700">📊 '+(_d.period==='weekly'?'周报':'月报')
+      + ' <span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:4px">'+esc(_d.rangeText||'')+'</span></div>'
+      + '<span style="font-size:12px;color:var(--pri);font-weight:700">查看详情 ›</span></div>'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'
+      + '<span class="a-num" style="font-size:26px;font-weight:900;letter-spacing:-.8px">¥'+Number(_d.total||0).toLocaleString('zh-CN')+'</span>'
+      + '<span style="font-size:13px;font-weight:700;color:'+_dc+'">较'+esc(_d.prevLabel||'')+' '+esc(_d.deltaText||'')+'</span>'
+      + '</div></div>';
   }
   const _isCur = thisMonth===getThisMonth();
   html += '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">'

@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.21";
+const APP_VERSION = "4.0.22";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.22',date:'2026-10-12',items:['周报/月报升级为专属底部弹层界面：大数字、环比、分类排行条、最高一天、预算环，iOS/电脑一致','报告生成后首次进入 App 自动弹出，每期只弹一次；统计页卡片点击同样进入','修复月报区间：1日生成时正确统计上一个完整月，不再是空报告']},
 {v:'4.0.21',date:'2026-10-12',items:['修复移动端极速免审角标遮挡商品名（padding 被媒体查询 !important 覆盖）','极速免审限额：单笔合计 ≤ ¥50，超出提示走完整采购','周报/月报：统计页展示最新报告；周日20:00周报推送、每月1日20:00月报推送（苹果APNs）']},
 {v:'4.0.20',date:'2026-10-12',items:['黑屏修复：应用壳（HTML/JS/CSS）改缓存优先秒开，后台静默更新，不再每次打开全量走网络','版本更新静默接管：去掉打开时清缓存整页重载（此前部署后双重加载导致黑屏数秒）','加载期底色浅灰/深黑跟主题，替代 iOS 默认纯黑']},
 {v:'4.0.19',date:'2026-10-12',items:['冷加载提速：缓存有效期5分钟→7天（重开秒开、骨架仅首次真冷启动可见）','首绘只等采购+记账两路数据，待办/项目/预算后台补齐；数据无变化不重渲染不闪','iOS 版本自动更新：回前台/聚焦时强制检查 Service Worker 新版本']},

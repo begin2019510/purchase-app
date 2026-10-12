@@ -254,6 +254,100 @@ async function manualRefresh(){
     b.classList.remove('spinning');delete b.dataset.busy;
   }
 }
+// ===== 周报/月报：拉取 + 专属界面 + 每期只弹一次 =====
+function fetchMyReport(){
+  if(window._myReportPromise)return window._myReportPromise; // 每会话只拉一次
+  window._myReport=null;
+  function go(tok){
+    return fetch(API_BASE+'/api/push/report?mine=1',{headers:{'Authorization':'Bearer '+tok}})
+      .then(function(r){return r&&r.json?r.json():null})
+      .then(function(j){window._myReport=(j&&j.report)||null;return window._myReport})
+      .catch(function(){window._myReport=null;return null});
+  }
+  var pin=getPin();
+  if(!pin){window._myReportPromise=Promise.resolve(null);return window._myReportPromise;}
+  window._myReportPromise=go(pin).then(function(rep){
+    if(rep)return rep;
+    return refreshAccessToken().then(function(t){return t?go(t):null});
+  });
+  return window._myReportPromise;
+}
+function openReportModal(){
+  var r=window._myReport;
+  if(!r||!r.data){return}
+  var d=r.data;
+  var box=document.getElementById('reportBody');
+  if(!box)return;
+  var W=d.period==='weekly'?'周报':'月报';
+  var bigW=d.period==='weekly'?'本周':(d.label||'上月');
+  var deltaColor=d.deltaGood===true?'var(--green)':d.deltaGood===false?'var(--red)':'var(--muted)';
+  var gt=new Date(d.generatedAt+8*3600000);
+  var gts=String(gt.getUTCMonth()+1).padStart(2,'0')+'-'+String(gt.getUTCDate()).padStart(2,'0')+' '+String(gt.getUTCHours()).padStart(2,'0')+':'+String(gt.getUTCMinutes()).padStart(2,'0');
+  var html='';
+  html+='<div style="text-align:center;padding:14px 0 4px">';
+  html+='<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:2px">📊 '+W+'</div>';
+  html+='<div style="font-size:13px;color:var(--muted);margin-top:6px">'+esc(d.rangeText||'')+'</div>';
+  html+='<div style="font-size:14px;color:var(--muted);margin-top:16px">'+bigW+'支出</div>';
+  html+='<div class="report-hero-num" style="margin-top:4px">¥'+Number(d.total||0).toLocaleString('zh-CN')+'</div>';
+  html+='<div style="margin-top:8px;font-size:14px;font-weight:700;color:'+deltaColor+'">较'+esc(d.prevLabel||'')+' '+esc(d.deltaText||'')+'</div>';
+  html+='</div>';
+  html+='<div class="report-cells" style="margin:14px 0">';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">采购</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">¥'+Number(d.buy||0).toLocaleString('zh-CN')+'</div></div>';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">记账</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">¥'+Number(d.exp||0).toLocaleString('zh-CN')+'</div></div>';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">笔数</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">'+Number(d.count||0)+'</div></div>';
+  html+='</div>';
+  if(d.topDay){
+    html+='<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<span style="font-size:20px">🏆</span>';
+    html+='<div style="flex:1"><div style="font-size:12px;color:var(--muted)">最高一天</div><div style="font-size:14px;font-weight:700">'+esc(d.topDay.text||'')+'</div></div>';
+    html+='<div class="a-num" style="font-size:17px;font-weight:800">¥'+Number(d.topDay.val||0).toLocaleString('zh-CN')+'</div>';
+    html+='</div>';
+  }
+  if(d.budget&&d.budget.total>0){
+    var pct=Math.min(Number(d.budget.pct||0),100);
+    var bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
+    html+='<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px"><span style="color:var(--muted)">预算 ¥'+Number(d.budget.total).toLocaleString('zh-CN')+'</span><span style="font-weight:700;color:'+bc+'">已用 '+d.budget.pct+'%</span></div>';
+    html+='<div style="height:8px;background:rgba(120,120,128,.14);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>';
+    html+='</div>';
+  }
+  if(d.topCats&&d.topCats.length){
+    var maxCat=Math.max.apply(null,d.topCats.map(function(c){return c[1]}).concat([1]));
+    html+='<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<div style="font-size:13px;color:var(--muted);margin-bottom:10px">支出分类</div>';
+    d.topCats.forEach(function(c){
+      var w=Math.max(Math.round(c[1]/maxCat*100),4);
+      html+='<div class="report-cat-row"><span class="report-cat-name">'+esc(c[0])+'</span><div class="report-cat-track"><div class="report-cat-fill" style="width:'+w+'%"></div></div><span class="report-cat-val">¥'+Number(c[1]).toLocaleString('zh-CN')+'</span></div>';
+    });
+    html+='</div>';
+  }
+  html+='<div style="text-align:center;font-size:11px;color:var(--muted);margin:4px 0 12px">'+gts+' 生成</div>';
+  html+='<button class="a-btn a-btn-primary a-btn-block" style="min-height:48px;font-size:16px" onclick="closeReportModal()">好的</button>';
+  box.innerHTML=html;
+  document.getElementById('reportOverlay').classList.add('active');
+}
+function closeReportModal(){
+  var o=document.getElementById('reportOverlay');
+  if(o)o.classList.remove('active');
+}
+// 每期只自动弹一次：localStorage 记录已看的 generatedAt
+var _reportPopupSession=false;
+function maybeShowReportPopup(){
+  if(_reportPopupSession)return;
+  _reportPopupSession=true;
+  fetchMyReport().then(function(r){
+    try{
+      if(!r||!r.data)return;
+      var key='report_seen_'+r.data.period;
+      var seen=parseInt(localStorage.getItem(key)||'0',10)||0;
+      if(Number(r.data.generatedAt)>seen){
+        localStorage.setItem(key,String(r.data.generatedAt));
+        setTimeout(function(){openReportModal()},600); // 等首帧画完再弹
+      }
+    }catch(e){}
+  });
+}
+
 async function cleanupOrphanExpenses(){
   try{
     // Delete ALL purchase-related expense records (purchases tracked via items data now)
@@ -320,6 +414,7 @@ async function loadAll(){
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
   _log("loadAll done, items="+items.length+", expenses="+expenses.length);
+  if(getPin&&getPin())setTimeout(maybeShowReportPopup,800);
   _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200),todoHTML:document.getElementById("todoContent")?.innerHTML?.length,todoErr:window._todoRenderErr}));
 }
 
@@ -683,6 +778,10 @@ if (IS_NATIVE) {
 // === App.app namespace exports ===
 App.app.setupSwipe = setupSwipe;
 App.app.showSkeleton = showSkeleton;
+App.app.fetchMyReport = fetchMyReport;
+App.app.openReportModal = openReportModal;
+App.app.closeReportModal = closeReportModal;
+App.app.maybeShowReportPopup = maybeShowReportPopup;
 App.app.setupPullToRefresh = setupPullToRefresh;
 App.app.cleanupOrphanExpenses = cleanupOrphanExpenses;
 App.app.loadAll = loadAll;
