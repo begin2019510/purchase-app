@@ -211,7 +211,7 @@ if('serviceWorker' in navigator && !IS_NATIVE){
     navigator.serviceWorker.addEventListener('controllerchange',function(){location.reload(true)});
     // Listen for SW_RELOAD message - auto reload on update
     navigator.serviceWorker.addEventListener('message',function(e){
-      if(e.data&&e.data.type==='SW_RELOAD'){location.reload(true)}
+      // SW_RELOAD: 静默接管，不再强制刷新（新版下次打开生效）
     });
   }
 }

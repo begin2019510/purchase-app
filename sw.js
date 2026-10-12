@@ -1,5 +1,5 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v81';
+var CACHE = 'purchase-cache-v82';
 var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
 
 self.addEventListener('install', function(e) {
@@ -10,32 +10,27 @@ self.addEventListener('install', function(e) {
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return true; }).map(function(k) { return caches.delete(k); }));
-    }).then(function() { return clients.claim(); }).then(function() {
-      return clients.matchAll({ type: 'window' }).then(function(ws) {
-        ws.forEach(function(c) { c.postMessage({ type: 'SW_RELOAD' }); });
-      });
-    })
+      // 只清理其它版本的缓存，保留当前 CACHE 命名空间
+      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+    }).then(function() { return clients.claim(); })
+    // 静默接管：不强制刷新当前页面，新内容下次打开生效（避免黑屏重载）
   );
 });
 
 self.addEventListener('fetch', function(e) {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
-  var url = new URL(e.request.url);
-  var isHTML = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
-  if (isHTML) {
-    e.respondWith(fetch(e.request, { cache: 'no-store' }));
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(function(cached) {
-        if (cached) return cached;
-        return fetch(e.request).then(function(res) {
-          if (res.ok) { var cl = res.clone(); caches.open(CACHE).then(function(c) { c.put(e.request, cl); }); }
+  // 壳与静态资源：缓存优先（秒开），后台静默刷新缓存（SWR）
+  e.respondWith(
+    caches.open(CACHE).then(function(c) {
+      return c.match(e.request).then(function(cached) {
+        var network = fetch(e.request, { cache: 'no-store' }).then(function(res) {
+          if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
           return res;
-        });
-      })
-    );
-  }
+        }).catch(function() { return cached; });  // 离线回退缓存
+        return cached || network;                   // 有缓存立即返回，不等网络
+      });
+    })
+  );
 });
 
 self.addEventListener('push', function(e) {

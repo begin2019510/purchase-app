@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.19";
+const APP_VERSION = "4.0.20";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.20',date:'2026-10-12',items:['黑屏修复：应用壳（HTML/JS/CSS）改缓存优先秒开，后台静默更新，不再每次打开全量走网络','版本更新静默接管：去掉打开时清缓存整页重载（此前部署后双重加载导致黑屏数秒）','加载期底色浅灰/深黑跟主题，替代 iOS 默认纯黑']},
 {v:'4.0.19',date:'2026-10-12',items:['冷加载提速：缓存有效期5分钟→7天（重开秒开、骨架仅首次真冷启动可见）','首绘只等采购+记账两路数据，待办/项目/预算后台补齐；数据无变化不重渲染不闪','iOS 版本自动更新：回前台/聚焦时强制检查 Service Worker 新版本']},
 {v:'4.0.18',date:'2026-10-12',items:['系统通知诊断：不支持时显示缺少哪项能力/UA/主屏状态（通知须在 iPhone 主屏 App 内开启）']},
 {v:'4.0.17',date:'2026-10-12',items:['iOS 灵动岛适配：viewport-fit、状态栏全屏、头部/下拉刷新避让刘海安全区','系统通知：接入 Web Push（苹果官方 APNs 通道），设置→系统通知一键开启；iOS 需先添加到主屏幕','服务器定时发送（每日 12:05/18:05），订阅过期自动清理']},
