@@ -109,53 +109,120 @@ function showSkeleton(){
   else el.innerHTML=skelStats()+skelCards(3);
 }
 function setupPullToRefresh(){
+  // iOS 风：悬浮圆徽章，拖动 1:1 跟手，无过渡拖动 / 松手回弹有过渡
   var pullIndicator=document.createElement('div');
   pullIndicator.id='pullIndicator';
-  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;justify-content:center;z-index:9999;transform:translateY(-60px);transition:transform .4s cubic-bezier(.25,.46,.45,.94);background:var(--bg,#fff);';
-  pullIndicator.innerHTML='<div class="ptr-spinner" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .2s">↓</div>';
+  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:0;z-index:9999;pointer-events:none;transform:translateY(-70px);transition:transform .4s cubic-bezier(.25,.46,.54,1.02)';
+  pullIndicator.innerHTML=
+    '<div class="ptr-badge" style="position:absolute;top:12px;left:50%;margin-left:-19px;width:38px;height:38px;border-radius:50%;background:var(--card,#fff);box-shadow:0 3px 12px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;border:1px solid var(--border,#e2e8f0)">'
+    +'<svg class="ptr-arrow" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted,#8e8e93);transition:color .15s"><path d="M12 5v14M5 12l7 7 7-7"/></svg>'
+    +'<div class="ptr-ring" style="display:none;width:18px;height:18px;border:2.5px solid var(--border,#e2e8f0);border-top-color:var(--pri,#6366f1);border-radius:50%;animation:ptr-spin .7s linear infinite"></div>'
+    +'<svg class="ptr-check" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:none;color:var(--green,#10b981)"><path d="M20 6L9 17l-5-5"/></svg>'
+    +'</div>';
   document.body.appendChild(pullIndicator);
-  var spinner=pullIndicator.querySelector('.ptr-spinner');
+  var badge=pullIndicator.querySelector('.ptr-badge');
+  var arrow=pullIndicator.querySelector('.ptr-arrow');
+  var ring=pullIndicator.querySelector('.ptr-ring');
+  var check=pullIndicator.querySelector('.ptr-check');
 
-  document.addEventListener('touchstart',function(e){
-    if(window.scrollY>5||ptrRefreshing)return;
-    if(document.querySelector('.overlay.active,.modal-overlay.active')){console.log('PTR: BLOCKED by modal');return;}
-    // Block PTR when on todo/project/stats tab with content
-    if((currentTab==='todo'||currentTab==='project'||currentTab==='stats')&&document.getElementById(currentTab==='todo'?'todoContent':currentTab==='project'?'projectContent':'statsContent')?.innerHTML?.length>0){console.log('PTR: BLOCKED on '+currentTab+' tab');return;}
-    console.log('PTR: allowed, modals='+document.querySelectorAll('.modal-overlay.active').length);
-    ptrStartY=e.touches[0].clientY;
-    isPulling=true;
-  },{passive:true});
-  document.addEventListener('touchmove',function(e){
-    if(!isPulling)return;
-    ptrDist=Math.max(0,e.touches[0].clientY-ptrStartY);
-    if(ptrDist>10){
-      var pull=Math.min(ptrDist*0.4,70);
-      pullIndicator.style.transform='translateY('+pull+'px)';
-      var deg=Math.min(ptrDist*2,360);
-      spinner.style.transform='rotate('+deg+'deg)';
-      spinner.textContent=pull>40?'↑':'↓';
-      spinner.style.color=pull>40?'var(--pri,#6366f1)':'var(--muted,#888)';
-    }
-  },{passive:true});
-  document.addEventListener('touchend',async function(){
-    if(!isPulling)return;
-    isPulling=false;
-    if(ptrDist>80&&!ptrRefreshing){
+  var THRESHOLD=80;       // 触发下拉刷新的拖动距离
+  var MAXPULL=90;
+
+  function blockedByUI(){
+    if(document.querySelector('.overlay.active,.modal-overlay.active'))return true;
+    if((currentTab==='todo'||currentTab==='project'||currentTab==='stats')
+      &&document.getElementById(currentTab==='todo'?'todoContent':currentTab==='project'?'projectContent':'statsContent')?.innerHTML?.length>0)return true;
+    return false;
+  }
+  function setState(s){
+    arrow.style.display=s==='pull'||s==='ready'?'':'none';
+    ring.style.display=s==='loading'?'':'none';
+    check.style.display=s==='done'?'':'none';
+    badge.style.borderColor=s==='ready'?'var(--green,#10b981)':'var(--border,#e2e8f0)';
+  }
+
+  var startY=0,dist=0,active=false;
+
+  function onMove(clientY){
+    if(!active||ptrRefreshing)return;
+    dist=Math.max(0,clientY-startY);
+    if(dist<15)return;                      // 小幅移动不弹指示器（防误触）
+    if(document.getSelection&&document.getSelection().toString())return;  // 正在选文字不触发
+    // 拖动阶段：关掉过渡，1:1 跟手
+    pullIndicator.style.transition='none';
+    var pull=Math.min(dist*0.55,MAXPULL);
+    pullIndicator.style.transform='translateY('+ (pull-40) +'px)';
+    var deg=Math.min(dist/THRESHOLD*180,180);   // 到阈值恰好 180°（箭头朝上）
+    arrow.style.transform='rotate('+deg+'deg)';
+    var ready=dist>=THRESHOLD;
+    arrow.style.color=ready?'var(--green,#10b981)':(deg>90?'var(--pri,#6366f1)':'var(--muted,#8e8e93)');
+    setState(ready?'ready':'pull');
+    // 越过阈值轻微放大反馈
+    badge.style.transform=ready?'scale(1.08)':'scale(1)';
+  }
+  async function onRelease(){
+    if(!active)return;
+    active=false;
+    if(dist>=THRESHOLD&&!ptrRefreshing){
       ptrRefreshing=true;
-      spinner.textContent='↻';
-      spinner.classList.add('ptr-spinning');
-      pullIndicator.style.transform='translateY(50px)';
-      await loadAll();
-      spinner.classList.remove('ptr-spinning');
-      spinner.textContent='✓';
-      spinner.style.color='var(--green,#10b981)';
-      setTimeout(function(){pullIndicator.style.transform='translateY(-60px)';ptrRefreshing=false;spinner.style.color=''},500);
+      pullIndicator.style.transition='transform .3s ease';
+      pullIndicator.style.transform='translateY(12px)';   // 锁定在顶部
+      badge.style.transform='scale(1)';
+      setState('loading');
+      try{ await loadAll(); }catch(e){ console.error('PTR load error',e); }
+      setState('done');
+      setTimeout(function(){
+        pullIndicator.style.transition='transform .35s ease';
+        pullIndicator.style.transform='translateY(-70px)';
+        setTimeout(function(){setState('pull');ptrRefreshing=false;arrow.style.transform='';},360);
+      },600);
     }else{
-      pullIndicator.style.transform='translateY(-60px)';
+      pullIndicator.style.transition='transform .3s ease';
+      pullIndicator.style.transform='translateY(-70px)';
+      badge.style.transform='scale(1)';
+      setTimeout(function(){arrow.style.transform='';},300);
     }
-    ptrDist=0;
+    dist=0;
+  }
+  function startPull(clientY){
+    if(window.scrollY>5||ptrRefreshing||blockedByUI())return;
+    startY=clientY;dist=0;active=true;
+  }
+
+  // ---- 触摸（手机）----
+  document.addEventListener('touchstart',function(e){startPull(e.touches[0].clientY)},{passive:true});
+  document.addEventListener('touchmove',function(e){if(active)onMove(e.touches[0].clientY)},{passive:true});
+  document.addEventListener('touchend',function(){if(active)onRelease()});
+
+  // ---- 鼠标（电脑）----
+  document.addEventListener('mousedown',function(e){
+    if(e.button!==0)return;
+    if(e.target&&e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))return;
+    startPull(e.clientY);
   });
-}async function cleanupOrphanExpenses(){
+  document.addEventListener('mousemove',function(e){
+    if(!active)return;
+    if(Math.abs(e.clientY-startY)>3)onMove(e.clientY);
+  });
+  document.addEventListener('mouseup',function(){if(active)onRelease()});
+}
+// 电脑：切回窗口时数据超过 5 分钟未更新则自动刷新
+(function setupFocusAutoRefresh(){
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden)return;
+    if(!getPin||!getPin())return;
+    if(typeof _lastAllAt!=='undefined'&&Date.now()-_lastAllAt>5*60*1000&&typeof loadAll==='function'){
+      loadAll();
+    }
+  });
+  window.addEventListener('focus',function(){
+    if(!getPin||!getPin())return;
+    if(typeof _lastAllAt!=='undefined'&&Date.now()-_lastAllAt>5*60*1000&&typeof loadAll==='function'){
+      loadAll();
+    }
+  });
+})();
+async function cleanupOrphanExpenses(){
   try{
     // Delete ALL purchase-related expense records (purchases tracked via items data now)
     var toDelete=expenses.filter(function(e){
@@ -177,6 +244,7 @@ function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)r
 function setCachedData(key,val){try{localStorage.setItem('cache_'+key,JSON.stringify({t:Date.now(),v:val}))}catch(e){}}
 
 async function loadAll(){
+  window._lastAllAt=Date.now();
   var _dbg=document.getElementById("debugBanner");
   function _log(m){console.log("LOADALL:",m);if(_dbg){_dbg.style.display="block";_dbg.innerHTML+="<div style=\"border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0\">"+m+"</div>"}}
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));

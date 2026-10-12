@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.14";
+const APP_VERSION = "4.0.15";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.15',date:'2026-10-11',items:['下拉刷新重做：iOS 风悬浮圆徽章（箭头随手旋转180°到位变绿→转圈→✓），拖动1:1跟手不再黏滞，替换原文字符号横条','电脑支持鼠标下拉刷新；切回窗口超5分钟自动刷新','防误触：输入框/文字选中/小幅移动不触发']},
 {v:'4.0.14',date:'2026-10-11',items:['采购/记账页底部双按钮：主FAB保持原功能，上方叠加⚡极速副FAB（拇指区可达，手机端尺寸自适应）','极速弹窗移动端优化：自动聚焦、回车即存、记住上次平台/分类、金额数字键盘']},
 {v:'4.0.13',date:'2026-10-11',items:['已到状态详情页新增「↩️ 退货」按钮（极速单直接出生在已到，此前无退货入口，只能进编辑改状态）','退货后统计自动剔除：预算池/采购消耗/分类饼图均不含已退（沿用现有口径）']},
 {v:'4.0.12',date:'2026-10-10',items:['⚡极速采购：免审直通单，最少字段直接生成「已到」状态采购记录（记账页/采购页均有入口）','采购卡片左上角绿色「极速免审」角标，详情页同步显示','统计走现有采购链路：预算池/分类饼图/月汇总自动计入，零改动零双算']},
