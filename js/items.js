@@ -266,10 +266,16 @@ async function saveQuickPurchase(){
   const el=id=>document.getElementById(id);
   const name=(el('qName').value||'').trim();
   const price=parseFloat(el('qPrice').value)||0;
+  const qty=parseInt(el('qQty').value)||1;
   if(!name){alert('请输入商品名称');return}
   if(price<=0){alert('请输入金额');return}
+  const total=price*qty;
+  if(total>50){
+    alert('⚡ 极速免审仅限 ¥50 以内小额\n\n本单合计 ¥'+total.toFixed(2)+'，超过限额\n请点右下角 + 走完整采购流程');
+    return;
+  }
   const data={
-    name:name, price:price, qty:parseInt(el('qQty').value)||1,
+    name:name, price:price, qty:qty,
     platform:el('qPlatform').value, category:el('qCategory').value,
     note:(el('qNote').value||'').trim()||null, date:el('qDate').value||null,
     status:'已到', quick:true

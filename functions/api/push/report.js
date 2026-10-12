@@ -1,0 +1,177 @@
+﻿import { corsHeaders, json } from './_common.js';
+import { authenticate, getFeishuToken } from '../_auth.js';
+
+// 周报/月报：生成 + 存档 + 推送数据源
+// GET ?period=weekly|monthly&token=XX  -> 服务器拉取（SERVICE_TOKEN）
+// GET ?mine=1  (JWT)                   -> 我的最新报告（统计页卡片）
+const MS = 86400000, TZ = 8 * 3600000;
+const ACTIVE_BUY = ['已下单', '已到', '已归档'];
+
+function dayStartBJ(ts) { return Math.floor((ts + TZ) / MS) * MS - TZ; }
+function parseWhen(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const s = String(v);
+  if (/[zZ]|[+-]\d\d:?\d\d$/.test(s)) { const t = Date.parse(s); return isNaN(t) ? 0 : t; }
+  if (s.includes('T')) return Date.parse(s + '+08:00') || 0;
+  return Date.parse(s + 'T00:00:00+08:00') || 0;
+}
+function num(v) { if (Array.isArray(v)) v = v[0]; const n = Number(v); return isNaN(n) ? 0 : n; }
+
+async function kvList(KV, prefix) {
+  const out = []; let cursor;
+  do {
+    const page = await KV.list({ prefix, cursor });
+    out.push(...page.keys);
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  return out;
+}
+async function feishuList(app, table, token) {
+  const out = []; let pt = '';
+  do {
+    const url = `https://open.feishu.cn/open-apis/bitable/v1/apps/${app}/tables/${table}/records?page_size=500${pt ? '&page_token=' + pt : ''}`;
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    const d = await r.json();
+    if (d.code !== 0) throw new Error('Feishu: ' + (d.msg || d.code));
+    out.push(...(d.data?.items || []));
+    pt = d.data?.page_token || '';
+  } while (pt);
+  return out;
+}
+
+function range(period, now) {
+  if (period === 'weekly') {
+    const bjDay = new Date(now + TZ).getUTCDay();          // 0=周日
+    const fromMon = (bjDay + 6) % 7;
+    const start = dayStartBJ(now) - fromMon * MS;          // 本周一 00:00 (BJ)
+    return { start, end: now, prevStart: start - 7 * MS, prevEnd: start, label: '本周', prevLabel: '上周' };
+  }
+  const y = new Date(now + TZ).getUTCFullYear(), m = new Date(now + TZ).getUTCMonth();
+  const start = Date.UTC(y, m, 1) - TZ;
+  const ps = Date.UTC(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1, 1) - TZ;
+  return { start, end: now, prevStart: ps, prevEnd: start, label: '本月', prevLabel: '上月' };
+}
+
+async function computeForUser(env, username, r) {
+  const KV = env.IMAGE_STORE;
+  const userRaw = await KV.get('user:' + username, 'json');
+  if (!userRaw || !userRaw.bitable) return null;
+  const bt = userRaw.bitable;
+  if (!bt.purchaseApp || !bt.expenseApp) return null;
+  const token = await getFeishuToken(env);
+
+  const [pRecs, eRecs] = await Promise.all([
+    feishuList(bt.purchaseApp, bt.purchaseTable, token),
+    feishuList(bt.expenseApp, bt.expenseTable, token),
+  ]);
+
+  function aggregate(start, end) {
+    let buy = 0, exp = 0, byCat = {}, dayMax = { v: 0, key: '' }, count = 0;
+    for (const rec of pRecs) {
+      const f = rec.fields || {};
+      const st = Array.isArray(f['状态']) ? f['状态'][0] : (f['状态'] || '');
+      if (!ACTIVE_BUY.includes(st)) continue;
+      const ts = num(f['日期']);
+      if (ts < start || ts > end) continue;
+      const amt = num(f['单价']) * (num(f['数量']) || 1);
+      if (amt <= 0) continue;
+      buy += amt; count++;
+      const cat = String(Array.isArray(f['分类']) ? f['分类'][0] : (f['分类'] || '其他'));
+      byCat[cat] = (byCat[cat] || 0) + amt;
+      const dkey = new Date(ts + TZ).toISOString().slice(5, 10);
+      // 日聚合放费用侧统一做
+    }
+    for (const rec of eRecs) {
+      const f = rec.fields || {};
+      const type = Array.isArray(f['类型']) ? f['类型'][0] : (f['类型'] || '支出');
+      if (type !== '支出') continue;
+      const note = String(f['备注'] || '');
+      if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
+      const ts = parseWhen(f['日期']);
+      if (ts < start || ts > end) continue;
+      const amt = num(f['金额']);
+      if (amt <= 0) continue;
+      exp += amt; count++;
+      const cat = String(Array.isArray(f['分类']) ? f['分类'][0] : (f['分类'] || '其他'));
+      byCat[cat] = (byCat[cat] || 0) + amt;
+      const dkey = new Date(ts + TZ).toISOString().slice(5, 10);
+      dayMax.map = dayMax.map || {};
+      dayMax.map[dkey] = (dayMax.map[dkey] || 0) + amt;
+    }
+    let topDay = null;
+    if (dayMax.map) for (const k of Object.entries(dayMax.map)) if (!topDay || k[1] > topDay[1]) topDay = k;
+    const topCats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    return { buy, exp, total: buy + exp, count, topCats, topDay };
+  }
+
+  const R = range(r.period, Date.now());
+  const cur = aggregate(R.start, R.end);
+  const prev = aggregate(R.prevStart, R.prevEnd);
+
+  let delta = '持平';
+  if (prev.total > 0) {
+    const d = Math.round((cur.total - prev.total) / prev.total * 100);
+    delta = d > 0 ? '↑' + d + '%' : d < 0 ? '↓' + Math.abs(d) + '%' : '持平';
+  } else if (cur.total > 0) delta = '新增';
+
+  const yuan = n => '¥' + Math.round(n);
+  const lines = [];
+  if (r.period === 'weekly') {
+    lines.push(`${R.label}支出 ${yuan(cur.total)}（较${R.prevLabel}${delta}）· 采${yuan(cur.buy)} 记${yuan(cur.exp)} · ${cur.count}笔`);
+    if (cur.topCats.length) lines.push('Top: ' + cur.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
+    if (cur.topDay) lines.push('最高一天：' + cur.topDay[0] + ' ' + yuan(cur.topDay[1]));
+  } else {
+    lines.push(`${R.label}支出 ${yuan(cur.total)}（较${R.prevLabel}${delta}）· 采${yuan(cur.buy)} 记${yuan(cur.exp)} · ${cur.count}笔`);
+    if (cur.topCats.length) lines.push('Top: ' + cur.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
+    const bRaw = await KV.get('budget:' + username, 'json');
+    const mb = bRaw && bRaw[`${new Date(Date.now() + TZ).getUTCFullYear()}-${String(new Date(Date.now() + TZ).getUTCMonth() + 1).padStart(2, '0')}`];
+    const budget = typeof mb === 'number' ? mb : (mb && mb.total) || 0;
+    if (budget > 0) lines.push(`预算 ¥${budget} · 已用 ${Math.round(cur.total / budget * 100)}%`);
+  }
+
+  const title = r.period === 'weekly' ? '📊 本周账单' : '📊 ' + (new Date(Date.now() + TZ).getUTCMonth() + 1) + '月账单';
+  const report = { period: r.period, generatedAt: Date.now(), title, body: lines.join('\n'), url: '/' };
+  await KV.put('report:latest:' + username, JSON.stringify(report), { expirationTtl: 60 * 86400 });
+  return { username, report };
+}
+
+export async function onRequest(context) {
+  const { request, env } = context;
+  const headers = corsHeaders(request);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  const KV = env.IMAGE_STORE;
+  if (!KV) return json({ error: 'KV not available' }, 500, headers);
+  const url = new URL(request.url);
+  const svcToken = url.searchParams.get('token') || '';
+  const isSvc = env.SERVICE_TOKEN && svcToken && svcToken === env.SERVICE_TOKEN;
+
+  // 我的最新报告（统计页卡片）
+  if (request.method === 'GET' && url.searchParams.get('mine') === '1') {
+    const user = await authenticate(request, env);
+    if (!user.authenticated) return json({ error: 'Unauthorized' }, 401, headers);
+    const rep = await KV.get('report:latest:' + user.username, 'json');
+    return json({ ok: true, report: rep || null }, 200, headers);
+  }
+
+  // 生成并返回待推送列表（服务器定时调用）
+  if (request.method === 'GET' && isSvc) {
+    const period = url.searchParams.get('period') === 'monthly' ? 'monthly' : 'weekly';
+    try {
+      const userKeys = await kvList(KV, 'user:');
+      const reports = [];
+      for (const k of userKeys) {
+        const u = k.name.slice(5);
+        const sub = await KV.get('webpush:' + u, 'json');
+        if (!sub) continue;
+        try {
+          const res = await computeForUser(env, u, { period });
+          if (res) reports.push({ username: u, subscription: sub, title: res.report.title, body: res.report.body, url: res.report.url });
+        } catch (e) { console.error('report user ' + u + ':', e.message); }
+      }
+      return json({ ok: true, period, reports }, 200, headers);
+    } catch (e) { return json({ error: e.message }, 500, headers); }
+  }
+
+  return json({ error: 'forbidden' }, 403, headers);
+}
