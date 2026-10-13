@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.24";
+const APP_VERSION = "4.0.25";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.25',date:'2026-10-13',items:['重制应用图标：靛紫渐变底+白色房子（原文件是纯绿占位图）；主屏删除旧图标重新添加即可生效']},
 {v:'4.0.24',date:'2026-10-12',items:['数据缓存改为永不过期：隔很多天打开也秒开（先出旧数据，后台静默刷新）','iOS 主屏图标：改用规范 180×180 apple-touch-icon；需删除旧图标后重新添加到主屏幕']},
 {v:'4.0.23',date:'2026-10-12',items:['周报口径对齐：改为与周视图相同的「当月4段（每段7~8天）」，段结束后晚8点推送第N周账单','定时调整为每月1/9/17/25日 20:05（每段结束次日）；月报仍为1日20:00','统计页无报告时显示说明占位；弹层标题显示第N周']},
 {v:'4.0.22',date:'2026-10-12',items:['周报/月报升级为专属底部弹层界面：大数字、环比、分类排行条、最高一天、预算环，iOS/电脑一致','报告生成后首次进入 App 自动弹出，每期只弹一次；统计页卡片点击同样进入','修复月报区间：1日生成时正确统计上一个完整月，不再是空报告']},
