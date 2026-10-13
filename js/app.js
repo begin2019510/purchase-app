@@ -366,7 +366,7 @@ async function cleanupOrphanExpenses(){
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
 // Cache helpers
-function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);if(Date.now()-d.t>7*24*3600*1000)return null;return d.v}catch(e){return null}}  // 7天SWR缓存：重开秒开，后台静默校验
+function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);return d.v}catch(e){return null}}  // 永不过期SWR：任何时间打开都秒开，后台静默校验新数据
 function setCachedData(key,val){try{localStorage.setItem('cache_'+key,JSON.stringify({t:Date.now(),v:val}))}catch(e){}}
 
 async function loadAll(){
