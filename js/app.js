@@ -108,6 +108,40 @@ function showSkeleton(){
   else if(currentTab==='expense') el.innerHTML=skelStats()+skelCards(4);
   else el.innerHTML=skelStats()+skelCards(3);
 }
+async function autoPromptNotification(){
+  try{
+    if(!('Notification' in window)||!('PushManager' in window)||!('serviceWorker' in navigator))return;
+    const standalone=(typeof navigator.standalone==='boolean')?navigator.standalone:window.matchMedia('(display-mode: standalone)').matches;
+    if(!standalone)return;
+    if(Notification.permission==='denied')return;
+    const reg=await navigator.serviceWorker.ready;
+    if(!reg.pushManager)return;
+    const sub=await reg.pushManager.getSubscription().catch(function(){return null});
+    if(sub){
+      if(!localStorage.getItem('webpush_on')){
+        try{
+          var r=await fetch(API_BASE+'/api/push/subscribe',{
+            method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},
+            body:JSON.stringify({subscription:sub.toJSON()})
+          });
+          if(r.ok)localStorage.setItem('webpush_on','1');
+        }catch(e){}
+      }
+      return;
+    }
+    if(Notification.permission!=='granted'){
+      var perm=await Notification.requestPermission();
+      if(perm!=='granted')return;
+    }
+    if(typeof _urlB64ToUint8==='undefined'||typeof WEBPUSH_VAPID_PUBLIC==='undefined')return;
+    var newSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_urlB64ToUint8(WEBPUSH_VAPID_PUBLIC)});
+    var r2=await fetch(API_BASE+'/api/push/subscribe',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},
+      body:JSON.stringify({subscription:newSub.toJSON()})
+    });
+    if(r2&&r2.ok){localStorage.setItem('webpush_on','1');toast('🔔 已开启系统通知')}
+  }catch(e){console.log('autoPromptNotification:',e.message)}
+}
 function setupPullToRefresh(){
   // iOS 风：悬浮圆徽章，拖动 1:1 跟手，无过渡拖动 / 松手回弹有过渡
   var pullIndicator=document.createElement('div');
@@ -415,6 +449,7 @@ async function loadAll(){
     .catch(function(ex){console.log("background tasks error:",ex.message)});
   _log("loadAll done, items="+items.length+", expenses="+expenses.length);
   if(getPin&&getPin())setTimeout(maybeShowReportPopup,800);
+  if(getPin&&getPin())setTimeout(autoPromptNotification,1500);
   _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200),todoHTML:document.getElementById("todoContent")?.innerHTML?.length,todoErr:window._todoRenderErr}));
 }
 

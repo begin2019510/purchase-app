@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.25";
+const APP_VERSION = "4.0.26";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.26',date:'2026-10-15',items:['修复 iOS 主屏 App 重装后不自动申请通知权限：首次打开自动检测并触发订阅，确保推送正常送达']},
 {v:'4.0.25',date:'2026-10-13',items:['重制应用图标：靛紫渐变底+白色房子（原文件是纯绿占位图）；主屏删除旧图标重新添加即可生效']},
 {v:'4.0.24',date:'2026-10-12',items:['数据缓存改为永不过期：隔很多天打开也秒开（先出旧数据，后台静默刷新）','iOS 主屏图标：改用规范 180×180 apple-touch-icon；需删除旧图标后重新添加到主屏幕']},
 {v:'4.0.23',date:'2026-10-12',items:['周报口径对齐：改为与周视图相同的「当月4段（每段7~8天）」，段结束后晚8点推送第N周账单','定时调整为每月1/9/17/25日 20:05（每段结束次日）；月报仍为1日20:00','统计页无报告时显示说明占位；弹层标题显示第N周']},
