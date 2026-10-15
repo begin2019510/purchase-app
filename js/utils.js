@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.26";
+const APP_VERSION = "4.0.27";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.27',date:'2026-10-16',items:['按管局要求全站页脚展示 ICP 备案号：皖ICP备2026035353号（主App/帮助/隐私政策页底部，点击可跳转工信部核验）']},
 {v:'4.0.26',date:'2026-10-15',items:['修复 iOS 主屏 App 重装后不自动申请通知权限：首次打开自动检测并触发订阅，确保推送正常送达']},
 {v:'4.0.25',date:'2026-10-13',items:['重制应用图标：靛紫渐变底+白色房子（原文件是纯绿占位图）；主屏删除旧图标重新添加即可生效']},
 {v:'4.0.24',date:'2026-10-12',items:['数据缓存改为永不过期：隔很多天打开也秒开（先出旧数据，后台静默刷新）','iOS 主屏图标：改用规范 180×180 apple-touch-icon；需删除旧图标后重新添加到主屏幕']},

@@ -1282,3 +1282,8 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 
 /* Desktop refresh button */
 #refreshBtn.spinning{animation:ptr-spin .7s linear infinite}
+
+/* ICP 备案页脚 */
+.icp-footer{text-align:center;padding:20px 16px 6px;font-size:12px;color:var(--muted,#64748b)}
+.icp-footer a{color:var(--muted,#64748b);text-decoration:none}
+.icp-footer a:active,.icp-footer a:hover{color:var(--pri,#6366f1)}
