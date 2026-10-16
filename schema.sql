@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   status             VARCHAR(10) NOT NULL DEFAULT '待审批', -- 待审批/已审批/已下单/已到/已退/已归档
   date_ms            BIGINT NULL,                 -- 日期（毫秒时间戳）
   note               TEXT NULL,                   -- 备注
-  image_ref          VARCHAR(120) NULL,           -- 图片（file_key，旧数据为 kv:key）
+  image_ref          TEXT NULL,                   -- 图片（kv:key 或阶段图 JSON）
   created_at_text    VARCHAR(30) NULL,            -- 创建时间（原样保留文本）
   approved_at        VARCHAR(30) NULL,            -- 审批时间
   ordered_at         VARCHAR(30) NULL,            -- 下单时间
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   category         VARCHAR(30) NULL,                    -- 分类
   date_ms          BIGINT NULL,                         -- 日期（毫秒，精确时间）
   note             TEXT NULL,                           -- 备注
-  image_ref        VARCHAR(120) NULL,                   -- 图片
+  image_ref        MEDIUMTEXT NULL,                 -- 图片（kv:key 或小图内联）
   split_weeks      INT NULL,                            -- 分摊周数（跨周分摊）
   split_start_week VARCHAR(10) NULL,                    -- 分摊开始周 'YYYY-MM'
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -95,11 +95,15 @@ CREATE TABLE IF NOT EXISTS todos (
   status       VARCHAR(6) NOT NULL DEFAULT '待办', -- 待办|进行中|已完成|已取消
   `repeat`     VARCHAR(4) NOT NULL DEFAULT '无',   -- 无|每天|每周|每月
   subtasks     MEDIUMTEXT NULL,                   -- JSON 字符串原样存
-  image_ref    VARCHAR(120) NULL,
+  image_ref    MEDIUMTEXT NULL,
   link_type    VARCHAR(4) NULL DEFAULT '无',      -- 无|采购|记账
   link_id      VARCHAR(40) NULL,                  -- 关联记录 id（字符串）
   completed_ms BIGINT NULL,
   project_id   VARCHAR(40) NULL,                  -- 关联项目 id
+  tags         TEXT NULL,                         -- 标签（JSON 串）
+  sort_no      INT NOT NULL DEFAULT 0,            -- 排序
+  reminders    TEXT NULL,                         -- 提醒（JSON 串）
+  due_iso      VARCHAR(60) NULL,                  -- 截止日期ISO
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_status (user_id, status),
@@ -116,6 +120,8 @@ CREATE TABLE IF NOT EXISTS projects (
   status      VARCHAR(6) NOT NULL DEFAULT '进行中',  -- 进行中|已完成|已归档
   color       VARCHAR(20) NULL,
   progress    INT NOT NULL DEFAULT 0,
+  parent_id   VARCHAR(40) NULL,                  -- 父项目ID（只读层级）
+  due_iso     VARCHAR(60) NULL,                  -- 截止日期ISO
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user (user_id, status)

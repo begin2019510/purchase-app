@@ -4,11 +4,11 @@
 const express = require('express');
 const cfg = require('./config');
 const db = require('./db');
-const { authMiddleware } = require('./middleware');
+const { parseJWT } = require('./middleware');
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
 
 // ---- 健康检查（不依赖令牌，无数据）----
 app.get('/health', (req, res) => {
@@ -23,13 +23,16 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// ---- 业务路由（PR2 逐个挂载）----
-// app.use('/api', require('./routes/auth'));
-// app.use('/api', require('./routes/items'));
-// app.use('/api', require('./routes/expenses'));
-// ...
+app.use(parseJWT);
+app.use('/api', require('./routes/auth'));
+app.use('/api', require('./routes/items'));
+app.use('/api', require('./routes/expenses'));
+app.use('/api', require('./routes/todos'));
+app.use('/api', require('./routes/projects'));
+app.use('/api', require('./routes/docs'));
+app.use('/api', require('./routes/images'));
 
-// ---- DB 健康（带令牌，仅调试）----
+// ---- DB 健康（已过令牌闸）----
 app.get('/api/db/health', async (req, res) => {
   try {
     const row = await db.one('SELECT COUNT(*) AS tables_cnt FROM information_schema.tables WHERE table_schema = ?', [cfg.DB.database]);

@@ -33,6 +33,7 @@ module.exports = {
   JWT_SECRET: srvEnv.JWT_SECRET,        // 与 Cloudflare 同一密钥，token 互认
   SERVICE_TOKEN: srvEnv.SERVICE_TOKEN,  // CF Functions → 本服务内网鉴权
   PORT: Number(srvEnv.API_PORT || 3500),
+  INVITE_CODES: srvEnv.INVITE_CODES || '',
   HOST: srvEnv.API_HOST || '127.0.0.1',
   IMG_DIR: srvEnv.IMG_DIR || '/var/lib/purchase-app/images',
   IMG_MAX_BYTES: 5 * 1024 * 1024,
