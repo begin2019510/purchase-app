@@ -1,10 +1,16 @@
 ﻿// IMAGE_ARCH: kv:前缀+KV key存'图片'字段, 见index.html显示逻辑
+import { mysqlMode, toServer } from './_proxy.js';
 import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken } from './_auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  if (mysqlMode(env)) {
+    const sr = await toServer(request, env);
+    return new Response(sr.body, { status: sr.status, headers: { 'Access-Control-Allow-Origin': (corsHeaders && (corsHeaders['Access-Control-Allow-Origin'] || '*')) || '*', 'Content-Type': sr.headers.get('Content-Type') || 'application/json' } });
+  }
   function json(data, status = 200, headers = {}) { return jsonResponse(data, status, { ...corsHeaders, ...headers }); }
 
   // 认证（JWT 或 旧 PIN）

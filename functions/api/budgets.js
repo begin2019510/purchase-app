@@ -1,9 +1,15 @@
-﻿import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
+﻿import { mysqlMode, toServer } from './_proxy.js';
+import { getCorsHeaders, jsonResponse, authenticate } from './_auth.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
   const corsHeaders = getCorsHeaders(request);
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
+
+  if (mysqlMode(env)) {
+    const sr = await toServer(request, env);
+    return new Response(sr.body, { status: sr.status, headers: { 'Access-Control-Allow-Origin': (corsHeaders && (corsHeaders['Access-Control-Allow-Origin'] || '*')) || '*', 'Content-Type': sr.headers.get('Content-Type') || 'application/json' } });
+  }
   function json(data, status = 200) { return jsonResponse(data, status, corsHeaders); }
 
   const user = await authenticate(request, env);

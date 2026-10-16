@@ -1,4 +1,5 @@
-﻿import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
+﻿import { mysqlMode, toServer } from './_proxy.js';
+import { getCorsHeaders, jsonResponse, authenticate, getFeishuToken, verifyJWT, logOp } from './_auth.js';
 
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 
@@ -196,6 +197,11 @@ export async function onRequest(context) {
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (mysqlMode(env)) {
+    const sr = await toServer(request, env);
+    return new Response(sr.body, { status: sr.status, headers: { 'Access-Control-Allow-Origin': corsHeaders['Access-Control-Allow-Origin'] || '*', 'Content-Type': sr.headers.get('Content-Type') || 'application/json' } });
   }
 
   // 认证（JWT 或 旧 PIN）
