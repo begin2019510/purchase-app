@@ -1,0 +1,16 @@
+{
+  "name": "purchase-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "个人管家业务 API（MySQL+磁盘图片），CF Functions 反代目标",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1"
+  }
+}
