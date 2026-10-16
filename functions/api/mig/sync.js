@@ -7,6 +7,38 @@ import { getFeishuToken } from '../_auth.js';
 const FEISHU_BASE = 'https://open.feishu.cn/open-apis';
 const TABLE_KEY = { purchases: ['purchaseApp', 'purchaseTable'], expenses: ['expenseApp', 'expenseTable'], todos: ['todoApp', 'todoTable'], projects: ['projectApp', 'projectTable'] };
 
+// 各表需要确保存在的字段（缺失则按需创建，与运行期 ensure*Fields 一致）
+const NEED_FIELDS = {
+  purchases: [
+    { name: '评估摘要', type: 1 }, { name: '购买理由', type: 1 }, { name: '预算区间', type: 1 },
+    { name: '取消原因', type: 1 }, { name: '分期期数', type: 1 }, { name: '分期金额', type: 1 },
+    { name: '分期开始月', type: 1 }, { name: '分期已还', type: 1 }, { name: '极速', type: 1 }, { name: '图片', type: 1 },
+  ],
+  expenses: [{ name: '分摊周数', type: 2 }, { name: '分摊开始周', type: 2 }],
+  todos: [
+    { name: '描述', type: 1 }, { name: '标签', type: 1 }, { name: '排序', type: 2 },
+    { name: '提醒', type: 1 }, { name: '截止日期ISO', type: 1 }, { name: '项目ID', type: 1 }, { name: '图片', type: 1 },
+  ],
+  projects: [{ name: '父项目ID', type: 1 }, { name: '截止日期ISO', type: 1 }],
+};
+
+async function ensureFields(app, table, kind, H) {
+  const need = NEED_FIELDS[kind] || [];
+  if (!need.length) return;
+  try {
+    const r = await fetch(`${FEISHU_BASE}/bitable/v1/apps/${app}/tables/${table}/fields?page_size=100`, { headers: H });
+    const d = await r.json();
+    if (d.code !== 0) return;
+    const names = (d.data?.items || []).map(f => f.field_name);
+    for (const f of need) {
+      if (names.includes(f.name)) continue;
+      await fetch(`${FEISHU_BASE}/bitable/v1/apps/${app}/tables/${table}/fields`, {
+        method: 'POST', headers: H, body: JSON.stringify({ field_name: f.name, type: f.type }),
+      });
+    }
+  } catch (e) { /* 尽力而为，失败让后续写入报错暴露 */ }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
@@ -39,7 +71,10 @@ export async function onRequest(context) {
       const H = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
       const out = { updated: 0, created: 0, deleted: 0, newIds: [] };
 
-      // 批量更新（≤500/批）
+      // 缺失字段按需补齐（老用户表可能没有后来新增的字段）
+      await ensureFields(app, table, body.table, H);
+
+      // 批量更新（≤500/批）；整批失败降级逐条，单条坏数据不拖垮整轮
       const updates = body.updates || [];
       for (let i = 0; i < updates.length; i += 500) {
         const chunk = updates.slice(i, i + 500);
@@ -47,8 +82,15 @@ export async function onRequest(context) {
           method: 'POST', headers: H, body: JSON.stringify({ records: chunk }),
         });
         const d = await r.json();
-        if (d.code !== 0) throw new Error('batch_update: ' + (d.msg || d.code));
-        out.updated += chunk.length;
+        if (d.code === 0) { out.updated += chunk.length; continue; }
+        out.failed = out.failed || 0;
+        for (const rec of chunk) {
+          const rr = await fetch(`${FEISHU_BASE}/bitable/v1/apps/${app}/tables/${table}/records/${rec.record_id}`, {
+            method: 'PUT', headers: H, body: JSON.stringify({ fields: rec.fields }),
+          });
+          const dd = await rr.json();
+          if (dd.code === 0) out.updated++; else { out.failed++; (out.errors = out.errors || []).push((dd.msg || dd.code) + '#' + rec.record_id); }
+        }
       }
       // 批量新增（≤500/批）→ 回传新 record_id
       const creates = body.creates || [];

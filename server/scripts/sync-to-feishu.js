@@ -121,7 +121,8 @@ function projectFields(r, prMap) {
 
       const res = await cfPost({ action: 'records', username: u.username, table: t, updates, creates, deletes });
       total.u += res.updated || 0; total.c += res.created || 0; total.d += res.deleted || 0;
-      log(u.username, t, 'upd', updates.length, 'new', creates.length, 'del', deletes.length);
+      log(u.username, t, 'upd', updates.length, 'new', creates.length, 'del', deletes.length,
+        res.failed ? ('FAILED ' + res.failed + ' ' + JSON.stringify((res.errors || []).slice(0, 2))) : '');
 
       // 新增记录回填 ext_id（下次同步转为更新）
       if (!DRY && res.newIds && res.newIds.length) {
