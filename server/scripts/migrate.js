@@ -60,7 +60,6 @@ function collectImgRefs(refStr) {
 async function upsert(table, cols, rows, uniqueKey) {
   if (!rows.length) return;
   const updates = cols.filter(c => c !== uniqueKey).map(c => '`' + c + '`=VALUES(`' + c + '`)').join(',');
-  const sql = `INSERT INTO ${table} (${cols.map(c => '`' + c + '`').join(',')}) VALUES ${placeholders} ON DUPLICATE KEY UPDATE ${updates}`;
   // 批量 200 行
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200);

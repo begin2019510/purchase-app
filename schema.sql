@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS todos (
   sort_no      INT NOT NULL DEFAULT 0,            -- 排序
   reminders    TEXT NULL,                         -- 提醒（JSON 串）
   due_iso      VARCHAR(60) NULL,                  -- 截止日期ISO
+  notified_due_ms BIGINT NULL,                    -- 到期提醒已发送对应的 due_ms（去重）
+  notify_morning_date DATE NULL,                  -- 早间摘要已发送日期
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_status (user_id, status),

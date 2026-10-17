@@ -15,6 +15,9 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'purchase-server', status: 'healthy', time: new Date().toISOString() });
 });
 
+// ---- 小组件只读接口（公网 + Widget Token 鉴权，必须在闸门之前）----
+app.use('/api', require('./routes/widget'));
+
 // ---- 内网令牌：所有业务路由必须经 CF 反代进来 ----
 app.use('/api', (req, res, next) => {
   if (req.headers['x-service-token'] !== cfg.SERVICE_TOKEN) {

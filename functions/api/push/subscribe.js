@@ -28,7 +28,7 @@ export async function onRequest(context) {
         for (const k of page.keys) {
           try {
             const sub = await KV.get(k.name, 'json');
-            if (sub) out.push({ username: k.name.slice(9), subscription: sub });
+            if (sub) out.push({ username: k.name.slice(8), subscription: sub });
           } catch (e) {}
         }
         cursor = page.list_complete ? undefined : page.cursor;

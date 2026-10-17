@@ -34,6 +34,7 @@ module.exports = {
   SERVICE_TOKEN: srvEnv.SERVICE_TOKEN,  // CF Functions → 本服务内网鉴权
   PORT: Number(srvEnv.API_PORT || 3500),
   INVITE_CODES: srvEnv.INVITE_CODES || '',
+  WIDGET_SECRET: srvEnv.WIDGET_SECRET || '',
   HOST: srvEnv.API_HOST || '127.0.0.1',
   IMG_DIR: srvEnv.IMG_DIR || '/var/lib/purchase-app/images',
   IMG_MAX_BYTES: 5 * 1024 * 1024,
