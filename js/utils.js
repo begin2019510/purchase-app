@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.35";
+const APP_VERSION = "4.0.36";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.36',date:'2026-10-17',items:['修复 Service Worker 缓存版本号未随版本更新的问题（此前新旧缓存混用，导致界面更新不生效）']},
 {v:'4.0.35',date:'2026-10-17',items:['更新机制改进：页面壳改为网络优先（2.5 秒超时回退缓存），以后打开 App 立即拿到最新界面，不再等缓存静默更新']},
 {v:'4.0.34',date:'2026-10-17',items:['待办界面第三版：iOS 提醒事项式分组无缝列表 + 环形完成度 + 日期标题，去掉每张卡片独立阴影，更接近原生质感']},
 {v:'4.0.33',date:'2026-10-17',items:['极速采购弹窗补齐虚拟商品支持：平台/分类新增云与 AI 选项，勾选虚拟商品，选 AI/云平台自动勾选并联动分类']},
