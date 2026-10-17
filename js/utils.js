@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.32";
+const APP_VERSION = "4.0.33";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.33',date:'2026-10-17',items:['极速采购弹窗补齐虚拟商品支持：平台/分类新增云与 AI 选项，勾选虚拟商品，选 AI/云平台自动勾选并联动分类']},
 {v:'4.0.32',date:'2026-10-17',items:['虚拟商品平台选项补充：MiMo、DeepSeek（AI API 服务）']},
 {v:'4.0.31',date:'2026-10-17',items:['采购支持虚拟商品：买 API 服务/服务器资源/会员/软件等，表单新增「虚拟商品」开关与专属徽章','平台新增 阿里云/腾讯云/OpenAI/AWS，分类新增 云服务/API/会员/软件']},
 {v:'4.0.30',date:'2026-10-17',items:['待办模块视觉大改：按日期分组（已过期/今天/明天/本周/以后/无日期/已完成）、新卡片与勾选圆环、顶部完成度概览、筛选胶囊横滑','修复待办/项目/统计页下拉刷新失效（代码里被误禁用）','待办到期推送与早间摘要接入服务端调度（APNs），修复订阅用户名截断 bug']},

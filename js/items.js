@@ -262,6 +262,16 @@ function openQuickPurchaseModal(){
   setTimeout(function(){el('qName').focus()},60);
 }
 function closeQuickPurchase(){document.getElementById('quickOverlay').classList.remove('active')}
+function qPlatformChanged(){
+  try{
+    var v=document.getElementById('qPlatform').value;
+    var ai=['阿里云','腾讯云','OpenAI','DeepSeek','MiMo','AWS'];
+    var cb=document.getElementById('qVirtual');
+    if(cb&&ai.indexOf(v)>=0)cb.checked=true;
+    var cat=document.getElementById('qCategory');
+    if(cat&&ai.indexOf(v)>=0&&['云服务','API'].indexOf(cat.value)<0)cat.value=(v==='阿里云'||v==='腾讯云'||v==='AWS')?'云服务':'API';
+  }catch(e){}
+}
 async function saveQuickPurchase(){
   const el=id=>document.getElementById(id);
   const name=(el('qName').value||'').trim();
@@ -278,13 +288,15 @@ async function saveQuickPurchase(){
     name:name, price:price, qty:qty,
     platform:el('qPlatform').value, category:el('qCategory').value,
     note:(el('qNote').value||'').trim()||null, date:el('qDate').value||null,
-    status:'已到', quick:true
+    status:'已到', quick:true,
+    virtual:!!(el('qVirtual')&&el('qVirtual').checked)
   };
   saveQuickPrefs({platform:data.platform,category:data.category});
   closeQuickPurchase();
   const r=await api('POST',data);
   if(r&&r.error){toast('添加失败: '+r.error);return}
   toast('已记入采购（免审）');
+  if(el('qVirtual'))el('qVirtual').checked=false;
   await loadAll();
 }
 
