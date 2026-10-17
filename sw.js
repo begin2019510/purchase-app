@@ -19,15 +19,38 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
-  // 壳与静态资源：缓存优先（秒开），后台静默刷新缓存（SWR）
+
+  // 页面导航：网络优先（2.5s 超时回退缓存）——保证每次打开都能拿到最新界面；
+  // JS/CSS 用版本号 URL，随新 HTML 自动走网络，不会拿到旧文件。
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      caches.open(CACHE).then(function(c) {
+        var net = fetch(e.request, { cache: 'no-store' }).then(function(res) {
+          if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
+          return res;
+        });
+        var timeout = new Promise(function(resolve) {
+          setTimeout(function() { resolve(null); }, 2500);
+        });
+        return Promise.race([net, timeout]).then(function(r) {
+          return r || c.match(e.request) || c.match('/') || net;
+        }).catch(function() {
+          return c.match(e.request) || c.match('/');
+        });
+      })
+    );
+    return;
+  }
+
+  // 静态资源（带版本号 URL）：缓存优先 + 后台刷新（SWR）
   e.respondWith(
     caches.open(CACHE).then(function(c) {
       return c.match(e.request).then(function(cached) {
         var network = fetch(e.request, { cache: 'no-store' }).then(function(res) {
           if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
           return res;
-        }).catch(function() { return cached; });  // 离线回退缓存
-        return cached || network;                   // 有缓存立即返回，不等网络
+        }).catch(function() { return cached; });
+        return cached || network;
       });
     })
   );
