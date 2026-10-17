@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.31";
+const APP_VERSION = "4.0.32";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.32',date:'2026-10-17',items:['虚拟商品平台选项补充：MiMo、DeepSeek（AI API 服务）']},
 {v:'4.0.31',date:'2026-10-17',items:['采购支持虚拟商品：买 API 服务/服务器资源/会员/软件等，表单新增「虚拟商品」开关与专属徽章','平台新增 阿里云/腾讯云/OpenAI/AWS，分类新增 云服务/API/会员/软件']},
 {v:'4.0.30',date:'2026-10-17',items:['待办模块视觉大改：按日期分组（已过期/今天/明天/本周/以后/无日期/已完成）、新卡片与勾选圆环、顶部完成度概览、筛选胶囊横滑','修复待办/项目/统计页下拉刷新失效（代码里被误禁用）','待办到期推送与早间摘要接入服务端调度（APNs），修复订阅用户名截断 bug']},
 {v:'4.0.29',date:'2026-10-16',items:['登录界面升级：紫色渐变上新增动态粒子背景（漂浮光点+连线+鼠标/触摸联动），登录屏收起自动停帧省电','支持系统「减弱动态效果」设置，开启后不显示粒子']},
