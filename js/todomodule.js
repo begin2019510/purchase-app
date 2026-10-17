@@ -126,7 +126,6 @@ function renderTodo() {
     return (pri[a.priority] || 1) - (pri[b.priority] || 1);
   });
 
-  // 统计
   var pending = 0, doing = 0, done = 0, overdue = 0;
   todoList.forEach(function(t){
     if (t.status === '已删除') return;
@@ -138,33 +137,37 @@ function renderTodo() {
   var activeTotal = pending + doing + done;
   var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
 
-  var html = '';
+  var now = new Date();
+  var weekdays = ['日','一','二','三','四','五','六'];
+  var dateStr = (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
 
-  // ===== 头部 =====
-  html += '<div class="td2-header">';
-  html += '<div class="td2-titlebar">';
-  html += '<div class="td2-page-title">待办</div>';
+  var CIRC = 2 * Math.PI * 26;
+  var dash = (CIRC * pct / 100).toFixed(1);
+
+  var html = '';
+  html += '<div class="td3-header">';
+  html += '<div class="td3-titlebar">';
+  html += '<div><div class="td3-title">待办</div><div class="td3-date">' + dateStr + '</div></div>';
   html += '<div class="td2-seg">';
   html += '<button class="' + (todoView==='list'?'on':'') + '" onclick="switchTodoView(\x27list\x27)">列表</button>';
   html += '<button class="' + (todoView==='calendar'?'on':'') + '" onclick="switchTodoView(\x27calendar\x27)">日历</button>';
   html += '<button class="' + (todoView==='gantt'?'on':'') + '" onclick="switchTodoView(\x27gantt\x27)">甘特</button>';
   html += '</div></div>';
 
-  html += '<div class="td2-summary">';
-  html += '<div class="td2-sum pending"><b>' + pending + '</b><span>待办</span></div>';
-  html += '<div class="td2-sum doing"><b>' + doing + '</b><span>进行中</span></div>';
-  html += '<div class="td2-sum overdue"><b>' + overdue + '</b><span>过期</span></div>';
-  html += '<div class="td2-sum doneN"><b>' + done + '</b><span>已完成</span></div>';
-  html += '<div class="td2-pct"><b>' + pct + '%</b><span>完成度</span></div>';
-  html += '</div>';
-  html += '<div class="td2-progress"><i style="width:' + pct + '%"></i></div>';
+  html += '<div class="td3-hero">';
+  html += '<div class="td3-ring"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="var(--border)" stroke-width="7"/><circle cx="38" cy="38" r="26" fill="none" stroke="var(--pri)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIRC.toFixed(1) + '"/></svg><div class="pct">' + pct + '%</div></div>';
+  html += '<div class="td3-grid">';
+  html += '<div class="td3-cell"><b style="color:var(--orange)">' + pending + '</b><span>待办</span></div>';
+  html += '<div class="td3-cell"><b style="color:var(--pri)">' + doing + '</b><span>进行中</span></div>';
+  html += '<div class="td3-cell"><b style="color:' + (overdue?'var(--red)':'var(--muted)') + '">' + overdue + '</b><span>已过期</span></div>';
+  html += '<div class="td3-cell"><b style="color:var(--green)">' + done + '</b><span>已完成</span></div>';
+  html += '</div></div>';
 
-  html += '<div class="td2-chips">';
+  html += '<div class="td3-chips">';
   ['全部','待办','进行中','已完成','高优先级','已取消','回收站'].forEach(function(c) {
     html += '<span class="chip' + (todoFilter===c?' active':'') + '" onclick="switchTodoFilter(\x27' + c + '\x27)">' + c + '</span>';
   });
-  html += '</div>';
-  html += '</div>';
+  html += '</div></div>';
 
   if (todoView === 'calendar') {
     html += buildCalendarHtml();
@@ -177,9 +180,8 @@ function renderTodo() {
     return;
   }
 
-  // ===== 列表（按日期分组）=====
   if (filtered.length === 0) {
-    html += '<div class="td2-empty"><div class="ico">🌿</div><div class="t">没有待办</div><div class="s">' + (todoFilter==='全部' ? '点击右下角 + 新建一项' : '该筛选下暂无内容') + '</div></div>';
+    html += '<div class="td3-empty"><div class="ico">🌿</div><div class="t">没有待办</div><div class="s">' + (todoFilter==='全部' ? '轻松一下，或点右下角 + 新建' : '该筛选下暂无内容') + '</div></div>';
     el.innerHTML = html;
     return;
   }
@@ -190,17 +192,19 @@ function renderTodo() {
     else groups[todoDueBucket(t)].push(t);
   });
   var meta = {
-    overdue: { label: '已过期', cls: 'danger' }, today: { label: '今天' }, tomorrow: { label: '明天' },
-    week: { label: '本周' }, later: { label: '以后' }, nodate: { label: '无日期' }, done: { label: '已完成 / 已取消' }
+    overdue: { label: '已过期', dot: 'var(--red)' }, today: { label: '今天', dot: 'var(--orange)' },
+    tomorrow: { label: '明天', dot: 'var(--pri)' }, week: { label: '本周', dot: 'var(--pri)' },
+    later: { label: '以后', dot: 'var(--muted)' }, nodate: { label: '无日期', dot: 'var(--muted)' },
+    done: { label: '已完成 / 已取消', dot: 'var(--green)' }
   };
-  html += '<div class="todo-list-container">';
   ['overdue','today','tomorrow','week','later','nodate','done'].forEach(function(key){
     var arr = groups[key];
     if (!arr.length) return;
-    html += '<div class="td2-section ' + (meta[key].cls||'') + '">' + meta[key].label + '<span class="n">' + arr.length + '</span></div>';
+    html += '<div class="td3-sec"><span class="td3-dot" style="background:' + meta[key].dot + '"></span>' + meta[key].label + '<span class="td3-n">' + arr.length + '</span></div>';
+    html += '<div class="td3-group">';
     arr.forEach(function(t){ html += renderTodoCard(t); });
+    html += '</div>';
   });
-  html += '</div>';
 
   el.innerHTML = html;
 }
@@ -233,15 +237,13 @@ function renderTodoCard(t) {
   var priColor = t.priority === '高' ? 'var(--red)' : t.priority === '低' ? 'var(--muted)' : 'var(--orange)';
   var idAttr = t.id;
 
-  var h = '<div class="td2-card' + (isDone ? ' td2-done' : '') + (isCancel ? ' td2-cancelled' : '') + '" data-id="' + idAttr + '" onclick="openTodoDetail(\x27' + idAttr + '\x27)">';
-  // 勾选圈
-  h += '<button class="td2-check' + (finished ? ' on' : '') + '"' + (!finished ? ' style="border-color:' + priColor + '"' : '') + ' onclick="event.stopPropagation();cycleTodoStatus(\x27' + idAttr + '\x27)">';
-  if (finished) h += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  var h = '<div class="td3-row' + (isDone ? ' td3-done' : '') + (isCancel ? ' td3-cancelled' : '') + '" data-id="' + idAttr + '" onclick="openTodoDetail(\x27' + idAttr + '\x27)">';
+  h += '<button class="td3-check' + (finished ? ' on' : '') + '"' + (!finished ? ' style="border-color:' + priColor + '"' : '') + ' onclick="event.stopPropagation();cycleTodoStatus(\x27' + idAttr + '\x27)">';
+  if (finished) h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
   h += '</button>';
-  // 主内容
-  h += '<div class="td2-main">';
-  h += '<div class="td2-title">' + esc(t.title) + '</div>';
-  h += '<div class="td2-meta">';
+  h += '<div class="td3-main">';
+  h += '<div class="td3-row-title">' + esc(t.title) + '</div>';
+  h += '<div class="td3-row-meta">';
   if (t.dueDate) h += '<span class="td2-due ' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span>';
   h += '<span class="td2-chip">' + (catIcon[t.category] || '📌') + ' ' + esc(t.category) + '</span>';
   if (t.repeat && t.repeat !== '无') h += '<span class="td2-chip">🔄 ' + t.repeat + '</span>';
@@ -250,33 +252,25 @@ function renderTodoCard(t) {
       h += '<span class="td2-chip td2-tag">' + esc(tag) + '</span>';
     });
   } catch(e) {}
-  if (t.image) h += '<span class="td2-chip">🖼</span>';
-  h += '</div>';
-  // 子任务进度
   if (t.subtasks && t.subtasks !== '[]') {
     try {
       var subs = JSON.parse(t.subtasks);
       var dn = subs.filter(function(s){ return s.done; }).length;
-      var pc = subs.length ? Math.round(dn / subs.length * 100) : 0;
-      h += '<div class="td2-sub"><div class="td2-sub-bar"><i style="width:' + pc + '%"></i></div><span>' + dn + '/' + subs.length + '</span></div>';
+      if (subs.length) h += '<span class="td2-chip">☑ ' + dn + '/' + subs.length + '</span>';
     } catch(e) {}
   }
-  h += '</div>';
-  // 右侧
-  h += '<div class="td2-right">';
-  if (t.status === '进行中') h += '<span class="td2-doing">进行中</span>';
-  else if (!finished && t.priority === '高') h += '<span class="td2-pri">高</span>';
-  h += '<svg class="td2-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-  h += '</div>';
-  // 回收站操作
+  if (t.image) h += '<span class="td2-chip">🖼</span>';
+  h += '</div></div>';
+  h += '<div class="td3-right">';
   if (t.status === '已删除') {
-    h += '</div><div class="td2-bin-actions">'
-      + '<button class="a-btn a-btn-secondary" onclick="event.stopPropagation();restoreTodo(\x27' + idAttr + '\x27)" style="flex:1;min-height:36px;font-size:13px">恢复</button>'
-      + '<button class="a-btn a-btn-danger" onclick="event.stopPropagation();purgeTodo(\x27' + idAttr + '\x27)" style="flex:1;min-height:36px;font-size:13px">彻底删除</button>'
-      + '</div>';
-    return h;
+    h += '<button class="td3-mini" onclick="event.stopPropagation();restoreTodo(\x27' + idAttr + '\x27)">恢复</button>';
+    h += '<button class="td3-mini danger" onclick="event.stopPropagation();purgeTodo(\x27' + idAttr + '\x27)">删除</button>';
+  } else {
+    if (t.status === '进行中') h += '<span class="td3-doing">进行中</span>';
+    else if (!finished && t.priority === '高') h += '<span class="td3-pri">高</span>';
+    h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
   }
-  h += '</div>';
+  h += '</div></div>';
   return h;
 }
 

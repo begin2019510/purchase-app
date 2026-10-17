@@ -1356,3 +1356,44 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 /* 虚拟商品徽章（API/服务器/会员等） */
 .virtual-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(99,102,241,.12);color:var(--pri);font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .virtual-badge{display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.5px}
+
+/* ===== Todo 3.0（iOS 提醒事项式分组列表 + 环形进度）===== */
+.td3-header{max-width:1100px;margin:0 auto 4px}
+.td3-titlebar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.td3-title{font-size:28px;font-weight:900;letter-spacing:-.8px;line-height:1.1}
+.td3-date{font-size:12px;color:var(--muted);font-weight:600;margin-top:3px}
+.td3-hero{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px 18px;box-shadow:var(--shadow-1)}
+.td3-ring{position:relative;width:76px;height:76px;flex-shrink:0}
+.td3-ring svg{transform:rotate(-90deg)}
+.td3-ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.td3-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.td3-cell b{display:block;font-size:18px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.td3-cell span{font-size:11px;color:var(--muted);font-weight:600}
+.td3-chips{display:flex;gap:6px;overflow-x:auto;padding:14px 2px 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.td3-chips::-webkit-scrollbar{display:none}
+.td3-chips .chip{flex-shrink:0;padding:5px 12px;font-size:12px;font-weight:600;border-radius:20px;background:var(--card);border:1px solid var(--border);color:var(--muted);cursor:pointer}
+.td3-chips .chip.active{background:var(--pri);border-color:var(--pri);color:#fff}
+.td3-sec{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.2px;padding:16px 6px 8px;max-width:1100px;margin:0 auto}
+.td3-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.td3-n{background:var(--border);border-radius:9px;padding:1px 7px;font-size:10px;font-weight:700}
+.td3-group{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-1);max-width:1100px;margin:0 auto}
+.td3-row{display:flex;align-items:flex-start;gap:11px;padding:13px 14px;cursor:pointer;border-top:1px solid var(--border);transition:background .12s}
+.td3-row:first-child{border-top:none}
+.td3-row:active{background:var(--bg)}
+.td3-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:transparent;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;padding:0;transition:all .15s}
+.td3-check.on{background:var(--green);border-color:var(--green)}
+.td3-main{flex:1;min-width:0}
+.td3-row-title{font-size:15px;font-weight:600;line-height:1.4;word-break:break-word}
+.td3-done .td3-row-title,.td3-cancelled .td3-row-title{text-decoration:line-through;color:var(--muted)}
+.td3-done .td3-check,.td3-cancelled .td3-check{opacity:.75}
+.td3-row-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;align-items:center}
+.td3-right{display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:3px}
+.td3-doing{font-size:10px;font-weight:800;color:var(--pri);background:rgba(99,102,241,.1);padding:2px 8px;border-radius:20px}
+.td3-pri{font-size:10px;font-weight:800;color:#fff;background:var(--red);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.td3-chev{color:var(--muted);opacity:.35}
+.td3-mini{border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;font-weight:700;padding:4px 10px;border-radius:9px;cursor:pointer}
+.td3-mini.danger{color:var(--red);border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.06)}
+.td3-empty{text-align:center;padding:64px 20px}
+.td3-empty .ico{font-size:52px;opacity:.55;margin-bottom:14px}
+.td3-empty .t{font-size:16px;font-weight:800;margin-bottom:5px}
+.td3-empty .s{font-size:13px;color:var(--muted)}
