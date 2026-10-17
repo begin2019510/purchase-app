@@ -73,6 +73,20 @@ function initTodoSearch() {
 }
 
 
+function todoDueBucket(t) {
+  if (!t.dueDate) return 'nodate';
+  var ts = new Date(t.dueDate).getTime();
+  if (isNaN(ts)) return 'nodate';
+  var n = new Date();
+  var start = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  var diff = ts - start;
+  if (diff < 0) return 'overdue';
+  if (diff < 86400000) return 'today';
+  if (diff < 172800000) return 'tomorrow';
+  if (diff < 604800000) return 'week';
+  return 'later';
+}
+
 function renderTodo() {
   var el = document.getElementById('todoContent');
   if (!el) return;
@@ -102,7 +116,6 @@ function renderTodo() {
     });
   }
 
-  var now = Date.now();
   filtered.sort(function(a, b) {
     if (a.status === '已完成' && b.status !== '已完成') return 1;
     if (a.status !== '已完成' && b.status === '已完成') return -1;
@@ -113,56 +126,49 @@ function renderTodo() {
     return (pri[a.priority] || 1) - (pri[b.priority] || 1);
   });
 
-  // Stats
-  var total=todoList.filter(function(t){return t.status!=='已删除'}).length, pending=0, doing=0, done=0, overdue=0;
+  // 统计
+  var pending = 0, doing = 0, done = 0, overdue = 0;
   todoList.forEach(function(t){
-    if(t.status==='待办') pending++;
-    if(t.status==='进行中') doing++;
-    if(t.status==='已完成') done++;
-    if(t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue') overdue++;
+    if (t.status === '已删除') return;
+    if (t.status === '待办') pending++;
+    if (t.status === '进行中') doing++;
+    if (t.status === '已完成') done++;
+    if (t.dueDate && getDueClass(t.dueDate, t.status) === 'due-overdue') overdue++;
   });
-  var activeTotal = pending + doing + done; var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
+  var activeTotal = pending + doing + done;
+  var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
 
   var html = '';
 
-  // === Compact header: segmented control + progress ===
-  // Search box
+  // ===== 头部 =====
+  html += '<div class="td2-header">';
+  html += '<div class="td2-titlebar">';
+  html += '<div class="td2-page-title">待办</div>';
+  html += '<div class="td2-seg">';
+  html += '<button class="' + (todoView==='list'?'on':'') + '" onclick="switchTodoView(\x27list\x27)">列表</button>';
+  html += '<button class="' + (todoView==='calendar'?'on':'') + '" onclick="switchTodoView(\x27calendar\x27)">日历</button>';
+  html += '<button class="' + (todoView==='gantt'?'on':'') + '" onclick="switchTodoView(\x27gantt\x27)">甘特</button>';
+  html += '</div></div>';
 
-  html += '<div class="todo-compact-header">';
-  
-  // View switcher (segmented control)
-  html += '<div class="todo-view-switcher">';
-  html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView(\x27list\x27)">📋 列表</button>';
-  html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView(\x27calendar\x27)">📅 日历</button>';
-  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView(\x27gantt\x27)">📊 甘特图</button>';
+  html += '<div class="td2-summary">';
+  html += '<div class="td2-sum pending"><b>' + pending + '</b><span>待办</span></div>';
+  html += '<div class="td2-sum doing"><b>' + doing + '</b><span>进行中</span></div>';
+  html += '<div class="td2-sum overdue"><b>' + overdue + '</b><span>过期</span></div>';
+  html += '<div class="td2-sum doneN"><b>' + done + '</b><span>已完成</span></div>';
+  html += '<div class="td2-pct"><b>' + pct + '%</b><span>完成度</span></div>';
   html += '</div>';
+  html += '<div class="td2-progress"><i style="width:' + pct + '%"></i></div>';
 
-  // Stats row (compact)
-  html += '<div class="todo-stats-row">';
-  html += '<div class="todo-stat"><span class="todo-stat-num">' + total + '</span><span class="todo-stat-lbl">全部</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#f59e0b">' + pending + '</span><span class="todo-stat-lbl">待办</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + doing + '</span><span class="todo-stat-lbl">进行中</span></div>';
-  if(overdue>0) html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#ef4444">' + overdue + '</span><span class="todo-stat-lbl">过期</span></div>';
-  html += '<div class="todo-stat" style="margin-left:auto"><span class="todo-stat-num" style="color:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+';font-size:18px">' + pct + '%</span><span class="todo-stat-lbl">完成</span></div>';
-  html += '</div>';
-
-  // Progress bar
-  html += '<div class="todo-mini-progress"><div class="todo-mini-fill" data-width="' + pct + '" style="width:0;background:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+'"></div></div>';
-  html += '</div>';
-
-  // Filter chips (smaller)
-  html += '<div class="chips-wrap" style="margin:8px 0 10px">';
-  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消', '回收站'];
-  chips.forEach(function(c) {
-    html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
+  html += '<div class="td2-chips">';
+  ['全部','待办','进行中','已完成','高优先级','已取消','回收站'].forEach(function(c) {
+    html += '<span class="chip' + (todoFilter===c?' active':'') + '" onclick="switchTodoFilter(\x27' + c + '\x27)">' + c + '</span>';
   });
   html += '</div>';
+  html += '</div>';
 
-  // Content based on view
   if (todoView === 'calendar') {
     html += buildCalendarHtml();
-    console.log("renderSubtaskRows: rows=" + todoSubtaskRows.length + ", firstText=" + (todoSubtaskRows[0]||{}).text + ", html=" + html.substring(0,300));
-  el.innerHTML = html;
+    el.innerHTML = html;
     return;
   }
   if (todoView === 'gantt') {
@@ -171,54 +177,32 @@ function renderTodo() {
     return;
   }
 
-  // List view
+  // ===== 列表（按日期分组）=====
   if (filtered.length === 0) {
-    html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';
-    html += '<div style="font-size:56px;margin-bottom:16px;opacity:0.6">📋</div>';
-    html += '<div style="font-size:16px;font-weight:700;margin-bottom:6px">暂无待办</div>';
-    html += '<div style="font-size:13px;opacity:0.7">点击右下角 + 新建</div>';
-    html += '</div>';
-  } else {
-    var active = filtered.filter(function(t){ return t.status !== '已完成' && t.status !== '已取消'; });
-    var completed = filtered.filter(function(t){ return t.status === '已完成' || t.status === '已取消'; });
-    if (active.length > 0) {
-      active.forEach(function(t) { html += renderTodoCard(t); });
-    }
-    if (completed.length > 0) {
-      html += '<div class="todo-section-title">✅ 已完成 <span class="todo-section-count">'+completed.length+'</span></div>';
-      completed.forEach(function(t) { html += renderTodoCard(t); });
-    }
+    html += '<div class="td2-empty"><div class="ico">🌿</div><div class="t">没有待办</div><div class="s">' + (todoFilter==='全部' ? '点击右下角 + 新建一项' : '该筛选下暂无内容') + '</div></div>';
+    el.innerHTML = html;
+    return;
   }
+
+  var groups = { overdue: [], today: [], tomorrow: [], week: [], later: [], nodate: [], done: [] };
+  filtered.forEach(function(t) {
+    if (t.status === '已完成' || t.status === '已取消') groups.done.push(t);
+    else groups[todoDueBucket(t)].push(t);
+  });
+  var meta = {
+    overdue: { label: '已过期', cls: 'danger' }, today: { label: '今天' }, tomorrow: { label: '明天' },
+    week: { label: '本周' }, later: { label: '以后' }, nodate: { label: '无日期' }, done: { label: '已完成 / 已取消' }
+  };
+  html += '<div class="todo-list-container">';
+  ['overdue','today','tomorrow','week','later','nodate','done'].forEach(function(key){
+    var arr = groups[key];
+    if (!arr.length) return;
+    html += '<div class="td2-section ' + (meta[key].cls||'') + '">' + meta[key].label + '<span class="n">' + arr.length + '</span></div>';
+    arr.forEach(function(t){ html += renderTodoCard(t); });
+  });
+  html += '</div>';
 
   el.innerHTML = html;
-
-  // Animate progress bar
-  setTimeout(function() {
-    document.querySelectorAll('.todo-mini-fill[data-width]').forEach(function(el) {
-      el.style.width = el.getAttribute('data-width') + '%';
-    });
-  }, 50);
-
-  // Init SortableJS drag sort
-  if (typeof Sortable !== 'undefined' && todoView === 'list' && todoFilter !== '回收站') {
-    var container = el.querySelector('.todo-list-container');
-    if (container) {
-      Sortable.create(container, {
-        animation: 200,
-        ghostClass: 'todo-drag-ghost',
-        handle: '.todo-card',
-        onEnd: function(evt) {
-          var cards = container.querySelectorAll('.todo-card');
-          var order = 0;
-          cards.forEach(function(card) {
-            var id = card.getAttribute('data-id');
-            var t = todoList.find(function(x){ return x.id === id; });
-            if (t) { t.order = order; todoApi('PUT', { id: id, order: order }); order++; }
-          });
-        }
-      });
-    }
-  }
 }
 
 function getLinkDisplay(linkType, linkId) {
@@ -242,89 +226,61 @@ function getLinkDisplay(linkType, linkId) {
 }
 
 function renderTodoCard(t) {
-  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
-  var isDone = t.status === '已完成' || t.status === '已取消';
-  var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
+  var isDone = t.status === '已完成';
+  var isCancel = t.status === '已取消';
+  var finished = isDone || isCancel;
+  var priColor = t.priority === '高' ? 'var(--red)' : t.priority === '低' ? 'var(--muted)' : 'var(--orange)';
+  var idAttr = t.id;
 
-  var h = '<div class="todo-card ' + statusClass + '" data-id="' + t.id + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
-  h += '<div class="todo-card-inner" style="padding:12px 14px">';
-  h += '<div class="todo-card-main">';
-
-  // Checkbox (quick complete)
-  if (isDone) {
-    h += '<div class="todo-quick-check done" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')">✅</div>';
-  } else {
-    h += '<div class="todo-quick-check" style="border-color:' + priColor + '" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')"></div>';
-  }
-
-  // Content
-  h += '<div class="todo-card-content">';
-  h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + esc(t.title) + '</div>';
-
-  // Due date line
-  if (t.dueDate) {
-    var dueStr = formatDueDate(t.dueDate);
-    var dueClass = getDueClass(t.dueDate, t.status);
-    h += '<div class="todo-due ' + dueClass + '">📅 ' + dueStr + '</div>';
-  }
-
-  // Tags row
-  h += '<div class="todo-card-tags">';
-  var _sb = t.status==='已完成'?'a-badge-green':t.status==='进行中'?'a-badge-blue':(t.status==='已取消'||t.status==='已删除')?'a-badge-gray':'a-badge-orange';
-    h += '<span class="a-badge ' + _sb + '">' + t.status + '</span>';
-  h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
-  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
-    try {
-      var tags = JSON.parse(t.tags || '[]');
-      tags.forEach(function(tag) {
-        var tagColor = stringHashColor(tag);
-        h += '<span class="todo-tag" style="background:' + tagColor.bg + ';color:' + tagColor.text + ';font-size:10px">' + esc(tag) + '</span>';
-      });
-    } catch(e) {}
+  var h = '<div class="td2-card' + (isDone ? ' td2-done' : '') + (isCancel ? ' td2-cancelled' : '') + '" data-id="' + idAttr + '" onclick="openTodoDetail(\x27' + idAttr + '\x27)">';
+  // 勾选圈
+  h += '<button class="td2-check' + (finished ? ' on' : '') + '"' + (!finished ? ' style="border-color:' + priColor + '"' : '') + ' onclick="event.stopPropagation();cycleTodoStatus(\x27' + idAttr + '\x27)">';
+  if (finished) h += '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  h += '</button>';
+  // 主内容
+  h += '<div class="td2-main">';
+  h += '<div class="td2-title">' + esc(t.title) + '</div>';
+  h += '<div class="td2-meta">';
+  if (t.dueDate) h += '<span class="td2-due ' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span>';
+  h += '<span class="td2-chip">' + (catIcon[t.category] || '📌') + ' ' + esc(t.category) + '</span>';
+  if (t.repeat && t.repeat !== '无') h += '<span class="td2-chip">🔄 ' + t.repeat + '</span>';
+  try {
+    JSON.parse(t.tags || '[]').forEach(function(tag) {
+      h += '<span class="td2-chip td2-tag">' + esc(tag) + '</span>';
+    });
+  } catch(e) {}
+  if (t.image) h += '<span class="td2-chip">🖼</span>';
   h += '</div>';
-
-  // Subtask progress
+  // 子任务进度
   if (t.subtasks && t.subtasks !== '[]') {
     try {
       var subs = JSON.parse(t.subtasks);
-      var doneCount = subs.filter(function(s){ return s.done; }).length;
-      var subPct = subs.length ? Math.round(doneCount/subs.length*100) : 0;
-      h += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + subPct + '%;background:' + (subPct>=100?'#16a34a':'var(--pri)') + '"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
+      var dn = subs.filter(function(s){ return s.done; }).length;
+      var pc = subs.length ? Math.round(dn / subs.length * 100) : 0;
+      h += '<div class="td2-sub"><div class="td2-sub-bar"><i style="width:' + pc + '%"></i></div><span>' + dn + '/' + subs.length + '</span></div>';
     } catch(e) {}
   }
-
-  // Link
-  // Project link
-  if (t.projectId && typeof projectList !== 'undefined') {
-    var proj = projectList.find(function(p){ return p.id === t.projectId; });
-    if (proj) {
-      h += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
-    }
-  }
-  if (t.linkType && t.linkType !== '无') {
-    var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-    if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' ➡</div>';
-  }
-
-  h += '</div>'; // content
-
-  // Priority dot (right side)
-  if(t.priority==='高'&&!isDone) h += '<div class="todo-pri-dot" style="background:' + priColor + ';width:6px;height:6px;margin-top:6px"></div>';
-
-  h += '</div>'; // main
-  // Recycle bin actions
+  h += '</div>';
+  // 右侧
+  h += '<div class="td2-right">';
+  if (t.status === '进行中') h += '<span class="td2-doing">进行中</span>';
+  else if (!finished && t.priority === '高') h += '<span class="td2-pri">高</span>';
+  h += '<svg class="td2-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  h += '</div>';
+  // 回收站操作
   if (t.status === '已删除') {
-    h += '<div style="display:flex;gap:8px;padding:8px 18px 12px;border-top:1px solid var(--border)">';
-    h += '<button class="a-btn a-btn-secondary" onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;min-height:36px;font-size:13px">恢复</button>';
-    h += '<button class="a-btn a-btn-danger" onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;min-height:36px;font-size:13px;border:1px solid rgba(255,59,48,.3)">彻底删除</button>';
-    h += '</div>';
+    h += '</div><div class="td2-bin-actions">'
+      + '<button class="a-btn a-btn-secondary" onclick="event.stopPropagation();restoreTodo(\x27' + idAttr + '\x27)" style="flex:1;min-height:36px;font-size:13px">恢复</button>'
+      + '<button class="a-btn a-btn-danger" onclick="event.stopPropagation();purgeTodo(\x27' + idAttr + '\x27)" style="flex:1;min-height:36px;font-size:13px">彻底删除</button>'
+      + '</div>';
+    return h;
   }
-  h += '</div></div>'; // inner + card
+  h += '</div>';
   return h;
 }
 
-﻿function buildGanttHtml() {
+function buildGanttHtml() {
   var now = new Date();
   var todayStr = localDateStr(now);
   var html = '';

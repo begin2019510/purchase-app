@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.29";
+const APP_VERSION = "4.0.30";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.30',date:'2026-10-17',items:['待办模块视觉大改：按日期分组（已过期/今天/明天/本周/以后/无日期/已完成）、新卡片与勾选圆环、顶部完成度概览、筛选胶囊横滑','修复待办/项目/统计页下拉刷新失效（代码里被误禁用）','待办到期推送与早间摘要接入服务端调度（APNs），修复订阅用户名截断 bug']},
 {v:'4.0.29',date:'2026-10-16',items:['登录界面升级：紫色渐变上新增动态粒子背景（漂浮光点+连线+鼠标/触摸联动），登录屏收起自动停帧省电','支持系统「减弱动态效果」设置，开启后不显示粒子']},
 {v:'4.0.28',date:'2026-10-16',items:['登录/注册页底部同步展示 ICP 备案号（管局审核入口页要求）']},
 {v:'4.0.27',date:'2026-10-16',items:['按管局要求全站页脚展示 ICP 备案号：皖ICP备2026035353号（主App/帮助/隐私政策页底部，点击可跳转工信部核验）']},

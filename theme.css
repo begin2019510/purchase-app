@@ -1292,3 +1292,63 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 .auth-icp{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));text-align:center;font-size:12px;pointer-events:auto}
 .auth-icp a{color:rgba(255,255,255,.72);text-decoration:none}
 .auth-icp a:active,.auth-icp a:hover{color:#fff}
+
+/* ===== Todo 2.0（2026-10-17 重设计）===== */
+.td2-header{max-width:1100px;margin:0 auto 10px}
+.td2-titlebar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.td2-page-title{font-size:26px;font-weight:900;letter-spacing:-.6px}
+.td2-seg{display:inline-flex;background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:3px;gap:2px}
+.td2-seg button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;transition:.15s}
+.td2-seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.td2-summary{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px 16px;box-shadow:var(--shadow-1)}
+.td2-sum{display:flex;flex-direction:column;gap:1px}
+.td2-sum b{font-size:19px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.td2-sum span{font-size:10px;color:var(--muted);font-weight:600}
+.td2-sum.pending b{color:var(--orange)}
+.td2-sum.doing b{color:var(--pri)}
+.td2-sum.overdue b{color:var(--red)}
+.td2-sum.doneN b{color:var(--green)}
+.td2-pct{margin-left:auto;text-align:right}
+.td2-pct b{font-size:22px;font-weight:900;color:var(--pri);font-variant-numeric:tabular-nums}
+.td2-pct span{display:block;font-size:10px;color:var(--muted);font-weight:600}
+.td2-progress{height:4px;background:var(--border);border-radius:2px;margin:8px 2px 12px;overflow:hidden}
+.td2-progress i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,var(--pri),#8b5cf6);transition:width .5s ease}
+.td2-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.td2-chips::-webkit-scrollbar{display:none}
+.td2-chips .chip{flex-shrink:0;padding:5px 12px;font-size:12px;font-weight:600;border-radius:20px;background:var(--card);border:1px solid var(--border);color:var(--muted);cursor:pointer}
+.td2-chips .chip.active{background:var(--pri);border-color:var(--pri);color:#fff}
+.td2-section{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.3px;padding:16px 4px 8px}
+.td2-section.danger{color:var(--red)}
+.td2-section .n{background:var(--border);border-radius:9px;padding:1px 7px;font-size:10px;font-weight:700}
+.td2-card{display:flex;align-items:flex-start;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:15px;padding:13px 13px 13px 14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow-1);transition:transform .12s ease,box-shadow .12s ease}
+.td2-card:active{transform:scale(.985)}
+.td2-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:transparent;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;padding:0;transition:all .15s}
+.td2-check.on{background:var(--green);border-color:var(--green)}
+.td2-main{flex:1;min-width:0}
+.td2-title{font-size:15.5px;font-weight:650;line-height:1.4;color:var(--text);word-break:break-word}
+.td2-done .td2-title,.td2-cancelled .td2-title{text-decoration:line-through;color:var(--muted);font-weight:600}
+.td2-done .td2-check,.td2-cancelled .td2-check{opacity:.75}
+.td2-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;align-items:center}
+.td2-due{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.td2-due.due-overdue{background:rgba(239,68,68,.12);color:#dc2626}
+.td2-due.due-today{background:rgba(245,158,11,.14);color:#b45309}
+.td2-due.due-soon{background:rgba(245,158,11,.08);color:#b45309}
+.td2-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.td2-chip.td2-tag{background:rgba(99,102,241,.1);color:var(--pri)}
+.td2-sub{display:flex;align-items:center;gap:7px;margin-top:7px}
+.td2-sub-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;max-width:150px}
+.td2-sub-bar i{display:block;height:100%;background:var(--pri);border-radius:2px}
+.td2-sub span{font-size:10px;font-weight:700;color:var(--muted)}
+.td2-right{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-top:2px}
+.td2-doing{font-size:10px;font-weight:800;color:var(--pri);background:rgba(99,102,241,.1);padding:2px 8px;border-radius:20px}
+.td2-pri{font-size:10px;font-weight:800;color:#fff;background:var(--red);width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.td2-chev{color:var(--muted);opacity:.45}
+.td2-bin-actions{display:flex;gap:8px;background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 15px 15px;padding:8px;margin-top:-9px;margin-bottom:8px}
+.td2-empty{text-align:center;padding:64px 20px}
+.td2-empty .ico{font-size:52px;opacity:.55;margin-bottom:14px}
+.td2-empty .t{font-size:16px;font-weight:800;margin-bottom:5px}
+.td2-empty .s{font-size:13px;color:var(--muted)}
+@media(min-width:769px){
+  .td2-card{max-width:1100px;margin-left:auto;margin-right:auto}
+  .td2-header,.td2-section,.td2-bin-actions{max-width:1100px;margin-left:auto;margin-right:auto}
+}

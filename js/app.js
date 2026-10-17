@@ -164,9 +164,7 @@ function setupPullToRefresh(){
 
   function blockedByUI(){
     if(document.querySelector('.overlay.active,.modal-overlay.active'))return true;
-    if((currentTab==='todo'||currentTab==='project'||currentTab==='stats')
-      &&document.getElementById(currentTab==='todo'?'todoContent':currentTab==='project'?'projectContent':'statsContent')?.innerHTML?.length>0)return true;
-    return false;
+    return false;   // 2026-10-17 修复：此前错误地禁用了待办/项目/统计页的下拉刷新
   }
   function setState(s){
     arrow.style.display=s==='pull'||s==='ready'?'':'none';
