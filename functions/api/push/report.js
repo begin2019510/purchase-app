@@ -1,5 +1,6 @@
 ﻿import { corsHeaders, json } from './_common.js';
 import { authenticate, getFeishuToken } from '../_auth.js';
+import { mysqlMode, toServer, authUser } from '../_proxy.js';
 
 // 周报/月报：生成 + 存档 + 推送数据源
 // GET ?period=weekly|monthly&token=XX  -> 服务器拉取（SERVICE_TOKEN）
@@ -205,6 +206,30 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const svcToken = url.searchParams.get('token') || '';
   const isSvc = env.SERVICE_TOKEN && svcToken && svcToken === env.SERVICE_TOKEN;
+
+  // mysql 模式：报告由服务器直接从 MySQL 计算（不再读飞书）；导出路径挂上 KV 订阅后返回
+  if (mysqlMode(env)) {
+    const mine = url.searchParams.get('mine') === '1';
+    if (mine) {
+      const uname = await authUser(request, env);
+      if (!uname) return json({ error: 'Unauthorized' }, 401, headers);
+      const sr = await toServer(request, env, { username: uname });
+      return new Response(sr.body, { status: sr.status, headers: { 'Content-Type': 'application/json', ...headers } });
+    }
+    if (isSvc) {
+      try {
+        const sr = await toServer(request, env);
+        const d = await sr.json();
+        if (d && Array.isArray(d.reports)) {
+          for (const r of d.reports) {
+            try { r.subscription = await KV.get('webpush:' + r.username, 'json'); } catch (e) { r.subscription = null; }
+          }
+        }
+        return json(d, sr.status === 200 ? 200 : sr.status, headers);
+      } catch (e) { return json({ error: e.message }, 500, headers); }
+    }
+    return json({ error: 'forbidden' }, 403, headers);
+  }
 
   // 我的最新报告（统计页卡片）
   if (request.method === 'GET' && url.searchParams.get('mine') === '1') {

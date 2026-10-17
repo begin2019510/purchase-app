@@ -31,6 +31,7 @@ app.use('/api', require('./routes/todos'));
 app.use('/api', require('./routes/projects'));
 app.use('/api', require('./routes/docs'));
 app.use('/api', require('./routes/images'));
+app.use('/api', require('./routes/report'));
 
 // ---- DB 健康（已过令牌闸）----
 app.get('/api/db/health', async (req, res) => {
