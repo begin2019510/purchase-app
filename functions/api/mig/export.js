@@ -62,6 +62,30 @@ export async function onRequest(context) {
       return json({ ok: true, docs: out }, 200, headers);
     }
 
+    if (kind === 'timing') {
+      // 基准测试：按旧代码的分页方式实测 CF→飞书 的拉取耗时
+      const username = url.searchParams.get('user');
+      const tableName = url.searchParams.get('table') || 'purchases';
+      const pageSize = Number(url.searchParams.get('page_size')) || 500;
+      const userRaw = await KV.get('user:' + username, 'json');
+      if (!userRaw || !userRaw.bitable) return json({ error: 'no bitable' }, 404, headers);
+      const bt = userRaw.bitable;
+      const keyMap = { purchases: ['purchaseApp', 'purchaseTable'], expenses: ['expenseApp', 'expenseTable'], todos: ['todoApp', 'todoTable'], projects: ['projectApp', 'projectTable'] };
+      const k = keyMap[tableName]; if (!k) return json({ error: 'bad table' }, 400, headers);
+      const app = bt[k[0]], table = bt[k[1]];
+      const token = await getFeishuToken(env);
+      const t0 = Date.now();
+      let pages = 0, total = 0, pt = '';
+      do {
+        const r = await fetch(`${FEISHU_BASE}/bitable/v1/apps/${app}/tables/${table}/records?page_size=${pageSize}${pt ? '&page_token=' + pt : ''}`, { headers: { Authorization: 'Bearer ' + token } });
+        const d = await r.json();
+        if (d.code !== 0) return json({ error: 'feishu ' + d.code }, 500, headers);
+        total += (d.data?.items || []).length; pages++;
+        pt = d.data?.page_token || '';
+      } while (pt);
+      return json({ ok: true, table: tableName, records: total, pages, pageSize, ms: Date.now() - t0 }, 200, headers);
+    }
+
     if (kind === 'records') {
       const username = url.searchParams.get('user');
       if (!username) return json({ error: 'user required' }, 400, headers);
