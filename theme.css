@@ -1352,3 +1352,7 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
   .td2-card{max-width:1100px;margin-left:auto;margin-right:auto}
   .td2-header,.td2-section,.td2-bin-actions{max-width:1100px;margin-left:auto;margin-right:auto}
 }
+
+/* 虚拟商品徽章（API/服务器/会员等） */
+.virtual-chip{display:inline-flex;align-items:center;gap:3px;background:rgba(99,102,241,.12);color:var(--pri);font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.virtual-badge{display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.5px}

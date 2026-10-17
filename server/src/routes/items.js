@@ -36,6 +36,7 @@ function rowToItem(r) {
     '分期开始月': r.installment_start || '',
     '分期已还': Number(r.installment_paid) || 0,
     '极速': r.is_quick ? '1' : '',
+    '虚拟': r.is_virtual ? '1' : '',
   };
 }
 
@@ -76,14 +77,14 @@ router.post('/items', async (req, res, next) => {
     }
     const [ins] = await db.pool.query(
       `INSERT INTO purchases (user_id,name,platform,category,price,qty,status,date_ms,note,created_at_text,
-        eval_summary,buy_reason,budget_range,installments,installment_amount,installment_start,installment_paid,is_quick,image_ref)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        eval_summary,buy_reason,budget_range,installments,installment_amount,installment_start,installment_paid,is_quick,is_virtual,image_ref)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, b.name, b.platform || '拼多多', b.category || '其他', b.price || 0, b.qty || 1,
         b.status || (b.quick ? '已到' : '待审批'),
         b.date ? new Date(b.date).getTime() : Date.now(), b.note || '', H.bjNow(),
         b.evalSummary || '', b.buyReason || '', b.budgetRange || '',
         String(b.installments || 0), String(b.installmentAmount || 0), b.installmentStart || '', '1',
-        b.quick ? 1 : 0, imageVal]);
+        b.quick ? 1 : 0, b.virtual ? 1 : 0, imageVal]);
     if (b.quick) await db.exec('UPDATE purchases SET arrived_at = ? WHERE id = ?', [H.bjNow(), ins.insertId]);
     res.json({ id: 'rec_' + ins.insertId });
   } catch (e) { next(e); }
@@ -108,6 +109,7 @@ router.put('/items', async (req, res, next) => {
     if (b.installments !== undefined) cols.installments = String(b.installments);
     if (b.installmentAmount !== undefined) cols.installment_amount = String(b.installmentAmount);
     if (b.installmentPaid !== undefined) cols.installment_paid = String(b.installmentPaid);
+    if (b.virtual !== undefined) cols.is_virtual = b.virtual ? 1 : 0;
     if (b.setDate && cols.date_ms === undefined) cols.date_ms = Date.now();
 
     // 图片（阶段语义与 CF PUT 一致）

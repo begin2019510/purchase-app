@@ -59,11 +59,18 @@ async function markDue(id, dueMs) {
   const subNames = Object.keys(subs);
   if (!subNames.length) { log('无推送订阅'); process.exit(0); }
 
-  const users = await db.query('SELECT id, username FROM users WHERE username IN (' + subNames.map(() => '?').join(',') + ')', subNames);
+  const allUsers = await db.query('SELECT id, username FROM users');
+  const users = [];
+  for (const uname of subNames) {
+    // 兼容旧导出 bug：webpush:admin 的标签可能被截成 'dmin'（slice(9)）
+    const exact = allUsers.find(x => x.username === uname);
+    const fuzzy = exact || allUsers.find(x => x.username.length > uname.length && x.username.endsWith(uname));
+    if (fuzzy) users.push({ id: fuzzy.id, username: fuzzy.username, subKey: uname });
+  }
   let sentCount = 0, usersMorning = 0, usersDue = 0;
 
   for (const u of users) {
-    const sub = subs[u.username];
+    const sub = subs[u.subKey];
     if (!sub) continue;
     const todos = await db.query(
       "SELECT id, title, due_ms, priority, notified_due_ms, notify_morning_date FROM todos WHERE user_id = ? AND status IN ('待办','进行中') AND due_ms IS NOT NULL AND due_ms > 0 ORDER BY due_ms",

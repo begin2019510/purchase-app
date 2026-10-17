@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   installment_start  VARCHAR(10) NULL,            -- 分期开始月 'YYYY-MM'
   installment_paid   INT NOT NULL DEFAULT 0,      -- 分期已还
   is_quick           TINYINT NOT NULL DEFAULT 0,  -- 极速==='1' → 极速免审
+  is_virtual         TINYINT NOT NULL DEFAULT 0,  -- 虚拟商品（API/服务器/会员等，无需物流）
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_date (user_id, date_ms),

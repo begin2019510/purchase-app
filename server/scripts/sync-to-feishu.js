@@ -40,7 +40,7 @@ function purchaseFields(r, pMap) {
     '取消原因': s(r.cancel_reason),
     '分期期数': String(Number(r.installments) || 0), '分期金额': String(Number(r.installment_amount) || 0),
     '分期开始月': s(r.installment_start), '分期已还': String(Number(r.installment_paid) || 0),
-    '极速': r.is_quick ? '1' : '',
+    '极速': r.is_quick ? '1' : '', '虚拟': r.is_virtual ? '1' : '',
   };
   for (const k of Object.keys(f)) if (f[k] === undefined || f[k] === null) delete f[k];
   return f;

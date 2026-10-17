@@ -12,7 +12,7 @@ const NEED_FIELDS = {
   purchases: [
     { name: '评估摘要', type: 1 }, { name: '购买理由', type: 1 }, { name: '预算区间', type: 1 },
     { name: '取消原因', type: 1 }, { name: '分期期数', type: 1 }, { name: '分期金额', type: 1 },
-    { name: '分期开始月', type: 1 }, { name: '分期已还', type: 1 }, { name: '极速', type: 1 }, { name: '图片', type: 1 },
+    { name: '分期开始月', type: 1 }, { name: '分期已还', type: 1 }, { name: '极速', type: 1 }, { name: '虚拟', type: 1 }, { name: '图片', type: 1 },
   ],
   expenses: [{ name: '分摊周数', type: 2 }, { name: '分摊开始周', type: 2 }],
   todos: [
