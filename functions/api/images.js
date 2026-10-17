@@ -1,5 +1,5 @@
 // IMAGE_ARCH: 图存Cloudflare KV(IMAGE_STORE), Bitable只存kv:key引用
-import { mysqlMode, toServer } from './_proxy.js';
+import { mysqlMode, toServer, authUser } from './_proxy.js';
 import { verifyJWT } from './_auth.js';
 export async function onRequest(context) {
   const { request, env } = context;
@@ -13,11 +13,13 @@ export async function onRequest(context) {
 
   // mysql 模式：POST/DELETE 直接反代；GET 服务器命中即返回，404 回退 KV（存量兼容）
   if (mysqlMode(env)) {
+    const uname = await authUser(request, env);
+    if (!uname) return json({ error: 'Unauthorized' }, 401, corsHeaders);
     if (request.method !== 'GET') {
-      const sr = await toServer(request, env);
+      const sr = await toServer(request, env, { username: uname });
       return new Response(sr.body, { status: sr.status, headers: { ...corsHeaders, 'Content-Type': sr.headers.get('Content-Type') || 'application/json' } });
     }
-    const gr = await toServer(request, env);
+    const gr = await toServer(request, env, { username: uname });
     if (gr.status !== 404) return new Response(gr.body, { status: gr.status, headers: { ...corsHeaders, 'Content-Type': gr.headers.get('Content-Type') || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' } });
     // 404 → 走下方 KV 逻辑兜底
   }

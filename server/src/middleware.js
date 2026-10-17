@@ -2,9 +2,13 @@
 const cfg = require('./config');
 const { verifyJWT } = require('./jwt');
 
-// 全局：有 Bearer 就解析（不强制）
+// 全局：身份解析（不强制）
+// 优先信任 CF 反代已验明的 X-Auth-User（请求已过 X-Service-Token 闸）；
+// 其次兼容直连 JWT（本地联调/兜底）
 function parseJWT(req, res, next) {
   req.user = null;
+  const xu = req.headers['x-auth-user'];
+  if (xu) { req.user = { username: String(xu) }; return next(); }
   const h = req.headers.authorization;
   if (h && h.startsWith('Bearer ')) {
     const p = verifyJWT(h.replace('Bearer ', ''), cfg.JWT_SECRET);

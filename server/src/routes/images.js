@@ -11,6 +11,8 @@ const { verifyJWT } = require('../jwt');
 const router = express.Router();
 
 router.use('/images', (req, res, next) => {
+  // CF 反代已验明身份（X-Auth-User，经 X-Service-Token 闸）
+  if (req.user && req.user.username) { req.username = req.user.username; return next(); }
   let payload = null;
   const h = req.headers.authorization;
   if (h && h.startsWith('Bearer ')) payload = verifyJWT(h.replace('Bearer ', ''), cfg.JWT_SECRET);
