@@ -76,6 +76,10 @@ router.get('/projects', async (req, res, next) => {
         name: ph.display_name || ('P' + ph.phase_idx),
         status: ph.status || 'todo',
         note: ph.note || '',
+        plannedStart: ph.planned_start_ms == null ? null : Number(ph.planned_start_ms),
+        plannedEnd: ph.planned_end_ms == null ? null : Number(ph.planned_end_ms),
+        startedAt: ph.started_at_ms == null ? null : Number(ph.started_at_ms),
+        finishedAt: ph.finished_at_ms == null ? null : Number(ph.finished_at_ms),
       });
     }
     for (const it of items) {
@@ -163,6 +167,8 @@ router.put('/phases', async (req, res, next) => {
     }
     if (b.displayName !== undefined) cols.display_name = String(b.displayName || '').slice(0, 50) || null;
     if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 2000);
+    if (b.plannedStart !== undefined) cols.planned_start_ms = b.plannedStart ? new Date(b.plannedStart).getTime() : null;
+    if (b.plannedEnd !== undefined) cols.planned_end_ms = b.plannedEnd ? new Date(b.plannedEnd).getTime() : null;
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) await db.exec('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
 
@@ -210,6 +216,8 @@ router.put('/phase-items', async (req, res, next) => {
     const cols = {};
     if (b.title !== undefined) cols.title = String(b.title || '').slice(0, 300);
     if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 2000);
+    if (b.plannedStart !== undefined) cols.planned_start_ms = b.plannedStart ? new Date(b.plannedStart).getTime() : null;
+    if (b.plannedEnd !== undefined) cols.planned_end_ms = b.plannedEnd ? new Date(b.plannedEnd).getTime() : null;
     if (b.done !== undefined) { cols.done = b.done ? 1 : 0; cols.completed_ms = b.done ? Date.now() : null; }
     if (b.sortOrder !== undefined) cols.sort_order = Number(b.sortOrder) || 0;
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');

@@ -219,8 +219,10 @@ CREATE TABLE IF NOT EXISTS project_phases (
   display_name VARCHAR(50) NULL,
   status VARCHAR(8) NOT NULL DEFAULT 'todo',     -- todo|doing|done|skipped
   note TEXT NULL,
-  started_at_ms BIGINT NULL,
-  finished_at_ms BIGINT NULL,
+  planned_start_ms BIGINT NULL,                -- 规划开始
+  planned_end_ms BIGINT NULL,                  -- 规划完成（里程碑日期）
+  started_at_ms BIGINT NULL,                   -- 实际开始
+  finished_at_ms BIGINT NULL,                  -- 实际完成
   UNIQUE KEY uq_project_phase (project_id, phase_idx),
   KEY idx_project (project_id)
 ) ENGINE=InnoDB;

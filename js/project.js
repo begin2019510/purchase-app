@@ -139,6 +139,11 @@ function renderProjectCard(p) {
 
   h += '<div class="pj-meta">';
   h += '<span class="td2-chip">' + (st.pct >= 100 ? '🏁 通关' : 'P' + cur + ' 进行中') + '</span>';
+  var _cph = phases[cur];
+  if (_cph && _cph.plannedEnd) {
+    var _pd = new Date(Number(_cph.plannedEnd));
+    h += '<span class="td2-chip">🎯 计划 ' + (_pd.getMonth() + 1) + '/' + _pd.getDate() + '</span>';
+  }
   if (p.dueDate) h += '<span class="td2-due ' + getDueClass(p.dueDate, p.status) + '">' + formatDueDate(p.dueDate) + '</span>';
   if (spend > 0) h += '<span class="td2-chip">💰 ' + pjMoney(spend) + '</span>';
   h += '</div>';
@@ -148,6 +153,21 @@ function renderProjectCard(p) {
   }
   h += '</div>';
   return h;
+}
+
+// ===== 主题色板 =====
+function renderProjColors(selected) {
+  var el = document.getElementById('pjfColors');
+  if (!el) return;
+  var colors = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6', '#64748b'];
+  el.innerHTML = colors.map(function(c) {
+    return '<button type="button" class="pjf-color' + (c === selected ? ' sel' : '') + '" style="background:' + c + '" onclick="App.project.pickColor(\'' + c + '\')"></button>';
+  }).join('');
+}
+function pickColor(c) {
+  var inp = document.getElementById('projectColor');
+  if (inp) inp.value = c;
+  renderProjColors(c);
 }
 
 // ===== 新建 / 编辑 =====
@@ -164,7 +184,9 @@ function openProjectModal(id) {
     document.getElementById('projectDueDate').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   } else document.getElementById('projectDueDate').value = '';
   document.getElementById('projectStatus').value = p ? p.status : '进行中';
-  document.getElementById('projectColor').value = p ? (p.color || '#6366f1') : '#6366f1';
+  var _c = p ? (p.color || '#6366f1') : '#6366f1';
+  document.getElementById('projectColor').value = _c;
+  renderProjColors(_c);
   overlay.classList.add('active');
 }
 
@@ -276,6 +298,23 @@ function openProjectDetail(id) {
   if (sph.note) html += '<div class="pj-phase-note">' + esc(sph.note) + '</div>';
   if (phSpend > 0) html += '<div class="pj-phase-spend">💰 本阶段花费 ' + pjMoney(phSpend) + '</div>';
 
+  // 规划时间（里程碑）：可编辑
+  var _ds = function(ms) { if (ms == null) return ''; var d = new Date(Number(ms)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  var _dt = function(ms) { if (ms == null) return ''; var d = new Date(Number(ms)); return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  html += '<div class="pj-plan">';
+  html += '<div class="pj-plan-row"><span class="pj-plan-lbl">📅 规划时间</span>'
+    + '<input type="date" id="pjPlanStart" value="' + _ds(sph.plannedStart) + '">'
+    + '<span class="pj-plan-sep">→</span>'
+    + '<input type="date" id="pjPlanEnd" value="' + _ds(sph.plannedEnd) + '">'
+    + '<button class="pj-plan-save" onclick="App.project.savePhasePlan(\'' + id + '\',' + sel + ')">保存</button></div>';
+  if (sph.startedAt || sph.finishedAt) {
+    html += '<div class="pj-actual">'
+      + (sph.startedAt ? '<span>▶ 开始 <b>' + _dt(sph.startedAt) + '</b></span>' : '')
+      + (sph.finishedAt ? '<span>✓ 完成 <b>' + _dt(sph.finishedAt) + '</b></span>' : '')
+      + '</div>';
+  }
+  html += '</div>';
+
   html += '<div class="pj-items">';
   if (!phItems.length) html += '<div class="pj-empty-line">暂无交付物，可添加（可选）</div>';
   phItems.forEach(function(it) {
@@ -362,6 +401,22 @@ async function setPhase(projectId, idx, status) {
     }
   }
   toast(status === 'done' ? '✅ 阶段完成' : status === 'skipped' ? '⏭ 已跳过' : '↩ 已回退');
+  await refreshProjectUI(projectId, idx);
+}
+
+async function savePhasePlan(projectId, idx) {
+  var sEl = document.getElementById('pjPlanStart');
+  var eEl = document.getElementById('pjPlanEnd');
+  var ss = sEl ? sEl.value : '';
+  var ee = eEl ? eEl.value : '';
+  if (ss && ee && ee < ss) { toast('完成日期不能早于开始日期'); return; }
+  var r = await phaseApi({
+    projectId: projectId, phaseIdx: idx,
+    plannedStart: ss ? new Date(ss + 'T00:00:00+08:00').toISOString() : null,
+    plannedEnd: ee ? new Date(ee + 'T23:59:59+08:00').toISOString() : null
+  });
+  if (r && r.error) { toast('保存失败: ' + r.error); return; }
+  toast('📅 规划时间已保存');
   await refreshProjectUI(projectId, idx);
 }
 
@@ -460,6 +515,9 @@ App.project = {
   selectPhase: selectPhase,
   setPhase: setPhase,
   renamePhase: renamePhase,
+  renderProjColors: renderProjColors,
+  pickColor: pickColor,
+  savePhasePlan: savePhasePlan,
   addPhaseItem: addPhaseItem,
   togglePhaseItem: togglePhaseItem,
   deletePhaseItem: deletePhaseItem,
