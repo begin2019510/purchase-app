@@ -1436,3 +1436,49 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .todo-detail-overlay .todo-detail-modal .detail-body{max-height:none;overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .settings-overlay{overscroll-behavior:contain}
 .settings-panel{max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-radius:20px 20px 0 0}
+
+/* ===== 项目模块 2.0（2026-10-17）===== */
+.pj-list{max-width:1100px;margin:0 auto}
+.pj-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-1);transition:transform .12s ease}
+.pj-card:active{transform:scale(.985)}
+.pj-card.pj-dim{opacity:.62}
+.pj-card.pj-child{margin-left:18px;border-left:3px solid var(--border)}
+.pj-top{display:flex;align-items:center;gap:9px}
+.pj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+.pj-name-wrap{flex:1;min-width:0}
+.pj-parent{font-size:10px;color:var(--muted);font-weight:600;margin-bottom:1px}
+.pj-name{font-size:15.5px;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-status{font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.pj-status.pj-act{background:rgba(99,102,241,.12);color:var(--pri)}
+.pj-status.pj-done{background:rgba(16,185,129,.12);color:#059669}
+.pj-status.pj-arch{background:var(--bg);color:var(--muted)}
+.pj-desc{font-size:12px;color:var(--muted);margin:6px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.pj-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:9px}
+.pj-bar i{display:block;height:100%;border-radius:3px;transition:width .4s ease}
+.pj-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.pj-hero{display:flex;align-items:center;gap:16px;background:var(--bg);border-radius:16px;padding:14px 16px;margin-bottom:12px}
+.pj-hero-main{flex:1;min-width:0}
+.pj-hero-name{font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px;line-height:1.3}
+.pj-hero-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted);align-items:center}
+.pj-detail-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.pj-sec-title{font-size:13px;font-weight:800;color:var(--muted);margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.pj-sub{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--border);border-radius:11px;margin-bottom:6px;cursor:pointer}
+.pj-sub:active{background:var(--bg)}
+.pj-sub-name{flex:1;min-width:0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-sub-prog{font-size:11px;color:var(--muted);flex-shrink:0}
+.pj-sub-bar{width:64px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
+.pj-sub-bar i{display:block;height:100%;border-radius:2px}
+.pj-todo{display:flex;align-items:center;gap:9px;padding:10px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.pj-todo:last-of-type{border-bottom:none}
+.pj-todo:active{background:var(--bg)}
+.pj-todo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pj-todo-title{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-todo-done .pj-todo-title{text-decoration:line-through;color:var(--muted)}
+.pj-todo-status{font-size:10px;color:var(--muted);flex-shrink:0}
+.pj-empty-line{text-align:center;padding:18px;color:var(--muted);font-size:12px}
+.pj-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.pj-act{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer}
+.pj-act:active{background:var(--bg)}
+.pj-act span{font-size:15px}
+.pj-act-danger{color:var(--red);border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.05)}

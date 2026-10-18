@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no", viewport-fit=cover">
-<meta name="app-version" content="4.0.38">
+<meta name="app-version" content="4.0.39">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=4.0.38">
+<link rel="stylesheet" href="theme.css?v=4.0.39">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="4.0.38">
+<meta http-equiv="Expires" content="4.0.39">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='4.0.38';
+  var V='4.0.39';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -701,18 +701,18 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=4.0.38"></script>
-<script src="js/particles.js?v=4.0.38"></script>
-<script src="js/auth.js?v=4.0.38"></script>
-<script src="js/api.js?v=4.0.38"></script>
-<script src="js/stats.js?v=4.0.38"></script>
-<script src="js/expense.js?v=4.0.38"></script>
-<script src="js/items.js?v=4.0.38"></script>
-<script src="js/ai.js?v=4.0.38"></script>
-<script src="js/budget.js?v=4.0.38"></script>
-<script src="js/todomodule.js?v=4.0.38"></script>
-  <script src="js/project.js?v=4.0.38"></script>
-<script src="js/app.js?v=4.0.38"></script>
+<script src="js/utils.js?v=4.0.39"></script>
+<script src="js/particles.js?v=4.0.39"></script>
+<script src="js/auth.js?v=4.0.39"></script>
+<script src="js/api.js?v=4.0.39"></script>
+<script src="js/stats.js?v=4.0.39"></script>
+<script src="js/expense.js?v=4.0.39"></script>
+<script src="js/items.js?v=4.0.39"></script>
+<script src="js/ai.js?v=4.0.39"></script>
+<script src="js/budget.js?v=4.0.39"></script>
+<script src="js/todomodule.js?v=4.0.39"></script>
+  <script src="js/project.js?v=4.0.39"></script>
+<script src="js/app.js?v=4.0.39"></script>
 
 
 
@@ -858,54 +858,58 @@
   <div class="modal">
     <div class="modal-header">
       <h3 id="projectModalTitle">新建项目</h3>
-      <button class="modal-close" onclick="closeProjectModal()">&times;</button>
+      <button class="close-btn" onclick="closeProjectModal()">✕</button>
     </div>
-    <input type="hidden" id="projectId">
-    <div class="form-group">
-      <label>项目名称</label>
-      <input id="projectName" class="form-input" placeholder="输入项目名称">
-    </div>
-    <div class="form-group">
-      <label>描述</label>
-      <textarea id="projectDesc" class="form-input" rows="2" placeholder="项目描述"></textarea>
-    </div>
-    <div style="display:flex;gap:10px">
-      <div class="form-group" style="flex:1">
-        <label>截止日期</label>
-        <input type="datetime-local" id="projectDueDate" class="form-input">
+    <div class="modal-body">
+      <input type="hidden" id="projectId">
+      <div class="form-group">
+        <label>项目名称 *</label>
+        <input id="projectName" class="form-input" placeholder="例如：家里装修 / 学习计划">
       </div>
-      <div class="form-group" style="flex:1">
-        <label>状态</label>
-        <select id="projectStatus" class="form-input">
-          <option>进行中</option>
-          <option>已完成</option>
-          <option>已归档</option>
-        </select>
+      <div class="form-group">
+        <label>描述（可选）</label>
+        <textarea id="projectDesc" class="form-input" rows="2" placeholder="目标、范围或备注"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label>截止日期</label>
+          <input type="datetime-local" id="projectDueDate" class="form-input">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>状态</label>
+          <select id="projectStatus" class="form-input">
+            <option>进行中</option>
+            <option>已完成</option>
+            <option>已归档</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label>颜色</label>
+          <input type="color" id="projectColor" class="form-input" value="#6366f1" style="height:44px;padding:4px">
+        </div>
+        <div class="form-group" style="flex:1.6">
+          <label>父项目（可选）</label>
+          <select id="projectParentId" class="form-input"><option value="">无（一级项目）</option></select>
+        </div>
       </div>
     </div>
-    <div class="form-group">
-      <label>标诉色</label>
-      <input type="color" id="projectColor" class="form-input" value="#6366f1" style="height:40px;padding:4px">
-          </div>
-          <div class="form-group" style="flex:1">
-            <label>父项目（可选）</label>
-            <select id="projectParentId" class="form-input"><option value="">无（一级项目）</option></select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeProjectModal()">取消</button>
-      <button class="btn-save" onclick="saveProject()">保存</button>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeProjectModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveProject()">保存</button>
     </div>
   </div>
 </div>
 
 <!-- Project Detail Overlay -->
 <div class="modal-overlay" id="projectDetailOverlay" onclick="if(event.target===this)closeProjectDetail()">
-  <div class="modal" style="max-height:80vh;overflow-y:auto">
+  <div class="modal">
     <div class="modal-header">
       <h3>项目详情</h3>
-      <button class="modal-close" onclick="closeProjectDetail()">&times;</button>
+      <button class="close-btn" onclick="closeProjectDetail()">✕</button>
     </div>
-    <div id="projectDetailBody"></div>
+    <div class="modal-body" id="projectDetailBody"></div>
   </div>
 </div>
 </body>

@@ -28,87 +28,115 @@ async function loadProjects() {
 function renderProject() {
   var el = document.getElementById('projectContent');
   if (!el) return;
-  
+
   var filtered = projectList;
   if (projectFilter !== '全部') {
     filtered = projectList.filter(function(p){ return p.status === projectFilter; });
   }
 
-  var html = '';
-  
-  html += '<div class="chips">';
-  ['全部','进行中','已完成','已归档'].forEach(function(c) {
-    var cnt = c === '全部' ? projectList.length : projectList.filter(function(p){ return p.status === c; }).length;
-    html += '<span class="chip' + (projectFilter === c ? ' active' : '') + '" onclick="projectFilter=' + "'" + c + "'" + ';renderProject()" style="font-size:12px">' + c + ' ' + cnt + '</span>';
-  });
-  html += '</div>';
-
-  html += '<div class="todo-compact-header"><div class="todo-stats-row">';
+  var total = projectList.length;
   var active = projectList.filter(function(p){ return p.status === '进行中'; }).length;
   var done = projectList.filter(function(p){ return p.status === '已完成'; }).length;
-  html += '<div class="todo-stat"><span class="todo-stat-num">' + projectList.length + '</span><span class="todo-stat-lbl">全部</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + active + '</span><span class="todo-stat-lbl">进行中</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#16a34a">' + done + '</span><span class="todo-stat-lbl">完成</span></div>';
+  var archived = projectList.filter(function(p){ return p.status === '已归档'; }).length;
+
+  // 整体完成度：所有未归档项目的关联待办
+  var allTodos = (typeof todoList !== 'undefined' ? todoList : []).filter(function(t){
+    if (t.status === '已取消') return false;
+    var p = projectList.find(function(x){ return x.id === t.projectId; });
+    return !!p && p.status !== '已归档';
+  });
+  var doneTodos = allTodos.filter(function(t){ return t.status === '已完成'; }).length;
+  var pct = allTodos.length > 0 ? Math.round(doneTodos / allTodos.length * 100) : 0;
+  var CIRC = 2 * Math.PI * 26;
+  var dash = (CIRC * pct / 100).toFixed(1);
+
+  var html = '';
+  html += '<div class="td3-header">';
+  html += '<div class="td3-titlebar"><div><div class="td3-title">项目</div><div class="td3-date">' + total + ' 个项目 · ' + active + ' 个进行中</div></div></div>';
+  html += '<div class="td3-hero">';
+  html += '<div class="td3-ring"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="var(--border)" stroke-width="7"/><circle cx="38" cy="38" r="26" fill="none" stroke="var(--pri)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIRC.toFixed(1) + '"/></svg><div class="pct">' + pct + '%</div></div>';
+  html += '<div class="td3-grid">';
+  html += '<div class="td3-cell"><b style="color:var(--pri)">' + active + '</b><span>进行中</span></div>';
+  html += '<div class="td3-cell"><b style="color:var(--green)">' + done + '</b><span>已完成</span></div>';
+  html += '<div class="td3-cell"><b style="color:var(--muted)">' + archived + '</b><span>已归档</span></div>';
+  html += '<div class="td3-cell"><b>' + allTodos.length + '</b><span>关联待办</span></div>';
+  html += '</div></div>';
+  html += '<div class="td3-chips">';
+  ['全部','进行中','已完成','已归档'].forEach(function(c) {
+    var cnt = c === '全部' ? total : projectList.filter(function(p){ return p.status === c; }).length;
+    html += '<span class="chip' + (projectFilter === c ? ' active' : '') + '" onclick="projectFilter=\'' + c + '\';renderProject()">' + c + ' ' + cnt + '</span>';
+  });
   html += '</div></div>';
 
   if (filtered.length === 0) {
-    html += '<div class="todo-empty"><div class="todo-empty-icon">📁</div>';
-    html += '<div class="todo-empty-text">' + (projectFilter === '全部' ? '暂无项目' : '无' + projectFilter + '的项目') + '</div></div>';
+    html += '<div class="td3-empty"><div class="ico">📁</div><div class="t">' + (projectFilter === '全部' ? '还没有项目' : '无' + projectFilter + '的项目') + '</div><div class="s">点右上角 + 新建一个项目</div></div>';
     el.innerHTML = html;
     return;
   }
 
-  // Build hierarchy: parent projects first, then children
-  var parents = filtered.filter(function(p){ return !p.parentId; });
-  var children = filtered.filter(function(p){ return p.parentId; });
-  
-  parents.forEach(function(p) {
-    html += renderProjectCard(p, false);
-    // Render children indented
-    var kids = children.filter(function(c){ return c.parentId === p.id; });
-    kids.forEach(function(k) {
-      html += renderProjectCard(k, true, p.name);
-    });
+  // 分组渲染（进行中 / 已完成 / 已归档）
+  var groups = { '进行中': [], '已完成': [], '已归档': [] };
+  filtered.forEach(function(p){
+    var g = groups[p.status] ? p.status : '进行中';
+    groups[g].push(p);
   });
-  
-  // Orphan children (parent not in filtered)
-  var orphanKids = children.filter(function(c){ return !parents.some(function(p){ return p.id === c.parentId; }); });
-  orphanKids.forEach(function(k) {
-    html += renderProjectCard(k, false);
+  var meta = { '进行中': { dot: 'var(--pri)' }, '已完成': { dot: 'var(--green)' }, '已归档': { dot: 'var(--muted)' } };
+
+  ['进行中','已完成','已归档'].forEach(function(g){
+    var arr = groups[g];
+    if (!arr.length) return;
+    html += '<div class="td3-sec"><span class="td3-dot" style="background:' + meta[g].dot + '"></span>' + g + '<span class="td3-n">' + arr.length + '</span></div>';
+    html += '<div class="pj-list">';
+    var parents = arr.filter(function(p){ return !p.parentId; });
+    var kids = arr.filter(function(p){ return p.parentId; });
+    parents.forEach(function(p) {
+      html += renderProjectCard(p, false);
+      kids.filter(function(k){ return k.parentId === p.id; }).forEach(function(k) {
+        html += renderProjectCard(k, true, p.name);
+      });
+    });
+    kids.filter(function(c){ return !parents.some(function(p){ return p.id === c.parentId; }); }).forEach(function(k) {
+      html += renderProjectCard(k, false);
+    });
+    html += '</div>';
   });
 
   el.innerHTML = html;
 }
 
 function renderProjectCard(p, isChild, parentName) {
-  var linkedTodos = todoList.filter(function(t){ return t.projectId === p.id && t.status !== '已取消'; });
+  var linkedTodos = (typeof todoList !== 'undefined' ? todoList : []).filter(function(t){ return t.projectId === p.id && t.status !== '已取消'; });
   var totalTodos = linkedTodos.length;
   var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完成'; }).length;
   var pct = totalTodos > 0 ? Math.round(doneTodos / totalTodos * 100) : 0;
-  var priColor = p.color || '#6366f1';
+  var color = p.color || '#6366f1';
   var isDone = p.status === '已完成' || p.status === '已归档';
+  var kidsN = projectList.filter(function(x){ return x.parentId === p.id; }).length;
 
-  var h = '<div class="todo-card' + (isDone ? ' todo-done' : '') + (isChild ? ' project-child-card' : '') + '" onclick="openProjectDetail(\'' + p.id + '\')">';
-  h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
-  h += '<div class="todo-card-inner"><div class="todo-card-main"><div class="todo-card-content">';
-  if (isChild && parentName) {
-    h += '<div style="font-size:10px;color:var(--muted);margin-bottom:2px">' + esc(parentName) + ' ›</div>';
-  }
-  h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + (isChild ? '📋 ' : '📁 ') + esc(p.name) + '</div>';
-  if (p.description) h += '<div style="font-size:12px;color:var(--muted);margin:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:250px">' + esc(p.description) + '</div>';
-  h += '<div class="todo-card-meta">';
-  var _ps = p.status=='已完成'?'a-badge-green':p.status=='已归档'?'a-badge-gray':'a-badge-blue';
-  h += '<span class="a-badge ' + _ps + '">' + p.status + '</span>';
-  if (p.dueDate) h += '<span class="todo-card-due">📅 ' + formatDueDate(p.dueDate) + '</span>';
-  h += '<span class="todo-card-progress">📋 ' + doneTodos + '/' + totalTodos + '</span>';
+  var h = '<div class="pj-card' + (isDone ? ' pj-dim' : '') + (isChild ? ' pj-child' : '') + '" onclick="openProjectDetail(\'' + p.id + '\')">';
+  h += '<div class="pj-top">';
+  h += '<span class="pj-dot" style="background:' + color + '"></span>';
+  h += '<div class="pj-name-wrap">';
+  if (isChild && parentName) h += '<div class="pj-parent">' + esc(parentName) + ' ›</div>';
+  h += '<div class="pj-name">' + esc(p.name) + '</div>';
   h += '</div>';
-  h += '<div class="todo-card-progress-bar"><div class="todo-card-progress-fill" style="width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + '"></div></div>';
+  h += '<span class="pj-status pj-' + (p.status==='已完成'?'done':p.status==='已归档'?'arch':'act') + '">' + p.status + '</span>';
+  h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  h += '</div>';
+  if (p.description) h += '<div class="pj-desc">' + esc(p.description) + '</div>';
+  h += '<div class="pj-meta">';
+  if (p.dueDate) h += '<span class="td2-due ' + getDueClass(p.dueDate, p.status) + '">' + formatDueDate(p.dueDate) + '</span>';
+  h += '<span class="td2-chip">☑ ' + doneTodos + '/' + totalTodos + '</span>';
+  if (kidsN) h += '<span class="td2-chip">📁 子项目 ' + kidsN + '</span>';
+  h += '</div>';
+  h += '<div class="pj-bar"><i style="width:' + pct + '%;background:' + (pct>=100?'var(--green)':color) + '"></i></div>';
   if (p.status === '已完成') {
-    h += '<button onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')" class="a-btn a-btn-secondary" style="margin-top:6px;min-height:30px;font-size:12px;padding:0 12px">归档</button>';
+    h += '<div class="pj-actions"><button class="td3-mini" onclick="event.stopPropagation();archiveProject(\'' + p.id + '\')">归档</button></div>';
   }
-  h += '</div></div></div></div>';
+  h += '</div>';
   return h;
 }
+
 function openProjectModal(id) {
   var overlay = document.getElementById('projectModalOverlay');
   if (!overlay) return;
@@ -194,77 +222,66 @@ async function deleteProject(id) {
 function openProjectDetail(id) {
   var overlay = document.getElementById('projectDetailOverlay');
   if (!overlay) return;
-
   var p = projectList.find(function(x){ return x.id === id; });
   if (!p) return;
 
-  var linkedTodos = todoList.filter(function(t){ return t.projectId === id; });
+  var linkedTodos = (typeof todoList !== 'undefined' ? todoList : []).filter(function(t){ return t.projectId === id; });
   var totalTodos = linkedTodos.length;
-  var doneTodos = linkedTodos.filter(function(t){ return t.status === '\u5df2\u5b8c\u6210'; }).length;
+  var doneTodos = linkedTodos.filter(function(t){ return t.status === '已完成'; }).length;
   var pct = totalTodos > 0 ? Math.round(doneTodos / totalTodos * 100) : 0;
-  var priColor = p.color || '#6366f1';
+  var color = p.color || '#6366f1';
+  var CIRC = 2 * Math.PI * 26;
+  var dash = (CIRC * pct / 100).toFixed(1);
 
   var html = '';
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">';
-  html += '<div style="width:16px;height:16px;border-radius:50%;background:' + priColor + '"></div>';
-  html += '<h3 style="margin:0;font-size:18px">' + esc(p.name) + '</h3>';
-  html += '</div>';
+  html += '<div class="pj-hero">';
+  html += '<div class="td3-ring"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="var(--border)" stroke-width="7"/><circle cx="38" cy="38" r="26" fill="none" stroke="' + color + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIRC.toFixed(1) + '"/></svg><div class="pct">' + pct + '%</div></div>';
+  html += '<div class="pj-hero-main">';
+  html += '<div class="pj-hero-name"><span class="pj-dot" style="background:' + color + '"></span>' + esc(p.name) + '</div>';
+  html += '<div class="pj-hero-stats"><span>☑ ' + doneTodos + '/' + totalTodos + ' 待办</span>' + (p.dueDate ? '<span>📅 ' + formatDueDate(p.dueDate) + '</span>' : '') + '<span class="pj-status pj-' + (p.status==='已完成'?'done':p.status==='已归档'?'arch':'act') + '">' + p.status + '</span></div>';
+  html += '</div></div>';
+  if (p.description) html += '<div class="pj-detail-desc">' + esc(p.description) + '</div>';
 
-  if (p.description) {
-    html += '<div style="color:var(--muted);font-size:13px;margin-bottom:12px">' + esc(p.description) + '</div>';
-  }
-
-  // Stats
-  html += '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">';
-  html += '<div style="background:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px"><span style="font-weight:700;color:' + priColor + '">' + pct + '%</span> \u5b8c\u6210</div>';
-  html += '<div style="background:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px"><span style="font-weight:700">' + totalTodos + '</span> \u5f85\u529e</div>';
-  html += '<div style="background:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px"><span style="font-weight:700;color:#16a34a">' + doneTodos + '</span> \u5b8c\u6210</div>';
-  if (p.dueDate) {
-    html += '<div style="background:var(--bg);padding:8px 14px;border-radius:10px;font-size:13px">\ud83d\udcc5 ' + formatDueDate(p.dueDate) + '</div>';
-  }
-  html += '</div>';
-
-  // Progress bar
-  html += '<div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;margin-bottom:20px"><div style="height:100%;width:' + pct + '%;background:' + (pct>=100?'#16a34a':priColor) + ';border-radius:4px;transition:width .3s"></div></div>';
-
-  // Sub-projects
+  // 子项目
   var subProjects = projectList.filter(function(sp){ return sp.parentId === id; });
   if (subProjects.length > 0) {
-    html += '<h4 style="margin:0 0 10px;font-size:14px">\ud83d\udcc1 \u5b50\u9879\u76ee</h4>';
+    html += '<div class="pj-sec-title">📁 子项目</div>';
     subProjects.forEach(function(sp) {
-      var spTodos = todoList.filter(function(t){ return t.projectId === sp.id && t.status !== '\u5df2\u53d6\u6d88'; });
-      var spDone = spTodos.filter(function(t){ return t.status === '\u5df2\u5b8c\u6210'; }).length;
+      var spTodos = (typeof todoList !== 'undefined' ? todoList : []).filter(function(t){ return t.projectId === sp.id && t.status !== '已取消'; });
+      var spDone = spTodos.filter(function(t){ return t.status === '已完成'; }).length;
       var spPct = spTodos.length > 0 ? Math.round(spDone / spTodos.length * 100) : 0;
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="closeProjectDetail();openProjectDetail(\'' + sp.id + '\')">';
-      html += '<div style="width:10px;height:10px;border-radius:50%;background:' + (sp.color || priColor) + '"></div>';
-      html += '<span style="flex:1;font-size:13px">\ud83d\udccb ' + esc(sp.name) + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)">' + spDone + '/' + spTodos.length + '</span>';
+      html += '<div class="pj-sub" onclick="closeProjectDetail();openProjectDetail(\'' + sp.id + '\')">';
+      html += '<span class="pj-dot" style="background:' + (sp.color || color) + '"></span>';
+      html += '<span class="pj-sub-name">' + esc(sp.name) + '</span>';
+      html += '<span class="pj-sub-prog">' + spDone + '/' + spTodos.length + '</span>';
+      html += '<span class="pj-sub-bar"><i style="width:' + spPct + '%;background:' + (sp.color || color) + '"></i></span>';
       html += '</div>';
     });
   }
 
-  // Linked todos
-  html += '<h4 style="margin:12px 0 10px;font-size:14px">\u5173\u8054\u5f85\u529e</h4>';
+  // 关联待办
+  html += '<div class="pj-sec-title">☑ 关联待办 <span class="td3-n">' + linkedTodos.length + '</span></div>';
   if (linkedTodos.length === 0) {
-    html += '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">\u6682\u65e0\u5173\u8054\u5f85\u529e</div>';
+    html += '<div class="pj-empty-line">暂无关联待办，点下方「新建待办」添加</div>';
   } else {
     linkedTodos.forEach(function(t) {
-      var tPriColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-      var tDone = t.status === '\u5df2\u5b8c\u6210';
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer" onclick="closeProjectDetail();openTodoDetail(\'' + t.id + '\')">';
-      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + tPriColor + ';flex-shrink:0"></div>';
-      html += '<span style="flex:1;font-size:13px;' + (tDone ? 'text-decoration:line-through;opacity:.5' : '') + '">' + esc(t.title) + '</span>';
-      html += '<span style="font-size:11px;color:var(--muted)">' + t.status + '</span>';
+      var tDone = t.status === '已完成';
+      var priColor = t.priority === '高' ? 'var(--red)' : t.priority === '低' ? 'var(--muted)' : 'var(--orange)';
+      html += '<div class="pj-todo' + (tDone ? ' pj-todo-done' : '') + '" onclick="closeProjectDetail();openTodoDetail(\'' + t.id + '\')">';
+      html += '<span class="pj-todo-dot" style="background:' + (tDone ? 'var(--green)' : priColor) + '"></span>';
+      html += '<span class="pj-todo-title">' + esc(t.title) + '</span>';
+      html += '<span class="pj-todo-status">' + t.status + '</span>';
       html += '</div>';
     });
   }
 
-  // Actions
-  html += '<div class="detail-actions" style="margin-top:16px">';
-  html += '<button class="btn-action btn-complete" onclick="closeProjectDetail();openProjectModalForParent(\'' + id + '\')">\u2795 \u65b0\u5efa\u5b50\u9879\u76ee</button>';
-  html += '<button class="btn-action btn-complete" onclick="closeProjectDetail();openTodoModalForProject(\'' + id + '\')">\u2795 \u65b0\u5efa\u5f85\u529e</button>';
-  html += '<button class="btn-action btn-edit" onclick="closeProjectDetail();openProjectModal(\'' + id + '\')">\u270f\ufe0f \u7f16\u8f91</button>';
-  html += '<button class="btn-action btn-delete" onclick="deleteProject(\'' + id + '\')">\ud83d\uddd1\ufe0f \u5220\u9664</button>';
+  // 操作区
+  html += '<div class="pj-actions-grid">';
+  html += '<button class="pj-act" onclick="closeProjectDetail();openProjectModalForParent(\'' + id + '\')"><span>📁</span>新建子项目</button>';
+  html += '<button class="pj-act" onclick="closeProjectDetail();openTodoModalForProject(\'' + id + '\')"><span>☑</span>新建待办</button>';
+  html += '<button class="pj-act" onclick="closeProjectDetail();openProjectModal(\'' + id + '\')"><span>✏️</span>编辑</button>';
+  if (p.status === '已完成') html += '<button class="pj-act" onclick="archiveProject(\'' + id + '\');closeProjectDetail()"><span>🗄️</span>归档</button>';
+  html += '<button class="pj-act pj-act-danger" onclick="deleteProject(\'' + id + '\')"><span>🗑️</span>删除</button>';
   html += '</div>';
 
   document.getElementById('projectDetailBody').innerHTML = html;

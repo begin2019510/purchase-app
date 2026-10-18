@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.38";
+const APP_VERSION = "4.0.39";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.39',date:'2026-10-17',items:['项目模块大改第一版：列表按状态分组、项目卡片带进度条与子项目、详情页环形进度+子项目/关联待办+操作网格','项目新建/编辑弹窗重做：修复错别字与破损布局，改为底部弹层']},
 {v:'4.0.38',date:'2026-10-17',items:['追加预算支持来源说明：预设 工资结余/年终奖/兼职/红包/理财/退款/节省开支 + 自定义来源，历史追加记录可查看与删除','网页端更新自愈：检测到新版本自动重载一次']},
 {v:'4.0.37',date:'2026-10-17',items:['修复全站弹层滚动：二级页面打开后背景不再跟着滚（iOS position:fixed 锁定），弹层内可正常滑动','新建/编辑待办改为 iOS 底部弹层：标题与关闭按钮同行、内容区滚动、保存按钮固定底部']},
 {v:'4.0.36',date:'2026-10-17',items:['修复 Service Worker 缓存版本号未随版本更新的问题（此前新旧缓存混用，导致界面更新不生效）']},
