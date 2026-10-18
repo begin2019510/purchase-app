@@ -163,7 +163,7 @@ function setupPullToRefresh(){
   var MAXPULL=90;
 
   function blockedByUI(){
-    if(document.querySelector('.overlay.active,.modal-overlay.active'))return true;
+    if(document.querySelector('.overlay.active,.modal-overlay.active,.todo-detail-overlay.active,.settings-overlay.active'))return true;
     return false;   // 2026-10-17 修复：此前错误地禁用了待办/项目/统计页的下拉刷新
   }
   function setState(s){
@@ -710,36 +710,30 @@ function settingsAction(action){
 setupPullToRefresh();
 setupSwipe();
 
-// ===== Modal Scroll Lock =====
-// Lock body scroll when any modal overlay is open
+// ===== Modal Scroll Lock v2（2026-10-17）=====
+// iOS 上 body overflow:hidden 锁不住页面，改用 position:fixed + 记录滚动位置；
+// 覆盖所有弹层类型（modal-overlay / overlay / todo-detail-overlay / settings-overlay）
 (function(){
-  function updateScrollLock(){
-    var hasActive = document.querySelector('.modal-overlay.active');
-    if(hasActive){
+  var lockedY = 0;
+  var SEL = '.modal-overlay.active, .overlay.active, .todo-detail-overlay.active, .settings-overlay.active';
+  function anyOverlay(){ return !!document.querySelector(SEL); }
+  function update(){
+    var has = anyOverlay();
+    var locked = document.body.classList.contains('modal-open');
+    if (has && !locked) {
+      lockedY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.top = (-lockedY) + 'px';
       document.body.classList.add('modal-open');
-    }else{
+    } else if (!has && locked) {
       document.body.classList.remove('modal-open');
+      document.body.style.top = '';
+      window.scrollTo(0, lockedY);
     }
   }
-  // Intercept touchmove when modal is open to prevent background scroll
-  document.addEventListener('touchmove', function(e){
-    if(!document.querySelector('.modal-overlay.active')) return;
-    var modal = e.target.closest('.modal');
-    if(!modal){
-      e.preventDefault();
-    }
-  }, {passive:false});
-  // Watch for class changes on modal overlays
-  var observer = new MutationObserver(function(mutations){
-    for(var i=0;i<mutations.length;i++){
-      if(mutations[i].attributeName==='class' && mutations[i].target.classList.contains('modal-overlay')){
-        updateScrollLock();
-        return;
-      }
-    }
-  });
-  observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
-})();
+  var observer = new MutationObserver(update);
+  observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  update();
+})();;
 
 
 

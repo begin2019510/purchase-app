@@ -1397,3 +1397,42 @@ body.dark .gantt-overdue-bar{background:#451a1a;color:#fca5a5}
 .td3-empty .ico{font-size:52px;opacity:.55;margin-bottom:14px}
 .td3-empty .t{font-size:16px;font-weight:800;margin-bottom:5px}
 .td3-empty .s{font-size:13px;color:var(--muted)}
+
+/* ===== 弹窗系统 2.0（2026-10-17）：滚动锁 + iOS 底部弹层 ===== */
+/* body 锁：position:fixed 方案（iOS 唯一可靠），保留滚动位置由 JS 处理 */
+body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+
+/* 结构化弹窗（含 modal-header/body）：头部固定 + 内容区滚动 + 底部按钮固定 */
+.modal:has(.modal-header){
+  display:flex;flex-direction:column;padding:0;overflow:hidden;
+  max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);
+  box-shadow:0 24px 64px rgba(0,0,0,.28);
+}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 8px;flex-shrink:0}
+.modal-header h2,.modal-header h3{font-size:17px;font-weight:800;margin:0;text-align:left;line-height:1.3}
+.close-btn{width:30px;height:30px;border-radius:50%;border:none;background:var(--bg);color:var(--muted);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0}
+.close-btn:active{background:var(--border)}
+.modal-body{padding:4px 20px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;flex:1;min-height:0}
+.modal-body .form-group{margin-bottom:14px}
+.modal-body>label,.modal-body .form-group>label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.2px}
+.modal:has(.modal-body) .btn-row{margin:0;padding:12px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex-shrink:0;background:var(--card)}
+.modal:has(.modal-body) .btn-row .btn{flex:1;min-height:46px;border-radius:13px;font-size:15px;font-weight:700}
+
+/* 移动端：底部弹层（sheet） */
+@media(max-width:767px){
+  .modal-overlay{align-items:flex-end;justify-content:center;padding:0}
+  .modal:has(.modal-header){
+    max-width:100%;width:100%;margin:0;
+    border-radius:20px 20px 0 0;
+    max-height:90vh;max-height:90dvh;
+    animation:sheetUp .28s cubic-bezier(.25,.8,.35,1);
+  }
+  @keyframes sheetUp{from{transform:translateY(60px);opacity:.5}to{transform:translateY(0);opacity:1}}
+}
+
+/* 其他弹层自身可滚动（详情/设置/报告） */
+.todo-detail-overlay{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px}
+.todo-detail-overlay .todo-detail-modal{margin:auto;max-height:calc(100dvh - 32px);display:flex;flex-direction:column}
+.todo-detail-overlay .todo-detail-modal .detail-body{max-height:none;overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.settings-overlay{overscroll-behavior:contain}
+.settings-panel{max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-radius:20px 20px 0 0}
