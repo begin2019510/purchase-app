@@ -47,7 +47,7 @@ function getWeekForDate(ds,ym){
 }
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
-function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
+function setWeekBudgets(m,total,pw,wo){const b=getBudgets();const prev=(b[m]&&typeof b[m]==='object')?b[m]:{};b[m]={total:total,perWeek:pw||0,weeks:wo||{}};if(prev.additions)b[m].additions=prev.additions;setBudgets(b)}
 function renderWeekBudgetInputs(m,total){
   const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);

@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.37";
+const APP_VERSION = "4.0.38";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.38',date:'2026-10-17',items:['追加预算支持来源说明：预设 工资结余/年终奖/兼职/红包/理财/退款/节省开支 + 自定义来源，历史追加记录可查看与删除','网页端更新自愈：检测到新版本自动重载一次']},
 {v:'4.0.37',date:'2026-10-17',items:['修复全站弹层滚动：二级页面打开后背景不再跟着滚（iOS position:fixed 锁定），弹层内可正常滑动','新建/编辑待办改为 iOS 底部弹层：标题与关闭按钮同行、内容区滚动、保存按钮固定底部']},
 {v:'4.0.36',date:'2026-10-17',items:['修复 Service Worker 缓存版本号未随版本更新的问题（此前新旧缓存混用，导致界面更新不生效）']},
 {v:'4.0.35',date:'2026-10-17',items:['更新机制改进：页面壳改为网络优先（2.5 秒超时回退缓存），以后打开 App 立即拿到最新界面，不再等缓存静默更新']},
