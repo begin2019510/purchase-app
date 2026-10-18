@@ -364,7 +364,8 @@ function openProjectDetail(id) {
 
   html += '<div class="pj-phase-actions">';
   if (phStatus !== 'done') html += '<button class="pj-pa pj-pa-ok" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'done\')">✓ 完成本阶段</button>';
-  if (phStatus !== 'skipped') html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'skipped\')">⏭ 跳过</button>';
+  if (phStatus !== 'skipped' && sel !== 5) html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'skipped\')">⏭ 跳过</button>';
+  if (sel === 5 && phStatus !== 'done' && phStatus !== 'skipped') html += '<div class="pj-p5-hint">🔒 P5 是最终阶段，必须完成本阶段才能通关</div>';
   if (phStatus !== 'todo') html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'todo\')">↩ 回退</button>';
   html += '</div>';
   html += '</div>';
@@ -440,6 +441,7 @@ function selectPhase(projectId, idx) {
 }
 
 async function setPhase(projectId, idx, status) {
+  if (status === 'skipped' && idx === 5) { toast('P5 是最终阶段，必须完成，不能跳过'); return; }
   var p = projectList.find(function(x) { return x.id === projectId; });
   if (status === 'skipped' && !confirm('跳过 P' + idx + '？\n跳过不参与进度分母，可随时回退')) return;
   if (status === 'done' && !confirm('完成 P' + idx + '？\n若是最后一个实际经历的阶段，项目将自动通关')) return;

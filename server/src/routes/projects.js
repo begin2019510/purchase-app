@@ -73,6 +73,20 @@ router.get('/projects', async (req, res, next) => {
       o.ledger = [];
       byProject[p.id] = o;
     }
+    // 自愈：缺阶段的旧项目补齐 P0~P5
+    const have = {};
+    phases.forEach(ph => { (have[ph.project_id] = have[ph.project_id] || new Set()).add(Number(ph.phase_idx)); });
+    for (const p of projects) {
+      for (let i = 0; i < PHASE_COUNT; i++) {
+        if (!have[p.id] || !have[p.id].has(i)) {
+          try {
+            await db.exec('INSERT IGNORE INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [p.id, i, 'todo']);
+            phases.push({ project_id: p.id, phase_idx: i, display_name: null, status: 'todo', note: '', planned_start_ms: null, planned_end_ms: null, started_at_ms: null, finished_at_ms: null });
+          } catch (e) {}
+        }
+      }
+      phases.sort((a, b) => Number(a.project_id) - Number(b.project_id) || Number(a.phase_idx) - Number(b.phase_idx));
+    }
     for (const ph of phases) {
       const o = byProject[ph.project_id]; if (!o) continue;
       o.phases.push({
@@ -170,6 +184,10 @@ router.put('/phases', async (req, res, next) => {
     if (!ph) return res.status(404).json({ error: 'phase not found' });
 
     const cols = {};
+    // 强制规则：P5 是最终阶段，不允许跳过
+    if (b.status === 'skipped' && idx === 5) {
+      return res.status(400).json({ error: 'P5 是最终阶段，必须完成，不能跳过' });
+    }
     if (b.status !== undefined) {
       const st = b.status;
       if (!['todo', 'doing', 'done', 'skipped'].includes(st)) return res.status(400).json({ error: 'bad status' });
@@ -185,14 +203,9 @@ router.put('/phases', async (req, res, next) => {
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) await db.exec('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
 
-    // 完成最后一段「实际经历」的阶段 → 项目自动通关
-    if (b.status === 'done') {
-      const all = await db.query('SELECT phase_idx, status FROM project_phases WHERE project_id = ?', [pid]);
-      const active = all.filter(x => x.status !== 'skipped');
-      const lastIdx = active.length ? Math.max(...active.map(x => Number(x.phase_idx))) : -1;
-      if (idx === lastIdx && all.some(x => Number(x.phase_idx) === idx && (b.status === 'done'))) {
-        await db.exec("UPDATE projects SET status = '已完成' WHERE id = ?", [pid]);
-      }
+    // 强制规则：只有 P5 完成才算通关
+    if (b.status === 'done' && idx === 5) {
+      await db.exec("UPDATE projects SET status = '已完成', current_phase = 5 WHERE id = ?", [pid]);
     }
     res.json({ ok: true });
   } catch (e) { next(e); }
