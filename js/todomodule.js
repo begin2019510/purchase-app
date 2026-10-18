@@ -1042,7 +1042,6 @@ function cycleTodoStatus(id) {
       if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; render(); return; }
       if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){renderTodo();}); }
       else toast(nextStatus === '已完成' ? '✅ 已完成' : nextStatus === '进行中' ? '▶ 进行中' : '↩ 已恢复待办');
-      if (t.projectId) checkProjectAutoStatus(t.projectId);
       if (nextStatus === '已完成' || nextStatus === '已取消') cancelLocalNotification(t);
       else if (t.reminders) scheduleLocalNotification(t);
     } catch(e) { t.status = oldStatus; render(); toast('操作失败: ' + e.message); }
@@ -1091,8 +1090,9 @@ async function toggleTodoSubtask(todoId, index) {
   } catch(e) {}
 }
 // Project auto-status check
+// 已按 PROJECT-PHASE-DESIGN 废除：Todo 完成度不再驱动项目状态（阶段说了算）
 function checkProjectAutoStatus(projectId) {
-  if (!projectId || typeof projectList === 'undefined') return;
+  return; // no-op
   var linked = todoList.filter(function(t){ return t.projectId === projectId; });
   if (linked.length === 0) return;
   var allDone = linked.every(function(t){ return t.status === '已完成'; });

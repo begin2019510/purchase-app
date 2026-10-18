@@ -408,9 +408,9 @@ async function loadAll(){
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
 
   // Stale-while-revalidate: 缓存秒开（7天有效），后台校验，仅真首次冷启动见骨架
-  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos');
+  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos'),cp=getCachedData('projects');
   var renderedFromCache=false;
-  if(ci&&ce){items=ci;expenses=ce;if(ct)todoList=ct;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){} renderedFromCache=true}
+  if(ci&&ce){items=ci;expenses=ce;if(ct)todoList=ct;if(cp&&typeof projectList!=='undefined')projectList=cp;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){} renderedFromCache=true}
   else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}
   var preSnap=_snap();
 

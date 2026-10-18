@@ -123,8 +123,10 @@ CREATE TABLE IF NOT EXISTS projects (
   status      VARCHAR(6) NOT NULL DEFAULT '进行中',  -- 进行中|已完成|已归档
   color       VARCHAR(20) NULL,
   progress    INT NOT NULL DEFAULT 0,
-  parent_id   VARCHAR(40) NULL,                  -- 父项目ID（只读层级）
+  parent_id   VARCHAR(40) NULL,                  -- 父项目ID（旧数据只读）
   due_iso     VARCHAR(60) NULL,                  -- 截止日期ISO
+  current_phase TINYINT NOT NULL DEFAULT 0,      -- 阶段指针 0~5
+  legacy_flag   TINYINT NOT NULL DEFAULT 0,      -- 旧层级项目只读标记
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user (user_id, status)
@@ -207,4 +209,32 @@ CREATE TABLE IF NOT EXISTS login_fails (
   ip         VARCHAR(45) PRIMARY KEY,
   times      JSON NOT NULL,                   -- [ts...] 15 分钟窗口
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ===== P0~P5 阶段（PROJECT-PHASE-DESIGN）=====
+CREATE TABLE IF NOT EXISTS project_phases (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id BIGINT UNSIGNED NOT NULL,
+  phase_idx TINYINT NOT NULL,
+  display_name VARCHAR(50) NULL,
+  status VARCHAR(8) NOT NULL DEFAULT 'todo',     -- todo|doing|done|skipped
+  note TEXT NULL,
+  started_at_ms BIGINT NULL,
+  finished_at_ms BIGINT NULL,
+  UNIQUE KEY uq_project_phase (project_id, phase_idx),
+  KEY idx_project (project_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS phase_items (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id BIGINT UNSIGNED NOT NULL,
+  phase_idx TINYINT NOT NULL,
+  title VARCHAR(300) NOT NULL,
+  done TINYINT NOT NULL DEFAULT 0,
+  image_ref VARCHAR(500) NULL,
+  note TEXT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  completed_ms BIGINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_project_phase (project_id, phase_idx)
 ) ENGINE=InnoDB;

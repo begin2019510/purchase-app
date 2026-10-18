@@ -6,6 +6,9 @@ const H = require('../lib/helpers');
 const { requireAuth, guard } = require('../middleware');
 
 const router = express.Router();
+
+function _projId(b){var m=/^rec_(\d+)$/.exec(String(b.projectId||''));return m?Number(m[1]):null;}
+function _phaseIdx(b){if(b.phaseIdx===null||b.phaseIdx===undefined||b.phaseIdx==='')return null;var n=Number(b.phaseIdx);return isNaN(n)?null:n;}
 router.use(guard(['expenses']));
 
 function rowToExpense(r) {
@@ -19,6 +22,8 @@ function rowToExpense(r) {
     '分摊周数': Number(r.split_weeks) || 0,
     '分摊开始周': r.split_start_week || '',
     '图片': r.image_ref || '',
+    '项目ID': r.project_id ? 'rec_' + r.project_id : '',
+    '阶段': r.phase_idx == null ? null : Number(r.phase_idx),
   };
 }
 
@@ -44,11 +49,11 @@ router.post('/expenses', async (req, res, next) => {
     if (b.imageKey) imageRef = 'kv:' + b.imageKey;
     else if (b.image && b.image.length <= 30000) imageRef = b.image;
     const [ins] = await db.pool.query(
-      `INSERT INTO expenses (user_id,type,category,amount,date_ms,note,image_ref,split_weeks,split_start_week)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO expenses (user_id,type,category,amount,date_ms,note,image_ref,split_weeks,split_start_week,project_id,phase_idx)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, b.type || '支出', b.category || '其他', amount, H.dateStrToTs(b.date),
         String(b.note || '').slice(0, 500), imageRef,
-        b.splitWeeks ? Number(b.splitWeeks) || 0 : null, b.splitStartWeek || null]);
+        b.splitWeeks ? Number(b.splitWeeks) || 0 : null, b.splitStartWeek || null, _projId(b), _phaseIdx(b)]);
     res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
   } catch (e) { next(e); }
 });
@@ -73,6 +78,8 @@ router.put('/expenses', async (req, res, next) => {
     if (b.splitWeeks !== undefined) cols.split_weeks = Number(b.splitWeeks) || 0;
     if (b.splitStartWeek !== undefined) cols.split_start_week = b.splitStartWeek || '';
     if (b.date !== undefined) cols.date_ms = H.dateStrToTs(b.date);
+    if (b.projectId !== undefined) cols.project_id = _projId(b);
+    if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b);
     if (b.imageKey !== undefined) cols.image_ref = b.imageKey ? 'kv:' + b.imageKey : '';
     else if (b.image !== undefined) { if (b.image && b.image.length <= 30000) cols.image_ref = b.image; else if (!b.image) cols.image_ref = ''; }
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');

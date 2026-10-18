@@ -813,6 +813,7 @@ function openExpenseModal(id){
   }
   document.getElementById('eCameraInput').value='';
   document.getElementById('eGalleryInput').value='';
+  try{var _ex=id?expenses.find(function(x){return x.id===id}):null;if(typeof fillProjectPhaseSelects==='function')fillProjectPhaseSelects('eProject','ePhase',_ex?(_ex['项目ID']||''):'',_ex?(_ex['阶段']):null)}catch(e){}
   document.getElementById('expenseOverlay').classList.add('active');
 }
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
