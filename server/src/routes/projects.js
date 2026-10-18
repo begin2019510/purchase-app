@@ -25,6 +25,7 @@ function rowToProject(r) {
     dueDate: r.due_iso || (r.due_ms != null ? Number(r.due_ms) : null),
     status: r.status || '进行中',
     color: r.color || '#6366f1',
+    budget: r.budget == null ? null : Number(r.budget),
     currentPhase: Number(r.current_phase) || 0,
     legacy: !!r.legacy_flag,
     parentId: r.parent_id || '',
@@ -39,11 +40,13 @@ router.get('/projects', async (req, res, next) => {
     const projects = await db.query('SELECT * FROM projects WHERE user_id = ? ORDER BY id', [uid]);
     if (!projects.length) return res.json([]);
 
-    const [phases, items, pSpend, eSpend] = await Promise.all([
+    const [phases, items, pSpend, eSpend, pLedger, eLedger] = await Promise.all([
       db.query('SELECT * FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx', [uid]),
       db.query('SELECT * FROM phase_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx, sort_order, id', [uid]),
       db.query("SELECT project_id, phase_idx, SUM(price*qty) AS amt FROM purchases WHERE user_id = ? AND project_id IS NOT NULL AND status NOT IN ('已退','已取消') GROUP BY project_id, phase_idx", [uid]),
       db.query("SELECT project_id, phase_idx, SUM(amount) AS amt FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' GROUP BY project_id, phase_idx", [uid]),
+      db.query("SELECT id, project_id, phase_idx, name AS title, price*qty AS amt, date_ms FROM purchases WHERE user_id = ? AND project_id IS NOT NULL AND status NOT IN ('已退','已取消') ORDER BY date_ms DESC, id DESC", [uid]),
+      db.query("SELECT id, project_id, phase_idx, note AS title, amount AS amt, date_ms FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' ORDER BY date_ms DESC, id DESC", [uid]),
     ]);
 
     const spendMap = {}; // pid -> {buy, exp, phases:{idx:{buy,exp}}}
@@ -67,6 +70,7 @@ router.get('/projects', async (req, res, next) => {
       o.phases = [];
       o.items = [];
       o.spend = spendMap[p.id] || { buy: 0, exp: 0, phases: {} };
+      o.ledger = [];
       byProject[p.id] = o;
     }
     for (const ph of phases) {
@@ -81,6 +85,14 @@ router.get('/projects', async (req, res, next) => {
         startedAt: ph.started_at_ms == null ? null : Number(ph.started_at_ms),
         finishedAt: ph.finished_at_ms == null ? null : Number(ph.finished_at_ms),
       });
+    }
+    for (const r of pLedger) {
+      const o = byProject[r.project_id]; if (!o) continue;
+      o.ledger.push({ kind: 'purchase', id: 'rec_' + r.id, title: r.title || '采购', amount: Number(r.amt) || 0, phaseIdx: r.phase_idx == null ? -1 : Number(r.phase_idx), dateMs: r.date_ms == null ? null : Number(r.date_ms) });
+    }
+    for (const r of eLedger) {
+      const o = byProject[r.project_id]; if (!o) continue;
+      o.ledger.push({ kind: 'expense', id: 'rec_' + r.id, title: r.title || '记账', amount: Number(r.amt) || 0, phaseIdx: r.phase_idx == null ? -1 : Number(r.phase_idx), dateMs: r.date_ms == null ? null : Number(r.date_ms) });
     }
     for (const it of items) {
       const o = byProject[it.project_id]; if (!o) continue;
@@ -107,9 +119,9 @@ router.post('/projects', async (req, res, next) => {
     const dueMs = b.dueDate ? new Date(b.dueDate).getTime() : null;
     await conn.beginTransaction();
     const [ins] = await conn.query(
-      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,progress,current_phase) VALUES (?,?,?,?,?,?,?,0,0)',
+      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,0)',
       [uid, String(b.name).slice(0, 200), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
-        b.status || '进行中', b.color || '#6366f1']);
+        b.status || '进行中', b.color || '#6366f1', (b.budget === null || b.budget === undefined || b.budget === '') ? null : Number(b.budget)]);
     for (let i = 0; i < PHASE_COUNT; i++) {
       await conn.query('INSERT INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [ins.insertId, i, 'todo']);
     }
@@ -136,6 +148,7 @@ router.put('/projects', async (req, res, next) => {
     if (b.dueDate !== undefined) { cols.due_ms = b.dueDate ? new Date(b.dueDate).getTime() : null; cols.due_iso = b.dueDate || ''; }
     if (b.status !== undefined) cols.status = b.status;
     if (b.color !== undefined) cols.color = b.color;
+    if (b.budget !== undefined) cols.budget = (b.budget === null || b.budget === '') ? null : Number(b.budget);
     if (b.currentPhase !== undefined) cols.current_phase = Math.max(0, Math.min(PHASE_COUNT - 1, Number(b.currentPhase) || 0));
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) await db.exec('UPDATE projects SET ' + sets + ' WHERE id = ?', [...Object.values(cols), pid]);

@@ -1556,3 +1556,21 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .pj-plan-save{padding:7px 12px;border:none;background:var(--pri);color:#fff;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer}
 .pj-actual{margin-top:8px;font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
 .pj-actual b{color:var(--text);font-weight:700}
+
+/* ===== 项目预算 & 挂账明细 ===== */
+.pj-budget{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+.pj-budget-head{display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:8px}
+.pj-budget-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.pj-budget-bar i{display:block;height:100%;border-radius:4px;transition:width .4s ease}
+.pj-budget-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
+.pj-ledger{margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px}
+.pj-ledger-title{font-size:11px;font-weight:800;color:var(--muted);display:flex;justify-content:space-between;padding:2px 0 4px}
+.pj-ledger-title span{font-weight:600}
+.pj-ledger-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-top:1px dashed var(--border);cursor:pointer}
+.pj-ledger-row:first-of-type{border-top:none}
+.pj-ledger-ico{font-size:12px;flex-shrink:0}
+.pj-ledger-name{flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pj-ledger-amt{font-size:12px;font-weight:800;color:var(--text);flex-shrink:0}
+.pj-quick-actions{display:flex;gap:8px;margin-top:10px}
+.pj-quick-actions button{flex:1;min-height:40px;border:1px dashed var(--pri);background:rgba(99,102,241,.06);color:var(--pri);border-radius:11px;font-size:13px;font-weight:700;cursor:pointer}
+.pj-quick-actions button:active{background:rgba(99,102,241,.14)}

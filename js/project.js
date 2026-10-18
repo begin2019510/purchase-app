@@ -183,6 +183,8 @@ function openProjectModal(id) {
     var d = new Date(p.dueDate);
     document.getElementById('projectDueDate').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   } else document.getElementById('projectDueDate').value = '';
+  var _bg = document.getElementById('projectBudget');
+  if (_bg) _bg.value = (p && p.budget != null) ? p.budget : '';
   document.getElementById('projectStatus').value = p ? p.status : '进行中';
   var _c = p ? (p.color || '#6366f1') : '#6366f1';
   document.getElementById('projectColor').value = _c;
@@ -204,6 +206,7 @@ async function saveProject() {
     dueDate: (function() { var v = document.getElementById('projectDueDate').value; return v ? new Date(v).toISOString() : null; })(),
     status: document.getElementById('projectStatus').value,
     color: document.getElementById('projectColor').value,
+    budget: (function() { var el = document.getElementById('projectBudget'); var v = el ? el.value.trim() : ''; return v === '' ? null : Number(v); })(),
   };
   closeProjectModal();
   if (id) {
@@ -271,6 +274,19 @@ function openProjectDetail(id) {
   html += '</div></div>';
   if (p.description) html += '<div class="pj-detail-desc">' + esc(p.description) + '</div>';
 
+  // 目标预算 vs 已花
+  var _budget = (p.budget == null) ? null : Number(p.budget);
+  var _spent = (Number(spend.buy) || 0) + (Number(spend.exp) || 0);
+  if (_budget && _budget > 0) {
+    var _usedPct = Math.min(Math.round(_spent / _budget * 100), 999);
+    var _barC = _usedPct > 100 ? 'var(--red)' : _usedPct > 80 ? 'var(--orange)' : 'var(--green)';
+    html += '<div class="pj-budget">'
+      + '<div class="pj-budget-head"><span>🎯 目标预算 ' + pjMoney(_budget) + '</span><span style="color:' + _barC + '">已用 ' + _usedPct + '%</span></div>'
+      + '<div class="pj-budget-bar"><i style="width:' + Math.min(_usedPct, 100) + '%;background:' + _barC + '"></i></div>'
+      + '<div class="pj-budget-foot"><span>已花 ' + pjMoney(_spent) + '</span><span>剩余 ' + pjMoney(_budget - _spent) + '</span></div>'
+      + '</div>';
+  }
+
   // 阶段条
   html += '<div class="pj-strip">';
   for (var i = 0; i < 6; i++) {
@@ -327,6 +343,25 @@ function openProjectDetail(id) {
   html += '</div>';
   html += '<div class="pj-item-add"><input id="pjItemInput" placeholder="添加交付物…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.addPhaseItem(\'' + id + '\',' + sel + ')}"><button onclick="App.project.addPhaseItem(\'' + id + '\',' + sel + ')">＋</button></div>';
 
+  // 本阶段已挂的采购/记账明细
+  var _phLedger = (p.ledger || []).filter(function(x) { return x.phaseIdx === sel; });
+  if (_phLedger.length) {
+    html += '<div class="pj-ledger"><div class="pj-ledger-title">💸 本阶段明细 <span>' + _phLedger.length + ' 笔</span></div>';
+    _phLedger.forEach(function(x) {
+      var _fn = x.kind === 'purchase' ? 'openDetailModal' : 'openExpenseModal';
+      html += '<div class="pj-ledger-row" onclick="event.stopPropagation();closeProjectDetail();' + _fn + '(\'' + x.id + '\')">'
+        + '<span class="pj-ledger-ico">' + (x.kind === 'purchase' ? '🛒' : '💰') + '</span>'
+        + '<span class="pj-ledger-name">' + esc(x.title || (x.kind === 'purchase' ? '采购' : '记账')) + '</span>'
+        + '<span class="pj-ledger-amt">' + pjMoney(x.amount) + '</span>'
+        + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '<div class="pj-quick-actions">'
+    + '<button onclick="App.project.quickAddPurchase(\'' + id + '\',' + sel + ')">🛒 记一笔采购</button>'
+    + '<button onclick="App.project.quickAddExpense(\'' + id + '\',' + sel + ')">💰 记一笔账</button>'
+    + '</div>';
+
   html += '<div class="pj-phase-actions">';
   if (phStatus !== 'done') html += '<button class="pj-pa pj-pa-ok" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'done\')">✓ 完成本阶段</button>';
   if (phStatus !== 'skipped') html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'skipped\')">⏭ 跳过</button>';
@@ -378,6 +413,24 @@ async function refreshProjectUI(id, phaseIdx) {
   if (phaseIdx !== undefined) selectedPhase[id] = phaseIdx;
   var dO = document.getElementById('projectDetailOverlay');
   if (dO && dO.classList.contains('active')) openProjectDetail(id);
+}
+
+// ===== 从项目直接记钱 =====
+function quickAddPurchase(projectId, phaseIdx) {
+  closeProjectDetail();
+  openModal();
+  setTimeout(function() {
+    try { fillProjectPhaseSelects('fProjectEdit', 'fPhaseEdit', projectId, phaseIdx); } catch (e) {}
+  }, 60);
+  toast('已关联到该项目，填写后保存即可');
+}
+function quickAddExpense(projectId, phaseIdx) {
+  closeProjectDetail();
+  openExpenseModal();
+  setTimeout(function() {
+    try { fillProjectPhaseSelects('eProject', 'ePhase', projectId, phaseIdx); } catch (e) {}
+  }, 60);
+  toast('已关联到该项目，填写后保存即可');
 }
 
 // ===== 阶段交互 =====
@@ -518,6 +571,8 @@ App.project = {
   renderProjColors: renderProjColors,
   pickColor: pickColor,
   savePhasePlan: savePhasePlan,
+  quickAddPurchase: quickAddPurchase,
+  quickAddExpense: quickAddExpense,
   addPhaseItem: addPhaseItem,
   togglePhaseItem: togglePhaseItem,
   deletePhaseItem: deletePhaseItem,

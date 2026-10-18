@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS projects (
   due_ms      BIGINT NULL,
   status      VARCHAR(6) NOT NULL DEFAULT '进行中',  -- 进行中|已完成|已归档
   color       VARCHAR(20) NULL,
+  budget      DECIMAL(10,2) NULL,               -- 目标预算
   progress    INT NOT NULL DEFAULT 0,
   parent_id   VARCHAR(40) NULL,                  -- 父项目ID（旧数据只读）
   due_iso     VARCHAR(60) NULL,                  -- 截止日期ISO

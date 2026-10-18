@@ -253,6 +253,7 @@ function openQuickPurchaseModal(){
   el('qCategory').value=prefs.category||'日用';
   el('qNote').value='';
   el('qDate').value=d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());
+  try{ if(typeof fillProjectPhaseSelects==='function') fillProjectPhaseSelects('qProject','qPhase','',null); }catch(e){}
   el('quickOverlay').classList.add('active');
   // 移动端：自动聚焦 + 回车即保存
   ['qName','qPrice','qQty','qNote'].forEach(function(id){
@@ -289,7 +290,9 @@ async function saveQuickPurchase(){
     platform:el('qPlatform').value, category:el('qCategory').value,
     note:(el('qNote').value||'').trim()||null, date:el('qDate').value||null,
     status:'已到', quick:true,
-    virtual:!!(el('qVirtual')&&el('qVirtual').checked)
+    virtual:!!(el('qVirtual')&&el('qVirtual').checked),
+    projectId:(el('qProject')||{}).value||'',
+    phaseIdx:(function(){var ph=el('qPhase');return ph&&ph.value!==''?Number(ph.value):null})()
   };
   saveQuickPrefs({platform:data.platform,category:data.category});
   closeQuickPurchase();
