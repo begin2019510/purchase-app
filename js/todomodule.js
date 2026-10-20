@@ -1409,3 +1409,33 @@ function requestNotificationPermission() {
     }
   } catch(e) {}
 }
+
+// ===== iOS 待办弹层 helpers（v4.0.49）=====
+function syncTodoPriSeg(){
+  var s=document.getElementById('todoPriority');
+  var bs=document.querySelectorAll('#tsPriSeg button');
+  for(var i=0;i<bs.length;i++){
+    bs[i].classList.toggle('on', !!(s && bs[i].getAttribute('data-v')===s.value));
+  }
+}
+function setTodoPriority(v){
+  var s=document.getElementById('todoPriority');
+  if(s)s.value=v;
+  syncTodoPriSeg();
+}
+(function(){
+  var _open=openTodoModal;
+  openTodoModal=function(id){
+    _open.apply(this,arguments);
+    try{
+      var tt=document.getElementById('todoModalTitle');
+      if(tt)tt.textContent=id?'编辑待办':'新建待办';
+      setTimeout(function(){
+        syncTodoPriSeg();
+        try{renderReminderUI()}catch(e){}
+      },0);
+      var d=document.getElementById('todoDueDate');
+      if(d&&!d._tsBound){d._tsBound=1;d.addEventListener('change',function(){try{renderReminderUI()}catch(e){}});}
+    }catch(e){}
+  };
+})();

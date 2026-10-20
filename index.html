@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no", viewport-fit=cover">
-<meta name="app-version" content="4.0.48">
+<meta name="app-version" content="4.0.49">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=4.0.48">
+<link rel="stylesheet" href="theme.css?v=4.0.49">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="4.0.48">
+<meta http-equiv="Expires" content="4.0.49">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='4.0.48';
+  var V='4.0.49';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -637,92 +637,73 @@
 </div>
 
 
-  <!-- Todo New/Edit Modal -->
+  <!-- Todo New/Edit Modal（iOS 提醒事项式，v4.0.49）-->
   <div class="modal-overlay" id="todoModalOverlay" onclick="if(event.target===this)closeTodoModal()">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 id="todoModalTitle">新建待办</h3>
-        <button class="close-btn" onclick="closeTodoModal()">✕</button>
+    <div class="modal todo-sheet">
+      <div class="ts-nav">
+        <button type="button" class="ts-nav-btn" onclick="closeTodoModal()">取消</button>
+        <div class="ts-nav-title" id="todoModalTitle">新建待办</div>
+        <button type="button" class="ts-nav-btn ts-nav-save" onclick="saveTodo()">保存</button>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>标题 *</label>
-          <input type="text" id="todoTitle" placeholder="做什么... 支持自然语言，如 “明天下午3点开会”" maxlength="200" oninput="onTodoTitleInput(this.value)">
-            <div id="nlpChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div>
+      <div class="modal-body ts-body">
+        <div class="ts-title-card">
+          <input type="text" id="todoTitle" class="ts-title" placeholder="下一步要做什么…" maxlength="200" oninput="onTodoTitleInput(this.value)">
+          <div id="nlpChips" class="ts-nlp"></div>
         </div>
-        <div class="form-group">
-          <label>描述</label>
-          <textarea id="todoDesc" rows="3" placeholder="详细说明（选填）" maxlength="2000"></textarea>
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>截止日期</label>
-            <input type="datetime-local" id="todoDueDate">
+        <div class="ts-hint">💡 支持自然语言：输入「明晚八点交房租」自动识别时间</div>
+        <textarea id="todoDesc" class="ts-desc" rows="2" placeholder="备注（选填）" maxlength="2000"></textarea>
+        <div class="ts-group">
+          <div class="ts-row">
+            <span class="ts-label">📅 日期</span>
+            <input type="datetime-local" id="todoDueDate" class="ts-ctl">
           </div>
-          <div class="form-group" style="flex:1">
-            <label>优先级</label>
-            <select id="todoPriority">
-              <option value="高">🔴 高</option>
-              <option value="中" selected>🟡 中</option>
-              <option value="低">⚪ 低</option>
+          <div class="ts-row">
+            <span class="ts-label">🚩 优先级</span>
+            <select id="todoPriority" style="display:none">
+              <option value="高">高</option><option value="中" selected>中</option><option value="低">低</option>
+            </select>
+            <div class="ts-seg" id="tsPriSeg">
+              <button type="button" data-v="高" onclick="setTodoPriority('高')">高</button>
+              <button type="button" data-v="中" onclick="setTodoPriority('中')">中</button>
+              <button type="button" data-v="低" onclick="setTodoPriority('低')">低</button>
+            </div>
+          </div>
+          <div class="ts-row">
+            <span class="ts-label">🏷️ 分类</span>
+            <select id="todoCategory" class="ts-ctl">
+              <option value="生活">🏠 生活</option><option value="工作">💼 工作</option><option value="采购">🛒 采购</option><option value="记账">💰 记账</option><option value="健康">🏥 健康</option><option value="其他" selected>📌 其他</option>
+            </select>
+          </div>
+          <div class="ts-row">
+            <span class="ts-label">🔁 重复</span>
+            <select id="todoRepeat" class="ts-ctl">
+              <option value="无" selected>无</option><option value="每天">每天</option><option value="每周">每周</option><option value="每月">每月</option>
             </select>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>分类</label>
-            <select id="todoCategory">
-              <option value="生活">🏠 生活</option>
-              <option value="工作">💼 工作</option>
-              <option value="采购">🛒 采购</option>
-              <option value="记账">💰 记账</option>
-              <option value="健康">🏥 健康</option>
-              <option value="其他" selected>📌 其他</option>
-            </select>
+        <div class="ts-group">
+          <div class="ts-row">
+            <span class="ts-label">📁 项目</span>
+            <select id="todoProjectId" class="ts-ctl"><option value="">无</option></select>
           </div>
-          <div class="form-group" style="flex:1">
-            <label>重复</label>
-            <select id="todoRepeat">
-              <option value="无" selected>无</option>
-              <option value="每天">🔄 每天</option>
-              <option value="每周">🔄 每周</option>
-              <option value="每月">🔄 每月</option>
-            </select>
+          <div class="ts-row">
+            <span class="ts-label">🔗 关联</span>
+            <div class="ts-linkwrap">
+              <select id="todoLinkType" class="ts-ctl-half" onchange="updateLinkOptions()">
+                <option value="无" selected>无</option><option value="采购">🛒 采购</option><option value="记账">💰 记账</option>
+              </select>
+              <select id="todoLinkId" class="ts-ctl-half"><option value="">先选类型</option></select>
+            </div>
           </div>
         </div>
-        <div class="form-group">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label style="margin:0">子任务（选填）</label>
-            <button onclick="addSubtask()" style="font-size:12px;font-weight:700;padding:5px 12px;border:1px solid var(--pri);border-radius:20px;background:rgba(99,102,241,.06);color:var(--pri);cursor:pointer">＋ 添加</button>
+        <div class="ts-group">
+          <div class="ts-row">
+            <span class="ts-label">☑️ 子任务</span>
+            <button type="button" class="ts-add" onclick="addSubtask()">＋ 添加</button>
           </div>
-          <div id="todoSubtaskList"></div>
+          <div id="todoSubtaskList" class="ts-sub-wrap"></div>
+          <div id="todoReminderChips" class="ts-remind"></div>
         </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>关联项目</label>
-            <select id="todoProjectId" class="form-input">
-              <option value="">无</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group" style="flex:1">
-            <label>关联类型</label>
-            <select id="todoLinkType" onchange="updateLinkOptions()">
-              <option value="无" selected>无</option>
-              <option value="采购">🛒 采购</option>
-              <option value="记账">💰 记账</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex:1">
-            <label>关联记录</label>
-            <select id="todoLinkId"><option value="">请先选择关联类型</option></select>
-          </div>
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="closeTodoModal()">取消</button>
-        <button class="btn btn-primary" onclick="saveTodo()">💾 保存</button>
       </div>
     </div>
   </div>
@@ -733,18 +714,18 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=4.0.48"></script>
-<script src="js/particles.js?v=4.0.48"></script>
-<script src="js/auth.js?v=4.0.48"></script>
-<script src="js/api.js?v=4.0.48"></script>
-<script src="js/stats.js?v=4.0.48"></script>
-<script src="js/expense.js?v=4.0.48"></script>
-<script src="js/items.js?v=4.0.48"></script>
-<script src="js/ai.js?v=4.0.48"></script>
-<script src="js/budget.js?v=4.0.48"></script>
-<script src="js/todomodule.js?v=4.0.48"></script>
-  <script src="js/project.js?v=4.0.48"></script>
-<script src="js/app.js?v=4.0.48"></script>
+<script src="js/utils.js?v=4.0.49"></script>
+<script src="js/particles.js?v=4.0.49"></script>
+<script src="js/auth.js?v=4.0.49"></script>
+<script src="js/api.js?v=4.0.49"></script>
+<script src="js/stats.js?v=4.0.49"></script>
+<script src="js/expense.js?v=4.0.49"></script>
+<script src="js/items.js?v=4.0.49"></script>
+<script src="js/ai.js?v=4.0.49"></script>
+<script src="js/budget.js?v=4.0.49"></script>
+<script src="js/todomodule.js?v=4.0.49"></script>
+  <script src="js/project.js?v=4.0.49"></script>
+<script src="js/app.js?v=4.0.49"></script>
 
 
 
