@@ -313,7 +313,7 @@ function renderStats() { console.log('renderStats START');
   </div>`;
 
   // 分期概况
-  const installmentItems = monthItems.filter(i => (Number(i['分期期数']) || 0) > 1);
+  const installmentItems = monthItems.filter(i => (Number(i['分期期数']) || 0) > 1 && ['已下单','已到','已归档'].indexOf(i['状态'] || '') >= 0);
   if (installmentItems.length > 0) {
     const instTotalPrice = installmentItems.reduce((s, i) => s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1), 0);
     const instMonthly = installmentItems.reduce((s, i) => {
