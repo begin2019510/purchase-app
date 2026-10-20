@@ -338,11 +338,13 @@ function showApprovalModal(id){
   const total=price*qty;
   document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'确认操作';
   document.getElementById('approvalContent').innerHTML=`
-    <div style="font-size:15px;font-weight:700;margin-bottom:12px">${esc(item['商品名称']||'')}</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:4px">单价 ¥${price.toFixed(2)} × ${qty}</div>
-    <div style="font-size:20px;font-weight:800;color:var(--pri);margin-bottom:16px">总价 ¥${total.toFixed(2)}</div>
-    <div style="font-size:14px;font-weight:600;color:var(--orange)">${APPROVAL_TEXTS[status]}</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">${status} → ${next}</div>
+    <div class="apv-card">
+      <div class="apv-name">${esc(item['商品名称']||'')}</div>
+      <div class="apv-price-line">单价 ¥${price.toFixed(2)} × ${qty}</div>
+      <div class="apv-total">¥${total.toFixed(2)}</div>
+      <div class="apv-flow"><b>${esc(status)}</b><span class="ar">→</span><b class="to">${esc(next)}</b></div>
+      <div class="apv-hint">${APPROVAL_TEXTS[status]}</div>
+    </div>
   `;
   const btn=document.getElementById('approvalConfirmBtn');
   btn.onclick=async function(){
