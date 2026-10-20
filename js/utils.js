@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.43";
+const APP_VERSION = "4.0.44";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.44',date:'2026-10-17',items:['新建/编辑待办弹层 iOS 重做：保存按钮加大约 48px 高、固定底部不再随内容滚动、取消+保存双按钮','输入框统一 16px 字号（修复 iOS 聚焦自动放大页面）、间距加大、子任务添加按钮重做']},
 {v:'4.0.43',date:'2026-10-17',items:['强制阶段规则：项目固定 P0~P5 六段（缺失自动补齐）；P5 为最终阶段，不可跳过，只有 P5 完成项目才通关']},
 {v:'4.0.42',date:'2026-10-17',items:['项目与采购/记账深度耦合：项目可设目标预算并显示已花/剩余/进度条','阶段内直接查看已挂的采购/记账明细（点击可进详情），可一键「记采购/记账」自动关联当前项目阶段','极速采购弹窗也可选择所属项目与阶段']},
 {v:'4.0.41',date:'2026-10-17',items:['新建项目界面重做：渐变头图、主题色板（8 色圆点）、更清晰的表单层级','阶段（里程碑）支持规划时间：可设置开始/完成日期，完成阶段自动记录实际完成时间并在详情显示','项目卡片显示当前阶段的计划里程碑']},

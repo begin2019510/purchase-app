@@ -1577,3 +1577,18 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 
 /* P5 最终阶段提示 */
 .pj-p5-hint{flex-basis:100%;font-size:11px;color:var(--muted);background:rgba(99,102,241,.06);border-radius:9px;padding:8px 10px;line-height:1.5}
+
+/* ===== 新建待办弹层 2.0（iOS 适配）===== */
+#todoModalOverlay .modal-body{padding-bottom:22px}
+#todoModalOverlay .modal-body>.form-group,#todoModalOverlay .modal-body>.form-row{max-width:560px;margin-left:auto;margin-right:auto}
+#todoModalOverlay .modal-body>.form-group{margin-bottom:16px}
+#todoModalOverlay .modal-body>.form-row{margin-bottom:2px}
+#todoModalOverlay .modal-body>.form-row .form-group{margin-bottom:14px}
+#todoModalOverlay .subtask-input{padding:11px 12px;font-size:14px;border-radius:11px}
+#todoModalOverlay .subtask-del{width:34px;height:34px;border-radius:10px;font-size:13px}
+#todoModalOverlay .btn-row .btn{min-height:48px;font-size:16px;border-radius:13px}
+@media(max-width:767px){
+  /* iOS：≥16px 才不触发聚焦自动缩放 */
+  #todoModalOverlay input,#todoModalOverlay select,#todoModalOverlay textarea{font-size:16px!important;padding:12px 14px}
+  #todoModalOverlay .btn-row{padding-left:16px;padding-right:16px}
+}
