@@ -5,12 +5,20 @@ var _budgetCache=null;
 function getBudgets(){if(_budgetCache)return _budgetCache;try{_budgetCache=JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{_budgetCache={}}return _budgetCache}
 function setBudgets(b){_budgetCache=b;localStorage.setItem('purchase_budgets',JSON.stringify(b));syncBudgetToServer(b)}
 function getBudget(m){return getBudgets()[m]||0}
+var _budgetDirty=false,_budgetSyncing=false;
 async function syncBudgetToServer(b){
+  if(_budgetSyncing){_budgetDirty=true;return}   // 正在写：标记脏，写完自动补一轮（合并最新值）
+  _budgetSyncing=true;_budgetDirty=false;
   try{
-    var token=getPin();
-    var r=await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:b})});
-    if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:b})})}}
+    do{
+      _budgetDirty=false;
+      var payload=getBudgets();              // 总是发送当下最新状态，不发旧引用
+      var token=getPin();
+      var r=await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:payload})});
+      if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:payload})})}}
+    }while(_budgetDirty);                     // 期间又有新改动 → 补发
   }catch(e){}
+  _budgetSyncing=false;
 }
 async function loadBudgetFromServer(){
   try{
@@ -19,7 +27,8 @@ async function loadBudgetFromServer(){
     if(r.status===401){var nt=await refreshAccessToken();if(nt){r=await fetch(API_BASE + '/api/budgets',{headers:{'Authorization':'Bearer '+nt}})}}
     if(!r.ok)return getBudgets();
     var d=await r.json();
-    if(d&&d.data){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
+    if(d&&d.data){if(_budgetDirty||_budgetSyncing)return getBudgets();  // 本地有未落盘的修改：拒绝旧数据回灌
+    _budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
     return getBudgets();
   }catch(e){return getBudgets()}
 }

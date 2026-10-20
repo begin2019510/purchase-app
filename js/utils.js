@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.49";
+const APP_VERSION = "4.0.50";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.50',date:'2026-10-17',items:['修复：连续追加预算时第二笔不生效 —— 预算同步改为队列化写入，本地未落盘的修改不再被旧数据覆盖']},
 {v:'4.0.49',date:'2026-10-17',items:['待办新建/编辑页 iOS 原生重做：顶部取消·保存导航栏、大标题输入、分组卡片行（标签左值右）、优先级分段控件','子任务与提醒收纳进分组；编辑弹窗标题自动切换「编辑待办」']},
 {v:'4.0.48',date:'2026-10-17',items:['更新自愈机制：App 启动后自动检测线上新版本，清空缓存并重载 —— 以后每次更新一次打开即生效，不再需要反复重启两次']},
 {v:'4.0.47',date:'2026-10-17',items:['审批确认弹层 iOS 化：商品名居中、总价大数字、状态流转胶囊（去掉红点与橙色提示语）、弹层顶部加拖拽把手']},
