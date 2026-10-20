@@ -1592,3 +1592,28 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   #todoModalOverlay input,#todoModalOverlay select,#todoModalOverlay textarea{font-size:16px!important;padding:12px 14px}
   #todoModalOverlay .btn-row{padding-left:16px;padding-right:16px}
 }
+
+/* ===== 采购审批流弹层统一（v4.0.46）===== */
+.approval-modal .modal-header h2{margin:0;text-align:left;font-size:17px;flex:1}
+.approval-modal .modal-body{padding-top:8px}
+.detail-modal{display:flex;flex-direction:column;padding:0;overflow:hidden;max-height:86vh;max-height:86dvh}
+.detail-modal #detailContent{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:18px 18px calc(16px + env(safe-area-inset-bottom))}
+
+/* 手机端：所有弹窗统一 iOS 底部弹层（不再有大号居中卡片） */
+@media(max-width:767px){
+  .modal-overlay{align-items:flex-end;padding:0}
+  .modal-overlay .modal{
+    max-width:100%;width:100%;margin:0;
+    border-radius:22px 22px 0 0;
+    max-height:88vh;max-height:88dvh;
+    padding-left:18px;padding-right:18px;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 48px rgba(0,0,0,.28);
+    animation:sheetUp .28s cubic-bezier(.25,.8,.35,1);
+  }
+  .modal:has(.modal-header){padding-left:0;padding-right:0;padding-bottom:0}
+  /* 按钮体系统一：行内按钮一律 48px 高 16px 字 */
+  .btn-row .btn,.detail-modal .btn,.approval-modal .btn{min-height:48px;font-size:16px;padding:13px 16px;border-radius:13px}
+  .detail-action-btn{min-height:48px;font-size:15px;margin-top:8px}
+  .detail-modal #detailContent{padding-top:16px}
+}

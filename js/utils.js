@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.45";
+const APP_VERSION = "4.0.46";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.46',date:'2026-10-17',items:['采购审批弹窗/详情弹窗移动端适配：全部弹窗统一 iOS 底部弹层（不再是大号居中卡片）','确认/取消按钮统一 48px 高 16px 字号等宽大按钮；详情弹窗内容独立滚动','审批流状态推进（审批→下单→收货→归档）全程同一体感']},
 {v:'4.0.45',date:'2026-10-17',items:['修复：分期采购刚提交（未审批/未下单）就立即扣占预算 —— 现在只有「已下单」及之后的分期才计入预算扣减与每月还款统计']},
 {v:'4.0.44',date:'2026-10-17',items:['新建/编辑待办弹层 iOS 重做：保存按钮加大约 48px 高、固定底部不再随内容滚动、取消+保存双按钮','输入框统一 16px 字号（修复 iOS 聚焦自动放大页面）、间距加大、子任务添加按钮重做']},
 {v:'4.0.43',date:'2026-10-17',items:['强制阶段规则：项目固定 P0~P5 六段（缺失自动补齐）；P5 为最终阶段，不可跳过，只有 P5 完成项目才通关']},
