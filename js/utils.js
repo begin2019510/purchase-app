@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.47";
+const APP_VERSION = "4.0.48";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.48',date:'2026-10-17',items:['更新自愈机制：App 启动后自动检测线上新版本，清空缓存并重载 —— 以后每次更新一次打开即生效，不再需要反复重启两次']},
 {v:'4.0.47',date:'2026-10-17',items:['审批确认弹层 iOS 化：商品名居中、总价大数字、状态流转胶囊（去掉红点与橙色提示语）、弹层顶部加拖拽把手']},
 {v:'4.0.46',date:'2026-10-17',items:['采购审批弹窗/详情弹窗移动端适配：全部弹窗统一 iOS 底部弹层（不再是大号居中卡片）','确认/取消按钮统一 48px 高 16px 字号等宽大按钮；详情弹窗内容独立滚动','审批流状态推进（审批→下单→收货→归档）全程同一体感']},
 {v:'4.0.45',date:'2026-10-17',items:['修复：分期采购刚提交（未审批/未下单）就立即扣占预算 —— 现在只有「已下单」及之后的分期才计入预算扣减与每月还款统计']},
