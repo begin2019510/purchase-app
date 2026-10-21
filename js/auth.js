@@ -3,7 +3,14 @@ function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
 function getRefreshToken(){return localStorage.getItem('refresh_token')||''}
 function setRefreshToken(t){localStorage.setItem('refresh_token',t)}
-function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token')}
+function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token');localStorage.removeItem('auth_user');clearUserCache()}
+function clearUserCache(){try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('cache_')===0)localStorage.removeItem(k)})}catch(e){}}
+function setAuthLocked(on){
+  var s=document.getElementById('authScreen');
+  if(!s)return;
+  s.style.display=on?'flex':'none';
+  try{document.body.classList.toggle('auth-locked',on)}catch(e){}
+}
 function submitPin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 function doLogin(){const username=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value;if(!username||!password){document.getElementById('authError').textContent='请输入用户名和密码';return}doLoginAPI(username,password)}
 
@@ -47,7 +54,7 @@ async function doLoginAPI(username,password){
   try{
     const r=await fetch(API_BASE + '/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);clearUserCache();if(d.username)localStorage.setItem('auth_user',d.username);setAuthLocked(false);if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
   }catch(e){document.getElementById('authError').textContent='网络错误'}
 }
@@ -60,7 +67,7 @@ async function doRegister(){
   try{
     const r=await fetch(API_BASE + '/api/auth?action=register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,inviteCode})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);document.getElementById('authScreen').style.display='none';loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);clearUserCache();if(d.username)localStorage.setItem('auth_user',d.username);setAuthLocked(false);loadAll();}
     else{document.getElementById('regError').textContent=d.error||'注册失败'}
   }catch(e){document.getElementById('regError').textContent='网络错误'}
 }
@@ -157,17 +164,18 @@ async function verifyAndLoad(){
     if(!r.ok){
       console.log('VERIFY: Auth failed, showing login');
       clearTokens();
-      document.getElementById('authScreen').style.display='flex';
+      setAuthLocked(true);
       return;
     }
     const d=await r.json();
     console.log('VERIFY: OK, user='+d.username+', starting loadAll');
-    document.getElementById('authScreen').style.display='none';
+    if(d.username)localStorage.setItem('auth_user',d.username);
+    setAuthLocked(false);
     if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}
     loadAll();
   }catch(e){
     console.log('VERIFY: EXCEPTION: '+e.message);
-    document.getElementById('authScreen').style.display='flex';
+    setAuthLocked(true);
   }
 }
 function logout(){
@@ -180,7 +188,7 @@ function logout(){
   }).catch(()=>{});
   clearTokens();
   var _ab3=document.getElementById('adminBtn');if(_ab3)_ab3.style.display='none';
-  document.getElementById('authScreen').style.display='flex';
+  setAuthLocked(true);
   document.getElementById('loginUsername').value='';
   document.getElementById('loginPassword').value='';
 }
@@ -293,7 +301,7 @@ document.getElementById('searchInput').value='';
 if('serviceWorker' in navigator) var _pb=document.getElementById('pushBtn');if(_pb)_pb.style.display='';
 
 // ===== Startup Bootstrap =====
-function _bootstrap(){if(typeof loadAll==='undefined'){setTimeout(_bootstrap,50);return}if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();document.getElementById('authScreen').style.display='flex';loadAll()}})}else{document.getElementById('authScreen').style.display='flex';loadAll()}}if(document.readyState==='complete'||document.readyState==='interactive'){_bootstrap()}else{document.addEventListener('DOMContentLoaded',_bootstrap)}
+function _bootstrap(){if(typeof loadAll==='undefined'){setTimeout(_bootstrap,50);return}if(getPin()){verifyAndLoad()}else if(getRefreshToken()){refreshAccessToken().then(function(t){if(t)verifyAndLoad();else{clearTokens();setAuthLocked(true)}})}else{setAuthLocked(true)}}if(document.readyState==='complete'||document.readyState==='interactive'){_bootstrap()}else{document.addEventListener('DOMContentLoaded',_bootstrap)}
 // === App.auth namespace exports ===
 App.auth.getPin = getPin;
 App.auth.setPin = setPin;

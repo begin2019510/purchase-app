@@ -1669,3 +1669,21 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .ts-remind{padding:2px 14px 12px;display:flex;flex-wrap:wrap}
 .ts-remind:empty{display:none}
 #todoSubtaskList .subtask-input{background:var(--bg)}
+
+
+/* 安全锁：登录/锁屏期间彻底隐藏 App 全部内容（防止 iOS 滚动/橡皮筋露出数据） */
+body.auth-locked{overflow:hidden;height:100vh}
+body.auth-locked .header,
+body.auth-locked #mainTabs,
+body.auth-locked .bottom-nav,
+body.auth-locked #tab-purchase,
+body.auth-locked #tab-expense,
+body.auth-locked #tab-stats,
+body.auth-locked #tab-todo,
+body.auth-locked #tab-project,
+body.auth-locked .fab,
+body.auth-locked #headerStats,
+body.auth-locked #debugBanner,
+body.auth-locked .settings-overlay,
+body.auth-locked .modal-overlay
+{display:none !important}
