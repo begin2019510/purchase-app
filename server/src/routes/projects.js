@@ -367,8 +367,6 @@ router.put('/phase-items', async (req, res, next) => {
     const cols = {};
     if (b.title !== undefined) cols.title = String(b.title || '').slice(0, 300);
     if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 2000);
-    if (b.plannedStart !== undefined) cols.planned_start_ms = b.plannedStart ? new Date(b.plannedStart).getTime() : null;
-    if (b.plannedEnd !== undefined) cols.planned_end_ms = b.plannedEnd ? new Date(b.plannedEnd).getTime() : null;
     if (b.done !== undefined) { cols.done = b.done ? 1 : 0; cols.completed_ms = b.done ? Date.now() : null; }
     if (b.sortOrder !== undefined) cols.sort_order = Number(b.sortOrder) || 0;
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
@@ -387,22 +385,31 @@ router.delete('/phase-items', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ===== 删除项目（级联阶段/子项；钱与待办解除关联）=====
+// ===== 删除项目（事务级联阶段/子项；钱与待办解除关联）=====
 router.delete('/projects', async (req, res, next) => {
+  const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
     const pid = projectIdNum(req.query.id);
     if (!pid) return res.status(400).json({ error: 'Missing id' });
-    const own = await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
-    if (!own) return res.json({ ok: true });
-    await db.exec('DELETE FROM project_phases WHERE project_id = ?', [pid]);
-    await db.exec('DELETE FROM phase_items WHERE project_id = ?', [pid]);
-    await db.exec('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ?', [pid]);
-    await db.exec('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ?', [pid]);
-    await db.exec('UPDATE todos SET project_id = NULL, phase_idx = NULL WHERE project_id = ?', [pid]);
-    await db.exec('DELETE FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
+    await conn.beginTransaction();
+    const [ownRows] = await conn.query('SELECT id FROM projects WHERE id = ? AND user_id = ? FOR UPDATE', [pid, uid]);
+    if (!ownRows[0]) {
+      await conn.rollback();
+      return res.json({ ok: true });
+    }
+    await conn.query('DELETE FROM project_phases WHERE project_id = ?', [pid]);
+    await conn.query('DELETE FROM phase_items WHERE project_id = ?', [pid]);
+    await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    await conn.query('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    await conn.query('UPDATE todos SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    await conn.query('DELETE FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
+    await conn.commit();
     res.json({ ok: true });
-  } catch (e) { next(e); }
+  } catch (e) {
+    try { await conn.rollback(); } catch (x) {}
+    next(e);
+  } finally { conn.release(); }
 });
 
 module.exports = router;

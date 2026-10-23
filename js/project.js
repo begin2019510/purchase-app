@@ -485,21 +485,24 @@ async function refreshProjectUI(id, phaseIdx) {
   if (dO && dO.classList.contains('active')) openProjectDetail(id);
 }
 
+// 采购/记账写入后刷新项目花费；失败不影响主流程
+async function refreshProjectsAfterLinkedMoney() {
+  if (typeof loadProjects !== 'function') return;
+  try {
+    await loadProjects();
+    if (typeof currentTab !== 'undefined' && currentTab === 'project' && typeof renderProject === 'function') renderProject();
+  } catch (e) {}
+}
+
 // ===== 从项目直接记钱 =====
 function quickAddPurchase(projectId, phaseIdx) {
   closeProjectDetail();
-  openModal();
-  setTimeout(function() {
-    try { fillProjectPhaseSelects('fProjectEdit', 'fPhaseEdit', projectId, phaseIdx); } catch (e) {}
-  }, 60);
+  openModal(projectId, phaseIdx);
   toast('已关联到该项目，填写后保存即可');
 }
 function quickAddExpense(projectId, phaseIdx) {
   closeProjectDetail();
-  openExpenseModal();
-  setTimeout(function() {
-    try { fillProjectPhaseSelects('eProject', 'ePhase', projectId, phaseIdx); } catch (e) {}
-  }, 60);
+  openExpenseModal(null, projectId, phaseIdx);
   toast('已关联到该项目，填写后保存即可');
 }
 
@@ -537,8 +540,8 @@ async function savePhasePlan(projectId, idx) {
   try {
     await phaseApi({
       projectId: projectId, phaseIdx: idx,
-      plannedStart: ss ? new Date(ss + 'T00:00:00+08:00').toISOString() : null,
-      plannedEnd: ee ? new Date(ee + 'T23:59:59+08:00').toISOString() : null
+      plannedStart: ss ? new Date(ss + 'T00:00:00').toISOString() : null,
+      plannedEnd: ee ? new Date(ee + 'T23:59:59.999').toISOString() : null
     });
     toast('📅 规划时间已保存');
     await refreshProjectUI(projectId, idx);

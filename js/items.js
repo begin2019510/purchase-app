@@ -237,7 +237,34 @@ async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删�
 // ============================================================
 // 采购 Modal
 // ============================================================
-function openModal(){document.getElementById('editId').value='';document.getElementById('modalTitle').textContent='新增采购';document.getElementById('fName').value='';document.getElementById('fReason').value='';document.getElementById('fName').style.display='';document.getElementById('aiEvalResult').style.display='none';document.getElementById('aiEvalResult').textContent='';document.getElementById('chatArea').style.display='none';document.getElementById('chatMessages').innerHTML='';purchaseChatHistory=[];purchaseEvalContext='';if(typeof purchaseImageData!=='undefined'){purchaseImageData={};var evW=document.getElementById('evImageWrap');if(evW)evW.style.display='none'}document.getElementById('evalPhase').style.display='';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='none';var peW=document.getElementById('peImageWrap');if(peW)peW.style.display='none';document.getElementById('overlay').classList.add('active')}
+function openModal(projectId, phaseIdx){
+  document.getElementById('editId').value='';
+  document.getElementById('modalTitle').textContent='新增采购';
+  document.getElementById('fName').value='';
+  document.getElementById('fReason').value='';
+  document.getElementById('fName').style.display='';
+  document.getElementById('aiEvalResult').style.display='none';
+  document.getElementById('aiEvalResult').textContent='';
+  document.getElementById('chatArea').style.display='none';
+  document.getElementById('chatMessages').innerHTML='';
+  purchaseChatHistory=[];
+  purchaseEvalContext='';
+  if(typeof purchaseImageData!=='undefined'){
+    purchaseImageData={};
+    var evW=document.getElementById('evImageWrap');
+    if(evW)evW.style.display='none';
+  }
+  document.getElementById('evalPhase').style.display='';
+  document.getElementById('detailPhase').style.display='none';
+  document.getElementById('editPhase').style.display='none';
+  var peW=document.getElementById('peImageWrap');
+  if(peW)peW.style.display='none';
+  // 从项目详情进入时预选项目/阶段；普通新建则清空
+  if(typeof fillProjectPhaseSelects==='function' && document.getElementById('fProject')){
+    try{ fillProjectPhaseSelects('fProject','fPhase',projectId||'',(phaseIdx===undefined?null:phaseIdx)); }catch(e){}
+  }
+  document.getElementById('overlay').classList.add('active');
+}
 
 // ===== 极速采购（免审直通，状态直接=已到）=====
 function getQuickPrefs(){try{return JSON.parse(localStorage.getItem('quick_purchase_prefs')||'{}')}catch(e){return{}}}
@@ -305,7 +332,7 @@ async function saveQuickPurchase(){
 
 function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['商品名称']||'';document.getElementById('fPlatformEdit').value=i['平台']||'拼多多';document.getElementById('fCategoryEdit').value=i['分类']||'日用';document.getElementById('fPriceEdit').value=i['单价']||'';document.getElementById('fQtyEdit').value=i['数量']||1;document.getElementById('fStatusEdit').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['备注']||'';var _fv=document.getElementById('fVirtualEdit');if(_fv)_fv.checked=(i['虚拟']==='1');try{if(typeof fillProjectPhaseSelects==='function')fillProjectPhaseSelects('fProjectEdit','fPhaseEdit',i['项目ID']||'',i['阶段'])}catch(e){}var ig=document.getElementById('installmentGroup');var ii=document.getElementById('fInstallments');var ip=document.getElementById('installmentPreview');var iv=i['分期期数']||0;if(ig)ig.style.display='block';if(ii){ii.value=iv||'';ii.oninput=function(){var p=parseInt(this.value)||0;var pr=parseFloat(document.getElementById('fPriceEdit').value)||0;var q=parseInt(document.getElementById('fQtyEdit').value)||1;var t=pr*q;if(ip)ip.textContent=p>0?'每期 \u00a5'+(t/p).toFixed(2):'';if(ig)ig.style.display=p>0?'block':'none';}}if(ip)ip.textContent=iv>0?'每期 \u00a5'+(((i['单价']||0)*(i['数量']||1))/iv).toFixed(2):'';var peW=document.getElementById('peImageWrap');var peP=document.getElementById('peImagePreview');if(typeof purchaseImageData!=='undefined')purchaseImageData['pe']='';if(peW)peW.style.display='none';if(i['图片']&&i['图片'].startsWith('kv:')){if(peP)peP.src=API_BASE + '/api/images?key='+encodeURIComponent(i['图片'].slice(3))+'&token='+encodeURIComponent(getPin());if(peW)peW.style.display='block'}else if(i['图片']){if(peP)peP.src=i['图片'];if(peW)peW.style.display='block'}document.getElementById('overlay').classList.add('active')}
 function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null,virtual:!!(document.getElementById('fVirtualEdit')&&document.getElementById('fVirtualEdit').checked),projectId:(document.getElementById('fProjectEdit')||{}).value||'',phaseIdx:(function(){var el=document.getElementById('fPhaseEdit');return el&&el.value!==''?Number(el.value):null})(),image:typeof purchaseImageData!=='undefined'?(purchaseImageData['pe']||''):null,installments:parseInt(document.getElementById('fInstallments')&&document.getElementById('fInstallments').value)||0,installmentAmount:0,installmentStart:getThisMonth()};if(editId){var _idx=items.findIndex(function(x){return x.id===editId});if(_idx>=0){var _it=items[_idx];_it['商品名称']=name;_it['平台']=data.platform;_it['分类']=data.category;_it['单价']=data.price;_it['数量']=data.qty;_it['状态']=data.status;_it['备注']=data.note||'';}}closeModal();render();if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){toast('更新失败');await loadAll();return}toast('已更新')}else{var _tmp={id:'tmp_'+Date.now(),'商品名称':name,'平台':data.platform||'拼多多','单价':data.price,'数量':data.qty,'状态':data.status||'待审批','分类':data.category||'其他','备注':data.note||'','日期':Date.now(),'创建时间':'加载中...','分期期数':data.installments||0,'分期金额':0};items.unshift(_tmp);render();const r=await api('POST',data);if(r&&r.error){toast('添加失败');items=items.filter(function(x){return x.id!==_tmp.id});render();return}_tmp.id=r.id||_tmp.id;toast('已添加')}}
+async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null,virtual:!!(document.getElementById('fVirtualEdit')&&document.getElementById('fVirtualEdit').checked),projectId:(document.getElementById('fProjectEdit')||{}).value||'',phaseIdx:(function(){var el=document.getElementById('fPhaseEdit');return el&&el.value!==''?Number(el.value):null})(),image:typeof purchaseImageData!=='undefined'?(purchaseImageData['pe']||''):null,installments:parseInt(document.getElementById('fInstallments')&&document.getElementById('fInstallments').value)||0,installmentAmount:0,installmentStart:getThisMonth()};if(editId){var _idx=items.findIndex(function(x){return x.id===editId});if(_idx>=0){var _it=items[_idx];_it['商品名称']=name;_it['平台']=data.platform;_it['分类']=data.category;_it['单价']=data.price;_it['数量']=data.qty;_it['状态']=data.status;_it['备注']=data.note||'';}}closeModal();render();if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){toast('更新失败');await loadAll();return}toast('已更新')}else{var _tmp={id:'tmp_'+Date.now(),'商品名称':name,'平台':data.platform||'拼多多','单价':data.price,'数量':data.qty,'状态':data.status||'待审批','分类':data.category||'其他','备注':data.note||'','日期':Date.now(),'创建时间':'加载中...','分期期数':data.installments||0,'分期金额':0};items.unshift(_tmp);render();const r=await api('POST',data);if(r&&r.error){toast('添加失败');items=items.filter(function(x){return x.id!==_tmp.id});render();return}_tmp.id=r.id||_tmp.id;toast('已添加')}if(typeof refreshProjectsAfterLinkedMoney==='function') await refreshProjectsAfterLinkedMoney();}
 
 async function deletePurchaseExpenses(itemName) {
   try {
@@ -321,7 +348,7 @@ async function deletePurchaseExpenses(itemName) {
   } catch(e) { console.error('deletePurchaseExpenses error:', e); }
 }
 
-async function delItem(id){if(!confirm('确定删除？'))return;var item=items.find(x=>x.id===id);var itemName=item?item['商品名称']||'':'';if(itemName)await deletePurchaseExpenses(itemName);items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);await loadAll();return}toast('已删除')}
+async function delItem(id){if(!confirm('确定删除？'))return;var item=items.find(x=>x.id===id);var itemName=item?item['商品名称']||'':'';if(itemName)await deletePurchaseExpenses(itemName);items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);await loadAll();return}toast('已删除');if(item&&item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
 
 // ===== 审批流操作 =====
 const NEXT_STATUS={'待评估':'待审批','待审批':'已审批','已审批':'已下单','已下单':'已到'};

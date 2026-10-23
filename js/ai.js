@@ -557,6 +557,9 @@ async function submitPurchase() {
   const total = price * qty;
   const instVal = parseInt(document.getElementById('fInstallmentsDetail')?.value) || 0;
   const instAmount = instVal > 0 ? Math.round((total / instVal) * 100) / 100 : 0;
+  const projectId = (document.getElementById('fProject') || {}).value || '';
+  const phaseEl = document.getElementById('fPhase');
+  const phaseIdx = phaseEl && phaseEl.value !== '' ? Number(phaseEl.value) : null;
   const data = {
     name,
     platform: document.getElementById('fPlatform').value,
@@ -569,7 +572,9 @@ async function submitPurchase() {
     image: purchaseImageData['p'] || purchaseImageData['ev'] || null,
     installments: instVal,
     installmentAmount: instAmount,
-    installmentStart: getThisMonth()
+    installmentStart: getThisMonth(),
+    projectId: projectId,
+    phaseIdx: phaseIdx
   };
   // Optimistic: add temp item immediately
   var _tmp={id:'tmp_'+Date.now(),'商品名称':name,'平台':data.platform||'拼多多','单价':data.price,'数量':data.qty,'状态':'待审批','分类':data.category||'其他','备注':data.note||'','日期':Date.now(),'创建时间':'','分期期数':data.installments||0,'分期金额':0};
@@ -579,7 +584,8 @@ async function submitPurchase() {
   const r = await api('POST', data);
   if (r && r.error) { toast('添加失败'); items=items.filter(function(x){return x.id!==_tmp.id}); render(); return; }
   if(r && r.id) _tmp.id = r.id;
-  toast('采购单已提交')
+  toast('采购单已提交');
+  if (data.projectId && typeof refreshProjectsAfterLinkedMoney === 'function') await refreshProjectsAfterLinkedMoney();
 }
 // --- AI 分析 ---
 // --- AI 自然语言查询 ---

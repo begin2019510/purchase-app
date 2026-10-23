@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.52";
+const APP_VERSION = "4.0.53";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.53',date:'2026-10-24',items:['项目关联记账修复：在记账表单选择「项目 + 阶段」后真正写入数据库（此前选择被忽略）','项目关联采购修复：完整采购表单新增项目/阶段选择并随单保存；从项目点「记一笔采购」会预选当前项目阶段','新增/编辑/删除关联采购或记账后，项目总花费与阶段明细会立即刷新','阶段规划时间按用户本地日期保存，避免非中国时区显示成前一天']},
 {v:'4.0.52',date:'2026-10-24',items:['修复项目阶段时间无法保存：公网补齐 /api/phases 与 /api/phase-items','阶段完成/跳过/回退改为服务端单事务：指针、下一阶段、实际时间不再改一半','回退会撤回自动开始的下一阶段；P5 通关需 P0~P4 已处理；回退 P5 或重开前置阶段会自动恢复进行中','项目请求统一 401 自动续期，接口异常会明确提示而不是静默失败']},
 {v:'4.0.51',date:'2026-10-21',items:['安全修复：登录/锁屏期间不再加载与显示任何数据，iOS 拖动不会再露出下方内容（登录屏此前仅遮盖、形同虚设）','离开账号时清空本地数据缓存，换账号登录不再串显上一账号数据','锁屏统一收口：旧数据、弹窗、页面全部隐藏']},
 {v:'4.0.50',date:'2026-10-17',items:['修复：连续追加预算时第二笔不生效 —— 预算同步改为队列化写入，本地未落盘的修改不再被旧数据覆盖']},
