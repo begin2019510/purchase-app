@@ -2,6 +2,8 @@
 
 > 前置：后端迁移方案见 `/root/purchase-app/docs/MIGRATION-PLAN.md`（定稿，暂不实施）。
 > 本方案与迁移**一起落地**：新模型直接按 MySQL 设计，不在飞书上做过渡实现。
+>
+> **实现更新（v4.0.52，以此为准）**：通关改为「P5 完成 + P0~P4 全部完成/跳过」；完成/跳过时自动开始下一个未处理阶段，回退会撤回这次自动开始；重开任一前置阶段或回退 P5 时项目恢复「进行中」。完整状态变更在服务端单事务内完成。
 
 ---
 
@@ -17,12 +19,12 @@
 |------|------|
 | 阶段命名 | UI 显示 P0~P5，每阶段可改自定义显示名（本质就是 6 个固定槽位） |
 | 跳级进度 | 指针 + 跳过不计入分母；进度 = 已完成 ÷ 实际经历（非跳过） |
-| 通关 | 最后一个「实际经历」的阶段完成 = 项目通关（状态→已完成，可归档） |
+| 通关 | P5 完成且 P0~P4 全部完成/跳过 = 项目通关（状态→已完成，可归档） |
 | 交付物 | 阶段下可选子项 0~n 个：标题 + 勾选 + 可选图片/备注；非必须 |
 | 父子层级 | 旧层级**保留只读**（能看旧数据）；新项目/新交互不再创建父子 |
 | Todo 关系 | Todo 独立管杂事；**项目仍可关联 Todo**（保留 projectId），但 Todo **不再自动改项目状态** |
 | Todo 自动完成 | **废除**（checkProjectAutoStatus 不再改状态） |
-| 阶段可逆性 | **完全可逆**：完成/跳过/指针均可来回改 |
+| 阶段可逆性 | **完全可逆**：完成/跳过/指针均可来回改；回退会撤回本次自动开始的下一阶段 |
 | 钱的关联 | 采购 + 记账记录挂 **项目 + 阶段**，项目详情显示「本项目花了多少」 |
 | 落地时机 | 随 MySQL 迁移一起上线；飞书链路不动 |
 
@@ -94,14 +96,18 @@ todos:       保留 project_id；ADD phase_idx TINYINT NULL（可选挂阶段）
 
 项目 status:
   active    —— 默认
-  completed —— 「最后一个非 skipped 阶段」被标 done 时自动设；也可手动
+  completed —— P5 done 且 P0~P4 全部 done/skipped 时自动设
   archived  —— completed 后可归档（沿用现有归档交互）
 
 进度% = done 数 ÷ (6 - skipped 数)     // 若全 skipped 分母保护 ≥1
-卡片显示：指针如 "P3 进行中" 或 "✅ 通关"，进度条用上式
+卡片显示：指针如 "P3 进行中" 或 "🏁 通关"，进度条用上式
 ```
 
-- **不**再由 Todo 完成度驱动项目状态（删除 `checkProjectAutoStatus` 中改项目状态的分支）
+- P5 完成前必须先把 P0~P4 标为 done 或 skipped；P5 不允许 skipped
+- 完成/跳过某阶段时，指针落到其后第一个未处理阶段；若该阶段为 todo 则自动置为 doing
+- 回退某阶段会清空该阶段实际时间，并撤回「由它完成时自动开始」的下一阶段
+- 任一前置阶段被重新打开（todo/doing），或 P5 回退，项目自动恢复 active
+- **不**再由 Todo 完成度驱动项目状态（`checkProjectAutoStatus` 保持 no-op）
 - Todo 详情仍显示「所属项目」，项目详情仍列关联 Todo（保留）
 - 每阶段子项勾选只更新该子项，**不**自动推进指针（推进靠用户点「完成本阶段」）
 
@@ -146,12 +152,12 @@ todos:       保留 project_id；ADD phase_idx TINYINT NULL（可选挂阶段）
 |------|------|------|
 | GET | /api/projects | 返回项目数组，**每项内嵌 phases[] + items[]**（一次拉齐，省往返） |
 | POST | /api/projects | 建项目 + 自动建 6 phase |
-| PUT | /api/projects/:id | 基本信息 / current_phase / status |
-| PUT | /api/phases/:id | status / display_name / note（可逆） |
-| POST/PUT/DELETE | /api/phase-items/:id | 子项 CRUD + 勾选 |
-| DELETE | /api/projects/:id | 级联删 phases/items；采购/记账/ todo 的 project_id 置 NULL 或禁止有绑定时删（见风险） |
+| PUT | /api/projects | 基本信息 / current_phase / status（id 在 body） |
+| PUT | /api/phases | 规划时间 / status / displayName / note；状态变更在事务内联动指针（projectId + phaseIdx） |
+| POST/PUT/DELETE | /api/phase-items | 子项 CRUD + 勾选（POST body；PUT body.id；DELETE ?id=） |
+| DELETE | /api/projects?id= | 级联删 phases/items；采购/记账/todo 的 project_id 置 NULL |
 
-迁移**前**（仍在飞书期）：不动 projects.js；本方案排期在迁移 PR 之后。
+CF Functions：`functions/api/projects.js`、`phases.js`、`phase-items.js` 在 `DATA_BACKEND=mysql` 时验 JWT 并反代到内网服务；其他后端返回 JSON 501。
 
 ---
 
@@ -221,8 +227,8 @@ PR-D  旧数据只读渲染 + 清理（legacy 展示、迁移验证）
 
 1. 新建项目 → 自动出现 P0~P5，默认名可改
 2. P0 直接跳到 P3（P1/P2 跳过）→ 进度 = 1/done÷(实际经历)
-3. P3 完成 → 指针不动/可手动；最后一关完成 → 状态自动 completed → 可归档
-4. 完全可逆：done→todo 回退、skipped→todo、指针前后拖
+3. P3 完成 → 指针到下一个未处理阶段并自动开始；P0~P4 处理后完成 P5 → 状态自动 completed → 可归档
+4. 完全可逆：done→todo 回退并撤回自动开始的下一阶段、skipped→todo、指针前后拖；重开前置阶段或 P5 后项目回到进行中
 5. 阶段子项：增删勾选、图片（5MB 内）
 6. Todo 全完成 → **项目状态不变**
 7. 采购/记账选项目+阶段 → 项目详情金额正确

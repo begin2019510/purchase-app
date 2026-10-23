@@ -171,44 +171,166 @@ router.put('/projects', async (req, res, next) => {
 });
 
 // ===== 阶段更新（完成/跳过/回退，完全可逆）=====
+// 状态变更与指针推进在同一事务内完成，避免多次请求部分失败造成不一致。
 router.put('/phases', async (req, res, next) => {
+  const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
     const b = req.body || {};
     const pid = projectIdNum(b.projectId);
     const idx = Number(b.phaseIdx);
-    if (!pid || isNaN(idx) || idx < 0 || idx >= PHASE_COUNT) return res.status(400).json({ error: 'bad phase' });
-    const own = await db.one('SELECT * FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
-    if (!own) return res.status(404).json({ error: 'not found' });
-    const ph = await db.one('SELECT * FROM project_phases WHERE project_id = ? AND phase_idx = ?', [pid, idx]);
-    if (!ph) return res.status(404).json({ error: 'phase not found' });
-
-    const cols = {};
+    if (!pid || !Number.isInteger(idx) || idx < 0 || idx >= PHASE_COUNT) {
+      return res.status(400).json({ error: 'bad phase' });
+    }
     // 强制规则：P5 是最终阶段，不允许跳过
     if (b.status === 'skipped' && idx === 5) {
       return res.status(400).json({ error: 'P5 是最终阶段，必须完成，不能跳过' });
     }
+    if (b.status !== undefined && !['todo', 'doing', 'done', 'skipped'].includes(b.status)) {
+      return res.status(400).json({ error: 'bad status' });
+    }
+
+    await conn.beginTransaction();
+    const [ownRows] = await conn.query('SELECT * FROM projects WHERE id = ? AND user_id = ? FOR UPDATE', [pid, uid]);
+    const own = ownRows[0];
+    if (!own) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'not found' });
+    }
+    // 旧项目自愈：确保 6 个阶段行都存在
+    for (let i = 0; i < PHASE_COUNT; i++) {
+      await conn.query('INSERT IGNORE INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [pid, i, 'todo']);
+    }
+    const [phases] = await conn.query('SELECT * FROM project_phases WHERE project_id = ? ORDER BY phase_idx FOR UPDATE', [pid]);
+    const byIdx = {};
+    phases.forEach(x => { byIdx[Number(x.phase_idx)] = x; });
+    const ph = byIdx[idx];
+    if (!ph) throw new Error('phase rows missing after self-heal');
+
+    // 最终阶段门禁：P5 完成前，P0~P4 必须已完成或已跳过
+    if (b.status === 'done' && idx === 5) {
+      const pending = [];
+      for (let i = 0; i < 5; i++) {
+        const s = (byIdx[i] || {}).status;
+        if (s !== 'done' && s !== 'skipped') pending.push('P' + i);
+      }
+      if (pending.length) {
+        await conn.rollback();
+        return res.status(400).json({ error: '请先完成或跳过 ' + pending.join('、') });
+      }
+    }
+
+    const now = Date.now();
+    const oldStatus = ph.status || 'todo';
+    const oldFinished = ph.finished_at_ms == null ? null : Number(ph.finished_at_ms);
+    const cols = {};
     if (b.status !== undefined) {
       const st = b.status;
-      if (!['todo', 'doing', 'done', 'skipped'].includes(st)) return res.status(400).json({ error: 'bad status' });
       cols.status = st;
-      if (st === 'doing' && !ph.started_at_ms) cols.started_at_ms = Date.now();
-      if (st === 'done') { cols.finished_at_ms = Date.now(); if (!ph.started_at_ms) cols.started_at_ms = Date.now(); }
-      if (st === 'todo' || st === 'skipped') { cols.finished_at_ms = null; }
+      if (st === 'doing') {
+        if (!ph.started_at_ms) cols.started_at_ms = now;
+        cols.finished_at_ms = null;
+      } else if (st === 'done') {
+        if (!ph.started_at_ms) cols.started_at_ms = now;
+        cols.finished_at_ms = now;
+      } else if (st === 'skipped') {
+        if (!ph.started_at_ms) cols.started_at_ms = now;
+        cols.finished_at_ms = now;
+      } else { // todo：完全回退，清空实际时间
+        cols.started_at_ms = null;
+        cols.finished_at_ms = null;
+      }
     }
     if (b.displayName !== undefined) cols.display_name = String(b.displayName || '').slice(0, 50) || null;
     if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 2000);
     if (b.plannedStart !== undefined) cols.planned_start_ms = b.plannedStart ? new Date(b.plannedStart).getTime() : null;
     if (b.plannedEnd !== undefined) cols.planned_end_ms = b.plannedEnd ? new Date(b.plannedEnd).getTime() : null;
-    const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
-    if (sets) await db.exec('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
 
-    // 强制规则：只有 P5 完成才算通关
-    if (b.status === 'done' && idx === 5) {
-      await db.exec("UPDATE projects SET status = '已完成', current_phase = 5 WHERE id = ?", [pid]);
+    // 规划时间校验（用更新后的有效值）
+    const effStart = cols.planned_start_ms !== undefined ? cols.planned_start_ms : (ph.planned_start_ms == null ? null : Number(ph.planned_start_ms));
+    const effEnd = cols.planned_end_ms !== undefined ? cols.planned_end_ms : (ph.planned_end_ms == null ? null : Number(ph.planned_end_ms));
+    if ((effStart != null && !Number.isFinite(effStart)) || (effEnd != null && !Number.isFinite(effEnd))) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'bad planned time' });
     }
-    res.json({ ok: true });
-  } catch (e) { next(e); }
+    if (effStart != null && effEnd != null && effEnd < effStart) {
+      await conn.rollback();
+      return res.status(400).json({ error: '完成时间不能早于开始时间' });
+    }
+
+    const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
+    if (sets) {
+      await conn.query('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
+    }
+
+    let pointer = Number(own.current_phase) || 0;
+    let projectStatus = own.status || '进行中';
+
+    if (b.status !== undefined) {
+      const st = b.status;
+      if (st === 'done' || st === 'skipped') {
+        if (idx < 5) {
+          // 指针落到下一个尚未完成/跳过的阶段，若它还没开始则自动开始
+          let next = idx + 1;
+          while (next <= 5 && ['done', 'skipped'].includes((byIdx[next] || {}).status)) next++;
+          if (next <= 5) {
+            pointer = next;
+            if ((byIdx[next] || {}).status === 'todo') {
+              await conn.query(
+                "UPDATE project_phases SET status = 'doing', started_at_ms = ?, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
+                [now, pid, next]);
+              byIdx[next].status = 'doing';
+              byIdx[next].started_at_ms = now;
+            }
+          } else {
+            pointer = 5;
+          }
+        } else {
+          pointer = 5;
+        }
+      } else if (st === 'doing') {
+        pointer = idx;
+      } else if (st === 'todo') {
+        pointer = idx;
+        // 若下一阶段是上一次“完成/跳过”时自动开始的，回退时一并撤回
+        if ((oldStatus === 'done' || oldStatus === 'skipped') && oldFinished) {
+          for (let j = idx + 1; j <= 5; j++) {
+            const np = byIdx[j];
+            if (np && np.status === 'doing' && Number(np.started_at_ms) === oldFinished) {
+              await conn.query(
+                "UPDATE project_phases SET status = 'todo', started_at_ms = NULL, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
+                [pid, j]);
+              np.status = 'todo';
+              np.started_at_ms = null;
+              np.finished_at_ms = null;
+            }
+          }
+        }
+      }
+
+      // 通关不变量：P5 完成，且 P0~P4 全部完成/跳过
+      const p5Done = (idx === 5 ? st : (byIdx[5] || {}).status) === 'done';
+      let allPrevHandled = true;
+      for (let i = 0; i < 5; i++) {
+        const ps = i === idx ? st : ((byIdx[i] || {}).status || 'todo');
+        if (ps !== 'done' && ps !== 'skipped') { allPrevHandled = false; break; }
+      }
+      if (p5Done && allPrevHandled) {
+        if (projectStatus !== '已归档') projectStatus = '已完成';
+        pointer = 5;
+      } else if (projectStatus === '已完成') {
+        // P5 回退，或已通关后又重新打开任一前置阶段：项目回到进行中
+        projectStatus = '进行中';
+      }
+    }
+
+    await conn.query('UPDATE projects SET current_phase = ?, status = ? WHERE id = ?', [pointer, projectStatus, pid]);
+    await conn.commit();
+    res.json({ ok: true, currentPhase: pointer, projectStatus: projectStatus });
+  } catch (e) {
+    try { await conn.rollback(); } catch (x) {}
+    next(e);
+  } finally { conn.release(); }
 });
 
 // ===== 阶段交付物 =====
@@ -218,13 +340,16 @@ router.post('/phase-items', async (req, res, next) => {
     const b = req.body || {};
     const pid = projectIdNum(b.projectId);
     const idx = Number(b.phaseIdx);
-    if (!pid || isNaN(idx)) return res.status(400).json({ error: 'bad params' });
+    if (!pid || !Number.isInteger(idx) || idx < 0 || idx >= PHASE_COUNT) {
+      return res.status(400).json({ error: 'bad params' });
+    }
     const own = await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
     if (!own) return res.status(404).json({ error: 'not found' });
-    if (!b.title) return res.status(400).json({ error: 'title required' });
+    const title = String(b.title || '').trim();
+    if (!title) return res.status(400).json({ error: 'title required' });
     const [ins] = await db.pool.query(
       'INSERT INTO phase_items (project_id, phase_idx, title, note, sort_order) VALUES (?,?,?,?,?)',
-      [pid, idx, String(b.title).slice(0, 300), String(b.note || '').slice(0, 2000), Number(b.sortOrder) || 0]);
+      [pid, idx, title.slice(0, 300), String(b.note || '').slice(0, 2000), Number(b.sortOrder) || 0]);
     res.json({ id: 'pi_' + ins.insertId, ok: true });
   } catch (e) { next(e); }
 });

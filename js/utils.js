@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "4.0.51";
+const APP_VERSION = "4.0.52";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'4.0.52',date:'2026-10-24',items:['修复项目阶段时间无法保存：公网补齐 /api/phases 与 /api/phase-items','阶段完成/跳过/回退改为服务端单事务：指针、下一阶段、实际时间不再改一半','回退会撤回自动开始的下一阶段；P5 通关需 P0~P4 已处理；回退 P5 或重开前置阶段会自动恢复进行中','项目请求统一 401 自动续期，接口异常会明确提示而不是静默失败']},
 {v:'4.0.51',date:'2026-10-21',items:['安全修复：登录/锁屏期间不再加载与显示任何数据，iOS 拖动不会再露出下方内容（登录屏此前仅遮盖、形同虚设）','离开账号时清空本地数据缓存，换账号登录不再串显上一账号数据','锁屏统一收口：旧数据、弹窗、页面全部隐藏']},
 {v:'4.0.50',date:'2026-10-17',items:['修复：连续追加预算时第二笔不生效 —— 预算同步改为队列化写入，本地未落盘的修改不再被旧数据覆盖']},
 {v:'4.0.49',date:'2026-10-17',items:['待办新建/编辑页 iOS 原生重做：顶部取消·保存导航栏、大标题输入、分组卡片行（标签左值右）、优先级分段控件','子任务与提醒收纳进分组；编辑弹窗标题自动切换「编辑待办」']},

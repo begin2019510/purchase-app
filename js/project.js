@@ -1,36 +1,92 @@
 // project.js - 项目模块（P0~P5 阶段通关制，PROJECT-PHASE-DESIGN.md）
-var PROJECT_API = API_BASE + '/api/projects';
 var projectList = [];
 var projectFilter = "全部";
 var selectedPhase = {}; // projectId -> phaseIdx
 
-async function projectApi(method, body, id) {
-  var url = PROJECT_API;
-  var opts = { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() } };
-  if (method === 'DELETE') url += '?id=' + id;
-  else if (body) opts.body = JSON.stringify(body);
-  var r = await fetch(url, opts);
-  if (r.status === 401) {
-    var nt = await refreshAccessToken();
-    if (nt) { opts.headers['Authorization'] = 'Bearer ' + nt; r = await fetch(url, opts); }
+function pjErrorText(e) {
+  return (e && e.message) ? e.message : '网络错误';
+}
+
+// 统一请求：401 自动刷新一次；非 JSON/非 2xx 都转成带原因的异常
+async function pjRequest(method, path, body) {
+  var url = API_BASE + path;
+  var headers = { 'Content-Type': 'application/json' };
+  var opts = { method: method, headers: headers };
+  if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
+
+  async function send(token) {
+    token = token || getPin();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    else delete headers['Authorization'];
+    return fetch(url, opts);
   }
-  return r.json();
+
+  var r;
+  try { r = await send(); }
+  catch (e) { throw new Error('网络连接失败，请检查网络后重试'); }
+
+  if (r.status === 401) {
+    var nt = null;
+    try { nt = await refreshAccessToken(); } catch (e) {}
+    if (nt) {
+      try { r = await send(nt); }
+      catch (e) { throw new Error('网络连接失败，请检查网络后重试'); }
+    }
+    if (r.status === 401) throw new Error('登录已过期，请重新登录');
+  }
+
+  var text = await r.text();
+  var data = null;
+  if (text) {
+    try { data = JSON.parse(text); }
+    catch (e) {
+      throw new Error(r.ok
+        ? '接口 ' + path.split('?')[0] + ' 返回了网页而不是 JSON（可能尚未部署）'
+        : '服务器异常（HTTP ' + r.status + '）');
+    }
+  }
+  if (!r.ok) throw new Error((data && (data.error || data.message)) || ('请求失败（HTTP ' + r.status + '）'));
+  if (data && data.error) throw new Error(data.error);
+  return data || { ok: true };
+}
+
+async function projectApi(method, body, id) {
+  var path = '/api/projects';
+  if (method === 'DELETE') {
+    if (!id) throw new Error('缺少项目 ID');
+    path += '?id=' + encodeURIComponent(id);
+  }
+  return pjRequest(method, path, method === 'DELETE' ? null : body);
 }
 
 async function phaseApi(body) {
-  return fetch(API_BASE + '/api/phases', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() }, body: JSON.stringify(body) }).then(function(r) { return r.json(); });
+  return pjRequest('PUT', '/api/phases', body);
 }
 async function phaseItemApi(method, body, id) {
-  var url = API_BASE + '/api/phase-items' + (method === 'DELETE' ? '?id=' + encodeURIComponent(id) : '');
-  return fetch(url, { method: method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getPin() }, body: method === 'DELETE' ? undefined : JSON.stringify(body) }).then(function(r) { return r.json(); });
+  var path = '/api/phase-items';
+  if (method === 'DELETE') {
+    if (!id) throw new Error('缺少交付物 ID');
+    path += '?id=' + encodeURIComponent(id);
+  }
+  return pjRequest(method, path, method === 'DELETE' ? null : body);
 }
 
+var _pjLoadErrAt = 0;
 async function loadProjects() {
   try {
     var r = await projectApi('GET');
-    if (Array.isArray(r)) { projectList = r; if (typeof setCachedData === 'function') setCachedData('projects', r); }
-    else { console.warn('loadProjects: expected array, got:', r); }
-  } catch (e) { console.error('loadProjects error:', e); }
+    if (!Array.isArray(r)) throw new Error('项目数据格式异常');
+    projectList = r;
+    if (typeof setCachedData === 'function') setCachedData('projects', r);
+    return true;
+  } catch (e) {
+    console.error('loadProjects error:', e);
+    if (typeof toast === 'function' && Date.now() - _pjLoadErrAt > 60000) {
+      _pjLoadErrAt = Date.now();
+      toast('项目加载失败: ' + pjErrorText(e));
+    }
+    return false;
+  }
 }
 
 // ===== 工具 =====
@@ -138,7 +194,7 @@ function renderProjectCard(p) {
   h += '</div>';
 
   h += '<div class="pj-meta">';
-  h += '<span class="td2-chip">' + (st.pct >= 100 ? '🏁 通关' : 'P' + cur + ' 进行中') + '</span>';
+  h += '<span class="td2-chip">' + ((isDone || st.pct >= 100) ? '🏁 通关' : 'P' + cur + ' 进行中') + '</span>';
   var _cph = phases[cur];
   if (_cph && _cph.plannedEnd) {
     var _pd = new Date(Number(_cph.plannedEnd));
@@ -208,43 +264,47 @@ async function saveProject() {
     color: document.getElementById('projectColor').value,
     budget: (function() { var el = document.getElementById('projectBudget'); var v = el ? el.value.trim() : ''; return v === '' ? null : Number(v); })(),
   };
-  closeProjectModal();
-  if (id) {
-    data.id = id;
-    var r = await projectApi('PUT', data);
-    if (r && r.error) toast('更新失败: ' + r.error); else toast('✅ 已更新');
+  var editing = !!id;
+  if (editing) data.id = id;
+  try {
+    var r = editing ? await projectApi('PUT', data) : await projectApi('POST', data);
+    if (!editing && !(r && r.ok && r.id)) throw new Error('服务端未返回项目 ID');
+    closeProjectModal();
+    toast(editing ? '✅ 已更新' : '✅ 已创建，含 P0~P5 六个阶段');
     await loadProjects();
     renderProject();
-    var dO = document.getElementById('projectDetailOverlay');
-    if (dO && dO.classList.contains('active')) openProjectDetail(id);
-  } else {
-    var r = await projectApi('POST', data);
-    if (r && r.ok) {
-      toast('✅ 已创建，含 P0~P5 六个阶段');
-      await loadProjects();
-      renderProject();
-    } else {
-      toast('创建失败: ' + (r.error || '未知错误'));
+    if (editing) {
+      var dO = document.getElementById('projectDetailOverlay');
+      if (dO && dO.classList.contains('active')) openProjectDetail(id);
     }
+  } catch (e) {
+    toast((editing ? '更新失败: ' : '创建失败: ') + pjErrorText(e));
   }
 }
 
 async function deleteProject(id) {
   if (!confirm('确定删除该项目？\n阶段和交付物会一并删除；关联的采购/记账金额保留、待办保留。')) return;
-  closeProjectDetail();
-  var r = await projectApi('DELETE', null, id);
-  if (r && r.error) { toast('删除失败: ' + r.error); return; }
-  toast('已删除');
-  await loadProjects();
-  renderProject();
+  try {
+    await projectApi('DELETE', null, id);
+    closeProjectDetail();
+    toast('已删除');
+    await loadProjects();
+    renderProject();
+  } catch (e) {
+    toast('删除失败: ' + pjErrorText(e));
+  }
 }
 
 async function archiveProject(id) {
-  var r = await projectApi('PUT', { id: id, status: '已归档' });
-  if (r && r.error) { toast('归档失败'); return; }
-  toast('已归档');
-  await loadProjects();
-  renderProject();
+  try {
+    await projectApi('PUT', { id: id, status: '已归档' });
+    closeProjectDetail();
+    toast('已归档');
+    await loadProjects();
+    renderProject();
+  } catch (e) {
+    toast('归档失败: ' + pjErrorText(e));
+  }
 }
 
 // ===== 详情 =====
@@ -326,7 +386,7 @@ function openProjectDetail(id) {
   if (sph.startedAt || sph.finishedAt) {
     html += '<div class="pj-actual">'
       + (sph.startedAt ? '<span>▶ 开始 <b>' + _dt(sph.startedAt) + '</b></span>' : '')
-      + (sph.finishedAt ? '<span>✓ 完成 <b>' + _dt(sph.finishedAt) + '</b></span>' : '')
+      + (sph.finishedAt ? '<span>' + (phStatus === 'skipped' ? '⏭ 跳过' : '✓ 完成') + ' <b>' + _dt(sph.finishedAt) + '</b></span>' : '')
       + '</div>';
   }
   html += '</div>';
@@ -365,7 +425,16 @@ function openProjectDetail(id) {
   html += '<div class="pj-phase-actions">';
   if (phStatus !== 'done') html += '<button class="pj-pa pj-pa-ok" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'done\')">✓ 完成本阶段</button>';
   if (phStatus !== 'skipped' && sel !== 5) html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'skipped\')">⏭ 跳过</button>';
-  if (sel === 5 && phStatus !== 'done' && phStatus !== 'skipped') html += '<div class="pj-p5-hint">🔒 P5 是最终阶段，必须完成本阶段才能通关</div>';
+  if (sel === 5 && phStatus !== 'done') {
+    var _pendingPrev = [];
+    for (var _pi = 0; _pi < 5; _pi++) {
+      var _ps = (phases[_pi] && phases[_pi].status) || 'todo';
+      if (_ps !== 'done' && _ps !== 'skipped') _pendingPrev.push('P' + _pi);
+    }
+    html += '<div class="pj-p5-hint">' + (_pendingPrev.length
+      ? '🔒 通关前需先完成或跳过 ' + _pendingPrev.join('、')
+      : '🔒 P5 是最终阶段，完成本阶段后项目通关') + '</div>';
+  }
   if (phStatus !== 'todo') html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'todo\')">↩ 回退</button>';
   html += '</div>';
   html += '</div>';
@@ -396,7 +465,7 @@ function openProjectDetail(id) {
   html += '<div class="pj-actions-grid">';
   html += '<button class="pj-act" onclick="closeProjectDetail();openTodoModalForProject(\'' + id + '\')"><span>☑</span>新建待办</button>';
   html += '<button class="pj-act" onclick="closeProjectDetail();openProjectModal(\'' + id + '\')"><span>✏️</span>编辑项目</button>';
-  if (p.status === '已完成') html += '<button class="pj-act" onclick="archiveProject(\'' + id + '\');closeProjectDetail()"><span>🗄️</span>归档</button>';
+  if (p.status === '已完成') html += '<button class="pj-act" onclick="App.project.archiveProject(\'' + id + '\')"><span>🗄️</span>归档</button>';
   html += '<button class="pj-act pj-act-danger" onclick="deleteProject(\'' + id + '\')"><span>🗑️</span>删除</button>';
   html += '</div>';
 
@@ -442,21 +511,21 @@ function selectPhase(projectId, idx) {
 
 async function setPhase(projectId, idx, status) {
   if (status === 'skipped' && idx === 5) { toast('P5 是最终阶段，必须完成，不能跳过'); return; }
-  var p = projectList.find(function(x) { return x.id === projectId; });
   if (status === 'skipped' && !confirm('跳过 P' + idx + '？\n跳过不参与进度分母，可随时回退')) return;
-  if (status === 'done' && !confirm('完成 P' + idx + '？\n若是最后一个实际经历的阶段，项目将自动通关')) return;
-  var r = await phaseApi({ projectId: projectId, phaseIdx: idx, status: status });
-  if (r && r.error) { toast('操作失败: ' + r.error); return; }
-  if (status === 'done' || status === 'skipped') {
-    var next = idx + 1;
-    if (next <= 5) {
-      var np = (p && p.phases) ? p.phases[next] : null;
-      if (!np || np.status === 'todo') await phaseApi({ projectId: projectId, phaseIdx: next, status: 'doing' }).catch(function() {});
-      await projectApi('PUT', { id: projectId, currentPhase: Math.min(next, 5) });
-    }
+  if (status === 'done' && !confirm(idx === 5
+    ? '完成 P5？\n项目将自动通关，可归档。'
+    : '完成 P' + idx + '？\n下一阶段会自动开始。')) return;
+  try {
+    var r = await phaseApi({ projectId: projectId, phaseIdx: idx, status: status });
+    var msg = status === 'done'
+      ? (idx === 5 ? '🏁 项目已通关' : '✅ 阶段完成' + (r && r.currentPhase != null ? '，P' + r.currentPhase + ' 已开始' : ''))
+      : status === 'skipped' ? '⏭ 已跳过' : '↩ 已回退';
+    toast(msg);
+    var nextSel = (status === 'done' || status === 'skipped') && r && r.currentPhase != null ? r.currentPhase : idx;
+    await refreshProjectUI(projectId, nextSel);
+  } catch (e) {
+    toast('操作失败: ' + pjErrorText(e));
   }
-  toast(status === 'done' ? '✅ 阶段完成' : status === 'skipped' ? '⏭ 已跳过' : '↩ 已回退');
-  await refreshProjectUI(projectId, idx);
 }
 
 async function savePhasePlan(projectId, idx) {
@@ -465,14 +534,17 @@ async function savePhasePlan(projectId, idx) {
   var ss = sEl ? sEl.value : '';
   var ee = eEl ? eEl.value : '';
   if (ss && ee && ee < ss) { toast('完成日期不能早于开始日期'); return; }
-  var r = await phaseApi({
-    projectId: projectId, phaseIdx: idx,
-    plannedStart: ss ? new Date(ss + 'T00:00:00+08:00').toISOString() : null,
-    plannedEnd: ee ? new Date(ee + 'T23:59:59+08:00').toISOString() : null
-  });
-  if (r && r.error) { toast('保存失败: ' + r.error); return; }
-  toast('📅 规划时间已保存');
-  await refreshProjectUI(projectId, idx);
+  try {
+    await phaseApi({
+      projectId: projectId, phaseIdx: idx,
+      plannedStart: ss ? new Date(ss + 'T00:00:00+08:00').toISOString() : null,
+      plannedEnd: ee ? new Date(ee + 'T23:59:59+08:00').toISOString() : null
+    });
+    toast('📅 规划时间已保存');
+    await refreshProjectUI(projectId, idx);
+  } catch (e) {
+    toast('保存失败: ' + pjErrorText(e));
+  }
 }
 
 async function renamePhase(projectId, idx) {
@@ -480,10 +552,13 @@ async function renamePhase(projectId, idx) {
   var ph = (p && p.phases && p.phases[idx]) || {};
   var v = prompt('P' + idx + ' 的显示名（留空恢复默认）', ph.name && ph.name !== 'P' + idx ? ph.name : '');
   if (v === null) return;
-  var r = await phaseApi({ projectId: projectId, phaseIdx: idx, displayName: v.trim() });
-  if (r && r.error) { toast('改名失败'); return; }
-  toast(v.trim() ? '已改名为「' + v.trim() + '」' : '已恢复默认名');
-  await refreshProjectUI(projectId, idx);
+  try {
+    await phaseApi({ projectId: projectId, phaseIdx: idx, displayName: v.trim() });
+    toast(v.trim() ? '已改名为「' + v.trim() + '」' : '已恢复默认名');
+    await refreshProjectUI(projectId, idx);
+  } catch (e) {
+    toast('改名失败: ' + pjErrorText(e));
+  }
 }
 
 // ===== 交付物 =====
@@ -491,19 +566,31 @@ async function addPhaseItem(projectId, idx) {
   var inp = document.getElementById('pjItemInput');
   var title = inp ? inp.value.trim() : '';
   if (!title) { toast('请输入交付物名称'); return; }
-  var r = await phaseItemApi('POST', { projectId: projectId, phaseIdx: idx, title: title });
-  if (r && r.error) { toast('添加失败'); return; }
-  if (inp) inp.value = '';
-  await refreshProjectUI(projectId, idx);
+  try {
+    await phaseItemApi('POST', { projectId: projectId, phaseIdx: idx, title: title });
+    if (inp) inp.value = '';
+    await refreshProjectUI(projectId, idx);
+  } catch (e) {
+    toast('添加失败: ' + pjErrorText(e));
+  }
 }
 async function togglePhaseItem(itemId, projectId, idx, done) {
-  await phaseItemApi('PUT', { id: itemId, done: done });
-  await refreshProjectUI(projectId, idx);
+  try {
+    await phaseItemApi('PUT', { id: itemId, done: done });
+    await refreshProjectUI(projectId, idx);
+  } catch (e) {
+    toast('更新交付物失败: ' + pjErrorText(e));
+  }
 }
 async function deletePhaseItem(itemId, projectId, idx) {
   if (!confirm('删除该交付物？')) return;
-  await phaseItemApi('DELETE', null, itemId);
-  await refreshProjectUI(projectId, idx);
+  try {
+    await phaseItemApi('DELETE', null, itemId);
+    toast('已删除交付物');
+    await refreshProjectUI(projectId, idx);
+  } catch (e) {
+    toast('删除失败: ' + pjErrorText(e));
+  }
 }
 
 // ===== Todo 联动 =====
