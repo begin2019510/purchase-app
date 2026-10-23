@@ -289,10 +289,14 @@ async function saveProject() {
 }
 
 async function deleteProject(id) {
-  if (!confirm('确定删除该项目？\n阶段和交付物会一并删除；关联的采购/记账金额保留、待办保留。')) return;
+  if (!confirm('确定删除该项目？\n阶段和交付物会一并删除；关联的采购/记账金额保留、待办保留并解除关联。')) return;
   try {
     await projectApi('DELETE', null, id);
     closeProjectDetail();
+    // 服务端已解除关联，本地同样清掉，避免待办/采购/记账的编辑表单短暂显示旧项目
+    if (typeof todoList !== 'undefined') todoList.forEach(function(t) { if (t.projectId === id) t.projectId = ''; });
+    if (typeof items !== 'undefined') items.forEach(function(i) { if (i['项目ID'] === id) { i['项目ID'] = ''; i['阶段'] = null; } });
+    if (typeof expenses !== 'undefined') expenses.forEach(function(e) { if (e['项目ID'] === id) { e['项目ID'] = ''; e['阶段'] = null; } });
     toast('已删除');
     await loadProjects();
     renderProject();
@@ -634,10 +638,14 @@ function openProjectModalForParent(parentId) {
   openProjectModal();
 }
 
-function getProjectOptions() {
+// selectedId：编辑已关联记录时，即使项目已归档也要保留在选项里，
+// 否则 select 的值会被重置为空，保存时静默把记录从项目上解绑。
+function getProjectOptions(selectedId) {
   var html = '<option value="">无</option>';
-  projectList.filter(function(p) { return p.status !== '已归档'; }).forEach(function(p) {
-    html += '<option value="' + p.id + '">📁 ' + esc(p.name) + '</option>';
+  projectList.filter(function(p) {
+    return p.status !== '已归档' || (selectedId && p.id === selectedId);
+  }).forEach(function(p) {
+    html += '<option value="' + p.id + '">📁 ' + esc(p.name) + (p.status === '已归档' ? '（已归档）' : '') + '</option>';
   });
   return html;
 }
@@ -646,7 +654,7 @@ function getProjectOptions() {
 function fillProjectPhaseSelects(projSelId, phaseSelId, projId, phaseIdx) {
   var ps = document.getElementById(projSelId);
   if (!ps) return;
-  ps.innerHTML = getProjectOptions();
+  ps.innerHTML = getProjectOptions(projId);
   ps.value = projId || '';
   var fs = document.getElementById(phaseSelId);
   if (!fs) return;

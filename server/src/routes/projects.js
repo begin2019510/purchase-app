@@ -10,6 +10,17 @@ const router = express.Router();
 router.use(guard(['projects', 'phases', 'phase-items']));
 
 const PHASE_COUNT = 6;
+const PROJECT_STATUSES = ['进行中', '已完成', '已归档'];
+
+// 返回 null / 数字 / NaN；调用方负责把 NaN 转成 400，避免把 NaN 写进 MySQL 触发 500
+function dueMsOf(v) {
+  if (!v) return null;
+  return new Date(v).getTime();
+}
+function budgetNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  return Number(v);
+}
 
 function projectIdNum(id) {
   var s = String(id || '');
@@ -130,12 +141,17 @@ router.post('/projects', async (req, res, next) => {
     if (!uid) return res.status(401).json({ error: '用户不存在' });
     const b = req.body || {};
     if (!b.name) return res.status(400).json({ error: 'Name required' });
-    const dueMs = b.dueDate ? new Date(b.dueDate).getTime() : null;
+    const dueMs = dueMsOf(b.dueDate);
+    if (dueMs !== null && !Number.isFinite(dueMs)) return res.status(400).json({ error: 'bad dueDate' });
+    const budget = budgetNum(b.budget);
+    if (budget !== null && !Number.isFinite(budget)) return res.status(400).json({ error: 'bad budget' });
+    const status = b.status || '进行中';
+    if (!PROJECT_STATUSES.includes(status)) return res.status(400).json({ error: 'bad status' });
     await conn.beginTransaction();
     const [ins] = await conn.query(
       'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,0)',
-      [uid, String(b.name).slice(0, 200), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
-        b.status || '进行中', b.color || '#6366f1', (b.budget === null || b.budget === undefined || b.budget === '') ? null : Number(b.budget)]);
+      [uid, String(b.name).slice(0, 100), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
+        status, b.color || '#6366f1', budget]);
     for (let i = 0; i < PHASE_COUNT; i++) {
       await conn.query('INSERT INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [ins.insertId, i, 'todo']);
     }
@@ -157,12 +173,23 @@ router.put('/projects', async (req, res, next) => {
     const own = await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
     if (!own) return res.status(404).json({ error: 'not found' });
     const cols = {};
-    if (b.name !== undefined) cols.name = String(b.name).slice(0, 200);
+    if (b.name !== undefined) cols.name = String(b.name).slice(0, 100);
     if (b.description !== undefined) cols.description = String(b.description || '').slice(0, 2000);
-    if (b.dueDate !== undefined) { cols.due_ms = b.dueDate ? new Date(b.dueDate).getTime() : null; cols.due_iso = b.dueDate || ''; }
-    if (b.status !== undefined) cols.status = b.status;
+    if (b.dueDate !== undefined) {
+      const dueMs = dueMsOf(b.dueDate);
+      if (dueMs !== null && !Number.isFinite(dueMs)) return res.status(400).json({ error: 'bad dueDate' });
+      cols.due_ms = dueMs; cols.due_iso = b.dueDate || '';
+    }
+    if (b.status !== undefined) {
+      if (!PROJECT_STATUSES.includes(b.status)) return res.status(400).json({ error: 'bad status' });
+      cols.status = b.status;
+    }
     if (b.color !== undefined) cols.color = b.color;
-    if (b.budget !== undefined) cols.budget = (b.budget === null || b.budget === '') ? null : Number(b.budget);
+    if (b.budget !== undefined) {
+      const budget = budgetNum(b.budget);
+      if (budget !== null && !Number.isFinite(budget)) return res.status(400).json({ error: 'bad budget' });
+      cols.budget = budget;
+    }
     if (b.currentPhase !== undefined) cols.current_phase = Math.max(0, Math.min(PHASE_COUNT - 1, Number(b.currentPhase) || 0));
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) await db.exec('UPDATE projects SET ' + sets + ' WHERE id = ?', [...Object.values(cols), pid]);
@@ -402,7 +429,9 @@ router.delete('/projects', async (req, res, next) => {
     await conn.query('DELETE FROM phase_items WHERE project_id = ?', [pid]);
     await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
     await conn.query('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
-    await conn.query('UPDATE todos SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    // todos.project_id 是字符串列（存 rec_<id>），与 purchases/expenses 的数字列不同；
+    // 用数字比较会触发 MySQL 的 Truncated incorrect DOUBLE value 而整个删除事务失败。
+    await conn.query('UPDATE todos SET project_id = NULL, phase_idx = NULL WHERE user_id = ? AND (project_id = ? OR project_id = ?)', [uid, 'rec_' + pid, String(pid)]);
     await conn.query('DELETE FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
     await conn.commit();
     res.json({ ok: true });

@@ -709,9 +709,9 @@ function openTodoModal(id) {
     document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
     var projSel = document.getElementById("todoProjectId");
     if (projSel && typeof getProjectOptions === "function") {
-      projSel.innerHTML = getProjectOptions();
       // Read pending projectId from project page (Bug #3 fix)
       var pid = t ? (t.projectId || "") : (window._pendingProjectId || "");
+      projSel.innerHTML = getProjectOptions(pid);
       projSel.value = pid;
       if (window._pendingProjectId) window._pendingProjectId = "";
     }
@@ -859,7 +859,7 @@ async function saveTodo() {
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; }
     }
     closeTodoModal();
     render();
@@ -867,7 +867,7 @@ async function saveTodo() {
       body.id = _editId;
       r = await todoApi('PUT', body);
     } else {
-      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,subtasks:body.subtasks,completedAt:null};
+      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,projectId:body.projectId,subtasks:body.subtasks,completedAt:null};
       todoList.unshift(_tmpTodo);
       render();
       r = await todoApi('POST', body);
@@ -876,7 +876,7 @@ async function saveTodo() {
     console.log('saveTodo: response', JSON.stringify(r));
 
     if (!r) { toast('保存失败: 服务器无响应'); return; }
-    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id}); render(); return; }
+    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); if(_tmpTodo)todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id});else loadTodos().then(render).catch(function(){}); render(); return; }
     toast(_editId ? '已更新' : '已创建');
     render();
   } catch(e) {

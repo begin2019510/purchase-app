@@ -268,6 +268,7 @@ async function cancelPurchase(id) {
   const r = await api('PATCH', { ids: [id], status: '已取消', note: note });
   if (r && r.error) { alert('操作失败: ' + r.error); return; }
   toast('已取消采购');
+  if (item['项目ID'] && typeof refreshProjectsAfterLinkedMoney === 'function') await refreshProjectsAfterLinkedMoney();
 }
 
 // 提交评估：切换到详情页，显示预算区间和AI摘要
@@ -353,6 +354,7 @@ async function cancelFromEval() {
     const r = await api('PUT', { id: evalModalItemId, status: '已取消', cancelReason: reason || '', setDate: true });
     if (r && r.error) { alert('操作失败: ' + r.error); return; }
     toast('已取消采购');
+    if (_cItem && _cItem['项目ID'] && typeof refreshProjectsAfterLinkedMoney === 'function') await refreshProjectsAfterLinkedMoney();
   } catch (e) { toast('操作失败'); }
 }
 

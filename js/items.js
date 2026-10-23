@@ -184,7 +184,8 @@ function doDetailModalAction(id,nextStatus){
   // Fire PATCH in background, don't block UI
   api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
     if(r&&r.error){toast('同步失败，请刷新');loadAll();}
-    else{loadTodos().then(function(){renderTodo()}).catch(function(){})}
+    else{loadTodos().then(function(){renderTodo()}).catch(function(){});
+      if(item&&item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')refreshProjectsAfterLinkedMoney();}
   }).catch(()=>{toast('网络错误，请刷新');loadAll();});
 }
 
@@ -231,8 +232,8 @@ function switchTab(t){
 // ===== 采购操作 =====
 function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
 function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];toast('正在更新 '+ids.length+' 项...');ids.forEach(function(id){var _i=items.find(function(x){return x.id===id});if(_i)_i['状态']=status;});selectedIds.clear();toggleBatch();render();var r=await api('PATCH',{ids,status});if(r&&r.error){toast('批量更新失败');await loadAll();return}toast('已更新 '+ids.length+' 项')}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删除选中的 '+selectedIds.size+' 项？'))return;const ids=[...selectedIds];for(const id of ids){var item=items.find(x=>x.id===id);if(item)await deletePurchaseExpenses(item['商品名称']||'')}items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast('已删除 '+ok+' 项')}
+async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];const _linked=ids.some(function(id){var _i=items.find(function(x){return x.id===id});return !!(_i&&_i['项目ID'])});toast('正在更新 '+ids.length+' 项...');ids.forEach(function(id){var _i=items.find(function(x){return x.id===id});if(_i)_i['状态']=status;});selectedIds.clear();toggleBatch();render();var r=await api('PATCH',{ids,status});if(r&&r.error){toast('批量更新失败');await loadAll();return}toast('已更新 '+ids.length+' 项');if(_linked&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
+async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删除选中的 '+selectedIds.size+' 项？'))return;const ids=[...selectedIds];const _linked=ids.some(function(id){var _i=items.find(function(x){return x.id===id});return !!(_i&&_i['项目ID'])});for(const id of ids){var item=items.find(x=>x.id===id);if(item)await deletePurchaseExpenses(item['商品名称']||'')}items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast('已删除 '+ok+' 项');if(_linked&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
 
 // ============================================================
 // 采购 Modal
@@ -378,7 +379,7 @@ function showApprovalModal(id){
     var _item=items.find(function(x){return x.id===id});if(_item)_item['状态']=next;
     closeApprovalModal();render();
     var r=await api('PATCH',{ids:[id],status:next});
-    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().then(function(){renderTodo()}).catch(function(){})}if(next==='已取消'||next==='已退'){if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});renderTodo()}}
+    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().then(function(){renderTodo()}).catch(function(){})}if(next==='已取消'||next==='已退'){if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});renderTodo()}}if(_item&&_item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')refreshProjectsAfterLinkedMoney();
   };
   document.getElementById('approvalOverlay').classList.add('active');
 }

@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS purchases (
   installment_paid   INT NOT NULL DEFAULT 0,      -- 分期已还
   is_quick           TINYINT NOT NULL DEFAULT 0,  -- 极速==='1' → 极速免审
   is_virtual         TINYINT NOT NULL DEFAULT 0,  -- 虚拟商品（API/服务器/会员等，无需物流）
+  project_id         BIGINT UNSIGNED NULL,        -- 关联项目（项目花费聚合）
+  phase_idx          TINYINT NULL,                -- 关联项目阶段 P0~P5
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_date (user_id, date_ms),
@@ -79,6 +81,8 @@ CREATE TABLE IF NOT EXISTS expenses (
   image_ref        MEDIUMTEXT NULL,                 -- 图片（kv:key 或小图内联）
   split_weeks      INT NULL,                            -- 分摊周数（跨周分摊）
   split_start_week VARCHAR(10) NULL,                    -- 分摊开始周 'YYYY-MM'
+  project_id       BIGINT UNSIGNED NULL,                -- 关联项目（项目花费聚合）
+  phase_idx        TINYINT NULL,                        -- 关联项目阶段 P0~P5
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_date (user_id, date_ms)
@@ -100,7 +104,8 @@ CREATE TABLE IF NOT EXISTS todos (
   link_type    VARCHAR(4) NULL DEFAULT '无',      -- 无|采购|记账
   link_id      VARCHAR(40) NULL,                  -- 关联记录 id（字符串）
   completed_ms BIGINT NULL,
-  project_id   VARCHAR(40) NULL,                  -- 关联项目 id
+  project_id   VARCHAR(40) NULL,                  -- 关联项目 id（字符串 rec_<id>）
+  phase_idx    TINYINT NULL,                      -- 关联项目阶段 P0~P5
   tags         TEXT NULL,                         -- 标签（JSON 串）
   sort_no      INT NOT NULL DEFAULT 0,            -- 排序
   reminders    TEXT NULL,                         -- 提醒（JSON 串）
