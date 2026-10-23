@@ -194,7 +194,13 @@ function renderProjectCard(p) {
   h += '</div>';
 
   h += '<div class="pj-meta">';
-  h += '<span class="td2-chip">' + ((isDone || st.pct >= 100) ? '🏁 通关' : 'P' + cur + ' 进行中') + '</span>';
+  var _curSt = (phases[cur] || {}).status;
+  var _curLabel = (isDone || st.pct >= 100) ? '🏁 通关'
+    : _curSt === 'doing' ? 'P' + cur + ' 进行中'
+    : _curSt === 'done' ? 'P' + cur + ' 已完成'
+    : _curSt === 'skipped' ? '⏭ 已跳过'
+    : 'P' + cur + ' 待开始';
+  h += '<span class="td2-chip">' + _curLabel + '</span>';
   var _cph = phases[cur];
   if (_cph && _cph.plannedEnd) {
     var _pd = new Date(Number(_cph.plannedEnd));
@@ -423,6 +429,7 @@ function openProjectDetail(id) {
     + '</div>';
 
   html += '<div class="pj-phase-actions">';
+  if (phStatus === 'todo') html += '<button class="pj-pa pj-pa-ok" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'doing\')">▶ 开始本阶段</button>';
   if (phStatus !== 'done') html += '<button class="pj-pa pj-pa-ok" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'done\')">✓ 完成本阶段</button>';
   if (phStatus !== 'skipped' && sel !== 5) html += '<button class="pj-pa" onclick="App.project.setPhase(\'' + id + '\',' + sel + ',\'skipped\')">⏭ 跳过</button>';
   if (sel === 5 && phStatus !== 'done') {
@@ -515,6 +522,16 @@ function selectPhase(projectId, idx) {
 async function setPhase(projectId, idx, status) {
   if (status === 'skipped' && idx === 5) { toast('P5 是最终阶段，必须完成，不能跳过'); return; }
   if (status === 'skipped' && !confirm('跳过 P' + idx + '？\n跳过不参与进度分母，可随时回退')) return;
+  if (status === 'done' && idx === 5) {
+    var _p = projectList.find(function(x) { return x.id === projectId; });
+    var _phs = (_p && _p.phases) || [];
+    var _pending = [];
+    for (var _i = 0; _i < 5; _i++) {
+      var _s = (_phs[_i] && _phs[_i].status) || 'todo';
+      if (_s !== 'done' && _s !== 'skipped') _pending.push('P' + _i);
+    }
+    if (_pending.length) { toast('请先完成或跳过 ' + _pending.join('、')); return; }
+  }
   if (status === 'done' && !confirm(idx === 5
     ? '完成 P5？\n项目将自动通关，可归档。'
     : '完成 P' + idx + '？\n下一阶段会自动开始。')) return;
@@ -522,7 +539,9 @@ async function setPhase(projectId, idx, status) {
     var r = await phaseApi({ projectId: projectId, phaseIdx: idx, status: status });
     var msg = status === 'done'
       ? (idx === 5 ? '🏁 项目已通关' : '✅ 阶段完成' + (r && r.currentPhase != null ? '，P' + r.currentPhase + ' 已开始' : ''))
-      : status === 'skipped' ? '⏭ 已跳过' : '↩ 已回退';
+      : status === 'skipped' ? '⏭ 已跳过'
+      : status === 'doing' ? '▶ 阶段已开始'
+      : '↩ 已回退';
     toast(msg);
     var nextSel = (status === 'done' || status === 'skipped') && r && r.currentPhase != null ? r.currentPhase : idx;
     await refreshProjectUI(projectId, nextSel);
