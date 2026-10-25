@@ -44,7 +44,9 @@ async function issueTokens(userId, username) {
 async function rateCheck(ip) {
   const row = await db.one('SELECT times FROM login_fails WHERE ip = ?', [ip]);
   const now = Date.now();
-  const recent = row ? (JSON.parse(row.times || '[]')).filter(t => now - t < 900000) : [];
+  let parsed = [];
+  try { parsed = JSON.parse((row && row.times) || '[]'); } catch (e) {}
+  const recent = Array.isArray(parsed) ? parsed.filter(t => now - t < 900000) : [];
   if (recent.length >= 5) {
     const waitSec = Math.ceil((Math.min(...recent) + 900000 - now) / 1000);
     return { blocked: true, waitSec, recent };

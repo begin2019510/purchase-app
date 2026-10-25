@@ -64,15 +64,6 @@ async function projectApi(method, body, id) {
 async function phaseApi(body) {
   return pjRequest('PUT', '/api/phases', body);
 }
-async function phaseItemApi(method, body, id) {
-  var path = '/api/phase-items';
-  if (method === 'DELETE') {
-    if (!id) throw new Error('缺少交付物 ID');
-    path += '?id=' + encodeURIComponent(id);
-  }
-  return pjRequest(method, path, method === 'DELETE' ? null : body);
-}
-
 var _pjLoadErrAt = 0;
 async function loadProjects() {
   try {
@@ -129,12 +120,59 @@ function pjDateInput(ms) {
   var d = new Date(Number(ms));
   return d.getFullYear() + '-' + pjPad(d.getMonth() + 1) + '-' + pjPad(d.getDate());
 }
+// 阶段计划时间精确到分钟（datetime-local 的值）
+function pjDateTimeInput(ms) {
+  if (ms == null) return '';
+  var d = new Date(Number(ms));
+  return d.getFullYear() + '-' + pjPad(d.getMonth() + 1) + '-' + pjPad(d.getDate())
+    + 'T' + pjPad(d.getHours()) + ':' + pjPad(d.getMinutes());
+}
 function pjPlanRange(ph) {
   if (!ph) return '';
-  if (ph.plannedStart != null && ph.plannedEnd != null) return pjDateShort(ph.plannedStart) + '–' + pjDateShort(ph.plannedEnd);
-  if (ph.plannedStart != null) return pjDateShort(ph.plannedStart) + ' 起';
-  if (ph.plannedEnd != null) return pjDateShort(ph.plannedEnd) + ' 前';
+  if (ph.plannedStart != null && ph.plannedEnd != null) return pjDateTimeShort(ph.plannedStart) + '–' + pjDateTimeShort(ph.plannedEnd);
+  if (ph.plannedStart != null) return pjDateTimeShort(ph.plannedStart) + ' 起';
+  if (ph.plannedEnd != null) return pjDateTimeShort(ph.plannedEnd) + ' 前';
   return '';
+}
+
+var PJ_TODO_CATEGORIES = [
+  ['工作', '💼 工作'], ['生活', '🏠 生活'], ['采购', '🛒 采购'],
+  ['记账', '💰 记账'], ['健康', '🏥 健康'], ['其他', '📌 其他']
+];
+function pjLastTodoCategory() {
+  try { return localStorage.getItem('pj_todo_category') || '工作'; } catch (e) { return '工作'; }
+}
+function pjRememberTodoCategory(v) {
+  try { localStorage.setItem('pj_todo_category', v); } catch (e) {}
+}
+function pjCategoryOptions(selected) {
+  selected = selected || pjLastTodoCategory();
+  return PJ_TODO_CATEGORIES.map(function(c) {
+    return '<option value="' + c[0] + '"' + (c[0] === selected ? ' selected' : '') + '>' + c[1] + '</option>';
+  }).join('');
+}
+function pjPhaseOptions(p, selected) {
+  var html = '<option value="">不指定步骤</option>';
+  var phases = (p && p.phases) || [];
+  for (var i = 0; i < 6; i++) {
+    var ph = phases[i];
+    html += '<option value="' + i + '"' + (selected === i ? ' selected' : '') + '>' + esc(pjStepTitle(ph, i)) + '</option>';
+  }
+  return html;
+}
+// 项目内新增待办默认归到“当前这一步”，但用户始终能在下拉里改
+function pjDefaultPhase(p) {
+  var sel = selectedPhase[p.id];
+  if (sel !== undefined && sel !== null && sel >= 0 && sel <= 5) return sel;
+  var cur = Number(p.currentPhase) || 0;
+  return (cur >= 0 && cur <= 5) ? cur : 0;
+}
+function pjPhaseTodos(p, idx) {
+  return pjLinkedTodos(p).filter(function(t) { return t.phaseIdx != null && Number(t.phaseIdx) === idx; });
+}
+function pjPhaseTodoStats(p, idx) {
+  var arr = pjPhaseTodos(p, idx);
+  return { total: arr.length, done: arr.filter(function(t) { return t.status === '已完成'; }).length };
 }
 function pjDueHtml(ms, status) {
   if (!ms) return '';
@@ -415,6 +453,7 @@ function openProjectDetail(id, opts) {
   opts = opts || {};
   if (_pjDetailId !== id && !opts.keepTab) projectDetailTab = 'list';
   _pjDetailId = id;
+  if (selectedPhase[id] === undefined) selectedPhase[id] = Number(p.currentPhase) || 0;
   if (['list', 'phases', 'money'].indexOf(projectDetailTab) < 0) projectDetailTab = 'list';
 
   var st = pjPhaseStats(p);
@@ -474,9 +513,14 @@ function renderProjectListTab(p) {
   var open = todos.filter(function(t) { return t.status !== '已完成'; });
   var done = todos.filter(function(t) { return t.status === '已完成'; });
 
+  var defPhase = pjDefaultPhase(p);
   var html = '';
   html += '<div class="pj2-quick"><input id="pjQuickTodo" maxlength="200" placeholder="下一件要做的事…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.quickAddTodo(\'' + id + '\')}"><button onclick="App.project.quickAddTodo(\'' + id + '\')">添加</button></div>';
-  html += '<div class="pj2-quick-sub"><span>直接加待办，勾掉就完成</span><button onclick="App.project.openTodoModalForProject(\'' + id + '\')">更多设置</button></div>';
+  html += '<div class="pj2-quick-opts">'
+    + '<label>分类<select id="pjQuickCat" onchange="App.project.rememberTodoCategory(this.value)">' + pjCategoryOptions(pjLastTodoCategory()) + '</select></label>'
+    + '<label>步骤<select id="pjQuickPhase">' + pjPhaseOptions(p, defPhase) + '</select></label>'
+    + '</div>';
+  html += '<div class="pj2-quick-sub"><span>清单是全部待办；选了「第几步」后，阶段页会自动汇总</span><button onclick="App.project.openTodoModalForProject(\'' + id + '\',null,null)">更多设置</button></div>';
 
   if (!open.length && !done.length) {
     html += '<div class="pj2-emptybox"><div class="ico">☑</div><div class="t">还没有待办</div><div class="s">先加一件最想推进的事</div><button onclick="App.project.focusQuickAdd()">＋ 添加第一件</button></div>';
@@ -501,6 +545,11 @@ function renderProjectListTab(p) {
 
 function renderProjectTodoRow(t, projectId, done) {
   var meta = [];
+  if (t.phaseIdx != null && Number(t.phaseIdx) >= 0 && Number(t.phaseIdx) <= 5) {
+    var _p = projectList.find(function(x) { return x.id === projectId; });
+    var _ph = _p && (_p.phases || [])[Number(t.phaseIdx)];
+    meta.push('<span class="pj2-step-tag">' + esc(pjStepTitle(_ph, Number(t.phaseIdx))) + '</span>');
+  }
   if (t.dueDate) {
     var dt = (typeof formatDueDate === 'function') ? formatDueDate(t.dueDate) : pjDateShort(t.dueDate);
     meta.push(esc(dt));
@@ -508,7 +557,8 @@ function renderProjectTodoRow(t, projectId, done) {
   if (t.priority && t.priority !== '中') meta.push('优先级 ' + esc(t.priority));
   if (t.category) meta.push(esc(t.category));
   var metaHtml = meta.join('<span class="sep">·</span>');
-  return '<div class="pj2-todo' + (done ? ' done' : '') + '" onclick="closeProjectDetail();openTodoDetail(\'' + t.id + '\')">'
+  // 项目详情保持在下面，待办详情层叠在上方，关闭后仍回到项目
+  return '<div class="pj2-todo' + (done ? ' done' : '') + '" onclick="openTodoDetail(\'' + t.id + '\')">'
     + '<button class="pj2-todo-check' + (done ? ' on' : '') + '" onclick="event.stopPropagation();App.project.toggleTodo(\'' + t.id + '\',' + (!done) + ',\'' + projectId + '\')">' + (done ? '✓' : '') + '</button>'
     + '<div class="pj2-todo-main"><div class="pj2-todo-title">' + esc(t.title) + '</div>'
     + (metaHtml ? '<div class="pj2-todo-meta">' + metaHtml + '</div>' : '')
@@ -519,81 +569,81 @@ function renderProjectTodoRow(t, projectId, done) {
 function renderProjectPhasesTab(p) {
   var id = p.id;
   var phases = p.phases || [];
-  var items = p.items || [];
   var cur = Number(p.currentPhase) || 0;
   var sel = selectedPhase[id];
-  if (sel === undefined || sel === null || sel < 0 || sel > 5) sel = cur;
+  if (sel === undefined || sel === null || sel < -1 || sel > 5) sel = cur;
 
-  var html = '<div class="pj2-timeline">';
+  var html = '<div class="pj2-phase-hint">清单里的每条待办都能标记「第几步」；阶段页会自动汇总本步待办与花费。第 1 步和第 6 步必须完成，不能跳过。</div>';
+  html += '<div class="pj2-timeline">';
   for (var i = 0; i < 6; i++) {
     var ph = phases[i] || { idx: i, name: 'P' + i, status: 'todo' };
     var st = ph.status || 'todo';
     var expanded = (i === sel);
-    var itemCount = items.filter(function(x) { return x.phaseIdx === i; }).length;
-    var itemDone = items.filter(function(x) { return x.phaseIdx === i && x.done; }).length;
+    var tstat = pjPhaseTodoStats(p, i);
     var phSpendMap = (p.spend && p.spend.phases && p.spend.phases[i]) || {};
     var phSpend = (Number(phSpendMap.buy) || 0) + (Number(phSpendMap.exp) || 0);
     var planned = pjPlanRange(ph);
 
     html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + '">';
-    html += '<button class="pj2-step-head" onclick="App.project.selectPhase(\'' + id + '\',' + i + ')">';
+    html += '<button class="pj2-step-head" aria-expanded="' + (expanded ? 'true' : 'false') + '" onclick="App.project.selectPhase(\'' + id + '\',' + i + ')">';
     html += '<span class="pj2-step-idx">' + (st === 'done' ? '✓' : st === 'skipped' ? '⏭' : (i + 1)) + '</span>';
     html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (i === cur ? '<i class="pj2-cur">当前</i>' : '') + '</span>';
     html += '<span class="pj2-step-sub">' + pjPhaseStatusText(st)
       + (planned ? ' · 📅 ' + planned : '')
-      + (itemCount ? ' · 清单 ' + itemDone + '/' + itemCount : '')
+      + (tstat.total ? ' · 待办 ' + tstat.done + '/' + tstat.total : '')
       + (phSpend ? ' · 💰 ' + pjMoney(phSpend) : '')
       + '</span></span>';
     html += '<span class="pj2-chev' + (expanded ? ' open' : '') + '">›</span>';
     html += '</button>';
-    if (expanded) html += renderPhaseBody(p, i, ph, items);
+    if (expanded) html += renderPhaseBody(p, i, ph);
     html += '</div>';
   }
   html += '</div>';
   return html;
 }
 
-function renderPhaseBody(p, idx, ph, items) {
+function renderPhaseBody(p, idx, ph) {
   var id = p.id;
   var st = ph.status || 'todo';
   var nameVal = pjPhaseName(ph, idx);
-  var phItems = items.filter(function(x) { return x.phaseIdx === idx; });
-  var phDone = phItems.filter(function(x) { return x.done; }).length;
+  var phTodos = pjPhaseTodos(p, idx);
+  var phDone = phTodos.filter(function(t) { return t.status === '已完成'; }).length;
   var spendMap = (p.spend && p.spend.phases && p.spend.phases[idx]) || {};
   var phSpend = (Number(spendMap.buy) || 0) + (Number(spendMap.exp) || 0);
   var phLedger = (p.ledger || []).filter(function(x) { return x.phaseIdx === idx; });
 
   var html = '<div class="pj2-step-body">';
 
-  // 名称 + 计划时间：一个保存按钮全部写入
+  // 名称 + 计划时间：一个保存按钮全部写入，时间精确到分钟
   html += '<div class="pj2-editor">';
   html += '<label class="pj2-editor-label">这一步叫什么</label>';
   html += '<input class="pj2-editor-input" id="pjPhaseName" maxlength="50" value="' + esc(nameVal) + '" placeholder="例如：订票 / 客户资料（可选）">';
-  html += '<div class="pj2-editor-sub">计划时间</div>'
+  html += '<div class="pj2-editor-sub">计划时间（可精确到分钟）</div>'
     + '<div class="pj2-plan-row"><span class="pj2-plan-label">开始</span>'
-    + '<input type="date" id="pjPlanStart" value="' + pjDateInput(ph.plannedStart) + '"></div>'
+    + '<input type="datetime-local" id="pjPlanStart" value="' + pjDateTimeInput(ph.plannedStart) + '"></div>'
     + '<div class="pj2-plan-row"><span class="pj2-plan-label">结束</span>'
-    + '<input type="date" id="pjPlanEnd" value="' + pjDateInput(ph.plannedEnd) + '"></div>';
+    + '<input type="datetime-local" id="pjPlanEnd" value="' + pjDateTimeInput(ph.plannedEnd) + '"></div>';
   var actual = [];
   if (ph.startedAt) actual.push('开始 ' + pjDateTimeShort(ph.startedAt));
   if (ph.finishedAt) actual.push((st === 'skipped' ? '跳过 ' : '完成 ') + pjDateTimeShort(ph.finishedAt));
-  html += '<div class="pj2-editor-hint">' + (actual.length ? '实际：' + actual.join(' · ') : '日期可留空；完成后自动记录实际时间') + '</div>';
+  html += '<div class="pj2-editor-hint">' + (actual.length ? '实际：' + actual.join(' · ') : '可留空；开始/完成时会自动记录实际时间') + '</div>';
   html += '<button class="pj2-save pj2-save-block" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存名称与计划</button>';
   html += '</div>';
 
-  // 本步清单
-  html += '<div class="pj2-block-title">本步清单 <span>' + (phItems.length ? phDone + '/' + phItems.length : '可选') + '</span></div>';
-  if (!phItems.length) html += '<div class="pj2-empty-line">还没有清单项，加几条更清楚</div>';
-  phItems.forEach(function(it) { html += renderPhaseItemRow(it, id, idx); });
-  html += '<div class="pj2-item-add"><input id="pjItemInput" maxlength="300" placeholder="添加一项…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.addPhaseItem(\'' + id + '\',' + idx + ')}"><button onclick="App.project.addPhaseItem(\'' + id + '\',' + idx + ')">＋</button></div>';
+  // 本步待办：与项目清单是同一份数据，只是用阶段标签筛选
+  html += '<div class="pj2-block-title">本步待办 <span>' + (phTodos.length ? phDone + '/' + phTodos.length : '暂无') + '</span></div>';
+  if (!phTodos.length) html += '<div class="pj2-empty-line">还没有待办标记为这一步，可在下面添加，或到「清单」里选择步骤</div>';
+  phTodos.forEach(function(t) { html += renderProjectTodoRow(t, id, t.status === '已完成'); });
+  html += '<div class="pj2-item-add pj2-phase-add">'
+    + '<input id="pjPhaseTodoInput" maxlength="200" placeholder="给这一步加一条待办…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.addPhaseTodo(\'' + id + '\',' + idx + ')}">'
+    + '<select id="pjPhaseTodoCat">' + pjCategoryOptions(pjLastTodoCategory()) + '</select>'
+    + '<button onclick="App.project.addPhaseTodo(\'' + id + '\',' + idx + ')">＋</button></div>';
 
-  // 本步花费
+  // 本步花费：逐笔显示明细
   if (phSpend > 0 || phLedger.length) {
     html += '<div class="pj2-block-title">本步花费 <span>' + pjMoney(phSpend) + '</span></div>';
-    phLedger.slice(0, 3).forEach(function(x) { html += renderLedgerMiniRow(x); });
-    if (phLedger.length > 3) {
-      html += '<button class="pj2-see-all" onclick="App.project.setTab(\'money\')">查看全部 ' + phLedger.length + ' 笔</button>';
-    }
+    phLedger.forEach(function(x) { html += renderLedgerMiniRow(x); });
+    html += '<button class="pj2-see-all" onclick="App.project.setTab(\'money\')">到账本查看 ' + phLedger.length + ' 笔明细</button>';
   }
 
   html += '<div class="pj2-money-actions">'
@@ -601,18 +651,23 @@ function renderPhaseBody(p, idx, ph, items) {
     + '<button onclick="App.project.quickAddExpense(\'' + id + '\',' + idx + ')">💰 记账</button>'
     + '</div>';
 
-  // 状态操作：最多两个按钮
+  // 状态操作：完成/跳过；第 1、6 步不提供跳过
   html += '<div class="pj2-step-actions">';
+  var canSkip = idx !== 0 && idx !== 5;
   if (st === 'todo') {
-    html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'doing\')">开始</button>';
+    if (!canSkip) html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'doing\')">开始</button>';
     html += '<button class="pj2-action primary" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'done\')">完成这一步</button>';
+    if (canSkip) html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'skipped\')">跳过</button>';
   } else if (st === 'doing') {
     html += '<button class="pj2-action primary" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'done\')">完成这一步</button>';
-    if (idx !== 5) html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'skipped\')">跳过</button>';
+    if (canSkip) html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'skipped\')">跳过</button>';
   } else if (st === 'done') {
     html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'todo\')">撤销完成</button>';
   } else if (st === 'skipped') {
     html += '<button class="pj2-action ghost" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'todo\')">恢复这一步</button>';
+  }
+  if (!canSkip && st !== 'done' && st !== 'skipped') {
+    html += '<div class="pj2-p5-hint">🔒 ' + (idx === 0 ? '第 1 步' : '第 6 步') + '必须完成，不能跳过</div>';
   }
   if (idx === 5 && st !== 'done') {
     var pending = [];
@@ -630,19 +685,12 @@ function renderPhaseBody(p, idx, ph, items) {
   return html;
 }
 
-function renderPhaseItemRow(it, projectId, idx) {
-  return '<div class="pj2-item' + (it.done ? ' done' : '') + '">'
-    + '<button class="pj2-item-check' + (it.done ? ' on' : '') + '" onclick="App.project.togglePhaseItem(\'' + it.id + '\',\'' + projectId + '\',' + idx + ',' + (!it.done) + ')">' + (it.done ? '✓' : '') + '</button>'
-    + '<span class="pj2-item-title">' + esc(it.title) + '</span>'
-    + '<button class="pj2-item-del" onclick="App.project.deletePhaseItem(\'' + it.id + '\',\'' + projectId + '\',' + idx + ')">✕</button>'
-    + '</div>';
-}
-
 function renderLedgerMiniRow(x) {
   var fn = x.kind === 'purchase' ? 'openDetailModal' : 'openExpenseModal';
-  return '<div class="pj2-ledger-mini" onclick="closeProjectDetail();' + fn + '(\'' + x.id + '\')">'
+  return '<div class="pj2-ledger-mini" onclick="' + fn + '(\'' + x.id + '\')">'
     + '<span>' + (x.kind === 'purchase' ? '🛒' : '💰') + '</span>'
     + '<span class="pj2-lm-name">' + esc(x.title || (x.kind === 'purchase' ? '采购' : '记账')) + '</span>'
+    + (x.dateMs ? '<span class="pj2-lm-date">' + pjDateTimeShort(x.dateMs) + '</span>' : '')
     + '<b>' + pjMoney(x.amount) + '</b></div>';
 }
 
@@ -674,9 +722,10 @@ function renderProjectMoneyTab(p) {
     + '<div class="pj2-money-cell accent"><span>合计</span><b>' + pjMoney(total) + '</b></div>'
     + '</div>';
 
+  var defPhase = pjDefaultPhase(p);
   html += '<div class="pj2-money-actions">'
-    + '<button onclick="App.project.quickAddPurchase(\'' + id + '\',' + (Number(p.currentPhase) || 0) + ')">🛒 记一笔采购</button>'
-    + '<button onclick="App.project.quickAddExpense(\'' + id + '\',' + (Number(p.currentPhase) || 0) + ')">💰 记一笔账</button>'
+    + '<button onclick="App.project.quickAddPurchase(\'' + id + '\',' + defPhase + ')">🛒 记一笔采购</button>'
+    + '<button onclick="App.project.quickAddExpense(\'' + id + '\',' + defPhase + ')">💰 记一笔账</button>'
     + '</div>';
 
   var ledger = p.ledger || [];
@@ -699,19 +748,19 @@ function renderLedgerRow(p, x) {
   var meta = [];
   meta.push(x.phaseIdx == null || x.phaseIdx < 0 ? '未指定步骤' : pjPhaseLabelFor(p, x.phaseIdx));
   if (x.dateMs) meta.push(pjDateShort(x.dateMs));
-  return '<div class="pj2-ledger" onclick="closeProjectDetail();' + fn + '(\'' + x.id + '\')">'
+  return '<div class="pj2-ledger" onclick="' + fn + '(\'' + x.id + '\')">'
     + '<span class="ico">' + (x.kind === 'purchase' ? '🛒' : '💰') + '</span>'
     + '<div class="main"><div class="name">' + esc(x.title || (x.kind === 'purchase' ? '采购' : '记账')) + '</div><div class="meta">' + esc(meta.join(' · ')) + '</div></div>'
     + '<b>' + pjMoney(x.amount) + '</b>'
     + '</div>';
 }
 
-function pjRerenderDetail(id) {
+function pjRerenderDetail(id, resetScroll) {
   var body = (typeof document.querySelector === 'function') ? document.querySelector('.pj2-tabbody') : null;
   var top = body ? body.scrollTop : 0;
   openProjectDetail(id);
   var nb = (typeof document.querySelector === 'function') ? document.querySelector('.pj2-tabbody') : null;
-  if (nb) nb.scrollTop = top;
+  if (nb) nb.scrollTop = resetScroll ? 0 : top;
 }
 
 async function refreshProjectUI(id, phaseIdx) {
@@ -722,26 +771,30 @@ async function refreshProjectUI(id, phaseIdx) {
   if (dO && dO.classList.contains('active')) openProjectDetail(id);
 }
 
-// 采购/记账写入后刷新项目花费；失败不影响主流程
+// 采购/记账写入后刷新项目花费；失败不影响主流程。
+// 若项目详情仍开着，保存后直接留在项目里，并跳到「账本」显示完整明细。
 async function refreshProjectsAfterLinkedMoney() {
   if (typeof loadProjects !== 'function') return;
   try {
     await loadProjects();
     if (typeof currentTab !== 'undefined' && currentTab === 'project' && typeof renderProject === 'function') renderProject();
-    if (_pjDetailId && projectDetailTab === 'money') pjRerenderDetail(_pjDetailId);
+    var dO = document.getElementById('projectDetailOverlay');
+    if (_pjDetailId && dO && dO.classList.contains('active')) {
+      projectDetailTab = 'money';
+      pjRerenderDetail(_pjDetailId, true);
+    }
   } catch (e) {}
 }
 
 // ===== 从项目直接记钱 =====
+// 不关闭项目详情：采购/记账弹层叠在上面，保存后原地刷新账本，取消则回到项目
 function quickAddPurchase(projectId, phaseIdx) {
-  closeProjectDetail();
   openModal(projectId, phaseIdx);
-  toast('已关联到该项目，填写后保存即可');
+  toast('已关联到该项目，保存后回到账本');
 }
 function quickAddExpense(projectId, phaseIdx) {
-  closeProjectDetail();
   openExpenseModal(null, projectId, phaseIdx);
-  toast('已关联到该项目，填写后保存即可');
+  toast('已关联到该项目，保存后回到账本');
 }
 
 // ===== 清单交互 =====
@@ -749,35 +802,72 @@ function focusQuickAdd() {
   pjFocus(document.getElementById('pjQuickTodo'));
 }
 
-async function quickAddTodo(projectId) {
-  var inp = document.getElementById('pjQuickTodo');
-  var title = inp ? inp.value.trim() : '';
-  if (!title) { pjFocus(inp); toast('请输入待办内容'); return; }
+function rememberTodoCategory(v) {
+  if (v) pjRememberTodoCategory(v);
+}
+
+async function pjCreateProjectTodo(projectId, phaseIdx, title, category, inputEl, focusId) {
+  title = (title || '').trim();
+  if (!title) { pjFocus(inputEl); toast('请输入待办内容'); return; }
   if (typeof todoList === 'undefined') return;
+  category = category || pjLastTodoCategory();
+  pjRememberTodoCategory(category);
+  if (phaseIdx === '' || phaseIdx === undefined || phaseIdx === null) phaseIdx = null;
+  else phaseIdx = Number(phaseIdx);
   var tmp = {
     id: 'tmpPJ_' + Date.now(), title: title, status: '待办', priority: '中',
-    category: '其他', repeat: '无', projectId: projectId, subtasks: '[]', tags: '[]'
+    category: category, repeat: '无', projectId: projectId, phaseIdx: phaseIdx, subtasks: '[]', tags: '[]'
   };
   todoList.unshift(tmp);
-  if (inp) inp.value = '';
+  if (inputEl) inputEl.value = '';
   renderProject();
-  pjRerenderDetail(projectId);
+  if (_pjDetailId === projectId) pjRerenderDetail(projectId);
+  var r;
   try {
-    var r = await todoApi('POST', { title: title, priority: '中', category: '其他', repeat: '无', projectId: projectId, status: '待办' });
+    r = await todoApi('POST', {
+      title: title, priority: '中', category: category, repeat: '无',
+      projectId: projectId, phaseIdx: phaseIdx, status: '待办'
+    });
     if (r && r.error) throw new Error(r.error || '保存失败');
     if (r && r.id) tmp.id = r.id;
   } catch (e) {
     // 只有保存失败才回滚；保存成功后的界面刷新错误不能把已入库的待办删掉
     todoList = todoList.filter(function(t) { return t !== tmp; });
     renderProject();
-    pjRerenderDetail(projectId);
+    if (_pjDetailId === projectId) pjRerenderDetail(projectId);
     toast('添加失败: ' + pjErrorText(e));
     return;
   }
   try {
     if (typeof currentTab !== 'undefined' && currentTab === 'todo' && typeof renderTodo === 'function') renderTodo();
   } catch (e) {}
-  pjFocus(document.getElementById('pjQuickTodo'));
+  if (focusId) pjFocus(document.getElementById(focusId));
+}
+
+async function quickAddTodo(projectId) {
+  var inp = document.getElementById('pjQuickTodo');
+  var catEl = document.getElementById('pjQuickCat');
+  var phEl = document.getElementById('pjQuickPhase');
+  await pjCreateProjectTodo(
+    projectId,
+    phEl ? phEl.value : null,
+    inp ? inp.value : '',
+    catEl ? catEl.value : pjLastTodoCategory(),
+    inp,
+    'pjQuickTodo'
+  );
+}
+
+async function addPhaseTodo(projectId, idx) {
+  var inp = document.getElementById('pjPhaseTodoInput');
+  var catEl = document.getElementById('pjPhaseTodoCat');
+  await pjCreateProjectTodo(
+    projectId, idx,
+    inp ? inp.value : '',
+    catEl ? catEl.value : pjLastTodoCategory(),
+    inp,
+    'pjPhaseTodoInput'
+  );
 }
 
 async function toggleProjectTodo(todoId, done, projectId) {
@@ -803,14 +893,19 @@ async function toggleProjectTodo(todoId, done, projectId) {
 }
 
 // ===== 阶段交互 =====
+// 再点一次已展开步骤的箭头即可收起
 function selectPhase(projectId, idx) {
-  selectedPhase[projectId] = idx;
+  selectedPhase[projectId] = (selectedPhase[projectId] === idx) ? -1 : idx;
   projectDetailTab = 'phases';
   openProjectDetail(projectId);
 }
 
 async function setPhase(projectId, idx, status) {
-  if (status === 'skipped' && idx === 5) { toast('第 6 步是最终阶段，必须完成，不能跳过'); return; }
+  if (status === 'skipped' && (idx === 0 || idx === 5)) {
+    toast(idx === 0 ? '第 1 步必须完成，不能跳过' : '第 6 步是最终阶段，必须完成，不能跳过');
+    return;
+  }
+  if (status === 'skipped' && !confirm('跳过第 ' + (idx + 1) + ' 步？\n之后可在同一位置恢复。')) return;
   if (status === 'done' && idx === 5) {
     var _p = projectList.find(function(x) { return x.id === projectId; });
     var _phs = (_p && _p.phases) || [];
@@ -850,11 +945,11 @@ async function savePhasePlan(projectId, idx) {
   var nEl = document.getElementById('pjPhaseName');
   var ss = sEl ? sEl.value : '';
   var ee = eEl ? eEl.value : '';
-  if (ss && ee && ee < ss) { toast('完成日期不能早于开始日期'); return; }
+  if (ss && ee && new Date(ee).getTime() < new Date(ss).getTime()) { toast('完成时间不能早于开始时间'); return; }
   var body = {
     projectId: projectId, phaseIdx: idx,
-    plannedStart: ss ? new Date(ss + 'T00:00:00').toISOString() : null,
-    plannedEnd: ee ? new Date(ee + 'T23:59:59.999').toISOString() : null
+    plannedStart: ss ? new Date(ss).toISOString() : null,
+    plannedEnd: ee ? new Date(ee).toISOString() : null
   };
   if (nEl) body.displayName = nEl.value.trim().slice(0, 50);
   try {
@@ -880,42 +975,15 @@ async function renamePhase(projectId, idx) {
   }
 }
 
-// ===== 清单项（阶段交付物）=====
-async function addPhaseItem(projectId, idx) {
-  var inp = document.getElementById('pjItemInput');
-  var title = inp ? inp.value.trim() : '';
-  if (!title) { toast('请输入清单内容'); return; }
-  try {
-    await phaseItemApi('POST', { projectId: projectId, phaseIdx: idx, title: title });
-    if (inp) inp.value = '';
-    await refreshProjectUI(projectId, idx);
-  } catch (e) {
-    toast('添加失败: ' + pjErrorText(e));
-  }
-}
-async function togglePhaseItem(itemId, projectId, idx, done) {
-  try {
-    await phaseItemApi('PUT', { id: itemId, done: done });
-    await refreshProjectUI(projectId, idx);
-  } catch (e) {
-    toast('更新失败: ' + pjErrorText(e));
-  }
-}
-async function deletePhaseItem(itemId, projectId, idx) {
-  if (!confirm('删除该清单项？')) return;
-  try {
-    await phaseItemApi('DELETE', null, itemId);
-    toast('已删除');
-    await refreshProjectUI(projectId, idx);
-  } catch (e) {
-    toast('删除失败: ' + pjErrorText(e));
-  }
-}
-
 // ===== Todo 联动 =====
-function openTodoModalForProject(projectId) {
+function openTodoModalForProject(projectId, phaseIdx, category) {
+  var p = projectList.find(function(x) { return x.id === projectId; });
   window._pendingProjectId = projectId;
-  closeProjectDetail();
+  window._pendingPhaseIdx = (phaseIdx === null || phaseIdx === undefined)
+    ? (p ? pjDefaultPhase(p) : null)
+    : Number(phaseIdx);
+  window._pendingTodoCategory = category || pjLastTodoCategory();
+  // 不关闭项目详情：待办弹层叠在上面，保存后回到项目
   openTodoModal();
 }
 
@@ -989,12 +1057,11 @@ App.project = {
   quickAddPurchase: quickAddPurchase,
   quickAddExpense: quickAddExpense,
   quickAddTodo: quickAddTodo,
+  addPhaseTodo: addPhaseTodo,
+  rememberTodoCategory: rememberTodoCategory,
   toggleTodo: toggleProjectTodo,
   focusQuickAdd: focusQuickAdd,
   openTodoModalForProject: openTodoModalForProject,
-  addPhaseItem: addPhaseItem,
-  togglePhaseItem: togglePhaseItem,
-  deletePhaseItem: deletePhaseItem,
   getProjectOptions: getProjectOptions,
   fillProjectPhaseSelects: fillProjectPhaseSelects,
 };

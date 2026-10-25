@@ -688,10 +688,39 @@ function updateLinkOptions() {
   }
 }
 
+// \u5f85\u529e\u5f39\u7a97\u91cc\u7684\u300c\u6b65\u9aa4\u300d\u4e0b\u62c9\uff1a\u53ea\u5c5e\u4e8e\u5f53\u524d\u9879\u76ee\uff0c\u968f\u9879\u76ee\u5207\u6362\u91cd\u5efa
+function rebuildTodoPhaseSelect(projectId, selected) {
+  var sel = document.getElementById("todoPhaseIdx");
+  var row = document.getElementById("todoPhaseRow");
+  if (!sel) return;
+  if (!projectId) {
+    sel.innerHTML = '<option value="">\u4e0d\u6307\u5b9a\u6b65\u9aa4</option>';
+    if (row) row.style.display = "none";
+    return;
+  }
+  if (row) row.style.display = "";
+  var p = (typeof projectList !== "undefined" && Array.isArray(projectList))
+    ? projectList.find(function(x){ return x.id === projectId; }) : null;
+  var html = '<option value="">\u4e0d\u6307\u5b9a\u6b65\u9aa4</option>';
+  var phases = (p && p.phases) || [];
+  for (var i = 0; i < 6; i++) {
+    var ph = phases[i];
+    var name = (ph && ph.name && ph.name !== "P" + i) ? ph.name : "";
+    var label = (typeof pjStepTitle === "function") ? pjStepTitle(ph, i) : ("\u7b2c" + (i + 1) + "\u6b65" + (name ? " \u00b7 " + name : ""));
+    html += '<option value="' + i + '">' + esc(label) + '</option>';
+  }
+  sel.innerHTML = html;
+  sel.value = (selected === null || selected === undefined || selected === "") ? "" : String(selected);
+}
+
 function openTodoModal(id) {
   try {
     console.log("openTodoModal called, id=" + id);
     editingTodoId = id || null;
+    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u6b65\u9aa4 / \u5206\u7c7b\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
+    var pendingPid = !id ? (window._pendingProjectId || "") : "";
+    var pendingPhase = !id ? window._pendingPhaseIdx : undefined;
+    var pendingCat = !id ? window._pendingTodoCategory : undefined;
     var overlay = document.getElementById("todoModalOverlay");
     if (!overlay) { console.log("ERROR: todoModalOverlay not found"); return; }
     var t = null;
@@ -702,18 +731,23 @@ function openTodoModal(id) {
     document.getElementById("todoTitle").value = t ? t.title : "";
     document.getElementById("todoDesc").value = t ? t.description : "";
     document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
-    document.getElementById("todoCategory").value = t ? t.category : "\u5176\u4ed6";
+    var defaultCat = t ? (t.category || "\u5176\u4ed6") : (pendingCat || (pendingPid ? (function(){ try { return localStorage.getItem("pj_todo_category") || "\u5de5\u4f5c"; } catch(e) { return "\u5de5\u4f5c"; } })() : "\u5176\u4ed6"));
+    document.getElementById("todoCategory").value = defaultCat;
     document.getElementById("todoRepeat").value = t ? t.repeat : "\u65e0";
     document.getElementById("todoLinkType").value = t ? (t.linkType || "\u65e0") : "\u65e0";
     updateLinkOptions();
     document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
     var projSel = document.getElementById("todoProjectId");
     if (projSel && typeof getProjectOptions === "function") {
-      // Read pending projectId from project page (Bug #3 fix)
-      var pid = t ? (t.projectId || "") : (window._pendingProjectId || "");
+      var pid = t ? (t.projectId || "") : pendingPid;
       projSel.innerHTML = getProjectOptions(pid);
       projSel.value = pid;
+      projSel.onchange = function(){ rebuildTodoPhaseSelect(projSel.value, null); };
+      var phaseSel = (t && t.phaseIdx !== undefined && t.phaseIdx !== null) ? t.phaseIdx : pendingPhase;
+      rebuildTodoPhaseSelect(pid, phaseSel);
       if (window._pendingProjectId) window._pendingProjectId = "";
+      window._pendingPhaseIdx = null;
+      window._pendingTodoCategory = null;
     }
     if (t && t.dueDate) {
       var d = new Date(t.dueDate);
@@ -837,6 +871,9 @@ async function saveTodo() {
     var title = document.getElementById('todoTitle').value.trim();
     if (!title) return toast('请输入标题');
 
+    var _projId = (document.getElementById('todoProjectId')||{}).value || '';
+    var _phaseEl = document.getElementById('todoPhaseIdx');
+    var _phaseIdx = (_projId && _phaseEl && _phaseEl.value !== '') ? Number(_phaseEl.value) : null;
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
@@ -845,13 +882,18 @@ async function saveTodo() {
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
       linkType: document.getElementById('todoLinkType').value,
-      projectId: (document.getElementById('todoProjectId')||{}).value || '',
+      projectId: _projId,
+      phaseIdx: _phaseIdx,
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
       tags: JSON.stringify(todoTags),
       reminders: JSON.stringify(todoReminders),
       image: (typeof todoImage !== 'undefined' ? todoImage : '') || ''
     };
+    try {
+      localStorage.setItem('todo_last_category', body.category);
+      if (_projId) localStorage.setItem('pj_todo_category', body.category);
+    } catch (e) {}
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
     var r;
@@ -859,7 +901,7 @@ async function saveTodo() {
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; todoList[_ti].phaseIdx = body.phaseIdx; }
     }
     closeTodoModal();
     render();
@@ -867,7 +909,7 @@ async function saveTodo() {
       body.id = _editId;
       r = await todoApi('PUT', body);
     } else {
-      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,projectId:body.projectId,subtasks:body.subtasks,completedAt:null};
+      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,projectId:body.projectId,phaseIdx:body.phaseIdx,subtasks:body.subtasks,completedAt:null};
       todoList.unshift(_tmpTodo);
       render();
       r = await todoApi('POST', body);
@@ -879,6 +921,12 @@ async function saveTodo() {
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); if(_tmpTodo)todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id});else loadTodos().then(render).catch(function(){}); render(); return; }
     toast(_editId ? '已更新' : '已创建');
     render();
+    // 项目详情若还开着，立即刷新步骤标签/本步待办
+    try {
+      if (typeof refreshProjectUI === 'function' && typeof _pjDetailId !== 'undefined' && _pjDetailId) {
+        await refreshProjectUI(_pjDetailId);
+      }
+    } catch (e) {}
   } catch(e) {
     console.error('saveTodo error:', e);
     toast('保存失败: ' + e.message);
@@ -908,6 +956,17 @@ function openTodoDetail(id) {
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
+  if (t.projectId && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
+    var _dp = projectList.find(function(x){ return x.id === t.projectId; });
+    if (_dp) {
+      html += '<div class="detail-row"><span class="detail-label">项目</span><span class="detail-value">📁 ' + esc(_dp.name) + '</span></div>';
+      if (t.phaseIdx !== null && t.phaseIdx !== undefined && Number(t.phaseIdx) >= 0 && Number(t.phaseIdx) <= 5) {
+        var _dph = (_dp.phases || [])[Number(t.phaseIdx)];
+        var _dl = (typeof pjStepTitle === 'function') ? pjStepTitle(_dph, Number(t.phaseIdx)) : ('第' + (Number(t.phaseIdx) + 1) + '步');
+        html += '<div class="detail-row"><span class="detail-label">步骤</span><span class="detail-value">🧩 ' + esc(_dl) + '</span></div>';
+      }
+    }
+  }
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';
   if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
 

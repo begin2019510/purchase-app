@@ -9,6 +9,12 @@ const { requireAuth, guard } = require('../middleware');
 const router = express.Router();
 router.use(guard(['todos']));
 
+function _phaseIdx(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 && n <= 5 ? n : null;
+}
+
 function rowToTodo(r) {
   return {
     id: 'rec_' + r.id,
@@ -25,6 +31,7 @@ function rowToTodo(r) {
     linkId: r.link_id || '',
     completedAt: r.completed_ms != null ? Number(r.completed_ms) : null,
     projectId: r.project_id || '',
+    phaseIdx: r.phase_idx == null ? null : Number(r.phase_idx),
     tags: r.tags || '',
     order: Number(r.sort_no) || 0,
     reminders: r.reminders || '',
@@ -51,11 +58,11 @@ router.post('/todos', async (req, res, next) => {
     else if (b.image) imageRef = b.image;
     const dueMs = b.dueDate ? new Date(b.dueDate).getTime() : null;
     const [ins] = await db.pool.query(
-      `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,tags,sort_no,reminders)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, String(b.title).slice(0, 200), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
         b.priority || '中', b.category || '其他', b.status || '待办', b.repeat || '无', b.subtasks || '[]',
-        imageRef, b.linkType || '无', b.linkId || '', b.projectId || '', b.tags || '[]', b.order || 0, '']);
+        imageRef, b.linkType || '无', b.linkId || '', b.projectId || '', _phaseIdx(b.phaseIdx), b.tags || '[]', b.order || 0, '']);
     res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
   } catch (e) { next(e); }
 });
@@ -81,6 +88,7 @@ router.put('/todos', async (req, res, next) => {
     if (b.linkType !== undefined) cols.link_type = b.linkType;
     if (b.linkId !== undefined) cols.link_id = b.linkId;
     if (b.projectId !== undefined) cols.project_id = b.projectId;
+    if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b.phaseIdx);
     if (b.tags !== undefined) cols.tags = b.tags;
     if (b.order !== undefined) cols.sort_no = b.order;
     if (b.reminders !== undefined) cols.reminders = b.reminders;
@@ -102,10 +110,10 @@ router.put('/todos', async (req, res, next) => {
         let resetSubs = '[]';
         try { const subs = JSON.parse(old.subtasks || '[]'); resetSubs = JSON.stringify(subs.map(s => ({ text: s.text, done: false }))); } catch (e) {}
         await db.exec(
-          `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,link_type,link_id,project_id)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,link_type,link_id,project_id,phase_idx)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [uid, old.title, old.description || '', oldDue.getTime(), oldDue.toISOString(), old.priority, old.category,
-            '待办', old.repeat, resetSubs, old.link_type || '无', old.link_id || '', old.project_id || '']);
+            '待办', old.repeat, resetSubs, old.link_type || '无', old.link_id || '', old.project_id || '', old.phase_idx]);
         renewed = true;
       } catch (e) { console.error('auto-renew:', e.message); }
     }

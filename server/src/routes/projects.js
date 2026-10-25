@@ -209,9 +209,9 @@ router.put('/phases', async (req, res, next) => {
     if (!pid || !Number.isInteger(idx) || idx < 0 || idx >= PHASE_COUNT) {
       return res.status(400).json({ error: 'bad phase' });
     }
-    // 强制规则：P5 是最终阶段，不允许跳过
-    if (b.status === 'skipped' && idx === 5) {
-      return res.status(400).json({ error: 'P5 是最终阶段，必须完成，不能跳过' });
+    // 强制规则：第一步（P0）和最终步（P5）不允许跳过
+    if (b.status === 'skipped' && (idx === 0 || idx === 5)) {
+      return res.status(400).json({ error: '第 1 步和第 6 步不能跳过，请完成它' });
     }
     if (b.status !== undefined && !['todo', 'doing', 'done', 'skipped'].includes(b.status)) {
       return res.status(400).json({ error: 'bad status' });
