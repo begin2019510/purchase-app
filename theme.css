@@ -1799,11 +1799,12 @@ body.auth-locked .modal-overlay
 .pj2-editor-label{display:block;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.3px;margin-bottom:5px}
 .pj2-editor-input{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:14px;outline:none;margin-bottom:9px}
 .pj2-editor-input:focus{border-color:var(--pri)}
-.pj2-editor-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.pj2-editor-row .pj2-editor-label{margin:0;flex-shrink:0}
-.pj2-editor-row input[type=date]{flex:1;min-width:100px;padding:8px 9px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font-size:12px}
-.pj2-dash{color:var(--muted);font-size:12px}
+.pj2-editor-sub{display:block;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.3px;margin:8px 0 5px}
+.pj2-plan-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pj2-plan-label{font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;width:26px}
+.pj2-plan-row input[type=date]{flex:1;min-width:0;width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font-size:12px}
 .pj2-save{border:none;background:var(--pri);color:#fff;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer}
+.pj2-save-block{display:block;width:100%;margin-top:9px;padding:11px 13px;font-size:13px}
 .pj2-editor-hint{font-size:10.5px;color:var(--muted);margin-top:7px;line-height:1.5}
 .pj2-block-title{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800;color:var(--muted);margin:13px 0 4px}
 .pj2-block-title span{font-weight:700;font-size:10.5px}
@@ -1860,7 +1861,7 @@ body.auth-locked .modal-overlay
   #projectDetailOverlay{align-items:flex-end;padding:0}
   #projectDetailOverlay .pj2-modal{max-width:100%;border-radius:22px 22px 0 0;max-height:92dvh}
   .pj2-sheet-head{padding-top:24px}
-  .pj2-quick input,.pj2-editor-input,.pj2-editor-row input[type=date]{font-size:16px}
+  .pj2-quick input,.pj2-editor-input,.pj2-plan-row input[type=date]{font-size:16px}
   .pjf-input{font-size:16px}
   #projectContent{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 }

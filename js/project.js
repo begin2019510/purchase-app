@@ -569,15 +569,16 @@ function renderPhaseBody(p, idx, ph, items) {
   html += '<div class="pj2-editor">';
   html += '<label class="pj2-editor-label">这一步叫什么</label>';
   html += '<input class="pj2-editor-input" id="pjPhaseName" maxlength="50" value="' + esc(nameVal) + '" placeholder="例如：订票 / 客户资料（可选）">';
-  html += '<div class="pj2-editor-row"><span class="pj2-editor-label">计划</span>'
-    + '<input type="date" id="pjPlanStart" value="' + pjDateInput(ph.plannedStart) + '">'
-    + '<span class="pj2-dash">→</span>'
-    + '<input type="date" id="pjPlanEnd" value="' + pjDateInput(ph.plannedEnd) + '">'
-    + '<button class="pj2-save" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存</button></div>';
+  html += '<div class="pj2-editor-sub">计划时间</div>'
+    + '<div class="pj2-plan-row"><span class="pj2-plan-label">开始</span>'
+    + '<input type="date" id="pjPlanStart" value="' + pjDateInput(ph.plannedStart) + '"></div>'
+    + '<div class="pj2-plan-row"><span class="pj2-plan-label">结束</span>'
+    + '<input type="date" id="pjPlanEnd" value="' + pjDateInput(ph.plannedEnd) + '"></div>';
   var actual = [];
   if (ph.startedAt) actual.push('开始 ' + pjDateTimeShort(ph.startedAt));
   if (ph.finishedAt) actual.push((st === 'skipped' ? '跳过 ' : '完成 ') + pjDateTimeShort(ph.finishedAt));
   html += '<div class="pj2-editor-hint">' + (actual.length ? '实际：' + actual.join(' · ') : '日期可留空；完成后自动记录实际时间') + '</div>';
+  html += '<button class="pj2-save pj2-save-block" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存名称与计划</button>';
   html += '</div>';
 
   // 本步清单

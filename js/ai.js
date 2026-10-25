@@ -732,6 +732,89 @@ async function runAIProfile(){
   }
   chatEl.scrollTop = chatEl.scrollHeight;
 }
+// --- 清空统计页对话 ---
+function clearChatHistory(){
+  statsChatHistory = [];
+  const chatEl=document.getElementById('statsChatArea');
+  if(chatEl) chatEl.innerHTML='';
+  if(typeof toast==='function') toast('已清空对话');
+}
+
+// --- AI 待办建议 ---
+var aiTodoSuggestions=[];
+async function generateTodoSuggestions(){
+  const chatEl=document.getElementById('statsChatArea');
+  if(!chatEl)return;
+  if(document.getElementById('aiTodoLoading'))return;
+  chatEl.innerHTML += '<div class="chat-bubble ai-bubble" id="aiTodoLoading">🤖 正在分析消费和采购数据...</div>';
+  chatEl.scrollTop=chatEl.scrollHeight;
+  try{
+    const allItems=(typeof items!=='undefined'&&items)||[];
+    const allExpenses=(typeof expenses!=='undefined'&&expenses)||[];
+    const month=typeof getThisMonth==='function'?getThisMonth():new Date().toISOString().slice(0,7);
+    const res=await aiRequest('generate-todo',{items:allItems,expenses:allExpenses,month:month});
+    const loadEl=document.getElementById('aiTodoLoading');if(loadEl)loadEl.remove();
+    const todos=res&&res.ok&&res.data&&Array.isArray(res.data.todos)?res.data.todos:[];
+    if(!todos.length){
+      chatEl.innerHTML += '<div class="chat-bubble ai-bubble">💡 暂时没有值得新增的待办建议</div>';
+      chatEl.scrollTop=chatEl.scrollHeight;
+      return;
+    }
+    aiTodoSuggestions=todos;
+    let html='<div class="ai-structured"><div class="ai-summary-card">🤖 待办建议（'+todos.length+'）</div>';
+    todos.forEach(function(t,i){
+      const meta=[t.dueDate,t.priority,t.category,t.repeat&&t.repeat!=='无'?t.repeat:''].filter(Boolean).map(esc).join(' · ');
+      html+='<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">'+esc(t.title||'')+'</div>'
+        +(meta?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+meta+'</div>':'')
+        +'</div><button class="ai-confirm-btn primary" style="font-size:11px;padding:5px 10px;min-width:auto" onclick="addSuggestedTodo('+i+')">添加</button></div>';
+    });
+    html+='<button class="ai-confirm-btn primary" style="width:100%;margin-top:10px" onclick="addAllSuggestedTodos()">全部添加</button></div>';
+    chatEl.innerHTML += '<div class="chat-bubble ai-bubble">'+html+'</div>';
+    chatEl.scrollTop=chatEl.scrollHeight;
+  }catch(e){
+    const loadEl=document.getElementById('aiTodoLoading');if(loadEl)loadEl.remove();
+    chatEl.innerHTML += '<div class="chat-bubble ai-bubble" style="color:var(--red)">'+esc(e.message)+'</div>';
+    chatEl.scrollTop=chatEl.scrollHeight;
+  }
+}
+
+function suggestedTodoBody(t){
+  return {
+    title:t.title,
+    description:'由 AI 待办建议生成',
+    dueDate:t.dueDate||null,
+    priority:t.priority||'中',
+    category:t.category||'其他',
+    repeat:t.repeat||'无'
+  };
+}
+
+async function addSuggestedTodo(i){
+  const t=aiTodoSuggestions[i];
+  if(!t||!t.title)return;
+  if(typeof todoApi!=='function'){toast('待办模块未加载');return;}
+  const r=await todoApi('POST',suggestedTodoBody(t));
+  if(r&&r.error){toast('添加失败: '+r.error);return;}
+  toast('✅ 已添加待办');
+  if(typeof loadTodos==='function')await loadTodos();
+  if(typeof render==='function')render();
+}
+
+async function addAllSuggestedTodos(){
+  if(!aiTodoSuggestions.length)return;
+  if(typeof todoApi!=='function'){toast('待办模块未加载');return;}
+  let ok=0;
+  for(const t of aiTodoSuggestions){
+    if(!t||!t.title)continue;
+    const r=await todoApi('POST',suggestedTodoBody(t));
+    if(!r||!r.error)ok++;
+  }
+  toast(ok?'✅ 已添加 '+ok+' 条待办':'添加失败');
+  if(typeof loadTodos==='function')await loadTodos();
+  if(typeof render==='function')render();
+}
+
 App.ai.parseEvalNote = parseEvalNote;
 App.ai.aiRequest = aiRequest;
 App.ai.sendAI = sendAI;
