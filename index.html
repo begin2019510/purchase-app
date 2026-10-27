@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no", viewport-fit=cover">
-<meta name="app-version" content="4.0.58">
+<meta name="app-version" content="4.0.59">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=4.0.58">
+<link rel="stylesheet" href="theme.css?v=4.0.59">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="4.0.58">
+<meta http-equiv="Expires" content="4.0.59">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='4.0.58';
+  var V='4.0.59';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -689,10 +689,6 @@
             <span class="ts-label">📁 项目</span>
             <select id="todoProjectId" class="ts-ctl"><option value="">无</option></select>
           </div>
-          <div class="ts-row" id="todoPhaseRow" style="display:none">
-            <span class="ts-label">🧩 步骤</span>
-            <select id="todoPhaseIdx" class="ts-ctl"><option value="">不指定步骤</option></select>
-          </div>
           <div class="ts-row">
             <span class="ts-label">🔗 关联</span>
             <div class="ts-linkwrap">
@@ -721,18 +717,18 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=4.0.58"></script>
-<script src="js/particles.js?v=4.0.58"></script>
-<script src="js/auth.js?v=4.0.58"></script>
-<script src="js/api.js?v=4.0.58"></script>
-<script src="js/stats.js?v=4.0.58"></script>
-<script src="js/expense.js?v=4.0.58"></script>
-<script src="js/items.js?v=4.0.58"></script>
-<script src="js/ai.js?v=4.0.58"></script>
-<script src="js/budget.js?v=4.0.58"></script>
-<script src="js/todomodule.js?v=4.0.58"></script>
-  <script src="js/project.js?v=4.0.58"></script>
-<script src="js/app.js?v=4.0.58"></script>
+<script src="js/utils.js?v=4.0.59"></script>
+<script src="js/particles.js?v=4.0.59"></script>
+<script src="js/auth.js?v=4.0.59"></script>
+<script src="js/api.js?v=4.0.59"></script>
+<script src="js/stats.js?v=4.0.59"></script>
+<script src="js/expense.js?v=4.0.59"></script>
+<script src="js/items.js?v=4.0.59"></script>
+<script src="js/ai.js?v=4.0.59"></script>
+<script src="js/budget.js?v=4.0.59"></script>
+<script src="js/todomodule.js?v=4.0.59"></script>
+  <script src="js/project.js?v=4.0.59"></script>
+<script src="js/app.js?v=4.0.59"></script>
 
 
 
@@ -888,7 +884,7 @@
       <input type="hidden" id="projectId">
       <div class="pjf-hero">
         <div class="pjf-icon">📁</div>
-        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>创建后先加待办；需要时再用「阶段」拆步骤</span></div>
+        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>清单管要做的事，阶段管推进节奏，两边独立</span></div>
       </div>
       <div class="pjf-group">
         <label>项目名称 *</label>
@@ -897,6 +893,11 @@
       <div class="pjf-group">
         <label>描述（可选）</label>
         <textarea id="projectDesc" class="pjf-input" rows="2" placeholder="目标、范围或备注"></textarea>
+      </div>
+      <div class="pjf-group" id="projectStepsGroup">
+        <label>步骤规划（可选，最多 6 步）</label>
+        <textarea id="projectSteps" class="pjf-input" rows="4" placeholder="每行一步，先写现在知道的就好：&#10;报名&#10;科目一&#10;科目二&#10;科目三"></textarea>
+        <div class="pjf-hint">只写 4 步也可以：最后一步固定排在第 6 步，其余依次排在前；中间空位标记未使用、不占进度。</div>
       </div>
       <div class="pjf-group">
         <label>目标预算（可选）</label>

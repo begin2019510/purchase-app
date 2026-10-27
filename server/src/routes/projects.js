@@ -133,7 +133,7 @@ router.get('/projects', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ===== 新建（自动建 6 个阶段，事务）=====
+// ===== 新建（固定 6 个槽位；第一步 P0、最后一步 P5，中间空槽标记未使用）=====
 router.post('/projects', async (req, res, next) => {
   const conn = await db.pool.getConnection();
   try {
@@ -147,16 +147,37 @@ router.post('/projects', async (req, res, next) => {
     if (budget !== null && !Number.isFinite(budget)) return res.status(400).json({ error: 'bad budget' });
     const status = b.status || '进行中';
     if (!PROJECT_STATUSES.includes(status)) return res.status(400).json({ error: 'bad status' });
+
+    // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
+    // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
+    let steps = [];
+    if (b.steps !== undefined && b.steps !== null) {
+      if (!Array.isArray(b.steps)) return res.status(400).json({ error: 'bad steps' });
+      steps = b.steps.map(s => String(s == null ? '' : s).trim()).filter(Boolean).map(s => s.slice(0, 50));
+      if (steps.length > PHASE_COUNT) return res.status(400).json({ error: '最多规划 6 步' });
+    }
+    // 槽位映射：第一步固定 P0，最后一步固定 P5，中间步骤依次填 P1~P4。
+    // 只写 4 步 → 前 3 步在 P0~P2，第 4 步在 P5；P3、P4 自动标为未使用。
+    const slotNames = new Array(PHASE_COUNT).fill(null);
+    if (steps.length > 0) {
+      for (let i = 0; i < steps.length - 1; i++) slotNames[i] = steps[i];
+      slotNames[PHASE_COUNT - 1] = steps[steps.length - 1];
+    }
+    const startPhase = steps.length === 1 ? PHASE_COUNT - 1 : 0;
+
     await conn.beginTransaction();
     const [ins] = await conn.query(
-      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,0)',
+      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,?)',
       [uid, String(b.name).slice(0, 100), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
-        status, b.color || '#6366f1', budget]);
+        status, b.color || '#6366f1', budget, startPhase]);
     for (let i = 0; i < PHASE_COUNT; i++) {
-      await conn.query('INSERT INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [ins.insertId, i, 'todo']);
+      const unused = steps.length > 0 && slotNames[i] === null;
+      await conn.query(
+        'INSERT INTO project_phases (project_id, phase_idx, display_name, status) VALUES (?,?,?,?)',
+        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo']);
     }
     await conn.commit();
-    res.json({ id: 'rec_' + ins.insertId, ok: true });
+    res.json({ id: 'rec_' + ins.insertId, ok: true, steps: steps.length });
   } catch (e) {
     try { await conn.rollback(); } catch (x) {}
     next(e);
@@ -209,10 +230,6 @@ router.put('/phases', async (req, res, next) => {
     if (!pid || !Number.isInteger(idx) || idx < 0 || idx >= PHASE_COUNT) {
       return res.status(400).json({ error: 'bad phase' });
     }
-    // 强制规则：第一步（P0）和最终步（P5）不允许跳过
-    if (b.status === 'skipped' && (idx === 0 || idx === 5)) {
-      return res.status(400).json({ error: '第 1 步和第 6 步不能跳过，请完成它' });
-    }
     if (b.status !== undefined && !['todo', 'doing', 'done', 'skipped'].includes(b.status)) {
       return res.status(400).json({ error: 'bad status' });
     }
@@ -234,16 +251,35 @@ router.put('/phases', async (req, res, next) => {
     const ph = byIdx[idx];
     if (!ph) throw new Error('phase rows missing after self-heal');
 
-    // 最终阶段门禁：P5 完成前，P0~P4 必须已完成或已跳过
-    if (b.status === 'done' && idx === 5) {
-      const pending = [];
-      for (let i = 0; i < 5; i++) {
-        const s = (byIdx[i] || {}).status;
-        if (s !== 'done' && s !== 'skipped') pending.push('P' + i);
+    // 第 1 步（P0）和第 6 步（P5）必须完成，中间步骤可跳过。
+    // 自动补足的“未使用”槽位本来就是 skipped，不参与这里的判断。
+    if (b.status === 'skipped') {
+      if (idx === 0 && (ph.status || 'todo') !== 'skipped') {
+        await conn.rollback();
+        return res.status(400).json({ error: '第 1 步必须完成，不能跳过' });
       }
+      if (idx === PHASE_COUNT - 1) {
+        await conn.rollback();
+        return res.status(400).json({ error: '第 6 步必须完成，不能跳过' });
+      }
+    }
+
+    // 计算本次变更后的状态，用于通关门禁和指针推进
+    const statusAfter = {};
+    phases.forEach(x => { statusAfter[Number(x.phase_idx)] = x.status || 'todo'; });
+    if (b.status !== undefined) statusAfter[idx] = b.status;
+    const activeAfter = [];
+    for (let i = 0; i < PHASE_COUNT; i++) {
+      if (statusAfter[i] !== 'skipped') activeAfter.push(i);
+    }
+    const lastActiveAfter = activeAfter.length ? activeAfter[activeAfter.length - 1] : null;
+
+    // 第 6 步完成前，其余仍在使用的步骤都必须已完成（跳过/未使用的不阻塞）
+    if (b.status === 'done' && idx === PHASE_COUNT - 1) {
+      const pending = activeAfter.filter(i => i !== idx && statusAfter[i] !== 'done');
       if (pending.length) {
         await conn.rollback();
-        return res.status(400).json({ error: '请先完成或跳过 ' + pending.join('、') });
+        return res.status(400).json({ error: '请先完成 ' + pending.map(i => '第 ' + (i + 1) + ' 步').join('、') });
       }
     }
 
@@ -296,24 +332,19 @@ router.put('/phases', async (req, res, next) => {
     if (b.status !== undefined) {
       const st = b.status;
       if (st === 'done' || st === 'skipped') {
-        if (idx < 5) {
-          // 指针落到下一个尚未完成/跳过的阶段，若它还没开始则自动开始
-          let next = idx + 1;
-          while (next <= 5 && ['done', 'skipped'].includes((byIdx[next] || {}).status)) next++;
-          if (next <= 5) {
-            pointer = next;
-            if ((byIdx[next] || {}).status === 'todo') {
-              await conn.query(
-                "UPDATE project_phases SET status = 'doing', started_at_ms = ?, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
-                [now, pid, next]);
-              byIdx[next].status = 'doing';
-              byIdx[next].started_at_ms = now;
-            }
-          } else {
-            pointer = 5;
+        // 指针落到下一个仍在使用的步骤；若它还没开始则自动开始
+        let next = idx + 1;
+        while (next < PHASE_COUNT && (statusAfter[next] === 'done' || statusAfter[next] === 'skipped')) next++;
+        if (next < PHASE_COUNT) {
+          pointer = next;
+          if (statusAfter[next] === 'todo') {
+            await conn.query(
+              "UPDATE project_phases SET status = 'doing', started_at_ms = ?, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
+              [now, pid, next]);
+            statusAfter[next] = 'doing';
           }
         } else {
-          pointer = 5;
+          pointer = lastActiveAfter != null ? lastActiveAfter : idx;
         }
       } else if (st === 'doing') {
         pointer = idx;
@@ -321,7 +352,7 @@ router.put('/phases', async (req, res, next) => {
         pointer = idx;
         // 若下一阶段是上一次“完成/跳过”时自动开始的，回退时一并撤回
         if ((oldStatus === 'done' || oldStatus === 'skipped') && oldFinished) {
-          for (let j = idx + 1; j <= 5; j++) {
+          for (let j = idx + 1; j < PHASE_COUNT; j++) {
             const np = byIdx[j];
             if (np && np.status === 'doing' && Number(np.started_at_ms) === oldFinished) {
               await conn.query(
@@ -335,18 +366,15 @@ router.put('/phases', async (req, res, next) => {
         }
       }
 
-      // 通关不变量：P5 完成，且 P0~P4 全部完成/跳过
-      const p5Done = (idx === 5 ? st : (byIdx[5] || {}).status) === 'done';
-      let allPrevHandled = true;
-      for (let i = 0; i < 5; i++) {
-        const ps = i === idx ? st : ((byIdx[i] || {}).status || 'todo');
-        if (ps !== 'done' && ps !== 'skipped') { allPrevHandled = false; break; }
-      }
-      if (p5Done && allPrevHandled) {
+      // 通关不变量：第 6 步已完成，且其余仍在使用的步骤都已完成。
+      // 跳过/未使用的槽位不计入，也不会挡住通关。
+      const p5Done = statusAfter[PHASE_COUNT - 1] === 'done';
+      const othersDone = activeAfter.every(i => i === PHASE_COUNT - 1 || statusAfter[i] === 'done');
+      if (p5Done && othersDone) {
         if (projectStatus !== '已归档') projectStatus = '已完成';
-        pointer = 5;
+        pointer = PHASE_COUNT - 1;
       } else if (projectStatus === '已完成') {
-        // P5 回退，或已通关后又重新打开任一前置阶段：项目回到进行中
+        // 回退最后一步，或重新打开任一仍在使用的步骤：项目回到进行中
         projectStatus = '进行中';
       }
     }
