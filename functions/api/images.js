@@ -21,7 +21,11 @@ export async function onRequest(context) {
     }
     const gr = await toServer(request, env, { username: uname });
     if (gr.status !== 404) return new Response(gr.body, { status: gr.status, headers: { ...corsHeaders, 'Content-Type': gr.headers.get('Content-Type') || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' } });
-    // 404 → 走下方 KV 逻辑兜底
+    // 仅服务端确认「该 key 属于当前用户」时才回退 KV（存量图兼容），否则直接 404，避免跨用户读历史图
+    if (gr.headers.get('X-Image-Fallback') !== '1') {
+      return new Response(gr.body, { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // 404 + 允许回退 → 走下方 KV 逻辑兜底
   }
   function json(data, status = 200, headers = {}) {
     return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });

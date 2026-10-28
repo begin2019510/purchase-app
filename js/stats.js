@@ -5,7 +5,7 @@ function barChart(entries, maxVal, colorFn) {
   return entries.map(([label, val]) => {
     const pct = max > 0 ? (val / max * 100) : 0;
     const color = colorFn ? colorFn(label) : 'var(--pri)';
-    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
+    return `<div class="chart-row"><span class="chart-label">${esc(label)}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
   }).join('');
 }
 function donutChart(entries, size, label) {
@@ -30,13 +30,13 @@ function donutChart(entries, size, label) {
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${t}"/>
     ${segs}
     <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text>
-    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'总计'}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(label||'总计')}</text>
   </svg></div>`;
 }
 function donutLegend(entries, total) {
   return `<div class="donut-legend">${entries.map(([l, v]) => {
     const pct = total ? (v / total * 100).toFixed(1) : 0;
-    return `<div class="dl-item"><span class="dl-dot" style="background:${catColor(l)}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${catColor(l)}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
+    return `<div class="dl-item"><span class="dl-dot" style="background:${catColor(l)}"></span><span class="dl-label">${esc(l)}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${catColor(l)}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
   }).join('')}</div>`;
 }
 function miniCards(items) {
@@ -337,7 +337,7 @@ function renderStats() { console.log('renderStats START');
       var ia = Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp);
       var pct = tp > 0 ? (pd / tp * 100) : 0;
       html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)">';
-      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + (i['商品名称'] || '未命名') + '</div>';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + esc(i['商品名称'] || '未命名') + '</div>';
       html += '<div style="font-size:11px;color:var(--muted)">' + pd + '/' + tp + '期 · ¥' + ia + '/期</div></div>';
       html += '<div style="width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:var(--pri);border-radius:3px"></div></div>';
       html += '</div>';
@@ -353,7 +353,7 @@ function renderStats() { console.log('renderStats START');
       const maxVal = pCatEntries[0][1];
       pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -362,7 +362,7 @@ function renderStats() { console.log('renderStats START');
       const maxVal = pPlatEntries[0][1];
       pPlatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -416,7 +416,7 @@ function renderStats() { console.log('renderStats START');
       const maxCat = eCatEntries[0][1];
       eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }

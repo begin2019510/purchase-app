@@ -26,12 +26,12 @@ function catIcon(name){
   const ov=catIconOverrides[name];
   if(ov){
     if(ov.img&&typeof ov.img==='string'&&ov.img.startsWith('data:image/'))
-      return '<img class="cat-img-icon" src="'+ov.img+'" alt="">';
+      return '<img class="cat-img-icon" src="'+escAttr(ov.img)+'" alt="">';
     if(ov.e)return ov.e;
   }
   const c=customExpenseCats.find(x=>x&&x.n===name);
   if(c&&c.img&&typeof c.img==='string'&&c.img.startsWith('data:image/'))
-    return '<img class="cat-img-icon" src="'+c.img+'" alt="">';
+    return '<img class="cat-img-icon" src="'+escAttr(c.img)+'" alt="">';
   if(CAT_ICONS[name])return CAT_ICONS[name];
   return (c&&c.e)||'🏷️';
 }
@@ -397,7 +397,7 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
 // kv:前缀 -> KV key -> /api/images?key=xxx
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
-      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${escAttr(imgSrc)}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><div class="ex-entry swipe-card" data-id="${e.id}" data-type="expense" style="border-left:none;background:transparent;border-radius:0;padding:10px 4px;box-shadow:none">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}">${catIcon(e['分类']||'其他')}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat" style="font-size:var(--fs-lg);font-weight:500">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount a-num ${isOut?'ex-amount-out':'ex-amount-in'}" style="font-size:var(--fs-lg);font-weight:600;${isOut?'color:var(--text)':'color:var(--green)'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
@@ -713,7 +713,7 @@ function renderExpenseCalendar(){
       const isOut=e['类型']==='支出';
       const cc=catColor(e['分类']||'其他');
       const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
-      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${imgSrc}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${escAttr(imgSrc)}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
       html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="ex-entry swipe-card" style="border-left:4px solid ${cc}" data-id="${e.id}" data-type="expense">${thumbHtml}<div class="ex-entry-icon">${catIcon(e['分类']||'其他')}</div>
         <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">🕐 ${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
         <div class="ex-entry-amount ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
@@ -824,7 +824,7 @@ function openExpenseModal(id, projectId, phaseIdx){
 function closeExpenseModal(){document.getElementById('expenseOverlay').classList.remove('active')}
 function exportExpenses(){showExportDialog('记账',function(format){const sep=format==='csv'?',':'\t';const mime=format==='csv'?'text/csv':'text/tab-separated-values';const ext=format==='csv'?'.csv':'.tsv';const lines=['日期'+sep+'时间'+sep+'类型'+sep+'分类'+sep+'金额'+sep+'备注'];expenses.forEach(e=>{const ds=e['日期']||'';const datePart=ds.slice(0,10);const timePart=ds.includes('T')?ds.slice(11,16):'';const amt=Number(e['金额']||0).toFixed(2);const note=(e['备注']||'').includes(sep)?'"'+(e['备注']||'').replace(/"/g,'""')+'"':(e['备注']||'');lines.push(datePart+sep+timePart+sep+(e['类型']||'')+sep+(e['分类']||'')+sep+'¥'+amt+sep+note)});const b=new Blob([lines.join('\n')],{type:mime+';charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='记账_'+getThisMonth()+ext;a.click()})}
 // 图片: kv:前缀=KV key存飞书图片字段; 无前缀=base64（回退）
-async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch(API_BASE + API_BASE + '/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');render()}
+async function deleteExpenseImage(){const eid=document.getElementById('eEditId').value;if(!eid)return;if(!confirm('确定删除图片？'))return;const e=expenses.find(x=>x.id===eid);if(!e)return;if(e['图片']&&e['图片'].startsWith('kv:')){const k=e['图片'].slice(3);try{await fetch(API_BASE + '/api/images?key='+encodeURIComponent(k)+'&token='+encodeURIComponent(getPin()),{method:'DELETE'})}catch{}}await expenseApi('PUT',{id:eid,image:''});currentImageData='';currentImageKey='';document.getElementById('eImageWrap').style.display='none';toast('图片已删除');render()}
 async function saveExpense(){
   const amount=parseFloat(document.getElementById('eAmount').value);
   if(!amount||amount<=0){alert('请输入金额');return}

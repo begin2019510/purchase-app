@@ -925,7 +925,7 @@ function openTodoDetail(id) {
 
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + esc(t.category) + '</span></div>';
   if (t.projectId && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
     var _dp = projectList.find(function(x){ return x.id === t.projectId; });
     if (_dp) {

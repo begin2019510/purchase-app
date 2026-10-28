@@ -78,7 +78,7 @@ function renderTodo() {
       html += '</div>';
       html += '<div class="todo-card-tags">';
       html += '<span class="todo-tag pri-' + t.priority + '">' + priIcon + t.priority + '</span>';
-      html += '<span class="todo-tag cat">' + (catIcon[t.category] || '📌') + t.category + '</span>';
+      html += '<span class="todo-tag cat">' + (catIcon[t.category] || '📌') + esc(t.category) + '</span>';
       if (t.repeat && t.repeat !== '无') html += '<span class="todo-tag repeat">🔄' + t.repeat + '</span>';
       html += '</div></div>';
 
@@ -328,7 +328,7 @@ function openTodoDetail(id) {
 
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">优先级</span><span>' + priIcon + ' ' + t.priority + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">分类</span><span>' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">分类</span><span>' + (catIcon[t.category]||'📌') + ' ' + esc(t.category) + '</span></div>';
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span></div>';
   if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span>🔄 ' + t.repeat + '</span></div>';
   if (t.description) html += '<div class="detail-desc">' + esc(t.description) + '</div>';

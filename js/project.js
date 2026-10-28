@@ -301,9 +301,9 @@ function renderProjectCard(p) {
   var cph = phases[cur] || { status: 'todo' };
   var stateCls = p.status === '已完成' ? 'done' : p.status === '已归档' ? 'arch' : 'act';
 
-  var h = '<div class="pj2-card' + (isDone ? ' pj2-dim' : '') + '" style="--pc:' + color + '" onclick="openProjectDetail(\'' + p.id + '\')">';
+  var h = '<div class="pj2-card' + (isDone ? ' pj2-dim' : '') + '" style="--pc:' + escAttr(color) + '" onclick="openProjectDetail(\'' + p.id + '\')">';
   h += '<div class="pj2-card-top">';
-  h += '<span class="pj2-dot" style="background:' + color + '"></span>';
+  h += '<span class="pj2-dot" style="background:' + escAttr(color) + '"></span>';
   h += '<div class="pj2-card-name">' + esc(p.name) + '</div>';
   h += '<span class="pj2-state ' + stateCls + '">' + p.status + '</span>';
   h += '</div>';
@@ -317,7 +317,7 @@ function renderProjectCard(p) {
   if (openTodos > 0) h += '<span>☑ ' + openTodos + ' 待办</span>';
   h += '</div>';
 
-  h += '<div class="pj2-progress"><div class="bar"><i style="width:' + st.pct + '%;background:' + (st.pct >= 100 ? 'var(--green)' : color) + '"></i></div><span class="num">' + st.done + '/' + st.denom + ' 步</span></div>';
+  h += '<div class="pj2-progress"><div class="bar"><i style="width:' + st.pct + '%;background:' + (st.pct >= 100 ? 'var(--green)' : escAttr(color)) + '"></i></div><span class="num">' + st.done + '/' + st.denom + ' 步</span></div>';
   h += '</div>';
   return h;
 }
@@ -487,7 +487,7 @@ function openProjectDetail(id, opts) {
 
   var html = '';
   html += '<div class="pj2-sheet-head">';
-  html += '<div class="pj2-sheet-name"><span class="pj2-dot" style="background:' + color + '"></span><span class="pj2-name-text">' + esc(p.name) + '</span></div>';
+  html += '<div class="pj2-sheet-name"><span class="pj2-dot" style="background:' + escAttr(color) + '"></span><span class="pj2-name-text">' + esc(p.name) + '</span></div>';
   html += '<button class="pj2-icon-btn" onclick="closeProjectDetail()" aria-label="关闭">✕</button>';
   html += '</div>';
 

@@ -11,6 +11,8 @@ router.use(guard(['projects', 'phases', 'phase-items']));
 
 const PHASE_COUNT = 6;
 const PROJECT_STATUSES = ['进行中', '已完成', '已归档'];
+const COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+const MAX_BUDGET = 1e9;
 
 // 返回 null / 数字 / NaN；调用方负责把 NaN 转成 400，避免把 NaN 写进 MySQL 触发 500
 function dueMsOf(v) {
@@ -140,13 +142,20 @@ router.post('/projects', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     if (!uid) return res.status(401).json({ error: '用户不存在' });
     const b = req.body || {};
-    if (!b.name) return res.status(400).json({ error: 'Name required' });
+    const name = String(b.name || '').trim();
+    if (!name) return res.status(400).json({ error: 'Name required' });
+    if (name.length > 100) return res.status(400).json({ error: '项目名称过长' });
     const dueMs = dueMsOf(b.dueDate);
     if (dueMs !== null && !Number.isFinite(dueMs)) return res.status(400).json({ error: 'bad dueDate' });
     const budget = budgetNum(b.budget);
-    if (budget !== null && !Number.isFinite(budget)) return res.status(400).json({ error: 'bad budget' });
+    if (budget !== null && (!Number.isFinite(budget) || budget < 0 || budget > MAX_BUDGET)) return res.status(400).json({ error: 'bad budget' });
     const status = b.status || '进行中';
     if (!PROJECT_STATUSES.includes(status)) return res.status(400).json({ error: 'bad status' });
+    let color = '#6366f1';
+    if (b.color !== undefined) {
+      if (typeof b.color !== 'string' || !COLOR_RE.test(b.color)) return res.status(400).json({ error: 'bad color' });
+      color = b.color;
+    }
 
     // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
     // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
@@ -168,8 +177,8 @@ router.post('/projects', async (req, res, next) => {
     await conn.beginTransaction();
     const [ins] = await conn.query(
       'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,?)',
-      [uid, String(b.name).slice(0, 100), String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
-        status, b.color || '#6366f1', budget, startPhase]);
+      [uid, name, String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
+        status, color, budget, startPhase]);
     for (let i = 0; i < PHASE_COUNT; i++) {
       const unused = steps.length > 0 && slotNames[i] === null;
       await conn.query(
@@ -194,7 +203,12 @@ router.put('/projects', async (req, res, next) => {
     const own = await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
     if (!own) return res.status(404).json({ error: 'not found' });
     const cols = {};
-    if (b.name !== undefined) cols.name = String(b.name).slice(0, 100);
+    if (b.name !== undefined) {
+      const name = String(b.name || '').trim();
+      if (!name) return res.status(400).json({ error: '项目名称不能为空' });
+      if (name.length > 100) return res.status(400).json({ error: '项目名称过长' });
+      cols.name = name;
+    }
     if (b.description !== undefined) cols.description = String(b.description || '').slice(0, 2000);
     if (b.dueDate !== undefined) {
       const dueMs = dueMsOf(b.dueDate);
@@ -205,13 +219,20 @@ router.put('/projects', async (req, res, next) => {
       if (!PROJECT_STATUSES.includes(b.status)) return res.status(400).json({ error: 'bad status' });
       cols.status = b.status;
     }
-    if (b.color !== undefined) cols.color = b.color;
+    if (b.color !== undefined) {
+      if (typeof b.color !== 'string' || !COLOR_RE.test(b.color)) return res.status(400).json({ error: 'bad color' });
+      cols.color = b.color;
+    }
     if (b.budget !== undefined) {
       const budget = budgetNum(b.budget);
-      if (budget !== null && !Number.isFinite(budget)) return res.status(400).json({ error: 'bad budget' });
+      if (budget !== null && (!Number.isFinite(budget) || budget < 0 || budget > MAX_BUDGET)) return res.status(400).json({ error: 'bad budget' });
       cols.budget = budget;
     }
-    if (b.currentPhase !== undefined) cols.current_phase = Math.max(0, Math.min(PHASE_COUNT - 1, Number(b.currentPhase) || 0));
+    if (b.currentPhase !== undefined) {
+      const cp = Number(b.currentPhase);
+      if (!Number.isInteger(cp) || cp < 0 || cp >= PHASE_COUNT) return res.status(400).json({ error: 'bad currentPhase' });
+      cols.current_phase = cp;
+    }
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) await db.exec('UPDATE projects SET ' + sets + ' WHERE id = ?', [...Object.values(cols), pid]);
     res.json({ ok: true });

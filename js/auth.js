@@ -88,8 +88,8 @@ async function loadUserList(){
     el.innerHTML=d.users.map(u=>{
       const isAdmin=u.username==='admin';
       const badge=isAdmin?'<span style="background:var(--pri);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;margin-left:6px">管理员</span>':'';
-      const del=isAdmin?'':'<button onclick="deleteUser(\''+u.username+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">删除</button>';
-      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+u.username+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+u.createdAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC) | '+u.inviteType+' '+u.inviteCode+'</div></div>'+del+'</div>';
+      const del=isAdmin?'':'<button data-u="'+escAttr(u.username)+'" onclick="deleteUser(this.dataset.u)" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">删除</button>';
+      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)"><div><b>'+esc(u.username)+'</b>'+badge+'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+esc(String(u.createdAt||'').replace('T',' ').replace('Z','').slice(0,16))+' (UTC) | '+esc(u.inviteType||'')+' '+esc(u.inviteCode||'')+'</div></div>'+del+'</div>';
     }).join('');
   }catch{el.textContent='加载失败'}
 }
@@ -106,7 +106,7 @@ async function createInviteCodes(){
   try{
     const r=await fetch(API_BASE + '/api/auth?action=create-invite',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},body:JSON.stringify({count})});
     const d=await r.json();
-    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+c+'</b>').join('<br>');loadInviteList();}
+    if(d.ok){el.innerHTML='✅ 已生成:<br>'+d.codes.map(c=>'<b>'+esc(c)+'</b>').join('<br>');loadInviteList();}
     else{el.textContent='❌ '+d.error}
   }catch{el.textContent='❌ 网络错误'}
 }
@@ -117,8 +117,8 @@ async function loadInviteList(){
     const d=await r.json();
     if(!d.ok||!d.codes.length){el.textContent='暂无动态邀请码';return}
     el.innerHTML=d.codes.map(c=>{
-      const status=c.used?'<span style="color:var(--red)">已使用 '+(c.usedAt?c.usedAt.replace('T',' ').replace('Z','').slice(0,16)+' (UTC)':'')+'</span>':'<span style="color:var(--green)">可用</span>';
-      return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+c.code+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+c.createdAt.slice(0,10)+'</span></div>';
+      const status=c.used?'<span style="color:var(--red)">已使用 '+(c.usedAt?esc(String(c.usedAt).replace('T',' ').replace('Z','').slice(0,16))+' (UTC)':'')+'</span>':'<span style="color:var(--green)">可用</span>';
+      return'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-family:monospace">'+esc(c.code)+'</span>'+status+'<span style="font-size:10px;color:var(--muted)">'+esc(String(c.createdAt||'').slice(0,10))+'</span></div>';
     }).join('');
   }catch{el.textContent='加载失败'}
 }
@@ -137,7 +137,7 @@ async function debugMyAuth(){
   try{
     const r=await fetch(API_BASE + '/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
+    el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+esc(JSON.stringify(d,null,2))+'</pre>';
   }catch(e){el.textContent='错误: '+e.message}
 }
 async function debugMyAuthStats(){
@@ -146,7 +146,7 @@ async function debugMyAuthStats(){
   try{
     const r=await fetch(API_BASE + '/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
     const d=await r.json();
-    el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+JSON.stringify(d,null,2)+'</pre>';
+    el.innerHTML='<pre style="margin:0;white-space:pre-wrap">'+esc(JSON.stringify(d,null,2))+'</pre>';
   }catch(e){el.textContent='错误: '+e.message}
 }
 async function verifyAndLoad(){

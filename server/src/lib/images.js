@@ -35,8 +35,9 @@ async function saveDataImage(username, userId, dataUrl, prefix) {
 function readImage(username, key) {
   // key 只允许安全字符，防 ../ 穿越
   if (!/^[\w.-]+$/.test(String(key || ''))) return null;
-  const p = path.join(safeUserDir(username), key);
-  if (!p.startsWith(cfg.IMG_DIR)) return null;
+  const root = path.resolve(cfg.IMG_DIR);
+  const p = path.resolve(safeUserDir(username), key);
+  if (!p.startsWith(root + path.sep)) return null;
   try {
     if (!fs.existsSync(p)) return null;
     return { buf: fs.readFileSync(p), mime: mimeFor(p) };
@@ -47,12 +48,16 @@ function mimeFor(p) {
   return ({ '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.heic': 'image/heic' })[e] || 'image/jpeg';
 }
 
-async function deleteImage(username, key) {
+async function deleteImage(username, key, userId) {
   if (!/^[\w.-]+$/.test(String(key || ''))) return false;
-  const p = path.join(safeUserDir(username), key);
-  if (!p.startsWith(cfg.IMG_DIR)) return false;
+  const root = path.resolve(cfg.IMG_DIR);
+  const p = path.resolve(safeUserDir(username), key);
+  if (!p.startsWith(root + path.sep)) return false;
   try { fs.unlinkSync(p); } catch (e) {}
-  try { await db.exec('DELETE FROM images WHERE file_key = ?', [key]); } catch (e) {}
+  // 元数据必须带 user_id 限定，避免任何路径删掉别人的 images 行
+  try {
+    if (userId != null) await db.exec('DELETE FROM images WHERE file_key = ? AND user_id = ?', [key, userId]);
+  } catch (e) {}
   return true;
 }
 

@@ -27,11 +27,11 @@ function openDetailModal(id){
     <div class="detail-meta">
       <span>🏪 ${esc(item['平台']||'')}</span>
       <span class="a-badge ${status=='已到'||status=='已完成'||status=='已归档'?'a-badge-green':status=='已退'?'a-badge-red':status=='待审批'?'a-badge-blue':'a-badge-orange'}">${status}</span>
-      <span class="cat-badge">${item['分类']||'其他'}</span>
+      <span class="cat-badge">${esc(item['分类']||'其他')}</span>
       ${ds?`<span>📅 ${ds}</span>`:''}
     </div>
     ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">💬 ${esc(item['备注'])}</div>`:''}
-  ${item['图片']&&!item['图片'].startsWith('{')?`<div style="margin-top:8px"><img src="${item['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(item['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):item['图片']}" style="max-width:100%;max-height:300px;border-radius:10px;cursor:pointer" onclick="showFullscreenImg(this.src)"></div>`:''}
+  ${item['图片']&&!item['图片'].startsWith('{')?`<div style="margin-top:8px"><img src="${escAttr(item['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(item['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):item['图片'])}" style="max-width:100%;max-height:300px;border-radius:10px;cursor:pointer" onclick="showFullscreenImg(this.src)"></div>`:''}
   ${item['评估摘要']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">🤖 AI评估摘要</div><div style="color:var(--muted)">${stripMd(esc(item['评估摘要']))}</div></div>`:''}
   ${item['购买理由']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">💡 购买理由</div><div style="color:var(--muted)">${esc(item['购买理由'])}</div></div>`:''}
   ${item['预算区间']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">💰 预算: ¥${esc(item['预算区间'])}</div>`:''}
@@ -106,9 +106,9 @@ function openDetailModal(id){
       var stageLabel = stage;
       var imgHtml = '';
       if (stageImg && stageImg.startsWith('kv:')) {
-        imgHtml = '<img src="' + API_BASE + '/api/images?key=' + encodeURIComponent(stageImg.slice(3)) + '&token=' + encodeURIComponent(getPin()) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
+        imgHtml = '<img src="' + escAttr(API_BASE + '/api/images?key=' + encodeURIComponent(stageImg.slice(3)) + '&token=' + encodeURIComponent(getPin())) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
       } else if (stageImg) {
-        imgHtml = '<img src="' + stageImg + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
+        imgHtml = '<img src="' + escAttr(stageImg) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
       }
       var borderColor = isCurrent ? 'var(--pri)' : 'var(--border)';
       var bg = isCurrent ? 'var(--card)' : 'transparent';

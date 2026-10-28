@@ -13,13 +13,15 @@ const ACTIVE_BUY = ['已下单', '已到', '已归档'];
 
 // 分期采购的每月付款日：取购买日的「日」，超出当月天数则取月末；
 // 起始月优先用 installment_start，缺失时退回购买月。
-function installmentEvents(pRecs) {
+// 注意：已还清（installment_paid >= 期数）的历史分期不能整笔丢掉，
+// 否则去重生成旧月报时该商品的月供会凭空消失；只排除尚未到来的月份。
+function installmentEvents(pRecs, nowMs) {
   const out = [];
+  const nowBj = new Date((nowMs || Date.now()) + TZ);
+  const nowIdx = nowBj.getUTCFullYear() * 12 + nowBj.getUTCMonth();
   for (const r of pRecs) {
     const tp = Number(r.installments) || 0;
     if (tp <= 1 || !ACTIVE_BUY.includes(r.status)) continue;
-    const paid = Number(r.installment_paid) || 0;
-    if (paid >= tp) continue;
     const dateMs = Number(r.date_ms) || 0;
     if (!dateMs) continue;
     const pd = new Date(dateMs + TZ);
@@ -34,6 +36,7 @@ function installmentEvents(pRecs) {
     for (let k = 0; k < tp; k++) {
       const y = sy + Math.floor((sm - 1 + k) / 12);
       const m0 = (sm - 1 + k) % 12;
+      if (y * 12 + m0 > nowIdx) continue; // 不把未来月份算进当前统计
       const dim = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
       out.push({ ts: Date.UTC(y, m0, Math.min(payDay, dim)) - TZ, amount, cat });
     }
@@ -64,9 +67,11 @@ function range(period, now) {
     let prevB = null;
     if (endedList.length >= 2) prevB = endedList[endedList.length - 2];
     else {
+      // endedList 为空的月份已补成上月 4 段（走上面的分支）；能到这里只可能是
+      // 今天在当月第 2 段，ended 为当月第 1 段，上一段就是上月最后一段 pb[3]。
       const pm = ended.m === 0 ? { y: ended.y - 1, m: 11 } : { y: ended.y, m: ended.m - 1 };
       const pb = monthBlocks(pm.y, pm.m);
-      prevB = { ...pb[2], y: pm.y, m: pm.m };
+      prevB = { ...pb[3], y: pm.y, m: pm.m };
     }
     const start = Date.UTC(ended.y, ended.m, ended.start) - TZ;
     const end = Date.UTC(ended.y, ended.m, ended.end + 1) - TZ;
@@ -81,8 +86,12 @@ function range(period, now) {
   const ps = Date.UTC(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1, 1) - TZ;
   const daysInPrev = Math.round((start - ps) / MS);
   const prevM = new Date(ps + TZ);
+  // 环比窗口必须是「上上个月的 1 日 → 上个月 1 日」。之前用 ps-(start-ps)
+  // 按天数倒推，遇到 30/31/28 天月份会把起点算到上上个月月底或 4 号。
+  const ppm0 = prevM.getUTCMonth(), ppy = prevM.getUTCFullYear();
+  const pps = Date.UTC(ppm0 === 0 ? ppy - 1 : ppy, ppm0 === 0 ? 11 : ppm0 - 1, 1) - TZ;
   const rangeText = (prevM.getUTCMonth() + 1) + '月1日 - ' + (prevM.getUTCMonth() + 1) + '月' + daysInPrev + '日';
-  return { start: ps, end: start, prevStart: ps - (start - ps), prevEnd: ps,
+  return { start: ps, end: start, prevStart: pps, prevEnd: ps,
     label: (prevM.getUTCMonth() + 1) + '月', prevLabel: ((prevM.getUTCMonth() === 0 ? 12 : prevM.getUTCMonth())) + '月', rangeText };
 }
 
@@ -144,7 +153,10 @@ async function computeForUser(u, period) {
   const yuan = n => '¥' + Math.round(n).toLocaleString('zh-CN');
   let topDayText = null;
   if (cur.topDay) {
-    const year = new Date(R.start + TZ).getUTCFullYear();
+    const sd = new Date(R.start + TZ);
+    let year = sd.getUTCFullYear();
+    // 跨年周（如 12/29-1/4）的最高消费日可能落在下一年
+    if (Number(cur.topDay[0].slice(0, 2)) < sd.getUTCMonth() + 1) year += 1;
     const dt = new Date(Date.parse(year + '-' + cur.topDay[0] + 'T00:00:00+08:00') || 0);
     const w = ['日', '一', '二', '三', '四', '五', '六'][dt.getUTCDay()];
     topDayText = (dt.getUTCMonth() + 1) + '月' + dt.getUTCDate() + '日 周' + w;
@@ -218,3 +230,7 @@ router.get('/push/report', async (req, res, next) => {
 });
 
 module.exports = router;
+// 纯函数导出，供回归测试直接校验日期窗口/分期事件
+module.exports._range = range;
+module.exports._monthBlocks = monthBlocks;
+module.exports._installmentEvents = installmentEvents;

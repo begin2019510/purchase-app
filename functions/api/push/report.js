@@ -65,11 +65,11 @@ function range(period, now) {
     let prevB = null;
     if (endedList.length >= 2) prevB = endedList[endedList.length - 2];
     else {
-      // 结束段是上月最后一段 → 再往前 = 上月倒数第二段
+      // endedList 为空时会补成上月 4 段，因此这里只可能是「今天在当月第 2 段」，
+      // ended 为当月第 1 段，上一段就是上月最后一段 pb[3]。
       const pm = ended.m === 0 ? { y: ended.y - 1, m: 11 } : { y: ended.y, m: ended.m - 1 };
       const pb = monthBlocks(pm.y, pm.m);
-      prevB = { ...pb[2], y: pm.y, m: pm.m }; // 倒数第二段
-      if (ended.num === 1) prevB = { ...pb[2], y: pm.y, m: pm.m };
+      prevB = { ...pb[3], y: pm.y, m: pm.m };
     }
     const start = Date.UTC(ended.y, ended.m, ended.start) - TZ;
     const end = Date.UTC(ended.y, ended.m, ended.end + 1) - TZ;
@@ -88,7 +88,9 @@ function range(period, now) {
   const daysInPrev = Math.round((start - ps) / MS);
   const prevM = new Date(ps + TZ);
   const rangeText = (prevM.getUTCMonth() + 1) + '月1日 - ' + (prevM.getUTCMonth() + 1) + daysInPrev + '日';
-  return { start: ps, end: start, prevStart: ps - (start - ps), prevEnd: ps,
+  const ppm0 = prevM.getUTCMonth(), ppy = prevM.getUTCFullYear();
+  const pps = Date.UTC(ppm0 === 0 ? ppy - 1 : ppy, ppm0 === 0 ? 11 : ppm0 - 1, 1) - TZ;
+  return { start: ps, end: start, prevStart: pps, prevEnd: ps,
     label: (prevM.getUTCMonth() + 1) + '月', prevLabel: ((prevM.getUTCMonth() === 0 ? 12 : prevM.getUTCMonth()) ) + '月', rangeText };
 }
 
@@ -112,7 +114,7 @@ async function computeForUser(env, username, r) {
       const st = Array.isArray(f['状态']) ? f['状态'][0] : (f['状态'] || '');
       if (!ACTIVE_BUY.includes(st)) continue;
       const ts = num(f['日期']);
-      if (ts < start || ts > end) continue;
+      if (ts < start || ts >= end) continue;
       const amt = num(f['单价']) * (num(f['数量']) || 1);
       if (amt <= 0) continue;
       buy += amt; count++;
@@ -128,7 +130,7 @@ async function computeForUser(env, username, r) {
       const note = String(f['备注'] || '');
       if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
       const ts = parseWhen(f['日期']);
-      if (ts < start || ts > end) continue;
+      if (ts < start || ts >= end) continue;
       const amt = num(f['金额']);
       if (amt <= 0) continue;
       exp += amt; count++;

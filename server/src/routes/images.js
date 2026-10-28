@@ -39,19 +39,55 @@ router.post('/images', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 存量图片仍在 KV（无 images 元数据）：只有该 key 确实被当前用户自己的数据引用时才允许 CF 回退 KV，
+// 否则任意登录用户都能拿别人的旧 key 读图。
+async function legacyKeyOwnedBy(uid, key) {
+  const ref = 'kv:' + key;
+  const direct = await db.one(
+    'SELECT 1 AS x FROM expenses WHERE user_id = ? AND image_ref = ? UNION ALL SELECT 1 AS x FROM todos WHERE user_id = ? AND image_ref = ? LIMIT 1',
+    [uid, ref, uid, ref]);
+  if (direct) return true;
+  // purchases.image_ref 可能是 'kv:xxx' 或阶段图片 JSON；LIKE 只用来缩小范围，最终按解析后的值精确比较
+  const rows = await db.query('SELECT image_ref FROM purchases WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
+  for (const row of rows) {
+    const v = row.image_ref;
+    if (v === ref) return true;
+    try {
+      const o = JSON.parse(v);
+      if (o && typeof o === 'object') {
+        for (const k of Object.keys(o)) if (o[k] === ref) return true;
+      }
+    } catch (e) {}
+  }
+  return false;
+}
+
 router.get('/images', async (req, res) => {
   try {
     const key = String(req.query.key || '').replace(/^kv:/, '');
     if (!key) return res.status(400).json({ error: 'Missing key' });
     const uid = await H.resolveUserId(req.username);
-    // 用户隔离：file_key 归属校验
     const meta = await db.one('SELECT user_id FROM images WHERE file_key = ?', [key]);
-    if (!meta || (uid && meta.user_id !== uid)) return res.status(404).json({ error: 'Image not found' });
-    const img = IMG.readImage(req.username, key);
-    if (!img) return res.status(404).json({ error: 'Image not found' });   // CF 层回退 KV
-    res.setHeader('Content-Type', img.mime);
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.end(img.buf);
+    if (!uid) return res.status(404).json({ error: 'Image not found' });
+    if (meta) {
+      // 元数据归属别的用户：直接 404，且不允许回退 KV
+      if (meta.user_id !== uid) return res.status(404).json({ error: 'Image not found' });
+      const img = IMG.readImage(req.username, key);
+      if (img) {
+        res.setHeader('Content-Type', img.mime);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.end(img.buf);
+      }
+      // 自己的元数据但磁盘缺失：允许 CF 回退 KV 恢复
+      res.setHeader('X-Image-Fallback', '1');
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    // 无元数据：仅当 key 被当前用户自己的数据引用（历史 KV 图）才允许回退
+    if (await legacyKeyOwnedBy(uid, key)) {
+      res.setHeader('X-Image-Fallback', '1');
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    return res.status(404).json({ error: 'Image not found' });
   } catch (e) { res.status(500).json({ error: 'internal_error' }); }
 });
 
@@ -59,7 +95,10 @@ router.delete('/images', async (req, res, next) => {
   try {
     const key = String(req.query.key || '').replace(/^kv:/, '');
     if (!key) return res.status(400).json({ error: 'Missing key' });
-    await IMG.deleteImage(req.username, key);
+    const uid = await H.resolveUserId(req.username);
+    const meta = await db.one('SELECT user_id FROM images WHERE file_key = ?', [key]);
+    if (!uid || !meta || meta.user_id !== uid) return res.status(404).json({ error: 'Image not found' });
+    await IMG.deleteImage(req.username, key, uid);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

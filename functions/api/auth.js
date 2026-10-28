@@ -5,9 +5,82 @@
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
 import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, hashPasswordNew, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
+import { mysqlMode } from './_proxy.js';
 
 const json = jsonFn;
 const corsHeaders = getCorsHeaders;
+
+// ===== MySQL 模式：认证转发到 Node 服务 =====
+// 请求体在 onRequest 里已被解析，不能复用 _proxy.toServer（它会重新读 arrayBuffer）。
+async function serverAuth(env, action, body, request, authUserHeader) {
+  const base = String(env.SERVER_API_BASE || '').replace(/\/+$/, '');
+  const headers = { 'Content-Type': 'application/json', 'X-Service-Token': env.SERVICE_TOKEN };
+  if (authUserHeader) headers['X-Auth-User'] = authUserHeader;
+  const auth = request.headers.get('Authorization');
+  if (auth) headers['Authorization'] = auth;
+  // 转发真实客户端 IP：服务端登录限流按 IP 计数，缺失时会退化成 127.0.0.1 全局共享
+  const cip = request.headers.get('CF-Connecting-IP');
+  if (cip) headers['CF-Connecting-IP'] = cip;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(base + '/api/auth?action=' + encodeURIComponent(action), {
+      method: 'POST', headers, body: JSON.stringify(body || {}), signal: ctrl.signal,
+    });
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch (e) { data = { error: '服务端响应异常' }; }
+    return { status: r.status, data };
+  } finally { clearTimeout(timer); }
+}
+
+// CF 仍是唯一 JWT 签发方：服务端只负责校验账号密码/刷新令牌，这里换发 CF 自己的 token
+async function cfSession(username, refreshToken, JWT_SECRET) {
+  const token = await createJWT({ username }, JWT_SECRET, 24);
+  return { ok: true, token, refreshToken, username };
+}
+
+async function cfUserPayload(request, env) {
+  const auth = request.headers.get('Authorization');
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  return await verifyJWT(auth.replace('Bearer ', ''), env.JWT_SECRET);
+}
+
+async function handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors) {
+  const sr = await serverAuth(env, action, body, request);
+  const d = sr.data || {};
+  if (sr.status >= 200 && sr.status < 300 && d.ok && d.username) {
+    return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
+  }
+  // 登录失败时保留旧的 KV/飞书账号作为兜底，避免历史管理员被锁在门外；
+  // 429 不能兜底，否则限流形同虚设。
+  if (action === 'login' && sr.status !== 429) {
+    return await handleLogin(request, body, KV, JWT_SECRET, cors, env);
+  }
+  if (action === 'refresh' && sr.status === 401) {
+    return await handleRefresh(body, KV, JWT_SECRET, cors);
+  }
+  return json(d, sr.status, cors);
+}
+
+async function handleMysqlAdmin(action, body, request, env, KV, cors) {
+  const payload = await cfUserPayload(request, env);
+  if (!payload) return json({ error: 'Unauthorized' }, 401, cors);
+  // list-logs 普通用户也可调用（服务端只返回自己的日志），其余仅 admin
+  if (action !== 'list-logs' && payload.username !== 'admin') return json({ error: '仅管理员' }, 403, cors);
+  const sr = await serverAuth(env, action, body, request, payload.username);
+  if (action === 'delete-user' && sr.status >= 200 && sr.status < 300 && sr.data && sr.data.ok) {
+    const victim = body && body.username;
+    if (victim) {
+      // MySQL 已删除，KV 里的旧账号/令牌/订阅做 best-effort 清理
+      try { await deleteAllRefreshTokens(KV, victim); } catch (e) {}
+      try { await deleteUser(KV, victim); } catch (e) {}
+      try { await KV.delete('webpush:' + victim); } catch (e) {}
+      try { await KV.delete('report:latest:' + victim); } catch (e) {}
+    }
+  }
+  return json(sr.data, sr.status, cors);
+}
 
 // ===== Feishu API =====
 async function getFeishuTokenDirect(appId, appSecret) {
@@ -159,6 +232,21 @@ export async function onRequest(context) {
 
   try {
     const body = request.method === 'POST' ? await request.json() : {};
+
+    if (mysqlMode(env)) {
+      if (action === 'register' || action === 'login' || action === 'refresh') {
+        return await handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors);
+      }
+      if (action === 'logout') {
+        // 服务端撤销 refresh token；KV 旧令牌也顺手删掉，接口始终幂等返回 ok
+        try { await serverAuth(env, 'logout', body, request); } catch (e) {}
+        if (body.refreshToken) { try { await deleteRefreshToken(KV, body.refreshToken); } catch (e) {} }
+        return json({ ok: true }, 200, cors);
+      }
+      if (['create-invite', 'list-invites', 'delete-user', 'list-users', 'list-logs', 'admin-op-verify', 'debug-env'].includes(action)) {
+        return await handleMysqlAdmin(action, body, request, env, KV, cors);
+      }
+    }
 
     if (action === 'register') {
       return await handleRegister(request, body, env, KV, JWT_SECRET, cors);

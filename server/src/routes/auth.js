@@ -22,15 +22,18 @@ function newInviteCode() {
 async function getUser(username) {
   return db.one('SELECT * FROM users WHERE username = ?', [username]);
 }
+// 只校验、不消费；动态邀请码的 used 置位放在注册事务里原子完成
 async function validateInvite(code) {
   const envCodes = (cfg.INVITE_CODES || '').split(',').map(c => c.trim()).filter(Boolean);
   if (envCodes.includes(code)) return { valid: true, type: 'env' };
   const row = await db.one('SELECT * FROM invites WHERE code = ? AND used = 0', [code]);
-  if (row) {
-    await db.exec('UPDATE invites SET used = 1, used_at = NOW() WHERE id = ?', [row.id]);
-    return { valid: true, type: 'dynamic' };
-  }
+  if (row) return { valid: true, type: 'dynamic', rowId: row.id };
   return { valid: false };
+}
+function safeEqual(a, b) {
+  const ab = Buffer.from(String(a || ''));
+  const bb = Buffer.from(String(b || ''));
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
 }
 async function issueTokens(userId, username) {
   const token = createJWT({ username }, cfg.JWT_SECRET, 24);
@@ -44,9 +47,12 @@ async function issueTokens(userId, username) {
 async function rateCheck(ip) {
   const row = await db.one('SELECT times FROM login_fails WHERE ip = ?', [ip]);
   const now = Date.now();
+  const raw = row && row.times;
+  // mysql2 会把 JSON 列直接解析成数组；字符串则是旧数据/兼容路径
   let parsed = [];
-  try { parsed = JSON.parse((row && row.times) || '[]'); } catch (e) {}
-  const recent = Array.isArray(parsed) ? parsed.filter(t => now - t < 900000) : [];
+  if (Array.isArray(raw)) parsed = raw;
+  else if (typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch (e) {} }
+  const recent = Array.isArray(parsed) ? parsed.filter(t => Number(t) && now - Number(t) < 900000) : [];
   if (recent.length >= 5) {
     const waitSec = Math.ceil((Math.min(...recent) + 900000 - now) / 1000);
     return { blocked: true, waitSec, recent };
@@ -62,6 +68,9 @@ async function rateRecord(ip, recent) {
 // 局部解析 JWT（不强制）：verify/管理员动作使用
 router.use('/auth', (req, res, next) => {
   req.user = null;
+  // 本路由在 X-Service-Token 闸之后挂载：CF 已验过 JWT，用 X-Auth-User 转发身份（管理员动作依赖它）
+  const xu = req.headers['x-auth-user'];
+  if (xu) { req.user = { username: String(xu) }; return next(); }
   const h = req.headers.authorization;
   if (h && h.startsWith('Bearer ')) {
     const p = verifyJWT(h.replace('Bearer ', ''), cfg.JWT_SECRET);
@@ -79,25 +88,44 @@ router.all('/auth', async (req, res, next) => {
 
     if (action === 'register') {
       const { username, password, inviteCode } = body;
-      if (!username || !password || !inviteCode) return res.json({ error: '请填写用户名、密码和邀请码' });
+      if (typeof username !== 'string' || typeof password !== 'string' || typeof inviteCode !== 'string' ||
+          !username || !password || !inviteCode) return res.json({ error: '请填写用户名、密码和邀请码' });
       if (username.length < 3 || username.length > 20) return res.json({ error: '用户名3-20个字符' });
-      if (password.length < 6) return res.json({ error: '密码至少6位' });
-      if (username === 'admin') return res.json({ error: '不能使用保留用户名' });
+      // 用户名会进图片目录名，限制为安全字符，避免注册成功后上传图片报 500
+      if (!/^[A-Za-z0-9_一-龥.-]{3,20}$/.test(username)) return res.json({ error: '用户名只能包含中文、字母、数字、下划线、点和短横线' });
+      if (password.length < 6 || password.length > 128) return res.json({ error: '密码需为6-128位' });
+      if (username.toLowerCase() === 'admin') return res.json({ error: '不能使用保留用户名' });
+      if (await getUser(username)) return res.json({ error: '用户名已存在' });
       const inv = await validateInvite(inviteCode);
       if (!inv.valid) return res.json({ error: '邀请码无效或已被使用' });
-      if (await getUser(username)) return res.json({ error: '用户名已存在' });
       const salt = genSalt();
       const hash = await hashPwd(password, salt, 1);   // 与 CF register 一致：v1
-      const r = await db.exec('INSERT INTO users (username, password_hash, salt, hash_version, invite_code, invite_type) VALUES (?,?,?,?,?,?)',
-        [username, hash, salt, 1, inviteCode, inv.type]);
-      const t = await issueTokens(r.insertId, username);
+      const conn = await db.pool.getConnection();
+      let uid;
+      try {
+        await conn.beginTransaction();
+        if (inv.type === 'dynamic') {
+          // 原子消费邀请码：并发下只有一个请求能 affectedRows=1
+          const [up] = await conn.query('UPDATE invites SET used = 1, used_at = NOW() WHERE id = ? AND used = 0', [inv.rowId]);
+          if (!up.affectedRows) { await conn.rollback(); return res.json({ error: '邀请码无效或已被使用' }); }
+        }
+        const [r] = await conn.query('INSERT INTO users (username, password_hash, salt, hash_version, invite_code, invite_type) VALUES (?,?,?,?,?,?)',
+          [username, hash, salt, 1, inviteCode, inv.type]);
+        await conn.commit();
+        uid = r.insertId;
+      } catch (e) {
+        try { await conn.rollback(); } catch (x) {}
+        if (e && e.code === 'ER_DUP_ENTRY') return res.json({ error: '用户名已存在' });
+        throw e;
+      } finally { conn.release(); }
+      const t = await issueTokens(uid, username);
       await H.logOp(username, 'register', '注册成功（邀请码: ' + inv.type + '）', ip);
       return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken, username });
     }
 
     if (action === 'login') {
       const { username, password } = body;
-      if (!username || !password) return res.json({ error: '请输入用户名和密码' });
+      if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) return res.json({ error: '请输入用户名和密码' });
       const rl = await rateCheck(ip);
       if (rl.blocked) {
         await H.logOp(username, 'login_blocked', '登录限流触发（IP: ' + ip + '）', ip);
@@ -106,7 +134,7 @@ router.all('/auth', async (req, res, next) => {
       const user = await getUser(username);
       if (!user) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
       const hash = await hashPwd(password, user.salt, user.hash_version);
-      if (hash !== user.password_hash) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
+      if (!safeEqual(hash, user.password_hash)) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
       await db.exec('DELETE FROM login_fails WHERE ip = ?', [ip]);
       const t = await issueTokens(user.id, username);
       await H.logOp(username, 'login', '登录成功', ip);
@@ -128,7 +156,7 @@ router.all('/auth', async (req, res, next) => {
       if (!row || new Date(row.expires_at) < new Date()) return res.status(401).json({ error: 'Refresh token 无效或已过期' });
       await db.exec('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?', [row.id]);
       const t = await issueTokens(row.user_id, row.username);
-      return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken });
+      return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken, username: row.username });
     }
 
     if (action === 'logout') {
@@ -171,19 +199,30 @@ router.all('/auth', async (req, res, next) => {
       if (username === 'admin') return res.json({ error: '不能删除管理员账号' });
       const user = await getUser(username);
       if (!user) return res.status(404).json({ error: '用户不存在' });
-      for (const t of ['purchases', 'expenses', 'todos', 'projects']) {
-        await db.exec(`DELETE FROM ${t} WHERE user_id = ?`, [user.id]);
-      }
-      for (const t of ['budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens']) {
-        await db.exec(`DELETE FROM ${t} ${t === 'refresh_tokens' ? 'WHERE user_id' : 'WHERE user_id'} = ?`, [user.id]);
-      }
-      await db.exec('DELETE FROM users WHERE id = ?', [user.id]);
+      // 表名来自固定白名单，不拼接任何用户输入
+      const TABLES = ['purchases', 'expenses', 'todos', 'reports', 'images', 'budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens'];
+      const conn = await db.pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.query('DELETE FROM phase_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)', [user.id]);
+        await conn.query('DELETE FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)', [user.id]);
+        for (const t of TABLES) await conn.query(`DELETE FROM ${t} WHERE user_id = ?`, [user.id]);
+        await conn.query('DELETE FROM projects WHERE user_id = ?', [user.id]);
+        await conn.query('DELETE FROM op_logs WHERE username = ?', [username]);
+        await conn.query('DELETE FROM users WHERE id = ?', [user.id]);
+        await conn.commit();
+      } catch (e) {
+        try { await conn.rollback(); } catch (x) {}
+        throw e;
+      } finally { conn.release(); }
+      // 数据库提交成功后再删磁盘图片目录；失败只记录，不回滚数据
       try { require('../lib/images').deleteUserDir(username); } catch (e) {}
       await H.logOp(req.user.username, 'delete_user', '删除用户: ' + username, ip);
       return res.json({ ok: true, message: `用户 ${username} 及其数据已全部删除` });
     }
 
     if (action === 'list-logs') {
+      if (!req.user || !req.user.username) return res.status(401).json({ error: '未登录' });
       const date = req.query.date || new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
       const isAdmin = req.user.username === 'admin';
       const targetUser = isAdmin ? (req.query.username || null) : req.user.username;
@@ -197,19 +236,19 @@ router.all('/auth', async (req, res, next) => {
     if (action === 'admin-op-verify') {
       const admin = await getUser('admin');
       if (!admin) return res.json({ error: '管理员账号异常' });
-      const hash = await hashPwd(body.opPassword || '', admin.salt, admin.hash_version);
-      if (hash !== admin.password_hash) return res.status(401).json({ error: '操作密码错误' });
+      const hash = await hashPwd(String(body.opPassword || ''), admin.salt, admin.hash_version);
+      if (!safeEqual(hash, admin.password_hash)) return res.status(401).json({ error: '操作密码错误' });
       const opToken = createJWT({ username: 'admin', op: true }, cfg.JWT_SECRET, 0.083);
       return res.json({ ok: true, opToken });
     }
 
     if (action === 'debug-env') {
       const codes = cfg.INVITE_CODES || '';
+      // 不再返回任何邀请码片段，只说明是否配置及数量
       return res.json({
         ok: true,
         INVITE_CODES_SET: !!codes,
-        INVITE_CODES_LENGTH: codes.length,
-        INVITE_CODES_PREVIEW: codes.slice(0, 3) + (codes.length > 3 ? '***' : ''),
+        INVITE_CODES_COUNT: codes.split(',').map(c => c.trim()).filter(Boolean).length,
         JWT_SECRET_SET: !!cfg.JWT_SECRET,
         API_KEY_SET: false,
       });
