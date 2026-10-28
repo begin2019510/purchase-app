@@ -11,6 +11,36 @@ const router = express.Router();
 const MS = 86400000, TZ = 8 * 3600000;
 const ACTIVE_BUY = ['已下单', '已到', '已归档'];
 
+// 分期采购的每月付款日：取购买日的「日」，超出当月天数则取月末；
+// 起始月优先用 installment_start，缺失时退回购买月。
+function installmentEvents(pRecs) {
+  const out = [];
+  for (const r of pRecs) {
+    const tp = Number(r.installments) || 0;
+    if (tp <= 1 || !ACTIVE_BUY.includes(r.status)) continue;
+    const paid = Number(r.installment_paid) || 0;
+    if (paid >= tp) continue;
+    const dateMs = Number(r.date_ms) || 0;
+    if (!dateMs) continue;
+    const pd = new Date(dateMs + TZ);
+    let start = String(r.installment_start || '');
+    if (!/^\d{4}-\d{2}$/.test(start)) start = pd.getUTCFullYear() + '-' + String(pd.getUTCMonth() + 1).padStart(2, '0');
+    const [sy, sm] = start.split('-').map(Number);
+    if (!sy || !sm || sm < 1 || sm > 12) continue;
+    const amount = Number(r.installment_amount) || Math.round(((Number(r.price) || 0) * (Number(r.qty) || 1)) / tp);
+    if (amount <= 0) continue;
+    const payDay = pd.getUTCDate() || 1;
+    const cat = r.category || '其他';
+    for (let k = 0; k < tp; k++) {
+      const y = sy + Math.floor((sm - 1 + k) / 12);
+      const m0 = (sm - 1 + k) % 12;
+      const dim = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
+      out.push({ ts: Date.UTC(y, m0, Math.min(payDay, dim)) - TZ, amount, cat });
+    }
+  }
+  return out;
+}
+
 // 与前端 getMonthWeeks / CF 同口径：整月切 4 段
 function monthBlocks(y, m0) {
   const ld = new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
@@ -61,25 +91,32 @@ async function computeForUser(u, period) {
     db.query('SELECT * FROM purchases WHERE user_id = ?', [u.id]),
     db.query('SELECT * FROM expenses WHERE user_id = ?', [u.id]),
   ]);
+  const instEvents = installmentEvents(pRecs);
   function aggregate(start, end) {
     let buy = 0, exp = 0, count = 0;
     const byCat = {}, days = {};
     for (const r of pRecs) {
       if (!ACTIVE_BUY.includes(r.status)) continue;
+      if ((Number(r.installments) || 0) > 1) continue; // 分期采购按每月付款日单独计入
       const ts = Number(r.date_ms) || 0;
-      if (ts < start || ts > end) continue;
+      if (ts < start || ts >= end) continue;
       const amt = (Number(r.price) || 0) * (Number(r.qty) || 1);
       if (amt <= 0) continue;
       buy += amt; count++;
       const cat = r.category || '其他';
       byCat[cat] = (byCat[cat] || 0) + amt;
     }
+    for (const ev of instEvents) {
+      if (ev.ts < start || ev.ts >= end) continue;
+      buy += ev.amount; count++;
+      byCat[ev.cat] = (byCat[ev.cat] || 0) + ev.amount;
+    }
     for (const e of eRecs) {
       if ((e.type || '支出') !== '支出') continue;
       const note = String(e.note || '');
       if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
       const ts = Number(e.date_ms) || 0;
-      if (ts < start || ts > end) continue;
+      if (ts < start || ts >= end) continue;
       const amt = Number(e.amount) || 0;
       if (amt <= 0) continue;
       exp += amt; count++;

@@ -209,12 +209,12 @@ function renderStats() { console.log('renderStats START');
     return true;
   }).reduce((s, e) => s + Number(e['金额'] || 0), 0);
 
-  // 分类/平台数据
+  // 分类/平台按「本月实际采购消耗」汇总：分期商品只计本月分期金额，与 hero 的 直接+分期 同口径
   const pCatMap = {};
-  monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + v; } });
   const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
   const pPlatMap = {};
-  monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + v; } });
   const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const eCatMap = {};
   monthExpenses.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['金额'] || 0); });
@@ -323,7 +323,7 @@ function renderStats() { console.log('renderStats START');
     html += '<div class="stats-section" style="margin-bottom:12px"><div class="stats-section-title">📦 分期采购</div>';
     html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
     html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">分期商品</div><div style="font-size:20px;font-weight:800;margin-top:4px">' + installmentItems.length + '件</div></div>';
-    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">总价</div><div style="font-size:20px;font-weight:800;margin-top:4px">¥' + instTotalPrice.toFixed(0) + '</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">商品总价</div><div style="font-size:20px;font-weight:800;margin-top:4px">¥' + instTotalPrice.toFixed(0) + '</div></div>';
     html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">每月还款</div><div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--pri)">¥' + instMonthly.toFixed(0) + '</div></div>';
     html += '</div>';
     installmentItems.forEach(function(i) {
