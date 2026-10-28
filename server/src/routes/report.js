@@ -196,7 +196,10 @@ router.get('/push/report', async (req, res, next) => {
       if (!req.user || !req.user.username) return res.status(401).json({ error: 'Unauthorized' });
       const u = await db.one('SELECT id FROM users WHERE username = ?', [req.user.username]);
       if (!u) return res.json({ ok: true, report: null });
-      const row = await db.one('SELECT data FROM reports WHERE user_id = ? ORDER BY generated_at DESC, id DESC LIMIT 1', [u.id]);
+      const period = req.query.period === 'monthly' ? 'monthly' : req.query.period === 'weekly' ? 'weekly' : null;
+      const row = period
+        ? await db.one('SELECT data FROM reports WHERE user_id = ? AND period = ? ORDER BY generated_at DESC, id DESC LIMIT 1', [u.id, period])
+        : await db.one('SELECT data FROM reports WHERE user_id = ? ORDER BY generated_at DESC, id DESC LIMIT 1', [u.id]);
       const rep = row ? (typeof row.data === 'string' ? JSON.parse(row.data) : row.data) : null;
       return res.json({ ok: true, report: rep });
     }

@@ -287,25 +287,34 @@ async function manualRefresh(){
   }
 }
 // ===== 周报/月报：拉取 + 专属界面 + 每期只弹一次 =====
+function fetchReportPeriod(tok,period){
+  return fetch(API_BASE+'/api/push/report?mine=1&period='+period,{headers:{'Authorization':'Bearer '+tok}})
+    .then(function(r){return r&&r.json?r.json():null})
+    .then(function(j){return (j&&j.report)||null})
+    .catch(function(){return null});
+}
 function fetchMyReport(){
   if(window._myReportPromise)return window._myReportPromise; // 每会话只拉一次
   window._myReport=null;
+  window._myReports={weekly:null,monthly:null};
   function go(tok){
-    return fetch(API_BASE+'/api/push/report?mine=1',{headers:{'Authorization':'Bearer '+tok}})
-      .then(function(r){return r&&r.json?r.json():null})
-      .then(function(j){window._myReport=(j&&j.report)||null;return window._myReport})
-      .catch(function(){window._myReport=null;return null});
+    return Promise.all([fetchReportPeriod(tok,'weekly'),fetchReportPeriod(tok,'monthly')])
+      .then(function(pair){
+        window._myReports={weekly:pair[0]||null,monthly:pair[1]||null};
+        window._myReport=pair[0]||pair[1]||null;
+        return window._myReports;
+      });
   }
   var pin=getPin();
   if(!pin){window._myReportPromise=Promise.resolve(null);return window._myReportPromise;}
-  window._myReportPromise=go(pin).then(function(rep){
-    if(rep)return rep;
+  window._myReportPromise=go(pin).then(function(res){
+    if(res&&(res.weekly||res.monthly))return res;
     return refreshAccessToken().then(function(t){return t?go(t):null});
   });
   return window._myReportPromise;
 }
-function openReportModal(){
-  var r=window._myReport;
+function openReportModal(period){
+  var r=(period&&window._myReports&&window._myReports[period])||window._myReport;
   if(!r||!r.data){return}
   var d=r.data;
   var box=document.getElementById('reportBody');
@@ -367,15 +376,27 @@ var _reportPopupSession=false;
 function maybeShowReportPopup(){
   if(_reportPopupSession)return;
   _reportPopupSession=true;
-  fetchMyReport().then(function(r){
+  fetchMyReport().then(function(res){
     try{
-      if(!r||!r.data)return;
-      var key='report_seen_'+r.data.period;
+      var reps=[];
+      if(res&&res.weekly)reps.push(res.weekly);
+      if(res&&res.monthly)reps.push(res.monthly);
+      if(!reps.length&&res&&res.data)reps.push(res); // 兼容旧返回
+      if(!reps.length)return;
+      var newest=reps[0];
+      reps.forEach(function(x){if(Number((x.data&&x.data.generatedAt)||0)>Number((newest.data&&newest.data.generatedAt)||0))newest=x});
+      var key='report_seen_'+(newest.data.period||'weekly');
       var seen=parseInt(localStorage.getItem(key)||'0',10)||0;
-      if(Number(r.data.generatedAt)>seen){
-        localStorage.setItem(key,String(r.data.generatedAt));
-        setTimeout(function(){openReportModal()},600); // 等首帧画完再弹
-      }
+      var should=Number(newest.data.generatedAt)>seen;
+      reps.forEach(function(x){ // 两张卡片都标记已读，避免下次再弹旧的那张
+        try{
+          var k='report_seen_'+(x.data.period||'weekly');
+          var old=parseInt(localStorage.getItem(k)||'0',10)||0;
+          var g=Number(x.data.generatedAt)||0;
+          if(g>old)localStorage.setItem(k,String(g));
+        }catch(e){}
+      });
+      if(should){ setTimeout(function(){openReportModal(newest.data.period)},600); } // 等首帧画完再弹
     }catch(e){}
   });
 }

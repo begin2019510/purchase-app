@@ -221,29 +221,34 @@ function renderStats() { console.log('renderStats START');
   const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
 
   let html = '';
-  // 最新周报/月报卡片（点击进入专属界面；数据由 fetchMyReport 缓存）
-  if(window._myReport===undefined){
-    window._myReport=null;
+  // 最新周报/月报各一张卡片（点击进入专属界面；数据由 fetchMyReport 缓存）
+  if(window._myReports===undefined){
+    window._myReports={weekly:null,monthly:null};
     if(typeof fetchMyReport==='function'){fetchMyReport().then(function(){if(currentTab==='stats'){try{renderStats()}catch(e){}}});}
   }
-  if(!window._myReport){
+  var _reps=[];
+  if(window._myReports){ if(window._myReports.weekly)_reps.push(window._myReports.weekly); if(window._myReports.monthly)_reps.push(window._myReports.monthly); }
+  if(!_reps.length&&window._myReport&&window._myReport.data)_reps.push(window._myReport); // 兼容旧缓存
+  if(!_reps.length){
     html += '<div class="stats-section" style="margin-bottom:12px;opacity:.75">'
       + '<div style="font-size:13px;font-weight:700">📊 周报 / 月报</div>'
       + '<div style="font-size:12px;color:var(--muted);margin-top:6px">每段周结束及每月1日晚8点后生成，生成后此处可查看并自动弹窗</div></div>';
   }
-  if(window._myReport&&window._myReport.data){
-    var _d=window._myReport.data;
+  _reps.forEach(function(rep){
+    var _d=rep&&rep.data;
+    if(!_d)return;
+    var _period=_d.period==='monthly'?'monthly':'weekly';
     var _dc=_d.deltaGood===true?'var(--green)':_d.deltaGood===false?'var(--red)':'var(--muted)';
-    html += '<div class="stats-section" style="margin-bottom:12px;cursor:pointer" onclick="openReportModal()">'
+    html += '<div class="stats-section" style="margin-bottom:12px;cursor:pointer" data-period="'+_period+'" onclick="openReportModal(this.dataset.period)">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
-      + '<div style="font-size:13px;font-weight:700">📊 '+(_d.period==='weekly'?'周报':'月报')
+      + '<div style="font-size:13px;font-weight:700">📊 '+(_period==='weekly'?'周报':'月报')
       + ' <span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:4px">'+esc(_d.rangeText||'')+'</span></div>'
       + '<span style="font-size:12px;color:var(--pri);font-weight:700">查看详情 ›</span></div>'
       + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'
       + '<span class="a-num" style="font-size:26px;font-weight:900;letter-spacing:-.8px">¥'+Number(_d.total||0).toLocaleString('zh-CN')+'</span>'
       + '<span style="font-size:13px;font-weight:700;color:'+_dc+'">较'+esc(_d.prevLabel||'')+' '+esc(_d.deltaText||'')+'</span>'
       + '</div></div>';
-  }
+  });
   const _isCur = thisMonth===getThisMonth();
   html += '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">'
     + '<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 12px">‹</div>'
