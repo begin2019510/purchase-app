@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#6366f1">
+<title>连接 Agent - 个人管家</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f23;--card:#1a1a2e;--card2:#16213e;--text:#e2e8f0;--muted:#94a3b8;--pri:#6366f1;--pri-light:rgba(99,102,241,.15);--border:#2d2d44;--green:#10b981;--red:#ef4444;--orange:#f59e0b}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.container{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+.hero{text-align:center;padding:36px 20px 28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:0 0 24px 24px;margin:-20px -16px 24px}
+.hero h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:6px}
+.hero p{font-size:14px;color:rgba(255,255,255,.82)}
+.section{background:var(--card);border-radius:16px;padding:20px;margin-bottom:16px}
+.section h2{font-size:17px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section p,.section li{font-size:14px;color:var(--muted);line-height:1.8}
+.section ol{padding-left:20px;margin:6px 0}
+.section ol li{margin:6px 0}
+.section b{color:var(--text)}
+code,textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.cmd{width:100%;min-height:108px;resize:vertical;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:13px;line-height:1.7;word-break:break-all}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;background:var(--pri);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px}
+.btn:active{opacity:.85}
+.btn.secondary{background:transparent;color:var(--text);border:1px solid var(--border)}
+.tip{background:var(--pri-light);border-left:3px solid var(--pri);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px;color:var(--muted)}
+.tip b{color:var(--pri)}
+.warn{background:rgba(245,158,11,.12);border-left:3px solid var(--orange);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px;color:var(--muted)}
+.warn b{color:var(--orange)}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;margin:0 2px;background:rgba(16,185,129,.15);color:#34d399}
+.tag.gray{background:rgba(148,163,184,.14);color:var(--muted)}
+a{color:#a5b4fc}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:20px}
+.foot a{color:var(--muted)}
+#noTicket{display:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hero">
+    <h1>🔗 连接 Agent</h1>
+    <p>把下面这条命令交给任意 AI agent，即可自动安装并连接本 App</p>
+  </div>
+
+  <div class="section" id="noTicket">
+    <h2>⚠️ 链接不完整</h2>
+    <p>没有检测到安装票据。请回到 App 的「设置 → 连接 Agent（MCP）」重新生成链接（10 分钟内有效、只能使用一次）。</p>
+  </div>
+
+  <div class="section">
+    <h2>🤖 给 agent 的命令</h2>
+    <p>复制整条命令发给 agent。它会自动注册 MCP、安装 skill，并用这条链接换取一份<strong>只属于该 agent</strong>的独立凭据。</p>
+    <textarea class="cmd" id="cmd" readonly onclick="this.select()"></textarea>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="copyBtn" onclick="copyCmd()">📋 复制命令</button>
+      <button class="btn secondary" onclick="copyUrl()">复制安装链接</button>
+    </div>
+    <div class="tip">链接中的票据只用于一次性兑换：<b>10 分钟内有效，且只能使用一次</b>。它放在 URL 的 <code>#</code> 后面，不会随网页请求上传到服务器。</div>
+  </div>
+
+  <div class="section">
+    <h2>🛡️ 安全说明</h2>
+    <ol>
+      <li>全程<b>不需要、也绝不会索取你的 App 密码</b>。</li>
+      <li>换到的是该 agent 专属的 refresh token，仅保存在 agent 所在机器（权限 <code>0600</code>），不会写入本页面或聊天记录。</li>
+      <li>可随时在 App 的「操作日志」查看授权与调用记录；需要断开时让 agent 运行 <code>npx -y github:begin2019510/purchase-app-mcp logout</code>。</li>
+      <li>建议先只读验证：安装完成后调用 <code>purchase.list</code>，确认无误再授权写操作。</li>
+    </ol>
+    <div class="warn">⚠️ 请不要把这条链接发到公开群聊、Issue 或截图里。任何拿到链接的人都能在 10 分钟内、以你的身份完成一次授权。已泄露就在 App 里<b>重新生成</b>，旧链接会立即失效。</div>
+  </div>
+
+  <div class="section">
+    <h2>📦 手工安装（可选）</h2>
+    <p>如果 agent 无法执行链接中的命令，也可以手动安装：</p>
+    <textarea class="cmd" id="manual" readonly rows="3" onclick="this.select()" style="min-height:auto"></textarea>
+    <p style="margin-top:8px">项目说明与 agent 指引：
+      <a href="https://github.com/begin2019510/purchase-app-mcp" target="_blank" rel="noopener noreferrer">purchase-app-mcp</a> ·
+      <a href="https://github.com/begin2019510/purchase-app-mcp/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+    </p>
+  </div>
+
+  <div class="foot">个人管家 · <a href="/">返回 App</a></div>
+</div>
+<script>
+(function(){
+  var href = location.href;
+  var m = /[#&]t(?:icket)?=([A-Za-z0-9_-]{20,200})/.exec(href);
+  if (!m) {
+    document.getElementById('noTicket').style.display = '';
+    document.querySelectorAll('.section')[1].style.display = 'none';
+    return;
+  }
+  var cmd = 'npx -y github:begin2019510/purchase-app-mcp install "' + href + '"';
+  document.getElementById('cmd').value = cmd;
+  document.getElementById('manual').value =
+    'npx -y github:begin2019510/purchase-app-mcp setup\n' + cmd;
+})();
+function copyText(t, okMsg){
+  var done = function(){ var b = document.getElementById('copyBtn'); if (b) { b.textContent = '✅ 已复制'; setTimeout(function(){ b.textContent = '📋 复制命令'; }, 1800); } };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(done).catch(function(){ fallback(t); done(); });
+    } else { fallback(t); done(); }
+  } catch (e) { fallback(t); }
+}
+function fallback(t){
+  var ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
+function copyCmd(){ var v = document.getElementById('cmd').value; if (v) copyText(v); }
+function copyUrl(){ copyText(location.href); }
+</script>
+</body>
+</html>

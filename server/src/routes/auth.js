@@ -147,6 +147,46 @@ router.all('/auth', async (req, res, next) => {
       return res.json({ ok: true, username: payload.username });
     }
 
+    // ===== Agent 一次性安装链接 =====
+    // 生成：必须已登录；只返回明文票据一次，DB 只存哈希，10 分钟有效。
+    if (action === 'agent-ticket') {
+      const payload = req.user || {};
+      if (!payload.username) return res.status(401).json({ error: '未登录' });
+      const user = await getUser(payload.username);
+      if (!user) return res.status(401).json({ error: '账号不存在' });
+      const ticket = crypto.randomBytes(32).toString('base64url');
+      const hash = sha256(ticket);
+      // 同一账号只保留最新一条未使用的链接，避免旧链接继续有效
+      await db.exec('UPDATE agent_tickets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [user.id]);
+      await db.exec(
+        'INSERT INTO agent_tickets (user_id, ticket_hash, expires_at, ip) VALUES (?,?,DATE_ADD(NOW(), INTERVAL 10 MINUTE),?)',
+        [user.id, hash, ip]);
+      const row = await db.one('SELECT expires_at FROM agent_tickets WHERE ticket_hash = ?', [hash]);
+      await H.logOp(user.username, 'agent_ticket', '生成一次性 Agent 安装链接', ip);
+      return res.json({ ok: true, ticket, expiresAt: row ? new Date(row.expires_at).toISOString() : null });
+    }
+
+    // 兑换：无需密码，凭一次性票据换取该安装实例独立的 refresh token。
+    // 更新语句原子消费票据，并发请求只有一个能成功。
+    if (action === 'agent-exchange') {
+      const ticket = body.ticket;
+      if (typeof ticket !== 'string' || ticket.length < 20 || ticket.length > 200) {
+        return res.status(400).json({ error: '安装链接无效' });
+      }
+      const hash = sha256(ticket);
+      const up = await db.exec(
+        'UPDATE agent_tickets SET used_at = NOW(), ip = ? WHERE ticket_hash = ? AND used_at IS NULL AND expires_at > NOW()',
+        [ip, hash]);
+      if (!up.affectedRows) return res.status(401).json({ error: '安装链接无效、已过期或已被使用' });
+      const row = await db.one(
+        'SELECT t.user_id, u.username FROM agent_tickets t JOIN users u ON u.id = t.user_id WHERE t.ticket_hash = ?',
+        [hash]);
+      if (!row) return res.status(401).json({ error: '账号不存在或已删除' });
+      const t = await issueTokens(row.user_id, row.username);
+      await H.logOp(row.username, 'agent_install', '通过一次性安装链接授权 Agent', ip);
+      return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken, username: row.username });
+    }
+
     if (action === 'refresh') {
       const { refreshToken } = body;
       if (!refreshToken) return res.json({ error: '缺少 refreshToken' });
@@ -200,7 +240,7 @@ router.all('/auth', async (req, res, next) => {
       const user = await getUser(username);
       if (!user) return res.status(404).json({ error: '用户不存在' });
       // 表名来自固定白名单，不拼接任何用户输入
-      const TABLES = ['purchases', 'expenses', 'todos', 'reports', 'images', 'budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens'];
+      const TABLES = ['purchases', 'expenses', 'todos', 'reports', 'images', 'budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens', 'agent_tickets'];
       const conn = await db.pool.getConnection();
       try {
         await conn.beginTransaction();

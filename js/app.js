@@ -712,9 +712,94 @@ function openSettings(){
 function closeSettings(){
   document.getElementById('settingsOverlay').classList.remove('active');
 }
+// ===== 连接 Agent（MCP）：一次性安装链接 =====
+// 链接里的票据只放在 #fragment，不会随请求发到服务器；10 分钟有效、只能兑换一次。
+function agentLinkOrigin(){
+  // App 内（Capacitor）没有 http(s) 源，改用配置的 API 地址
+  var o = location.origin;
+  try {
+    var u = new URL(API_BASE || o, o);
+    if (/^https?:$/.test(u.protocol)) return u.origin;
+  } catch (e) {}
+  return o;
+}
+function openAgentLink(){
+  var err = document.getElementById('agentLinkError');
+  if (err) err.textContent = '';
+  var box = document.getElementById('agentLinkResult');
+  if (box) box.style.display = 'none';
+  var btn = document.getElementById('agentLinkBtn');
+  if (btn) btn.style.display = '';
+  document.getElementById('agentOverlay').classList.add('active');
+}
+function closeAgentLink(){
+  var box = document.getElementById('agentLinkResult');
+  if (box) box.style.display = 'none';
+  var urlEl = document.getElementById('agentLinkUrl');
+  if (urlEl) urlEl.value = '';
+  document.getElementById('agentOverlay').classList.remove('active');
+}
+async function createAgentLink(){
+  var btn = document.getElementById('agentLinkBtn');
+  var err = document.getElementById('agentLinkError');
+  if (err) err.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  try {
+    var req = function(t){
+      return fetch(API_BASE + '/api/auth?action=agent-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: '{}',
+      });
+    };
+    var r = await req(getPin());
+    if (r.status === 401) {
+      var nt = await refreshAccessToken();
+      if (nt) r = await req(nt);
+    }
+    var d = await r.json().catch(function(){ return {}; });
+    if (!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    var url = agentLinkOrigin() + '/agent.html#t=' + encodeURIComponent(d.ticket);
+    document.getElementById('agentLinkUrl').value = url;
+    document.getElementById('agentLinkCmd').value = 'npx -y github:begin2019510/purchase-app-mcp install "' + url + '"';
+    var expTxt = '10 分钟内有效、只能使用一次';
+    if (d.expiresAt) {
+      var dt = new Date(d.expiresAt);
+      if (!isNaN(dt.getTime())) {
+        expTxt = '有效期至 ' + dt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) + '（只能使用一次）';
+      }
+    }
+    document.getElementById('agentLinkExp').textContent = expTxt;
+    document.getElementById('agentLinkResult').style.display = '';
+    if (btn) btn.style.display = 'none';
+    copyAgentLink();
+  } catch (e) {
+    if (err) err.textContent = '生成失败：' + (e && e.message ? e.message : '请稍后重试');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '生成安装链接'; }
+  }
+}
+function copyAgentLink(){
+  var el = document.getElementById('agentLinkUrl');
+  if (!el || !el.value) return;
+  var done = function(){ toast('安装链接已复制，请立即发给 agent'); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.value).then(done).catch(function(){ legacyCopy(el); done(); });
+      return;
+    }
+  } catch (e) { /* fall through */ }
+  legacyCopy(el);
+  done();
+}
+function legacyCopy(el){
+  try { el.focus(); el.select(); document.execCommand('copy'); } catch (e) { /* ignore */ }
+}
+
 function settingsAction(action){
   closeSettings();
   switch(action){
+    case 'agent': openAgentLink(); break;
     case 'darkMode': toggleDarkMode(); break;
     case 'background': toggleBgPicker(); break;
     case 'webpush': setupWebPush(); break;

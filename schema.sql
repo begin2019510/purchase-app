@@ -33,6 +33,20 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   KEY idx_exp (expires_at)
 ) ENGINE=InnoDB;
 
+-- ===== Agent 一次性安装票据（MCP 自动安装链接）=====
+-- 只存 SHA-256 哈希；10 分钟有效、只能兑换一次；兑换后签发独立的 refresh token。
+CREATE TABLE IF NOT EXISTS agent_tickets (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT UNSIGNED NOT NULL,
+  ticket_hash CHAR(64) NOT NULL UNIQUE,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at  DATETIME NOT NULL,
+  used_at     DATETIME NULL,
+  ip          VARCHAR(64) NULL,
+  KEY idx_user (user_id),
+  KEY idx_exp (expires_at)
+) ENGINE=InnoDB;
+
 -- ===== 采购记录 =====  ← 商品名称/平台/分类/单价/数量/状态/日期/备注/图片
 CREATE TABLE IF NOT EXISTS purchases (
   id                 BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

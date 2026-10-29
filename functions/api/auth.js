@@ -237,6 +237,21 @@ export async function onRequest(context) {
       if (action === 'register' || action === 'login' || action === 'refresh') {
         return await handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors);
       }
+      // 一次性 Agent 安装链接：生成需要登录态，兑换凭票据完成（密码不参与）。
+      if (action === 'agent-ticket') {
+        const payload = await cfUserPayload(request, env);
+        if (!payload) return json({ error: 'Unauthorized' }, 401, cors);
+        const sr = await serverAuth(env, action, body, request, payload.username);
+        return json(sr.data, sr.status, cors);
+      }
+      if (action === 'agent-exchange') {
+        const sr = await serverAuth(env, action, body, request);
+        const d = sr.data || {};
+        if (sr.status >= 200 && sr.status < 300 && d.ok && d.username) {
+          return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
+        }
+        return json(d, sr.status, cors);
+      }
       if (action === 'logout') {
         // 服务端撤销 refresh token；KV 旧令牌也顺手删掉，接口始终幂等返回 ok
         try { await serverAuth(env, 'logout', body, request); } catch (e) {}
