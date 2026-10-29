@@ -759,7 +759,7 @@ async function createAgentLink(){
     }
     var d = await r.json().catch(function(){ return {}; });
     if (!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
-    var url = agentLinkOrigin() + '/agent.html#t=' + encodeURIComponent(d.ticket);
+    var url = agentLinkOrigin() + '/agent#t=' + encodeURIComponent(d.ticket);
     document.getElementById('agentLinkUrl').value = url;
     document.getElementById('agentLinkCmd').value = 'npx -y github:begin2019510/purchase-app-mcp install "' + url + '"';
     var expTxt = '10 分钟内有效、只能使用一次';
