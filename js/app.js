@@ -799,6 +799,7 @@ function legacyCopy(el){
 function settingsAction(action){
   closeSettings();
   switch(action){
+    case 'claude': openClaudeChat(); break;
     case 'agent': openAgentLink(); break;
     case 'darkMode': toggleDarkMode(); break;
     case 'background': toggleBgPicker(); break;

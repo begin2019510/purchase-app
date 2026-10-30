@@ -155,6 +155,11 @@
     </div>
     <div class="settings-group">
       <div class="settings-group-title">工具</div>
+      <div class="settings-item" onclick="settingsAction('claude')">
+        <div class="settings-icon">💬</div>
+        <div class="settings-label">和 Claude 对话</div>
+        <div class="settings-arrow">›</div>
+      </div>
       <div class="settings-item" onclick="settingsAction('agent')">
         <div class="settings-icon">🔗</div>
         <div class="settings-label">连接 Agent（MCP）</div>
@@ -730,6 +735,7 @@
 <script src="js/expense.js?v=3.0.1"></script>
 <script src="js/items.js?v=3.0.1"></script>
 <script src="js/ai.js?v=3.0.1"></script>
+<script src="js/claude.js?v=3.0.1"></script>
 <script src="js/budget.js?v=3.0.1"></script>
 <script src="js/todomodule.js?v=3.0.1"></script>
   <script src="js/project.js?v=3.0.1"></script>
@@ -796,6 +802,24 @@
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeBudgetModal()">取消</button>
       <button class="btn btn-primary" onclick="saveBudget()">保存</button>
+    </div>
+  </div>
+</div>
+<!-- 和 Claude 对话弹窗 -->
+<div class="modal-overlay" id="claudeOverlay" onclick="if(event.target===this)closeClaudeChat()">
+  <div class="modal" style="max-width:560px;width:94vw;height:86vh;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0">
+      <h2 style="margin:0;font-size:17px">💬 和 Claude 对话</h2>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 10px" onclick="newClaudeSession()">新会话</button>
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 10px" onclick="closeClaudeChat()">关闭</button>
+      </div>
+    </div>
+    <div id="claudeMsgs" class="chat-area" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 0 8px;max-height:none"></div>
+    <div id="claudeStatus" style="font-size:12px;color:var(--muted);min-height:18px;padding:2px 0 6px;flex-shrink:0"></div>
+    <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:10px;flex-shrink:0">
+      <input id="claudeInput" placeholder="问点什么…（Enter 发送）" maxlength="20000" style="flex:1;font-size:14px" onkeydown="if(event.key==='Enter')sendClaudeMsg()">
+      <button class="btn btn-primary" id="claudeSendBtn" onclick="sendClaudeMsg()">发送</button>
     </div>
   </div>
 </div>
