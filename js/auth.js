@@ -3,7 +3,7 @@ function getPin(){return localStorage.getItem('auth_token')||''}
 function setPin(p){localStorage.setItem('auth_token',p)}
 function getRefreshToken(){return localStorage.getItem('refresh_token')||''}
 function setRefreshToken(t){localStorage.setItem('refresh_token',t)}
-function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token');localStorage.removeItem('auth_user');clearUserCache()}
+function clearTokens(){localStorage.removeItem('auth_token');localStorage.removeItem('refresh_token');localStorage.removeItem('auth_user');clearUserCache();if(typeof claudeSyncAdminVis==='function')claudeSyncAdminVis()}
 function clearUserCache(){try{Object.keys(localStorage).forEach(function(k){if(k.indexOf('cache_')===0)localStorage.removeItem(k)})}catch(e){}}
 function setAuthLocked(on){
   var s=document.getElementById('authScreen');
@@ -54,7 +54,7 @@ async function doLoginAPI(username,password){
   try{
     const r=await fetch(API_BASE + '/api/auth?action=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
     const d=await r.json();
-    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);clearUserCache();if(d.username)localStorage.setItem('auth_user',d.username);setAuthLocked(false);if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}loadAll();}
+    if(d.ok&&d.token){setPin(d.token);if(d.refreshToken)setRefreshToken(d.refreshToken);clearUserCache();if(d.username)localStorage.setItem('auth_user',d.username);setAuthLocked(false);if(d.username==='admin'){var _ab=document.getElementById('adminBtn');if(_ab)_ab.style.display='';}if(typeof claudeSyncAdminVis==='function')claudeSyncAdminVis();loadAll();}
     else{document.getElementById('authError').textContent=d.error||'登录失败'}
   }catch(e){document.getElementById('authError').textContent='网络错误'}
 }

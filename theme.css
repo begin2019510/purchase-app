@@ -1064,6 +1064,10 @@ body.dark .week-card{border-color:var(--border)}
 .chat-bubble{max-width:90%;padding:12px 16px;border-radius:16px;font-size:14px;line-height:1.6;word-break:break-word;white-space:pre-wrap;animation:fadeInUp .3s ease}
 .user-bubble{align-self:flex-end;background:linear-gradient(135deg,var(--pri),#818cf8);color:#fff;border-bottom-right-radius:4px}
 .ai-bubble{align-self:flex-start;background:var(--card);color:var(--text);border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ai-bubble .md-code{font-size:12px;background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.ai-bubble .md-pre{margin:8px 0;padding:10px 12px;background:rgba(127,127,127,.1);border-radius:8px;overflow-x:auto;white-space:pre-wrap}
+.ai-bubble .md-pre code{font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:none;padding:0}
+.ai-bubble strong{font-weight:700}
 /* ===== Claude 聊天弹窗（结构化 modal，头固定 + 中间滚动 + 输入固定）=====
    盒尺寸覆盖写在「弹窗系统 2.0」之后，否则会被 .modal:has(.modal-header) 盖掉 */
 .modal.claude-chat-modal .modal-header{padding:14px 16px 8px;gap:10px;align-items:center}

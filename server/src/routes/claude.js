@@ -15,11 +15,24 @@ const http = require('http');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const cfg = require('../config');
+const db = require('../db');
 const { requireAuth } = require('../middleware');
 
 const router = express.Router();
 // 挂载于 app.use('/api', ...)，路径写全子路径（与 auth.js / report.js 同模式）
-router.use('/claude', requireAuth);
+// 仅管理员：3 个 App 账号共用同一个 CloudCLI 身份，开放给所有人等于共享完整 agent
+async function requireAdmin(req, res, next) {
+  try {
+    const row = await db.one('SELECT is_admin FROM users WHERE username = ?', [req.username]);
+    if (!row || !Number(row.is_admin)) {
+      return res.status(403).json({ error: '仅管理员可使用 Claude 对话' });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: '权限校验失败' });
+  }
+  next();
+}
+router.use('/claude', requireAuth, requireAdmin);
 
 // 内存任务表：taskId → 状态。purchase-server 重启即丢失（前端提示重新发送）。
 const tasks = new Map();
@@ -39,6 +52,44 @@ function liveText(t) {
   const s = t.texts.filter(Boolean).join('\n\n');
   if (t.delta) return s ? s + '\n\n' + t.delta : t.delta;
   return s;
+}
+
+const ASK_TOOLS = new Set(['AskUserQuestion', 'request_user_input']);
+
+// toolInput 可能是对象，也可能是 JSON 字符串
+function parseToolInput(v) {
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (!s.startsWith('{')) return null;
+    try { return JSON.parse(s); } catch (e) { return null; }
+  }
+  return v && typeof v === 'object' ? v : null;
+}
+
+// 把 AskUserQuestion 的 questions[] 变成可读文本（气泡里能看见问题和选项）
+function formatAskQuestion(input) {
+  const obj = parseToolInput(input);
+  const qs = obj && Array.isArray(obj.questions) ? obj.questions : null;
+  if (!qs || !qs.length) return '';
+  const answers = (obj.answers && typeof obj.answers === 'object') ? obj.answers : null;
+  const lines = ['❓ Claude 想问你：'];
+  for (const raw of qs) {
+    const q = parseToolInput(raw);
+    if (!q) continue;
+    const text = String(q.question || '').trim();
+    if (!text) continue;
+    lines.push('', text);
+    const opts = Array.isArray(q.options) ? q.options : [];
+    opts.forEach((o, i) => {
+      const label = typeof o === 'string' ? o : String((o && (o.label || o.value)) || '').trim();
+      if (label) lines.push((i + 1) + '. ' + label);
+    });
+    if (answers) {
+      const ans = answers[text] || (q.id ? answers[q.id] : '');
+      if (ans) lines.push('→ 已选择：' + String(ans));
+    }
+  }
+  return lines.join('\n');
 }
 
 // 事件解析：对两种格式都做防御
@@ -90,9 +141,17 @@ function applyEvent(t, ev) {
     else if (c && typeof c.text === 'string') t.delta += c.text;
     return;
   }
-  if (kind === 'tool_use') {
+  if (kind === 'tool_use' || kind === 'permission_request') {
     const name = String(ev.toolName || ev.tool || '');
     if (name && t.tools[t.tools.length - 1] !== name) t.tools.push(name);
+    if (ASK_TOOLS.has(name)) {
+      const q = formatAskQuestion(kind === 'permission_request' ? (ev.input || ev.toolInput) : ev.toolInput);
+      if (q && !t.asked.has(q)) {
+        t.asked.add(q);
+        t.texts.push(q);
+        t.delta = ''; // 问题卡进入可见文本，避免流式残余盖住
+      }
+    }
     return;
   }
   if (kind === 'error') { t.error = String(ev.content || '未知错误'); return; }
@@ -103,7 +162,7 @@ function startJob(message, sessionId) {
   const taskId = crypto.randomUUID();
   const t = {
     id: taskId, status: 'running',
-    texts: [], delta: '', tools: [],
+    texts: [], delta: '', tools: [], asked: new Set(),
     sessionId: sessionId || '', error: '', done: false,
     createdAt: Date.now(), finishedAt: 0,
   };
@@ -301,9 +360,19 @@ async function handleHistory(req, res) {
     if (r.status !== 200 || !r.json || !r.json.success) {
       return res.status(502).json({ error: 'CloudCLI 历史拉取失败', detail: r.json && (r.json.error || r.json.code) || ('HTTP ' + r.status) });
     }
-    const msgs = ((r.json.data && r.json.data.messages) || [])
-      .filter((m) => m && m.kind === 'text' && (m.role === 'user' || m.role === 'assistant') && m.content)
-      .map((m) => ({ role: m.role, text: String(m.content), at: m.timestamp || '' }));
+    const msgs = [];
+    for (const m of (r.json.data && r.json.data.messages) || []) {
+      if (!m) continue;
+      if (m.kind === 'text' && (m.role === 'user' || m.role === 'assistant') && m.content) {
+        msgs.push({ role: m.role, text: String(m.content), at: m.timestamp || '' });
+        continue;
+      }
+      // 历史里 Claude 的提问只落在 tool_use，不展开就永远看不到
+      if (m.kind === 'tool_use' && ASK_TOOLS.has(String(m.toolName || ''))) {
+        const q = formatAskQuestion(m.toolInput);
+        if (q) msgs.push({ role: 'assistant', text: q, at: m.timestamp || '' });
+      }
+    }
     return res.json({ messages: msgs });
   } catch (e) {
     return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });

@@ -11,6 +11,12 @@ var _claudeSessionsAt = 0;       // 列表缓存时间
 var _claudeHistoryFor = '';      // 当前气泡对应的 sessionId（避免重复拉历史）
 
 function openClaudeChat(){
+  var u='';
+  try{ u=localStorage.getItem('auth_user')||''; }catch(e){}
+  if(u!=='admin'){
+    alert('Claude 对话仅管理员可用');
+    return;
+  }
   // 必须用 active class：app.js 的 MutationObserver 靠 .active 锁 body 滚动，
   // 直接改 display 会导致聊天区滚动时背景页一起滚
   document.getElementById('claudeOverlay').classList.add('active');
@@ -47,6 +53,12 @@ function closeClaudeChat(){
   var ta=document.getElementById('claudeInput');
   if(ta){ try{ta.blur()}catch(e){} ta.value=''; claudeInputGrow(ta); }
 }
+
+// 登录/退出后同步入口显隐
+(function(){
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', claudeSyncAdminVis);
+  else claudeSyncAdminVis();
+})();
 
 // ===== 输入框：多行自增高 + 键盘弹出时把弹层顶上去 =====
 
@@ -109,14 +121,56 @@ function newClaudeSession(){
   claudeRefreshSessions(true);
 }
 
+// 聊天气泡安全 Markdown：先 esc 再转换（加粗/斜体/行内码/代码块/简单列表）
+// 不允许任意 HTML；用户气泡仍纯 text
+function claudeRenderMd(text){
+  var PH='@@F@@';
+  var s=String(text==null?'':text);
+  var fences=[];
+  // 围栏代码块（含流式未闭合）
+  s=s.replace(/```([^\n`]*)\n([\s\S]*?)```/g,function(_,lang,code){
+    fences.push('<pre class="md-pre"><code>'+esc(code.replace(/\n$/,''))+'</code></pre>');
+    return PH+(fences.length-1)+PH;
+  });
+  s=s.replace(/```([^\n`]*)\n([\s\S]*)$/,function(_,lang,code){
+    fences.push('<pre class="md-pre"><code>'+esc(code)+'</code></pre>');
+    return PH+(fences.length-1)+PH;
+  });
+  s=esc(s);
+  s=s.replace(/`([^`\n]+)`/g,'<code class="md-code">$1</code>');
+  s=s.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/(^|[^*\w])\*([^*\n]+?)\*(?=[^*\w]|$)/g,'$1<em>$2</em>');
+  s=s.replace(/__([^_\n]+?)__/g,'<strong>$1</strong>');
+  // 简单无序列表
+  s=s.replace(/(?:^|\n)[ \t]*[-*+] +(.*)/g,'\n• $1');
+  s=s.replace(/@@F@@(\d+)@@F@@/g,function(_,i){ return fences[+i]||''; });
+  return s;
+}
+
+function claudeSetBubble(el, text){
+  if(!el) return;
+  el.innerHTML=claudeRenderMd(text); // 仅 AI 气泡；内容已 esc
+  var m=document.getElementById('claudeMsgs'); if(m) m.scrollTop=m.scrollHeight;
+}
+
 function claudeAddMsg(role, text){
   var m=document.getElementById('claudeMsgs');
   var d=document.createElement('div');
   d.className='chat-bubble '+(role==='user'?'user-bubble':'ai-bubble');
-  d.textContent=String(text==null?'':text); // textContent 防注入
+  if(role==='user') d.textContent=String(text==null?'':text); // 用户输入纯文本防注入
+  else d.innerHTML=claudeRenderMd(text);
   m.appendChild(d);
   m.scrollTop=m.scrollHeight;
   return d;
+}
+
+// 设置项：非 admin 隐藏入口（服务端仍有 403 兜底）
+function claudeSyncAdminVis(){
+  var el=document.getElementById('settingsItemClaude');
+  if(!el) return;
+  var u='';
+  try{ u=localStorage.getItem('auth_user')||''; }catch(e){}
+  el.style.display=(u==='admin')?'':'none';
 }
 
 function claudeSetStatus(s){
@@ -310,6 +364,13 @@ async function sendClaudeMsg(){
       claudePoll();
       return;
     }
+    if(r.status===403){
+      claudeAddMsg('ai','❌ '+(d.error||'仅管理员可使用 Claude 对话'));
+      claudeSetStatus('');
+      _claudeBusy=false;
+      document.getElementById('claudeSendBtn').disabled=false;
+      return;
+    }
     if(!d.taskId){
       claudeAddMsg('ai','❌ '+(d.error||('发送失败 HTTP '+r.status)));
       claudeSetStatus('');
@@ -344,8 +405,7 @@ function claudePoll(){
       var d=await r.json().catch(function(){return{}});
       if(d.text&&d.text!==lastText){
         lastText=d.text;
-        _claudeLiveBubble.textContent=d.text;
-        var m=document.getElementById('claudeMsgs'); m.scrollTop=m.scrollHeight;
+        claudeSetBubble(_claudeLiveBubble,d.text);
       }
       if(d.status==='running'){
         var tool=d.tools&&d.tools.length?d.tools[d.tools.length-1]:'';
@@ -370,7 +430,7 @@ function claudePoll(){
 
 function claudePollFinish(finalText){
   if(_claudeTimer){ clearInterval(_claudeTimer); _claudeTimer=null; }
-  if(_claudeLiveBubble&&finalText!=null) _claudeLiveBubble.textContent=String(finalText);
+  if(_claudeLiveBubble&&finalText!=null) claudeSetBubble(_claudeLiveBubble,String(finalText));
   _claudeLiveBubble=null;
   _claudeTaskId='';
   localStorage.removeItem('claude_task');
