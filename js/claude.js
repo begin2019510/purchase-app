@@ -25,7 +25,14 @@ function openClaudeChat(){
     claudeAddMsg('ai','你好，我是 Claude，和电脑上 agent 网页版是同一个我：能查服务器、跑命令、改文件。');
   }
   m.scrollTop=m.scrollHeight;
-  setTimeout(function(){ try{document.getElementById('claudeInput').focus()}catch(e){} },100);
+  setTimeout(function(){
+    try{
+      var ta=document.getElementById('claudeInput');
+      claudeInputGrow(ta);
+      ta.focus();
+      claudeSyncKeyboard();
+    }catch(e){}
+  },100);
   // 恢复未完成任务（如误关弹层后重开）
   if(!_claudeTimer && localStorage.getItem('claude_task')){
     _claudeTaskId=localStorage.getItem('claude_task');
@@ -33,7 +40,62 @@ function openClaudeChat(){
     claudePoll();
   }
 }
-function closeClaudeChat(){ document.getElementById('claudeOverlay').classList.remove('active'); hideClaudeSessions(); }
+function closeClaudeChat(){
+  document.getElementById('claudeOverlay').classList.remove('active');
+  document.getElementById('claudeOverlay').style.paddingBottom='';
+  hideClaudeSessions();
+  var ta=document.getElementById('claudeInput');
+  if(ta){ try{ta.blur()}catch(e){} ta.value=''; claudeInputGrow(ta); }
+}
+
+// ===== 输入框：多行自增高 + 键盘弹出时把弹层顶上去 =====
+
+function claudeInputGrow(ta){
+  if(!ta) return;
+  ta.style.height='auto';
+  var max=Math.max(44, Math.round((window.innerHeight||600)*0.18));
+  var h=Math.min(ta.scrollHeight, max);
+  ta.style.height=h+'px';
+  ta.style.overflowY=ta.scrollHeight>max?'auto':'hidden';
+}
+
+function claudeInputKey(e){
+  if(e.key!=='Enter') return;
+  // 中文输入法组字中不发送
+  if(e.isComposing||e.keyCode===229) return;
+  if(e.shiftKey) return; // Shift+Enter 换行
+  e.preventDefault();
+  sendClaudeMsg();
+}
+
+// iOS/Android 键盘遮住底部输入栏：用 visualViewport 差值给 overlay 加 padding-bottom
+function claudeSyncKeyboard(){
+  var ov=document.getElementById('claudeOverlay');
+  if(!ov||!ov.classList.contains('active')) return;
+  var vv=window.visualViewport;
+  if(!vv){ ov.style.paddingBottom=''; return; }
+  var layoutH=Math.max(document.documentElement.clientHeight||0, window.innerHeight||0);
+  // body.modal-open 时用布局视口高度；键盘弹出后 visual 变矮，差值即键盘高度
+  var kb=Math.max(0, layoutH - (vv.height + vv.offsetTop));
+  // 容错：差值小于 40px 视为无键盘（桌面/缩放噪声）
+  if(kb<40) kb=0;
+  // 去掉 safe-area 重复：键盘在时 foot 的 env(safe-area) 通常为 0，这里只补键盘高度
+  ov.style.paddingBottom=kb?(kb+'px'):'';
+  if(kb){
+    var ta=document.getElementById('claudeInput');
+    if(ta) try{ ta.scrollIntoView({block:'nearest'}) }catch(e){}
+    var m=document.getElementById('claudeMsgs');
+    if(m) m.scrollTop=m.scrollHeight;
+  }
+}
+
+(function(){
+  var vv=window.visualViewport;
+  if(!vv) return;
+  vv.addEventListener('resize', claudeSyncKeyboard);
+  vv.addEventListener('scroll', claudeSyncKeyboard);
+  window.addEventListener('orientationchange', function(){ setTimeout(claudeSyncKeyboard, 80); });
+})();
 
 function newClaudeSession(){
   if(_claudeTimer){ alert('上一条还在生成中，先等它完成'); return; }
@@ -230,9 +292,9 @@ async function deleteClaudeSession(id){
 async function sendClaudeMsg(){
   if(_claudeBusy) return;
   var input=document.getElementById('claudeInput');
-  var msg=input.value.trim();
+  var msg=(input&&input.value||'').trim();
   if(!msg) return;
-  input.value='';
+  if(input){ input.value=''; claudeInputGrow(input); }
   claudeAddMsg('user',msg);
   _claudeBusy=true;
   document.getElementById('claudeSendBtn').disabled=true;
