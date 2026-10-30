@@ -6,6 +6,43 @@ html{overflow-x:hidden;overflow-y:scroll;-webkit-overflow-scrolling:touch}
    禁止 >0.6s 的 stagger 累计延迟；同一 keyframe 名只定义一次；
    弹层位移 ≤24px，不用 60px 大位移；避免 backdrop-filter 参与动画。 */
 :root{--pri:#6366f1;--pri-dark:#4f46e5;--pri-light:#eef2ff;--pri-g:linear-gradient(135deg,#6366f1,#8b5cf6);--bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--blue:#3b82f6;--pink:#ec4899;--radius:14px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);--ease-sheet:cubic-bezier(.32,.72,0,1);--dur-micro:120ms;--dur-sheet:220ms;--dur-fade:180ms}
+/* ===== 表单与按钮规范（项目模块，2026-10-30 v3.0.11）=====
+   输入/选择：min-height 44；padding 11/14；radius 12；border 1.5；bg card；字号 16（防 iOS 缩放）
+   标签：12/700 muted 上置；说明最多一行 11 muted
+   主按钮：高 46 全宽 radius 12 纯色 pri（完成用 green）；次按钮同高，无虚线彩虹 */
+.pj-form-field{display:block;margin-bottom:12px;min-width:0}
+.pj-form-label{display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.2px;margin-bottom:6px;line-height:1.3}
+.pj-form-input,
+.pj-form-field input,
+.pj-form-field select,
+.pj-form-field textarea,
+.pjf-input,
+.pjf-group input,
+.pjf-group select,
+.pjf-group textarea{width:100%;box-sizing:border-box;min-height:44px;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;font-family:inherit;outline:none;transition:border-color var(--dur-micro) ease,box-shadow var(--dur-micro) ease}
+.pj-form-input:focus,
+.pj-form-field input:focus,
+.pj-form-field select:focus,
+.pj-form-field textarea:focus,
+.pjf-input:focus,
+.pjf-group input:focus,
+.pjf-group select:focus,
+.pjf-group textarea:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.14)}
+.pj-form-input::placeholder,.pjf-input::placeholder,.pj-form-field input::placeholder{color:var(--muted);opacity:.75}
+.pj-form-input[type=number],.pj-form-field input[type=number]{appearance:textfield;-moz-appearance:textfield}
+.pj-form-input[type=number]::-webkit-outer-spin-button,.pj-form-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pj-form-input[type=datetime-local],.pj-form-field input[type=datetime-local]{-webkit-appearance:none;appearance:none;padding-right:8px}
+.pj-form-row{display:flex;gap:10px;align-items:stretch}
+.pj-form-row>.pj-form-field{flex:1;min-width:0}
+.pj-form-hint{font-size:11px;color:var(--muted);line-height:1.5;margin:-4px 0 12px}
+.pj-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:46px;padding:11px 16px;border-radius:12px;border:1.5px solid transparent;font-size:15px;font-weight:800;font-family:inherit;line-height:1.2;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform var(--dur-micro) ease,opacity var(--dur-micro) ease,background var(--dur-micro) ease}
+.pj-btn:active{transform:scale(.98);opacity:.92}
+.pj-btn-primary{background:var(--pri);color:#fff;border-color:var(--pri)}
+.pj-btn-done{background:var(--green);color:#fff;border-color:var(--green)}
+.pj-btn-secondary{background:var(--bg);color:var(--text);border-color:var(--border)}
+.pj-btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}
+.pj-btn-inline{flex-shrink:0;width:auto;min-height:44px;padding:0 16px}
+.pj-btn[disabled]{opacity:.5;pointer-events:none}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
 @media(prefers-color-scheme:dark){:root:not(.light){--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}}
 body.dark{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--pri-light:rgba(99,102,241,.15)}
@@ -1593,8 +1630,12 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .pjf-hero-text span{display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px}
 .pjf-group{margin-bottom:14px}
 .pjf-group label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:.2px}
-.pjf-input{width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;outline:none;transition:border-color .15s,background .15s}
-.pjf-input:focus{border-color:var(--pri);background:var(--card)}
+/* .pjf-input 尺寸统一走顶部 .pj-form-* 规范（44px / 16px / radius 12） */
+.pjf-hero{padding:10px 12px;border-radius:12px}
+.pjf-icon{width:36px;height:36px;border-radius:10px;font-size:16px;box-shadow:none}
+.pjf-step-row .pjf-input{min-height:40px;padding:8px 10px;font-size:14px}
+.pjf-step-budget{min-height:40px}
+.pjf-step-btn{min-height:40px}
 .pjf-row{display:flex;gap:10px}
 .pjf-row .pjf-group{flex:1;min-width:0}
 .pjf-colors{display:flex;gap:10px;flex-wrap:wrap}
@@ -1815,17 +1856,15 @@ body.auth-locked .modal-overlay
 .pj2-tab.active em{color:var(--pri);opacity:.75}
 .pj2-tabbody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 18px calc(22px + env(safe-area-inset-bottom))}
 
-/* 清单页 */
-.pj2-quick{display:flex;gap:8px}
-.pj2-quick input{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--border);border-radius:13px;background:var(--bg);color:var(--text);font-size:15px;outline:none}
-.pj2-quick input:focus{border-color:var(--pri);background:var(--card)}
-.pj2-quick>button{flex-shrink:0;border:none;background:var(--pri);color:#fff;border-radius:13px;padding:0 16px;font-size:14px;font-weight:800;cursor:pointer}
-.pj2-quick-opts{display:flex;gap:8px;padding-top:8px}
-.pj2-quick-opts label{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--muted)}
-.pj2-quick-opts select{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font-size:12px;outline:none}
-.pj2-quick-sub{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 2px 10px;font-size:11px;color:var(--muted);line-height:1.5}
-.pj2-quick-sub button{border:none;background:none;color:var(--pri);font-size:11px;font-weight:700;cursor:pointer;padding:4px 0}
-.pj2-quick-more{flex-shrink:0;border:1px solid var(--border);background:var(--card);color:var(--pri);border-radius:9px;padding:0 12px;font-size:12px;font-weight:700;cursor:pointer;align-self:center}
+/* 清单页 / 阶段内快速添加 */
+.pj2-hint-one{font-size:11.5px;color:var(--muted);line-height:1.5;padding:2px 4px 10px}
+.pj2-quick{display:flex;gap:8px;align-items:stretch}
+.pj2-quick input{flex:1;min-width:0;min-height:44px;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:16px;font-family:inherit;outline:none}
+.pj2-quick input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.14)}
+.pj2-quick>button{flex-shrink:0;border:none;background:var(--pri);color:#fff;border-radius:12px;padding:0 16px;font-size:15px;font-weight:800;cursor:pointer}
+.pj2-quick-sub{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 2px 14px;font-size:11.5px;color:var(--muted);line-height:1.5}
+.pj2-quick-sub button{border:none;background:none;color:var(--pri);font-size:12px;font-weight:700;cursor:pointer;padding:6px 0;min-height:32px}
+.pj2-quick-more{flex-shrink:0;border:1.5px solid var(--border);background:var(--card);color:var(--pri);border-radius:12px;padding:0 12px;min-height:36px;font-size:12px;font-weight:700;cursor:pointer;align-self:center}
 .pj2-cur.todo{color:var(--green);background:rgba(16,185,129,.12)}
 .pj2-todo{display:flex;align-items:flex-start;gap:10px;padding:12px 2px;border-bottom:1px solid var(--border);cursor:pointer}
 .pj2-todo:last-child{border-bottom:none}
@@ -1868,20 +1907,24 @@ body.auth-locked .modal-overlay
 .pj2-step-name{font-size:14px;font-weight:800;line-height:1.35;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .pj2-cur{font-style:normal;font-size:9px;font-weight:800;color:var(--pri);background:rgba(99,102,241,.1);border-radius:5px;padding:1px 5px}
 .pj2-step-sub{font-size:11px;color:var(--muted);line-height:1.45}
-.pj2-step-body{padding:0 12px 13px;border-top:1px dashed var(--border)}
-.pj2-editor{margin-top:11px;background:var(--bg);border-radius:12px;padding:11px}
-.pj2-editor-label{display:block;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.3px;margin-bottom:5px}
-.pj2-editor-input{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:14px;outline:none;margin-bottom:9px}
-.pj2-editor-input:focus{border-color:var(--pri)}
-.pj2-editor-sub{display:block;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.3px;margin:8px 0 5px}
-.pj2-plan-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.pj2-plan-label{font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0;width:26px}
-.pj2-plan-row input[type=date],.pj2-plan-row input[type=datetime-local]{flex:1;min-width:0;width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font-size:12px}
-.pj2-save{border:none;background:var(--pri);color:#fff;border-radius:9px;padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer}
-.pj2-save-block{display:block;width:100%;margin-top:9px;padding:11px 13px;font-size:13px}
-.pj2-editor-hint{font-size:10.5px;color:var(--muted);margin-top:7px;line-height:1.5}
-.pj2-block-title{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800;color:var(--muted);margin:13px 0 4px}
-.pj2-block-title span{font-weight:700;font-size:10.5px}
+.pj2-step-body{padding:4px 12px 14px;border-top:1px solid var(--border)}
+.pj2-step-body .pj2-sec{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.3px;padding:14px 2px 8px;border-bottom:1px solid var(--border);margin:0}
+.pj2-step-body .pj2-sec span{font-weight:700;font-size:10.5px;letter-spacing:0}
+.pj2-budget-line{display:flex;flex-direction:column;gap:7px;padding:10px 2px 4px}
+.pj2-budget-text{font-size:13px;color:var(--muted);line-height:1.4}
+.pj2-budget-text b{font-size:17px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.pj2-budget-text span{font-size:12px;color:var(--muted)}
+.pj2-budget-line.over .pj2-budget-text b{color:var(--red)}
+.pj2-settings-head{padding-bottom:0;border-bottom:none;margin-top:4px}
+.pj2-settings-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:10px 2px;border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;text-align:left}
+.pj2-settings-toggle>span:first-child{font-weight:800;color:var(--text);font-size:13px}
+.pj2-settings-tag{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:700;color:var(--pri);background:rgba(99,102,241,.1);border-radius:8px;padding:2px 7px;white-space:nowrap}
+.pj2-settings-tag.muted{color:var(--muted);background:var(--bg);font-weight:600}
+.pj2-settings{padding:8px 0 4px;border-top:1px solid var(--border);margin-top:4px}
+.pj2-settings .pj-btn-primary{width:100%;margin-top:4px}
+/* 旧编辑器类：仅兼容残留标记，不再承担布局 */
+.pj2-editor{margin:0}
+.pj2-editor-label,.pj2-editor-input,.pj2-editor-sub,.pj2-plan-row,.pj2-plan-label,.pj2-save-block,.pj2-editor-hint,.pj2-block-title{display:none}
 .pj2-empty-line{font-size:11.5px;color:var(--muted);padding:6px 0}
 .pj2-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border)}
 .pj2-item:last-child{border-bottom:none}
@@ -1894,25 +1937,28 @@ body.auth-locked .modal-overlay
 .pj2-item-add input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:12.5px;outline:none}
 .pj2-item-add button{width:38px;border:none;background:var(--pri);color:#fff;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
 .pj2-phase-add select{max-width:88px;padding:9px 6px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:11.5px;outline:none}
-.pj2-money-actions{display:flex;gap:7px;margin-top:10px}
-.pj2-money-actions button{flex:1;min-height:38px;border:1px dashed var(--pri);background:rgba(99,102,241,.05);color:var(--pri);border-radius:10px;font-size:12px;font-weight:800;cursor:pointer}
-.pj2-step-actions{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
-.pj2-action{flex:1;min-width:96px;min-height:41px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:11px;font-size:12.5px;font-weight:800;cursor:pointer}
+.pj2-money-actions{display:flex;gap:8px;margin-top:12px}
+.pj2-money-actions .pj-btn{flex:1;min-width:0}
+.pj2-money-actions button{flex:1;min-height:44px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);border-radius:12px;font-size:14px;font-weight:800;cursor:pointer}
+.pj2-step-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.pj2-step-actions .pj-btn{flex:1;min-width:96px}
+.pj2-action{flex:1;min-width:96px;min-height:44px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);border-radius:12px;font-size:14px;font-weight:800;cursor:pointer}
 .pj2-action.primary{background:var(--green);border-color:var(--green);color:#fff}
-.pj2-action.ghost{background:var(--bg)}
-.pj2-p5-hint{flex-basis:100%;font-size:10.5px;color:var(--muted);background:rgba(99,102,241,.06);border-radius:9px;padding:8px 10px;line-height:1.5}
-.pj2-ledger-mini{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:11.5px;border-top:1px dashed var(--border);cursor:pointer}
+.pj2-action.ghost{background:transparent;color:var(--muted)}
+.pj2-p5-hint{flex-basis:100%;font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 11px;line-height:1.5;margin-top:4px}
+.pj2-ledger-mini{display:flex;align-items:center;gap:7px;padding:7px 2px;font-size:12px;border-top:1px solid var(--border);cursor:pointer}
 .pj2-ledger-mini .pj2-lm-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pj2-ledger-mini .pj2-lm-date{font-size:10px;color:var(--muted);flex-shrink:0}
-.pj2-ledger-mini b{font-size:11.5px;flex-shrink:0}
-.pj2-see-all{border:none;background:none;color:var(--pri);font-size:11px;font-weight:700;cursor:pointer;padding:6px 0 0}
+.pj2-ledger-mini b{font-size:12px;flex-shrink:0}
+.pj2-see-all{border:none;background:none;color:var(--pri);font-size:12px;font-weight:700;cursor:pointer;padding:8px 2px 0;min-height:36px}
 
 /* 账本页 */
 .pj2-budget{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:13px 14px;margin-bottom:12px}
 .pj2-budget-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:800}
 .pj2-budget-head button{border:none;background:none;color:var(--pri);font-size:11px;font-weight:700;cursor:pointer}
-.pj2-budget-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:9px}
-.pj2-budget-bar i{display:block;height:100%;border-radius:4px}
+.pj2-budget-bar{height:6px;background:var(--border);border-radius:4px;overflow:hidden}
+.pj2-step-body .pj2-budget-bar{margin-top:2px}
+.pj2-budget-bar i{display:block;height:100%;border-radius:4px;transition:width .35s ease}
 .pj2-budget-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px}
 .pj2-budget-empty{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted);background:var(--bg);border-style:dashed;padding:12px 14px}
 .pj2-budget-empty button{border:1px solid var(--border);background:var(--card);color:var(--pri);font-size:12px;font-weight:800;border-radius:9px;padding:7px 11px;cursor:pointer;flex-shrink:0}
@@ -1937,9 +1983,9 @@ body.auth-locked .modal-overlay
   #projectDetailOverlay{align-items:flex-end;padding:0}
   #projectDetailOverlay .pj2-modal{max-width:100%;border-radius:22px 22px 0 0;max-height:92dvh}
   .pj2-sheet-head{padding-top:24px}
-  .pj2-quick input,.pj2-editor-input,.pj2-plan-row input[type=date],.pj2-plan-row input[type=datetime-local]{font-size:16px}
-  .pj2-quick-opts select,.pj2-phase-add select{font-size:16px}
-  .pjf-input{font-size:16px}
+  .pj2-quick input,.pj-form-input,.pj-form-field input,.pj-form-field select,.pjf-input,.pjf-group input,.pjf-group select{font-size:16px}
+  .pj2-phase-add select{font-size:16px}
+  .pj2-step-actions{padding-bottom:env(safe-area-inset-bottom)}
   #projectContent{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 
