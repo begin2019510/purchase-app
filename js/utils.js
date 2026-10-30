@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.3";
+const APP_VERSION = "3.0.4";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.4',date:'2026-10-30',items:['修复聊天弹层：改为标准弹窗（手机底部卡片），不再像整页新窗口','聊天/会话列表内部滚动时不再带动背景页面','输入框与头部固定，只有消息区滚动']},
 {v:'3.0.3',date:'2026-10-30',items:['💬 和 Claude 对话新增会话管理：☰ 查看历史会话列表，点击切换并恢复聊天记录','会话可重命名 / 删除（删除为归档，网页版可恢复）；「新会话」随时开启全新对话','杀掉页面重进会自动拉取上次会话的历史气泡，不再只剩空白']},
 {v:'3.0.2',date:'2026-10-30',items:['设置 → 💬 和 Claude 对话：手机上直接与 Claude 聊天，可跑命令、用 MCP，能力与网页版一致','会话与 agent 网页版互通可续聊；任务进行中退出再进可继续查看，「新会话」开启全新对话','提升缓存版本：修复部分设备因旧缓存导致点入口无反应的问题']},
 {v:'3.0.1',date:'2026-10-29',items:['设置 → 连接 Agent（MCP）：一键生成一次性安装链接，任意 agent 打开即可自动安装 MCP 并连接','安装链接 10 分钟内有效、只能使用一次，票据只放在 URL 片段中，不随请求上传；生成新链接会让旧链接失效','每个 agent 用链接换取自己的独立凭据，不需要提供 App 密码，可在操作日志查看授权记录']},

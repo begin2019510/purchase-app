@@ -11,7 +11,9 @@ var _claudeSessionsAt = 0;       // 列表缓存时间
 var _claudeHistoryFor = '';      // 当前气泡对应的 sessionId（避免重复拉历史）
 
 function openClaudeChat(){
-  document.getElementById('claudeOverlay').style.display='flex';
+  // 必须用 active class：app.js 的 MutationObserver 靠 .active 锁 body 滚动，
+  // 直接改 display 会导致聊天区滚动时背景页一起滚
+  document.getElementById('claudeOverlay').classList.add('active');
   hideClaudeSessions();
   var sid=localStorage.getItem('claude_sid')||'';
   var m=document.getElementById('claudeMsgs');
@@ -31,7 +33,7 @@ function openClaudeChat(){
     claudePoll();
   }
 }
-function closeClaudeChat(){ document.getElementById('claudeOverlay').style.display='none'; hideClaudeSessions(); }
+function closeClaudeChat(){ document.getElementById('claudeOverlay').classList.remove('active'); hideClaudeSessions(); }
 
 function newClaudeSession(){
   if(_claudeTimer){ alert('上一条还在生成中，先等它完成'); return; }
