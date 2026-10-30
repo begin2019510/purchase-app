@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.8";
+const APP_VERSION = "3.0.9";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.9',date:'2026-10-30',items:['修复：打开项目详情时底部导航盖住「删除项目」等按钮','弹层打开时隐藏底部导航；项目详情层级抬到导航之上，记采购/记账弹窗仍叠在详情上']},
 {v:'3.0.8',date:'2026-10-30',items:['新建项目：步骤规划改自然语言，点「AI 拆成步骤」整理成 1–6 步结构（名称+预算）','拆出的步骤可增删改，也可手动加步；不再要求自己写「名称 | 预算」']},
 {v:'3.0.7',date:'2026-10-30',items:['💬 Claude 对话仅管理员可用（服务端 403 + 设置项隐藏）','回复气泡支持安全 Markdown：加粗 / 斜体 / 行内代码 / 代码块','Claude 提问（AskUserQuestion）会以可读文本显示在聊天与历史中']},
 {v:'3.0.6',date:'2026-10-30',items:['新建项目可规划 1~6 步，每步可单独设预算；阶段里随时可改本步预算','账本新增「分步预算」对照表：显示每步已花/预算与百分比，点一下可跳到对应阶段','步骤写法支持「名称 | 预算」；总预算与本步预算独立，关联到该步的采购+记账自动计入已花']},
