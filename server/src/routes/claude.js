@@ -13,6 +13,7 @@
 const express = require('express');
 const http = require('http');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const cfg = require('../config');
 const { requireAuth } = require('../middleware');
 
@@ -194,11 +195,154 @@ function startJob(message, sessionId) {
   return taskId;
 }
 
-// POST /api/claude?action=chat  {message, sessionId?} → {taskId}
+// GET /api/claude?action=task&id=xxx → {status, text, sessionId, tools, error?}
+// GET /api/claude?action=sessions&limit=30 → {sessions:[{id,title,at,project}],total}
+// GET /api/claude?action=history&id=xxx&limit=200 → {messages:[{role,text,at}]}
+router.get('/claude', (req, res) => {
+  const action = String(req.query.action || '');
+  if (action === 'task') {
+    const t = tasks.get(String(req.query.id || ''));
+    if (!t) return res.status(404).json({ error: 'task_not_found', hint: '任务不存在或服务已重启，请重新发送' });
+    return res.json({
+      status: t.status,
+      text: liveText(t),
+      sessionId: t.sessionId,
+      tools: t.tools,
+      error: t.error || undefined,
+    });
+  }
+  if (action === 'sessions') return handleSessions(req, res);
+  if (action === 'history') return handleHistory(req, res);
+  return res.status(404).json({ error: 'not_found' });
+});
+
+// POST /api/claude?action=rename {id,title} | action=delete {id}
+// （rename/delete 放 POST：CF toServer 对 DELETE 透传没问题，但统一走现有 POST 契约更简单）
 router.post('/claude', (req, res) => {
   const action = String(req.query.action || '');
-  if (action !== 'chat') return res.status(404).json({ error: 'not_found' });
+  if (action === 'chat') return handleChat(req, res);
+  if (action === 'rename') return handleRename(req, res);
+  if (action === 'delete') return handleDelete(req, res);
+  return res.status(404).json({ error: 'not_found' });
+});
 
+// ===== 会话管理：铸 CloudCLI JWT 代理 /api/providers/sessions/* =====
+// /api/agent 用 x-api-key；sessions API 用 Bearer JWT（secret 在 CloudCLI app_config）。
+
+function cloudcliApi(method, path, body) {
+  return new Promise((resolve, reject) => {
+    if (!cfg.CLOUDCLI_JWT_SECRET) {
+      return reject(new Error('服务端未配置 CLOUDCLI_JWT_SECRET（会话管理不可用）'));
+    }
+    let token;
+    try {
+      token = jwt.sign(
+        { userId: cfg.CLOUDCLI_USER_ID, username: cfg.CLOUDCLI_USER },
+        cfg.CLOUDCLI_JWT_SECRET,
+        { expiresIn: '15m' },
+      );
+    } catch (e) { return reject(e); }
+
+    const payload = body != null ? JSON.stringify(body) : '';
+    const u = new URL(cfg.CLOUDCLI_BASE + path);
+    const req = http.request({
+      hostname: u.hostname,
+      port: u.port,
+      path: u.pathname + u.search,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token,
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, (resp) => {
+      let buf = '';
+      resp.on('data', (c) => { buf += c; });
+      resp.on('end', () => {
+        let json = null;
+        try { json = JSON.parse(buf); } catch (e) { /* 非 JSON */ }
+        resolve({ status: resp.statusCode, json, raw: buf });
+      });
+      resp.on('error', reject);
+    });
+    req.setTimeout(15000, () => { try { req.destroy(); } catch (e) { /* ignore */ } reject(new Error('CloudCLI 超时')); });
+    req.on('error', reject);
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+async function handleSessions(req, res) {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
+  try {
+    const r = await cloudcliApi('GET', '/api/providers/sessions/recent?limit=' + limit);
+    if (r.status !== 200 || !r.json || !r.json.success) {
+      return res.status(502).json({ error: 'CloudCLI 会话列表失败', detail: r.json && (r.json.error || r.json.code) || ('HTTP ' + r.status) });
+    }
+    const page = r.json.data || {};
+    const list = (page.conversations || []).map((c) => ({
+      id: String(c.sessionId || ''),
+      title: String(c.sessionTitle || '（无标题）'),
+      at: c.lastActivity || '',
+      project: String(c.projectDisplayName || ''),
+    }));
+    return res.json({ sessions: list, total: Number(page.total) || list.length });
+  } catch (e) {
+    return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });
+  }
+}
+
+async function handleHistory(req, res) {
+  const id = String(req.query.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'id 必填' });
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 500);
+  try {
+    const r = await cloudcliApi('GET', '/api/providers/sessions/' + encodeURIComponent(id) + '/messages?limit=' + limit);
+    if (r.status !== 200 || !r.json || !r.json.success) {
+      return res.status(502).json({ error: 'CloudCLI 历史拉取失败', detail: r.json && (r.json.error || r.json.code) || ('HTTP ' + r.status) });
+    }
+    const msgs = ((r.json.data && r.json.data.messages) || [])
+      .filter((m) => m && m.kind === 'text' && (m.role === 'user' || m.role === 'assistant') && m.content)
+      .map((m) => ({ role: m.role, text: String(m.content), at: m.timestamp || '' }));
+    return res.json({ messages: msgs });
+  } catch (e) {
+    return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });
+  }
+}
+
+async function handleRename(req, res) {
+  const id = String((req.body && req.body.id) || '').trim();
+  const title = String((req.body && req.body.title) || '').trim();
+  if (!id) return res.status(400).json({ error: 'id 必填' });
+  if (!title || title.length > 200) return res.status(400).json({ error: 'title 需 1~200 字' });
+  try {
+    const r = await cloudcliApi('PUT', '/api/providers/sessions/' + encodeURIComponent(id), { summary: title });
+    if (r.status !== 200 || !r.json || !r.json.success) {
+      return res.status(502).json({ error: '重命名失败', detail: r.json && (r.json.error || r.json.code) || ('HTTP ' + r.status) });
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });
+  }
+}
+
+async function handleDelete(req, res) {
+  const id = String((req.body && req.body.id) || '').trim();
+  if (!id) return res.status(400).json({ error: 'id 必填' });
+  try {
+    // 不带 force：CloudCLI 默认归档（网页版可 restore），不物理删
+    const r = await cloudcliApi('DELETE', '/api/providers/sessions/' + encodeURIComponent(id));
+    if (r.status !== 200 || !r.json || !r.json.success) {
+      return res.status(502).json({ error: '删除失败', detail: r.json && (r.json.error || r.json.code) || ('HTTP ' + r.status) });
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });
+  }
+}
+
+// 原 chat 逻辑抽出，路由分发在上面
+function handleChat(req, res) {
   const message = String((req.body && req.body.message) || '').trim();
   if (!message) return res.status(400).json({ error: 'message 必填' });
   if (message.length > 20000) return res.status(400).json({ error: '消息过长（上限 2 万字）' });
@@ -213,22 +357,6 @@ router.post('/claude', (req, res) => {
   const sessionId = String((req.body && req.body.sessionId) || '').trim();
   const taskId = startJob(message, sessionId);
   return res.json({ ok: true, taskId });
-});
-
-// GET /api/claude?action=task&id=xxx → {status, text, sessionId, tools, error?}
-router.get('/claude', (req, res) => {
-  const action = String(req.query.action || '');
-  if (action !== 'task') return res.status(404).json({ error: 'not_found' });
-
-  const t = tasks.get(String(req.query.id || ''));
-  if (!t) return res.status(404).json({ error: 'task_not_found', hint: '任务不存在或服务已重启，请重新发送' });
-  return res.json({
-    status: t.status,
-    text: liveText(t),
-    sessionId: t.sessionId,
-    tools: t.tools,
-    error: t.error || undefined,
-  });
-});
+}
 
 module.exports = router;

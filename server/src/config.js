@@ -47,4 +47,9 @@ module.exports = {
   // 对话使用的上游模型：claude-* 别名当前会落到 DeepSeek(欠费)/千问(超套餐) 而失败，
   // mimo-v2.6-flash 实测可用；上游再变时改 server.env 的 CLOUDCLI_MODEL 即可
   CLOUDCLI_MODEL: srvEnv.CLOUDCLI_MODEL || 'mimo-v2.6-flash',
+  // 会话管理（列表/历史/重命名/删除）走 CloudCLI /api/providers/sessions/*，需 Bearer JWT。
+  // secret 来自 CloudCLI app_config.jwt_secret（运维一次性抄入 server.env，轮换时同步）。
+  CLOUDCLI_JWT_SECRET: srvEnv.CLOUDCLI_JWT_SECRET || '',
+  CLOUDCLI_USER: srvEnv.CLOUDCLI_USER || 'zltdlb',
+  CLOUDCLI_USER_ID: Number(srvEnv.CLOUDCLI_USER_ID || 1),
 };
