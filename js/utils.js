@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.1";
+const APP_VERSION = "3.0.2";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.2',date:'2026-10-30',items:['设置 → 💬 和 Claude 对话：手机上直接与 Claude 聊天，可跑命令、用 MCP，能力与网页版一致','会话与 agent 网页版互通可续聊；任务进行中退出再进可继续查看，「新会话」开启全新对话','提升缓存版本：修复部分设备因旧缓存导致点入口无反应的问题']},
 {v:'3.0.1',date:'2026-10-29',items:['设置 → 连接 Agent（MCP）：一键生成一次性安装链接，任意 agent 打开即可自动安装 MCP 并连接','安装链接 10 分钟内有效、只能使用一次，票据只放在 URL 片段中，不随请求上传；生成新链接会让旧链接失效','每个 agent 用链接换取自己的独立凭据，不需要提供 App 密码，可在操作日志查看授权记录']},
 {v:'3.0.0',date:'2026-10-29',items:['版本线重置为 3.0.0，作为当前正式版基线（旧版号仅用于区分历史版本）','安全加固：登录限流按真实客户端 IP 计数；邀请码并发注册只成功一次；图片按账号隔离，历史 KV 图片也仅允许数据引用者读取','服务端补齐采购/记账/待办/项目的字段范围与状态校验，非法输入不再写入脏数据','待办月度续期改为原子领取，多端同时完成只续期一次','周报/月报区间与跨年边界修正，分期采购按付款月拆入，不再按全价一次性计入']},
 {v:'4.0.61',date:'2026-10-28',items:['统计页同时展示最新周报和月报两张卡片，可分别点开查看各自区间与金额','周报/月报接口支持按周期读取最新一份，统计页一次拉取两份，自动弹窗只弹最新生成的那张']},
