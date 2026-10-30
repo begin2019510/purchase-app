@@ -41,4 +41,10 @@ module.exports = {
   HOST: srvEnv.API_HOST || '127.0.0.1',
   IMG_DIR: process.env.PURCHASE_IMG_DIR || srvEnv.IMG_DIR || '/var/lib/purchase-app/images',
   IMG_MAX_BYTES: 5 * 1024 * 1024,
+  // 手机端「和 Claude 对话」桥接 CloudCLI（127.0.0.1:3001）
+  CLOUDCLI_API_KEY: srvEnv.CLOUDCLI_API_KEY || '',
+  CLOUDCLI_BASE: process.env.CLOUDCLI_BASE || srvEnv.CLOUDCLI_BASE || 'http://127.0.0.1:3001',
+  // 对话使用的上游模型：claude-* 别名当前会落到 DeepSeek(欠费)/千问(超套餐) 而失败，
+  // mimo-v2.6-flash 实测可用；上游再变时改 server.env 的 CLOUDCLI_MODEL 即可
+  CLOUDCLI_MODEL: srvEnv.CLOUDCLI_MODEL || 'mimo-v2.6-flash',
 };
