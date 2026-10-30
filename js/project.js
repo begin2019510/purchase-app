@@ -384,14 +384,26 @@ async function saveProject() {
   var reopenTab = _pjReopenTab || 'list';
 
   // 只规划现在知道的步骤；空行忽略，最多 6 步。服务端会把未填满的槽位标为未使用。
+  // 每行支持「名称 | 预算」，预算可空。
   var steps = [];
   if (!editing) {
     var stepsEl = document.getElementById('projectSteps');
     steps = (stepsEl ? stepsEl.value : '').split(/\r?\n/)
       .map(function(s) { return s.trim(); })
-      .filter(function(s) { return !!s; });
+      .filter(function(s) { return !!s; })
+      .map(function(line) {
+        var parts = line.split(/\s*[|｜]\s*/);
+        var name = String(parts[0] || '').trim().slice(0, 50);
+        var budget = null;
+        if (parts.length > 1 && String(parts[1] || '').trim() !== '') {
+          budget = Number(String(parts[1]).trim());
+          if (!isFinite(budget) || budget < 0) return { invalid: true };
+        }
+        return { name: name, budget: budget };
+      });
+    if (steps.some(function(s) { return s.invalid; })) { toast('步骤预算请填 0 或正数，或留空'); return; }
+    steps = steps.filter(function(s) { return !!s.name; });
     if (steps.length > 6) { toast('最多规划 6 步'); return; }
-    steps = steps.map(function(s) { return s.slice(0, 50); });
   }
 
   var data = {
@@ -403,7 +415,7 @@ async function saveProject() {
     budget: (function() { var el = document.getElementById('projectBudget'); var v = el ? el.value.trim() : ''; return v === '' ? null : Number(v); })(),
   };
   if (editing) data.id = id;
-  else if (steps.length) data.steps = steps;
+  else if (steps.length) data.steps = steps.map(function(s) { return { name: s.name, budget: s.budget }; });
   try {
     var r = editing ? await projectApi('PUT', data) : await projectApi('POST', data);
     if (!editing && !(r && r.ok && r.id)) throw new Error('服务端未返回项目 ID');
@@ -600,6 +612,7 @@ function renderProjectPhasesTab(p) {
     var expanded = (i === sel);
     var phSpendMap = (p.spend && p.spend.phases && p.spend.phases[i]) || {};
     var phSpend = (Number(phSpendMap.buy) || 0) + (Number(phSpendMap.exp) || 0);
+    var phBudget = (ph.budget == null) ? null : Number(ph.budget);
     var planned = pjPlanRange(ph);
 
     html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + '">';
@@ -608,7 +621,7 @@ function renderProjectPhasesTab(p) {
     html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (i === cur ? '<i class="pj2-cur">当前</i>' : '') + '</span>';
     html += '<span class="pj2-step-sub">' + pjPhaseStatusText(st)
       + (planned ? ' · 📅 ' + planned : '')
-      + (phSpend ? ' · 💰 ' + pjMoney(phSpend) : '')
+      + ((phSpend || phBudget != null) ? ' · 💰 ' + pjMoney(phSpend) + (phBudget != null ? '/' + pjMoney(phBudget) : '') : '')
       + '</span></span>';
     html += '<span class="pj2-chev' + (expanded ? ' open' : '') + '">›</span>';
     html += '</button>';
@@ -640,14 +653,26 @@ function renderPhaseBody(p, idx, ph) {
   var nameVal = pjPhaseName(ph, idx);
   var spendMap = (p.spend && p.spend.phases && p.spend.phases[idx]) || {};
   var phSpend = (Number(spendMap.buy) || 0) + (Number(spendMap.exp) || 0);
+  var phBudget = (ph.budget == null) ? null : Number(ph.budget);
   var phLedger = (p.ledger || []).filter(function(x) { return x.phaseIdx === idx; });
 
   var html = '<div class="pj2-step-body">';
 
-  // 名称 + 计划时间：一个保存按钮全部写入，时间精确到分钟
+  // 名称 + 预算 + 计划时间：一个保存按钮全部写入，时间精确到分钟
   html += '<div class="pj2-editor">';
   html += '<label class="pj2-editor-label">这一步叫什么</label>';
   html += '<input class="pj2-editor-input" id="pjPhaseName" maxlength="50" value="' + esc(nameVal) + '" placeholder="例如：订票 / 客户资料（可选）">';
+  html += '<div class="pj2-editor-sub">本步预算（可选，与项目总预算独立）</div>';
+  html += '<div class="pj2-plan-row"><span class="pj2-plan-label">预算</span>'
+    + '<input type="number" id="pjPhaseBudget" step="0.01" min="0" value="' + (phBudget == null ? '' : phBudget) + '" placeholder="例如：800"></div>';
+  if (phBudget != null || phSpend > 0) {
+    var overCls = (phBudget != null && phSpend > phBudget) ? ' style="color:var(--red)"' : '';
+    html += '<div class="pj2-editor-hint"' + overCls + '>已花 ' + pjMoney(phSpend)
+      + (phBudget != null ? ' / 预算 ' + pjMoney(phBudget)
+        + (phBudget > 0 ? '（' + Math.min(Math.round(phSpend / phBudget * 100), 999) + '%）' : '')
+        : '')
+      + '</div>';
+  }
   html += '<div class="pj2-editor-sub">计划时间（可精确到分钟）</div>'
     + '<div class="pj2-plan-row"><span class="pj2-plan-label">开始</span>'
     + '<input type="datetime-local" id="pjPlanStart" value="' + pjDateTimeInput(ph.plannedStart) + '"></div>'
@@ -657,14 +682,16 @@ function renderPhaseBody(p, idx, ph) {
   if (ph.startedAt) actual.push('开始 ' + pjDateTimeShort(ph.startedAt));
   if (ph.finishedAt) actual.push((st === 'skipped' ? '跳过 ' : '完成 ') + pjDateTimeShort(ph.finishedAt));
   html += '<div class="pj2-editor-hint">' + (actual.length ? '实际：' + actual.join(' · ') : '可留空；开始/完成时会自动记录实际时间') + '</div>';
-  html += '<button class="pj2-save pj2-save-block" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存名称与计划</button>';
+  html += '<button class="pj2-save pj2-save-block" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存名称、预算与计划</button>';
   html += '</div>';
 
   // 本步花费：逐笔显示明细（钱可以挂到步骤，清单待办不挂步骤）
-  if (phSpend > 0 || phLedger.length) {
-    html += '<div class="pj2-block-title">本步花费 <span>' + pjMoney(phSpend) + '</span></div>';
+  if (phSpend > 0 || phLedger.length || phBudget != null) {
+    html += '<div class="pj2-block-title">本步花费 <span>' + pjMoney(phSpend)
+      + (phBudget != null ? ' / ' + pjMoney(phBudget) : '')
+      + '</span></div>';
     phLedger.forEach(function(x) { html += renderLedgerMiniRow(x); });
-    html += '<button class="pj2-see-all" onclick="App.project.setTab(\'money\')">到账本查看 ' + phLedger.length + ' 笔明细</button>';
+    if (phLedger.length) html += '<button class="pj2-see-all" onclick="App.project.setTab(\'money\')">到账本查看 ' + phLedger.length + ' 笔明细</button>';
   }
 
   html += '<div class="pj2-money-actions">'
@@ -744,6 +771,39 @@ function renderProjectMoneyTab(p) {
     + '<div class="pj2-money-cell"><span>💰 记账</span><b>' + pjMoney(exp) + '</b></div>'
     + '<div class="pj2-money-cell accent"><span>合计</span><b>' + pjMoney(total) + '</b></div>'
     + '</div>';
+
+  // 每步预算对照：只列仍在使用的步骤
+  var activePhases = pjActivePhaseIdxs(p);
+  var phaseBudgetRows = [];
+  activePhases.forEach(function(i) {
+    var ph = (p.phases || [])[i] || {};
+    var pb = (ph.budget == null) ? null : Number(ph.budget);
+    var psMap = (spend.phases && spend.phases[i]) || {};
+    var ps = (Number(psMap.buy) || 0) + (Number(psMap.exp) || 0);
+    if (pb == null && !(ps > 0)) return;
+    phaseBudgetRows.push({ i: i, ph: ph, spend: ps, budget: pb });
+  });
+  if (phaseBudgetRows.length) {
+    html += '<div class="pj2-subhead">分步预算 <span>' + phaseBudgetRows.length + '</span></div>';
+    phaseBudgetRows.forEach(function(row) {
+      var pctTxt = '';
+      var over = false;
+      if (row.budget != null && row.budget > 0) {
+        var pct = Math.min(Math.round(row.spend / row.budget * 100), 999);
+        pctTxt = ' · ' + pct + '%';
+        over = row.spend > row.budget;
+      }
+      html += '<div class="pj2-ledger" onclick="App.project.jumpToPhaseBudget(\'' + id + '\',' + row.i + ')">'
+        + '<span class="ico">📍</span>'
+        + '<div class="main"><div class="name">' + esc(pjStepTitle(row.ph, row.i)) + '</div>'
+        + '<div class="meta">已花 ' + pjMoney(row.spend)
+        + (row.budget != null ? ' / 预算 ' + pjMoney(row.budget) + pctTxt : ' · 未设本步预算')
+        + (over ? ' · 超支' : '')
+        + '</div></div>'
+        + '<span class="pj2-chev">›</span>'
+        + '</div>';
+    });
+  }
 
   var defPhase = pjDefaultPhase(p);
   html += '<div class="pj2-money-actions">'
@@ -954,15 +1014,25 @@ async function savePhasePlan(projectId, idx) {
   var sEl = document.getElementById('pjPlanStart');
   var eEl = document.getElementById('pjPlanEnd');
   var nEl = document.getElementById('pjPhaseName');
+  var bEl = document.getElementById('pjPhaseBudget');
   var ss = sEl ? sEl.value : '';
   var ee = eEl ? eEl.value : '';
   if (ss && ee && new Date(ee).getTime() < new Date(ss).getTime()) { toast('完成时间不能早于开始时间'); return; }
+  var phaseBudget = null;
+  if (bEl) {
+    var bv = bEl.value.trim();
+    if (bv !== '') {
+      phaseBudget = Number(bv);
+      if (!isFinite(phaseBudget) || phaseBudget < 0) { toast('预算请填 0 或正数，或留空'); return; }
+    }
+  }
   var body = {
     projectId: projectId, phaseIdx: idx,
     plannedStart: ss ? new Date(ss).toISOString() : null,
     plannedEnd: ee ? new Date(ee).toISOString() : null
   };
   if (nEl) body.displayName = nEl.value.trim().slice(0, 50);
+  if (bEl) body.budget = phaseBudget;
   try {
     await phaseApi(body);
     toast('✅ 已保存');
@@ -970,6 +1040,13 @@ async function savePhasePlan(projectId, idx) {
   } catch (e) {
     toast('保存失败: ' + pjErrorText(e));
   }
+}
+
+// 账本里点分步预算 → 跳到阶段页并展开该步
+function jumpToPhaseBudget(projectId, idx) {
+  selectedPhase[projectId] = idx;
+  projectDetailTab = 'phases';
+  openProjectDetail(projectId);
 }
 
 async function renamePhase(projectId, idx) {
@@ -1064,6 +1141,7 @@ App.project = {
   renderProjColors: renderProjColors,
   pickColor: pickColor,
   savePhasePlan: savePhasePlan,
+  jumpToPhaseBudget: jumpToPhaseBudget,
   quickAddPurchase: quickAddPurchase,
   quickAddExpense: quickAddExpense,
   quickAddTodo: quickAddTodo,

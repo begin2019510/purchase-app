@@ -94,7 +94,7 @@ router.get('/projects', async (req, res, next) => {
         if (!have[p.id] || !have[p.id].has(i)) {
           try {
             await db.exec('INSERT IGNORE INTO project_phases (project_id, phase_idx, status) VALUES (?,?,?)', [p.id, i, 'todo']);
-            phases.push({ project_id: p.id, phase_idx: i, display_name: null, status: 'todo', note: '', planned_start_ms: null, planned_end_ms: null, started_at_ms: null, finished_at_ms: null });
+            phases.push({ project_id: p.id, phase_idx: i, display_name: null, status: 'todo', note: '', budget: null, planned_start_ms: null, planned_end_ms: null, started_at_ms: null, finished_at_ms: null });
           } catch (e) {}
         }
       }
@@ -107,6 +107,7 @@ router.get('/projects', async (req, res, next) => {
         name: ph.display_name || ('P' + ph.phase_idx),
         status: ph.status || 'todo',
         note: ph.note || '',
+        budget: ph.budget == null ? null : Number(ph.budget),
         plannedStart: ph.planned_start_ms == null ? null : Number(ph.planned_start_ms),
         plannedEnd: ph.planned_end_ms == null ? null : Number(ph.planned_end_ms),
         startedAt: ph.started_at_ms == null ? null : Number(ph.started_at_ms),
@@ -158,19 +159,41 @@ router.post('/projects', async (req, res, next) => {
     }
 
     // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
+    // 每步可以是字符串，也可以是 {name, budget}（本步预算，可空）。
     // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
     let steps = [];
     if (b.steps !== undefined && b.steps !== null) {
       if (!Array.isArray(b.steps)) return res.status(400).json({ error: 'bad steps' });
-      steps = b.steps.map(s => String(s == null ? '' : s).trim()).filter(Boolean).map(s => s.slice(0, 50));
+      for (const raw of b.steps) {
+        let name = '';
+        let stepBudget = null;
+        if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          name = String(raw.name == null ? '' : raw.name).trim().slice(0, 50);
+          if (raw.budget !== undefined && raw.budget !== null && raw.budget !== '') {
+            stepBudget = Number(raw.budget);
+            if (!Number.isFinite(stepBudget) || stepBudget < 0 || stepBudget > MAX_BUDGET) {
+              return res.status(400).json({ error: 'bad step budget' });
+            }
+          }
+        } else {
+          name = String(raw == null ? '' : raw).trim().slice(0, 50);
+        }
+        if (!name) continue;
+        steps.push({ name, budget: stepBudget });
+      }
       if (steps.length > PHASE_COUNT) return res.status(400).json({ error: '最多规划 6 步' });
     }
     // 槽位映射：第一步固定 P0，最后一步固定 P5，中间步骤依次填 P1~P4。
     // 只写 4 步 → 前 3 步在 P0~P2，第 4 步在 P5；P3、P4 自动标为未使用。
     const slotNames = new Array(PHASE_COUNT).fill(null);
+    const slotBudgets = new Array(PHASE_COUNT).fill(null);
     if (steps.length > 0) {
-      for (let i = 0; i < steps.length - 1; i++) slotNames[i] = steps[i];
-      slotNames[PHASE_COUNT - 1] = steps[steps.length - 1];
+      for (let i = 0; i < steps.length - 1; i++) {
+        slotNames[i] = steps[i].name;
+        slotBudgets[i] = steps[i].budget;
+      }
+      slotNames[PHASE_COUNT - 1] = steps[steps.length - 1].name;
+      slotBudgets[PHASE_COUNT - 1] = steps[steps.length - 1].budget;
     }
     const startPhase = steps.length === 1 ? PHASE_COUNT - 1 : 0;
 
@@ -182,8 +205,8 @@ router.post('/projects', async (req, res, next) => {
     for (let i = 0; i < PHASE_COUNT; i++) {
       const unused = steps.length > 0 && slotNames[i] === null;
       await conn.query(
-        'INSERT INTO project_phases (project_id, phase_idx, display_name, status) VALUES (?,?,?,?)',
-        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo']);
+        'INSERT INTO project_phases (project_id, phase_idx, display_name, status, budget) VALUES (?,?,?,?,?)',
+        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i]]);
     }
     await conn.commit();
     res.json({ id: 'rec_' + ins.insertId, ok: true, steps: steps.length });
@@ -327,6 +350,14 @@ router.put('/phases', async (req, res, next) => {
     }
     if (b.displayName !== undefined) cols.display_name = String(b.displayName || '').slice(0, 50) || null;
     if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 2000);
+    if (b.budget !== undefined) {
+      const phaseBudget = budgetNum(b.budget);
+      if (phaseBudget !== null && (!Number.isFinite(phaseBudget) || phaseBudget < 0 || phaseBudget > MAX_BUDGET)) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'bad budget' });
+      }
+      cols.budget = phaseBudget;
+    }
     if (b.plannedStart !== undefined) cols.planned_start_ms = b.plannedStart ? new Date(b.plannedStart).getTime() : null;
     if (b.plannedEnd !== undefined) cols.planned_end_ms = b.plannedEnd ? new Date(b.plannedEnd).getTime() : null;
 

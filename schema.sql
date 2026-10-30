@@ -239,6 +239,7 @@ CREATE TABLE IF NOT EXISTS project_phases (
   display_name VARCHAR(50) NULL,
   status VARCHAR(8) NOT NULL DEFAULT 'todo',     -- todo|doing|done|skipped
   note TEXT NULL,
+  budget DECIMAL(10,2) NULL,                    -- 本步预算（可空，与项目总预算独立）
   planned_start_ms BIGINT NULL,                -- 规划开始
   planned_end_ms BIGINT NULL,                  -- 规划完成（里程碑日期）
   started_at_ms BIGINT NULL,                   -- 实际开始
