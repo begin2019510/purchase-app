@@ -1,8 +1,8 @@
-// project.js - 项目模块（清单优先：清单 / 阶段 / 账本，PROJECT-PHASE-DESIGN.md）
+// project.js - 项目模块（阶段 / 账本；待办挂在阶段里）
 var projectList = [];
 var projectFilter = "全部";
 var selectedPhase = {}; // projectId -> phaseIdx
-var projectDetailTab = 'list'; // list | phases | money
+var projectDetailTab = 'phases'; // phases | money
 var _pjDetailId = null;
 
 function pjErrorText(e) {
@@ -205,6 +205,12 @@ function pjLinkedTodos(p) {
   if (typeof todoList === 'undefined' || !Array.isArray(todoList)) return [];
   return todoList.filter(function(t) {
     return t.projectId === p.id && t.status !== '已删除' && t.status !== '已取消';
+  });
+}
+// 某一步里的待办：phaseIdx 精确匹配；未挂阶段的历史待办不计入步骤
+function pjPhaseTodos(p, idx) {
+  return pjLinkedTodos(p).filter(function(t) {
+    return Number(t.phaseIdx) === Number(idx);
   });
 }
 function pjOpenTodos(p) {
@@ -479,11 +485,11 @@ function closeProjectModal() {
   var overlay = document.getElementById('projectModalOverlay');
   if (overlay) overlay.classList.remove('active');
   _pjReopenAfterEdit = null;
-  _pjReopenTab = 'list';
+  _pjReopenTab = 'phases';
 }
 
 var _pjReopenAfterEdit = null;
-var _pjReopenTab = 'list';
+var _pjReopenTab = 'phases';
 
 async function saveProject() {
   var id = document.getElementById('projectId').value;
@@ -491,7 +497,7 @@ async function saveProject() {
   if (!name) { toast('请输入项目名称'); return; }
   var editing = !!id;
   var reopenId = _pjReopenAfterEdit;
-  var reopenTab = _pjReopenTab || 'list';
+  var reopenTab = _pjReopenTab || 'phases';
 
   // 步骤：优先用预览里的结构化结果；只写了自然语言则先 AI 拆成结构，拆不动不让静默丢掉。
   var steps = [];
@@ -528,14 +534,14 @@ async function saveProject() {
     var r = editing ? await projectApi('PUT', data) : await projectApi('POST', data);
     if (!editing && !(r && r.ok && r.id)) throw new Error('服务端未返回项目 ID');
     _pjReopenAfterEdit = null;
-    _pjReopenTab = 'list';
+    _pjReopenTab = 'phases';
     closeProjectModal();
     toast(editing ? '✅ 已更新' : (steps.length ? '✅ 已创建，规划了 ' + steps.length + ' 步' : '✅ 项目已创建'));
     await loadProjects();
     renderProject();
     if (!editing && r && r.id) {
-      projectDetailTab = steps.length ? 'phases' : 'list';
-      if (steps.length) selectedPhase[r.id] = 0;
+      projectDetailTab = 'phases';
+      selectedPhase[r.id] = 0;
       openProjectDetail(r.id);
     } else if (editing && reopenId) {
       projectDetailTab = reopenTab;
@@ -558,7 +564,7 @@ function editProjectFromDetail(id) {
 }
 
 async function deleteProject(id) {
-  if (!confirm('确定删除该项目？\n阶段和清单会一并删除；关联的采购/记账金额保留、待办保留并解除关联。')) return;
+  if (!confirm('确定删除该项目？\n阶段会一并删除；关联的采购/记账金额保留、待办保留并解除项目关联。')) return;
   try {
     await projectApi('DELETE', null, id);
     closeProjectDetail();
@@ -593,11 +599,11 @@ function openProjectDetail(id, opts) {
   var p = projectList.find(function(x) { return x.id === id; });
   if (!p) return;
   opts = opts || {};
-  if (_pjDetailId !== id && !opts.keepTab) projectDetailTab = 'list';
+  if (_pjDetailId !== id && !opts.keepTab) projectDetailTab = 'phases';
   _pjDetailId = id;
   if (selectedPhase[id] === undefined) selectedPhase[id] = pjDefaultPhase(p);
   else if (selectedPhase[id] >= 0 && pjActivePhaseIdxs(p).indexOf(selectedPhase[id]) < 0) selectedPhase[id] = pjDefaultPhase(p);
-  if (['list', 'phases', 'money'].indexOf(projectDetailTab) < 0) projectDetailTab = 'list';
+  if (['phases', 'money'].indexOf(projectDetailTab) < 0) projectDetailTab = 'phases';
 
   var st = pjPhaseStats(p);
   var color = p.color || '#6366f1';
@@ -620,8 +626,7 @@ function openProjectDetail(id, opts) {
   html += '</div>';
 
   html += '<div class="pj2-tabs">';
-  html += '<button class="pj2-tab' + (projectDetailTab === 'list' ? ' active' : '') + '" onclick="App.project.setTab(\'list\')">清单' + (openTodos ? '<em>' + openTodos + '</em>' : '') + '</button>';
-  html += '<button class="pj2-tab' + (projectDetailTab === 'phases' ? ' active' : '') + '" onclick="App.project.setTab(\'phases\')">阶段<em>' + st.done + '/' + st.denom + '</em></button>';
+  html += '<button class="pj2-tab' + (projectDetailTab === 'phases' ? ' active' : '') + '" onclick="App.project.setTab(\'phases\')">阶段<em>' + st.done + '/' + st.denom + (openTodos ? ' · ☑' + openTodos : '') + '</em></button>';
   html += '<button class="pj2-tab' + (projectDetailTab === 'money' ? ' active' : '') + '" onclick="App.project.setTab(\'money\')">账本<em>' + pjMoney(totalSpend) + '</em></button>';
   html += '</div>';
 
@@ -638,50 +643,14 @@ function closeProjectDetail() {
 }
 
 function setProjectTab(tab) {
-  if (['list', 'phases', 'money'].indexOf(tab) < 0) tab = 'list';
+  if (['phases', 'money'].indexOf(tab) < 0) tab = 'phases';
   projectDetailTab = tab;
   if (_pjDetailId) openProjectDetail(_pjDetailId);
 }
 
 function renderProjectTabContent(p, tab) {
-  if (tab === 'phases') return renderProjectPhasesTab(p);
   if (tab === 'money') return renderProjectMoneyTab(p);
-  return renderProjectListTab(p);
-}
-
-// ---- 清单页 ----
-function renderProjectListTab(p) {
-  var id = p.id;
-  var todos = pjLinkedTodos(p);
-  var open = todos.filter(function(t) { return t.status !== '已完成'; });
-  var done = todos.filter(function(t) { return t.status === '已完成'; });
-
-  var html = '';
-  html += '<div class="pj2-quick"><input id="pjQuickTodo" maxlength="200" placeholder="下一件要做的事…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.quickAddTodo(\'' + id + '\')}"><button onclick="App.project.quickAddTodo(\'' + id + '\')">添加</button></div>';
-  html += '<div class="pj2-quick-opts">'
-    + '<label>分类<select id="pjQuickCat" onchange="App.project.rememberTodoCategory(this.value)">' + pjCategoryOptions(pjLastTodoCategory()) + '</select></label>'
-    + '</div>';
-  html += '<div class="pj2-quick-sub"><span>清单是项目要做的事；阶段只管推进节奏和时间，两边独立</span><button onclick="App.project.openTodoModalForProject(\'' + id + '\',null,null)">更多设置</button></div>';
-
-  if (!open.length && !done.length) {
-    html += '<div class="pj2-emptybox"><div class="ico">☑</div><div class="t">还没有待办</div><div class="s">先加一件最想推进的事</div><button onclick="App.project.focusQuickAdd()">＋ 添加第一件</button></div>';
-  }
-
-  open.forEach(function(t) { html += renderProjectTodoRow(t, id, false); });
-
-  if (done.length) {
-    html += '<div class="pj2-subhead">已完成 <span>' + done.length + '</span></div>';
-    done.forEach(function(t) { html += renderProjectTodoRow(t, id, true); });
-  }
-
-  if (p.description) html += '<div class="pj2-note"><b>项目备注</b><span>' + esc(p.description) + '</span></div>';
-
-  html += '<div class="pj2-manage">';
-  html += '<button onclick="App.project.editFromDetail(\'' + id + '\')">✏️ 编辑项目</button>';
-  if (p.status === '已完成') html += '<button onclick="App.project.archiveProject(\'' + id + '\')">🗄️ 归档</button>';
-  html += '<button class="danger" onclick="App.project.deleteProject(\'' + id + '\')">删除项目</button>';
-  html += '</div>';
-  return html;
+  return renderProjectPhasesTab(p);
 }
 
 function renderProjectTodoRow(t, projectId, done) {
@@ -711,7 +680,7 @@ function renderProjectPhasesTab(p) {
   if (sel === undefined || sel === null || sel < -1 || sel > 5) sel = pjDefaultPhase(p);
   else if (sel >= 0 && active.indexOf(sel) < 0) sel = pjDefaultPhase(p);
 
-  var html = '<div class="pj2-phase-hint">阶段只负责推进节奏：每一步的名称、计划/实际时间和花费。清单里的待办独立管理，不绑定步骤。第 1 步和第 6 步必须完成，中间步骤可跳过；未使用的空槽不占进度。</div>';
+  var html = '<div class="pj2-phase-hint">待办挂在每一步里；完成本步会自动勾掉该步未完成的待办。第 1 步和第 6 步必须完成，中间步骤可跳过；未使用的空槽不占进度。</div>';
   html += '<div class="pj2-timeline">';
   for (var i = 0; i < 6; i++) {
     var ph = phases[i] || { idx: i, name: 'P' + i, status: 'todo' };
@@ -722,11 +691,12 @@ function renderProjectPhasesTab(p) {
     var phSpend = (Number(phSpendMap.buy) || 0) + (Number(phSpendMap.exp) || 0);
     var phBudget = (ph.budget == null) ? null : Number(ph.budget);
     var planned = pjPlanRange(ph);
+    var phOpen = pjPhaseTodos(p, i).filter(function(t) { return t.status !== '已完成'; }).length;
 
     html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + '">';
     html += '<button class="pj2-step-head" aria-expanded="' + (expanded ? 'true' : 'false') + '" onclick="App.project.selectPhase(\'' + id + '\',' + i + ')">';
     html += '<span class="pj2-step-idx">' + (st === 'done' ? '✓' : st === 'skipped' ? '⏭' : (i + 1)) + '</span>';
-    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (i === cur ? '<i class="pj2-cur">当前</i>' : '') + '</span>';
+    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (i === cur ? '<i class="pj2-cur">当前</i>' : '') + (phOpen ? '<i class="pj2-cur todo">☑' + phOpen + '</i>' : '') + '</span>';
     html += '<span class="pj2-step-sub">' + pjPhaseStatusText(st)
       + (planned ? ' · 📅 ' + planned : '')
       + ((phSpend || phBudget != null) ? ' · 💰 ' + pjMoney(phSpend) + (phBudget != null ? '/' + pjMoney(phBudget) : '') : '')
@@ -752,6 +722,13 @@ function renderProjectPhasesTab(p) {
     });
     html += '</div>';
   }
+
+  if (p.description) html += '<div class="pj2-note"><b>项目备注</b><span>' + esc(p.description) + '</span></div>';
+  html += '<div class="pj2-manage">';
+  html += '<button onclick="App.project.editFromDetail(\'' + id + '\')">✏️ 编辑项目</button>';
+  if (p.status === '已完成') html += '<button onclick="App.project.archiveProject(\'' + id + '\')">🗄️ 归档</button>';
+  html += '<button class="danger" onclick="App.project.deleteProject(\'' + id + '\')">删除项目</button>';
+  html += '</div>';
   return html;
 }
 
@@ -793,7 +770,26 @@ function renderPhaseBody(p, idx, ph) {
   html += '<button class="pj2-save pj2-save-block" onclick="App.project.savePhasePlan(\'' + id + '\',' + idx + ')">保存名称、预算与计划</button>';
   html += '</div>';
 
-  // 本步花费：逐笔显示明细（钱可以挂到步骤，清单待办不挂步骤）
+  // 本步待办：与全局待办同一份数据，勾选互相同步
+  var todosHere = pjPhaseTodos(p, idx);
+  var openHere = todosHere.filter(function(t) { return t.status !== '已完成'; });
+  var doneHere = todosHere.filter(function(t) { return t.status === '已完成'; });
+  html += '<div class="pj2-block-title">本步待办 <span>' + openHere.length + '/' + (openHere.length + doneHere.length) + '</span></div>';
+  html += '<div class="pj2-quick"><input id="pjQuickTodo_' + idx + '" maxlength="200" placeholder="这一步要做的事…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.project.quickAddTodo(\'' + id + '\',' + idx + ')}"><button onclick="App.project.quickAddTodo(\'' + id + '\',' + idx + ')">添加</button></div>';
+  html += '<div class="pj2-quick-opts">'
+    + '<label>分类<select id="pjQuickCat_' + idx + '" onchange="App.project.rememberTodoCategory(this.value)">' + pjCategoryOptions(pjLastTodoCategory()) + '</select></label>'
+    + '<button class="pj2-quick-more" onclick="App.project.openTodoModalForProject(\'' + id + '\',' + idx + ')">更多</button>'
+    + '</div>';
+  if (!openHere.length && !doneHere.length) {
+    html += '<div class="pj2-emptybox"><div class="ico">☑</div><div class="t">这一步还没有待办</div><div class="s">加一件最想推进的事；完成本步会自动勾掉它们</div></div>';
+  }
+  openHere.forEach(function(t) { html += renderProjectTodoRow(t, id, false); });
+  if (doneHere.length) {
+    html += '<div class="pj2-subhead">已完成 <span>' + doneHere.length + '</span></div>';
+    doneHere.forEach(function(t) { html += renderProjectTodoRow(t, id, true); });
+  }
+
+  // 本步花费：逐笔显示明细
   if (phSpend > 0 || phLedger.length || phBudget != null) {
     html += '<div class="pj2-block-title">本步花费 <span>' + pjMoney(phSpend)
       + (phBudget != null ? ' / ' + pjMoney(phBudget) : '')
@@ -955,6 +951,11 @@ function pjRerenderDetail(id, resetScroll) {
 }
 
 async function refreshProjectUI(id, phaseIdx) {
+  // 阶段完成/跳过会批量勾待办，本地 todoList 必须重拉，否则步骤里仍显示未完成
+  try {
+    if (typeof loadTodos === 'function') await loadTodos();
+    if (typeof currentTab !== 'undefined' && currentTab === 'todo' && typeof renderTodo === 'function') renderTodo();
+  } catch (e) {}
   await loadProjects();
   renderProject();
   if (phaseIdx !== undefined) selectedPhase[id] = phaseIdx;
@@ -988,24 +989,21 @@ function quickAddExpense(projectId, phaseIdx) {
   toast('已关联到该项目，保存后回到账本');
 }
 
-// ===== 清单交互 =====
-function focusQuickAdd() {
-  pjFocus(document.getElementById('pjQuickTodo'));
-}
-
 function rememberTodoCategory(v) {
   if (v) pjRememberTodoCategory(v);
 }
 
-async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId) {
+async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId, phaseIdx) {
   title = (title || '').trim();
   if (!title) { pjFocus(inputEl); toast('请输入待办内容'); return; }
   if (typeof todoList === 'undefined') return;
   category = category || pjLastTodoCategory();
   pjRememberTodoCategory(category);
+  var pidx = (phaseIdx === null || phaseIdx === undefined || phaseIdx === '') ? null : Number(phaseIdx);
+  if (pidx != null && !Number.isInteger(pidx)) pidx = null;
   var tmp = {
     id: 'tmpPJ_' + Date.now(), title: title, status: '待办', priority: '中',
-    category: category, repeat: '无', projectId: projectId, subtasks: '[]', tags: '[]'
+    category: category, repeat: '无', projectId: projectId, phaseIdx: pidx, subtasks: '[]', tags: '[]'
   };
   todoList.unshift(tmp);
   if (inputEl) inputEl.value = '';
@@ -1015,7 +1013,7 @@ async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId)
   try {
     r = await todoApi('POST', {
       title: title, priority: '中', category: category, repeat: '无',
-      projectId: projectId, status: '待办'
+      projectId: projectId, phaseIdx: pidx, status: '待办'
     });
     if (r && r.error) throw new Error(r.error || '保存失败');
     if (r && r.id) tmp.id = r.id;
@@ -1033,15 +1031,18 @@ async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId)
   if (focusId) pjFocus(document.getElementById(focusId));
 }
 
-async function quickAddTodo(projectId) {
-  var inp = document.getElementById('pjQuickTodo');
-  var catEl = document.getElementById('pjQuickCat');
+async function quickAddTodo(projectId, phaseIdx) {
+  var pidx = (phaseIdx === null || phaseIdx === undefined) ? selectedPhase[projectId] : phaseIdx;
+  if (pidx == null || pidx < 0) pidx = pjDefaultPhase(projectList.find(function(x) { return x.id === projectId; }) || {});
+  var inp = document.getElementById('pjQuickTodo_' + pidx);
+  var catEl = document.getElementById('pjQuickCat_' + pidx);
   await pjCreateProjectTodo(
     projectId,
     inp ? inp.value : '',
     catEl ? catEl.value : pjLastTodoCategory(),
     inp,
-    'pjQuickTodo'
+    'pjQuickTodo_' + pidx,
+    pidx
   );
 }
 
@@ -1083,7 +1084,7 @@ async function setPhase(projectId, idx, status) {
   if (status === 'skipped') {
     if (idx === 0) { toast('第 1 步必须完成，不能跳过'); return; }
     if (idx === 5) { toast('第 6 步必须完成，不能跳过'); return; }
-    if (!confirm('跳过第 ' + (idx + 1) + ' 步？\n之后可在同一位置恢复。')) return;
+    if (!confirm('跳过第 ' + (idx + 1) + ' 步？\n该步未完成的待办会一并完成；之后可在同一位置恢复步骤（待办不会自动恢复）。')) return;
   }
   if (status === 'done' && idx === 5) {
     var pending = [];
@@ -1094,6 +1095,10 @@ async function setPhase(projectId, idx, status) {
     });
     if (pending.length) { toast('请先完成 ' + pending.join('、')); return; }
     if (!confirm('完成第 ' + (idx + 1) + ' 步？\n项目将自动通关，可归档。')) return;
+  }
+  if (status === 'done' && idx !== 5) {
+    var _openN = pjPhaseTodos(p, idx).filter(function(t) { return t.status !== '已完成'; }).length;
+    if (_openN && !confirm('完成第 ' + (idx + 1) + ' 步？\n该步还有 ' + _openN + ' 条未完成待办，会一并勾为已完成。')) return;
   }
   try {
     var r = await phaseApi({ projectId: projectId, phaseIdx: idx, status: status });
@@ -1174,7 +1179,7 @@ async function renamePhase(projectId, idx) {
 // ===== Todo 联动 =====
 function openTodoModalForProject(projectId, phaseIdx, category) {
   window._pendingProjectId = projectId;
-  window._pendingPhaseIdx = null;
+  window._pendingPhaseIdx = (phaseIdx === null || phaseIdx === undefined) ? null : Number(phaseIdx);
   window._pendingTodoCategory = category || pjLastTodoCategory();
   // 不关闭项目详情：待办弹层叠在上面，保存后回到项目
   openTodoModal();
@@ -1260,7 +1265,6 @@ App.project = {
   quickAddTodo: quickAddTodo,
   rememberTodoCategory: rememberTodoCategory,
   toggleTodo: toggleProjectTodo,
-  focusQuickAdd: focusQuickAdd,
   openTodoModalForProject: openTodoModalForProject,
   getProjectOptions: getProjectOptions,
   fillProjectPhaseSelects: fillProjectPhaseSelects,

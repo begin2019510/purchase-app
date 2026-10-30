@@ -232,19 +232,8 @@ router.patch('/items', async (req, res, next) => {
       if (sets) await db.exec('UPDATE purchases SET ' + sets + ' WHERE id = ?', [...Object.values(cols), item.id]);
       results.push({ id, ok: true });
 
-      // Todo 联动（镜像 CF 行为）：只在状态真正变化时触发，且插入前按标题去重
+      // 不再自动生成「下单/第N期还款」待办（2026-10-30）；已退/已取消仍清掉历史关联待办
       if (!statusChanged) continue;
-      const itemName = item.name || '商品';
-      const instPeriods = Number(item.installments) || 0;
-      const instAmount = Number(item.installment_amount) || 0;
-      if (b.status === '已审批') await createLinkedTodo(uid, '下单：' + itemName, null, '高', 'rec_' + item.id);
-      if (b.status === '已下单' && instPeriods > 1) {
-        for (let p = 1; p <= instPeriods; p++) {
-          const due = calcInstallmentDate(item, p);
-          await createLinkedTodo(uid, `第${p}期还款 ¥${instAmount}`, due, '中', 'rec_' + item.id);
-        }
-      }
-      if (b.status === '已到') await completeLinkedTodos(uid, 'rec_' + item.id, '下单');
       if (b.status === '已退' || b.status === '已取消') await deleteLinkedTodos(uid, 'rec_' + item.id);
     }
     res.json({ results, updated: results.filter(r => r.ok).length });
@@ -264,44 +253,10 @@ router.delete('/items', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// ===== Todo 联动（直接操作 todos 表）=====
-async function createLinkedTodo(uid, title, dueDate, priority, linkId) {
-  try {
-    const t = String(title).slice(0, 200);
-    const dup = await db.one('SELECT id FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ? AND title = ? LIMIT 1', [uid, '采购', linkId, t]);
-    if (dup) return;
-    // YYYY-MM-DD 按北京时间零点落库，避免 UTC 零点在东八区显示成前一天
-    const dueMs = dueDate ? Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? dueDate + 'T00:00:00+08:00' : dueDate) : null;
-    await db.exec(
-      `INSERT INTO todos (user_id,title,priority,category,status,\`repeat\`,subtasks,link_type,link_id,due_ms,due_iso)
-       VALUES (?,?,?,'采购','待办','无','[]','采购',?,?,?)`,
-      [uid, t, priority || '中', linkId, Number.isFinite(dueMs) ? dueMs : null, dueDate || '']);
-  } catch (e) { console.error('createLinkedTodo:', e.message); }
-}
+// ===== Todo 清理（不再自动生成联动待办；删除采购时清历史关联行）=====
 async function deleteLinkedTodos(uid, itemId) {
   try { await db.exec('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', itemId]); }
   catch (e) { console.error('deleteLinkedTodos:', e.message); }
-}
-async function completeLinkedTodos(uid, itemId, titlePrefix) {
-  try {
-    await db.exec(
-      "UPDATE todos SET status = '已完成', completed_ms = ? WHERE user_id = ? AND link_type = '采购' AND link_id = ? AND title LIKE ? AND status <> '已完成'",
-      [Date.now(), uid, itemId, titlePrefix + '%']);
-  } catch (e) { console.error('completeLinkedTodos:', e.message); }
-}
-// 第 1 期落在「分期开始月」的 15 日；开始月缺失时退回购买月。
-// 纯整数月运算，避免 setMonth 在 1/31 +1 个月时溢出到 3 月。
-function calcInstallmentDate(item, period) {
-  let sy, sm;
-  const start = String(item.installment_start || '');
-  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(start)) {
-    sy = Number(start.slice(0, 4)); sm = Number(start.slice(5, 7));
-  } else {
-    const pd = new Date((Number(item.date_ms) || Date.now()) + 8 * 3600000);
-    sy = pd.getUTCFullYear(); sm = pd.getUTCMonth() + 1;
-  }
-  const idx = sy * 12 + (sm - 1) + Math.max(0, (Number(period) || 1) - 1);
-  return Math.floor(idx / 12) + '-' + String(idx % 12 + 1).padStart(2, '0') + '-15';
 }
 
 module.exports = router;

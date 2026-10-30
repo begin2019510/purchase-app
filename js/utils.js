@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.9";
+const APP_VERSION = "3.0.10";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.10',date:'2026-10-30',items:['项目重构：去掉意义不明的「清单」，待办直接挂在每个阶段里；完成/跳过某一步会自动勾掉该步未完成待办','停用采购自动生成的「下单」「第N期还款」待办；历史未完成的还款/下单待办已清理','动画统一：弹层 220ms 轻位移+淡入，去掉超长逐项延迟与顶部/登录模糊，列表与预算页不再慢慢蹦出来']},
 {v:'3.0.9',date:'2026-10-30',items:['修复：打开项目详情时底部导航盖住「删除项目」等按钮','弹层打开时隐藏底部导航；项目详情层级抬到导航之上，记采购/记账弹窗仍叠在详情上']},
 {v:'3.0.8',date:'2026-10-30',items:['新建项目：步骤规划改自然语言，点「AI 拆成步骤」整理成 1–6 步结构（名称+预算）','拆出的步骤可增删改，也可手动加步；不再要求自己写「名称 | 预算」']},
 {v:'3.0.7',date:'2026-10-30',items:['💬 Claude 对话仅管理员可用（服务端 403 + 设置项隐藏）','回复气泡支持安全 Markdown：加粗 / 斜体 / 行内代码 / 代码块','Claude 提问（AskUserQuestion）会以可读文本显示在聊天与历史中']},

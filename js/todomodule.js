@@ -716,10 +716,13 @@ function openTodoModal(id) {
       var pid = t ? (t.projectId || "") : pendingPid;
       projSel.innerHTML = getProjectOptions(pid);
       projSel.value = pid;
-      projSel.onchange = null;
       if (window._pendingProjectId) window._pendingProjectId = "";
+      var pendingPhase = (t && t.phaseIdx != null && t.phaseIdx !== "")
+        ? t.phaseIdx
+        : window._pendingPhaseIdx;
       window._pendingPhaseIdx = null;
       window._pendingTodoCategory = null;
+      rebuildTodoPhaseSelect(pid, pendingPhase);
     }
     if (t && t.dueDate) {
       var d = new Date(t.dueDate);
@@ -752,6 +755,33 @@ function openTodoModal(id) {
 function closeTodoModal() {
   document.getElementById("todoModalOverlay").classList.remove("active");console.log("TODO_MODAL: closed");
   editingTodoId = null;
+}
+
+// 项目 → 步骤下拉：选了项目才有步骤；未使用的空槽不出现
+function rebuildTodoPhaseSelect(projectId, selectedPhaseIdx) {
+  var sel = document.getElementById('todoPhaseIdx');
+  if (!sel) return;
+  var pid = projectId !== undefined ? projectId : ((document.getElementById('todoProjectId') || {}).value || '');
+  if (!pid) {
+    sel.innerHTML = '<option value="">先选项目</option>';
+    sel.value = '';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  var p = (typeof projectList !== 'undefined' && Array.isArray(projectList))
+    ? projectList.find(function(x) { return x.id === pid; })
+    : null;
+  var html = '<option value="">无</option>';
+  if (p && p.phases) {
+    p.phases.forEach(function(ph) {
+      if (typeof pjIsUnusedPhase === 'function' && pjIsUnusedPhase(ph, ph.idx)) return;
+      html += '<option value="' + ph.idx + '">' + esc(typeof pjStepTitle === 'function' ? pjStepTitle(ph, ph.idx) : ('第' + (Number(ph.idx) + 1) + '步')) + '</option>';
+    });
+  }
+  sel.innerHTML = html;
+  if (selectedPhaseIdx === null || selectedPhaseIdx === undefined || selectedPhaseIdx === '') sel.value = '';
+  else sel.value = String(selectedPhaseIdx);
 }
 
 function renderSubtaskRows() {
@@ -844,6 +874,9 @@ async function saveTodo() {
     if (!title) return toast('请输入标题');
 
     var _projId = (document.getElementById('todoProjectId')||{}).value || '';
+    var _phaseRaw = (document.getElementById('todoPhaseIdx')||{}).value;
+    var _phaseIdx = (!_projId || _phaseRaw === '' || _phaseRaw == null) ? null : Number(_phaseRaw);
+    if (_phaseIdx != null && (!Number.isInteger(_phaseIdx) || _phaseIdx < 0 || _phaseIdx > 5)) _phaseIdx = null;
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
@@ -853,7 +886,7 @@ async function saveTodo() {
       repeat: document.getElementById('todoRepeat').value,
       linkType: document.getElementById('todoLinkType').value,
       projectId: _projId,
-      phaseIdx: null, // 待办不再绑定阶段
+      phaseIdx: _phaseIdx,
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
       tags: JSON.stringify(todoTags),
@@ -929,7 +962,11 @@ function openTodoDetail(id) {
   if (t.projectId && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
     var _dp = projectList.find(function(x){ return x.id === t.projectId; });
     if (_dp) {
-      html += '<div class="detail-row"><span class="detail-label">项目</span><span class="detail-value">📁 ' + esc(_dp.name) + '</span></div>';
+      var _phLabel = '';
+      if (t.phaseIdx != null && t.phaseIdx !== '' && _dp.phases && _dp.phases[Number(t.phaseIdx)]) {
+        _phLabel = ' · ' + (typeof pjStepTitle === 'function' ? pjStepTitle(_dp.phases[Number(t.phaseIdx)], Number(t.phaseIdx)) : ('第' + (Number(t.phaseIdx) + 1) + '步'));
+      }
+      html += '<div class="detail-row"><span class="detail-label">项目</span><span class="detail-value">📁 ' + esc(_dp.name) + esc(_phLabel) + '</span></div>';
     }
   }
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';

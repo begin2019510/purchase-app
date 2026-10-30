@@ -378,6 +378,13 @@ router.put('/phases', async (req, res, next) => {
       await conn.query('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
     }
 
+    // 阶段完成/跳过 → 该阶段未完成待办批量置为已完成（撤销阶段不恢复待办，避免误伤手标完成）
+    if (b.status === 'done' || b.status === 'skipped') {
+      await conn.query(
+        "UPDATE todos SET status = '已完成', completed_ms = ? WHERE user_id = ? AND project_id = ? AND phase_idx = ? AND status IN ('待办','进行中')",
+        [now, uid, 'rec_' + pid, idx]);
+    }
+
     let pointer = Number(own.current_phase) || 0;
     let projectStatus = own.status || '进行中';
 

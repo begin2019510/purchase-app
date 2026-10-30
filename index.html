@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="app-version" content="3.0.9">
+<meta name="app-version" content="3.0.10">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=3.0.9">
+<link rel="stylesheet" href="theme.css?v=3.0.10">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="3.0.9">
+<meta http-equiv="Expires" content="3.0.10">
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='3.0.9';
+  var V='3.0.10';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -631,18 +631,18 @@
     <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
     <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">请登录</p>
     <div id="loginForm">
-      <input id="loginUsername" type="text" placeholder="用户名" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <input id="loginUsername" type="text" placeholder="用户名" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
+      <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff">
       <p id="authError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">登 录</button>
+      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">登 录</button>
       <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showRegister()">没有账号？邀请码注册</p>
     </div>
     <div id="registerForm" style="display:none">
-      <input id="regUsername" type="text" placeholder="用户名（3-20字符）" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="regPassword" type="password" placeholder="密码（至少6位）" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px);margin-bottom:10px">
-      <input id="regInviteCode" type="text" placeholder="邀请码" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(4px)">
+      <input id="regUsername" type="text" placeholder="用户名（3-20字符）" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
+      <input id="regPassword" type="password" placeholder="密码（至少6位）" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
+      <input id="regInviteCode" type="text" placeholder="邀请码" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff">
       <p id="regError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">注 册</button>
+      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">注 册</button>
       <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showLogin()">已有账号？去登录</p>
     </div>
   </div>
@@ -697,7 +697,11 @@
         <div class="ts-group">
           <div class="ts-row">
             <span class="ts-label">📁 项目</span>
-            <select id="todoProjectId" class="ts-ctl"><option value="">无</option></select>
+            <select id="todoProjectId" class="ts-ctl" onchange="rebuildTodoPhaseSelect()"><option value="">无</option></select>
+          </div>
+          <div class="ts-row">
+            <span class="ts-label">📍 步骤</span>
+            <select id="todoPhaseIdx" class="ts-ctl"><option value="">无</option></select>
           </div>
           <div class="ts-row">
             <span class="ts-label">🔗 关联</span>
@@ -727,19 +731,19 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=3.0.9"></script>
-<script src="js/particles.js?v=3.0.9"></script>
-<script src="js/auth.js?v=3.0.9"></script>
-<script src="js/api.js?v=3.0.9"></script>
-<script src="js/stats.js?v=3.0.9"></script>
-<script src="js/expense.js?v=3.0.9"></script>
-<script src="js/items.js?v=3.0.9"></script>
-<script src="js/ai.js?v=3.0.9"></script>
-<script src="js/claude.js?v=3.0.9"></script>
-<script src="js/budget.js?v=3.0.9"></script>
-<script src="js/todomodule.js?v=3.0.9"></script>
-  <script src="js/project.js?v=3.0.9"></script>
-<script src="js/app.js?v=3.0.9"></script>
+<script src="js/utils.js?v=3.0.10"></script>
+<script src="js/particles.js?v=3.0.10"></script>
+<script src="js/auth.js?v=3.0.10"></script>
+<script src="js/api.js?v=3.0.10"></script>
+<script src="js/stats.js?v=3.0.10"></script>
+<script src="js/expense.js?v=3.0.10"></script>
+<script src="js/items.js?v=3.0.10"></script>
+<script src="js/ai.js?v=3.0.10"></script>
+<script src="js/claude.js?v=3.0.10"></script>
+<script src="js/budget.js?v=3.0.10"></script>
+<script src="js/todomodule.js?v=3.0.10"></script>
+  <script src="js/project.js?v=3.0.10"></script>
+<script src="js/app.js?v=3.0.10"></script>
 
 
 
@@ -887,13 +891,13 @@
 </div>
 <!-- 周报/月报专属界面 -->
 <div class="modal-overlay" id="reportOverlay" onclick="if(event.target===this)closeReportModal()" style="align-items:flex-end;padding:0">
-  <div id="reportSheet" style="width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:0 0 calc(12px + env(safe-area-inset-bottom));animation:reportUp .35s cubic-bezier(.25,.46,.54,1.02);-webkit-overflow-scrolling:touch">
+  <div id="reportSheet" style="width:100%;max-width:480px;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:0 0 calc(12px + env(safe-area-inset-bottom));animation:sheetUp var(--dur-sheet) var(--ease-sheet);-webkit-overflow-scrolling:touch">
     <div style="display:flex;justify-content:center;padding:10px 0 2px"><div style="width:36px;height:4px;border-radius:2px;background:var(--border)"></div></div>
     <div id="reportBody" style="padding:8px 20px 8px"></div>
   </div>
 </div>
 <style>
-@keyframes reportUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+/* reportUp 已并入 theme.css sheetUp */
 .report-hero-num{font-size:52px;font-weight:900;letter-spacing:-2px;line-height:1;color:var(--text);font-variant-numeric:tabular-nums}
 .report-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .report-cell{background:var(--card);border-radius:14px;padding:12px 8px;text-align:center;box-shadow:var(--shadow-1)}
@@ -951,7 +955,7 @@
       <input type="hidden" id="projectId">
       <div class="pjf-hero">
         <div class="pjf-icon">📁</div>
-        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>清单管要做的事，阶段管推进节奏，两边独立</span></div>
+        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>待办挂在每一步；阶段管节奏和花费</span></div>
       </div>
       <div class="pjf-group">
         <label>项目名称 *</label>
