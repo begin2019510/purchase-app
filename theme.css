@@ -1609,6 +1609,17 @@ body.modal-open{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .pjf-color{width:34px;height:34px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0;transition:transform .12s}
 .pjf-color:active{transform:scale(.92)}
 .pjf-color.sel{border-color:var(--card);box-shadow:0 0 0 2.5px var(--pri)}
+.pjf-step-bar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pjf-step-btn{padding:9px 14px;font-size:13px;font-weight:700;border-radius:10px;min-height:0}
+.pj-steps-struct{margin-top:10px;padding:10px;border:1px solid rgba(99,102,241,.22);border-radius:12px;background:rgba(99,102,241,.04)}
+.pj-steps-head{font-size:12px;font-weight:700;color:var(--pri);margin-bottom:8px}
+.pjf-step-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.pjf-step-idx{width:26px;height:26px;border-radius:8px;background:var(--bg);color:var(--muted);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pjf-step-row .pjf-input{flex:1;min-width:0;font-size:13px;padding:8px 10px;border-radius:10px}
+.pjf-step-budget{width:88px;flex-shrink:0}
+.pjf-step-del{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;line-height:1}
+.pjf-step-del:active{border-color:var(--red);color:var(--red)}
+.pjf-step-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
 
 /* ===== 阶段规划时间 ===== */
 .pj-plan{margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px}

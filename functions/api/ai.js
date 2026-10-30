@@ -47,6 +47,7 @@ export async function onRequest(context) {
       case 'purchase-chat': return await handlePurchaseChat(apiKey, data, corsHeaders);
       case 'budget-analyze': return await handleBudgetAnalyze(apiKey, data, corsHeaders);
       case 'generate-todo': return await handleGenerateTodo(apiKey, data, corsHeaders);
+      case 'parse-steps': return await handleParseSteps(apiKey, data, corsHeaders);
       default: return jsonResponse({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
@@ -508,6 +509,55 @@ ${evalContext ? '=== 首次评估结果 ===\n' + evalContext + '\n\n' : ''}规�
   }
 }
 
+
+// ===== 项目规划：自然语言 → 结构步骤 =====
+async function handleParseSteps(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
+  const text = String((data && data.text) || '').trim();
+  const projectName = String((data && data.projectName) || '').trim();
+  if (!text) return json({ ok: false, error: '请先写一段规划描述' }, 400, corsHeaders);
+
+  const systemPrompt = `你是项目规划助手。用户会用自然语言描述一个项目怎么推进。
+把描述拆成结构化步骤（阶段），输出严格 JSON（不要 markdown 代码块）:
+{"steps":[{"name":"短名称(2~12字)","budget":数字或null}],"projectTotal":数字或null}
+规则:
+- steps 最少 1 步、最多 6 步，按推进先后排列
+- name 要具体可执行，不要「第一步」「阶段1」「规划」这类空占位
+- 只在描述里提到金额、或能明确合理估出时才写 budget 数字；不确定必须 null，禁止编造精确预算
+- projectTotal 是各步 budget 之和；若没有任何预算则为 null
+- 忽略描述中的格式噪音（换顿号、语气词），只提炼真正步骤`;
+
+  const userMsg = (projectName ? '项目名: ' + projectName + '\n' : '') + '规划描述:\n' + text;
+  const result = await callAI(apiKey, systemPrompt, userMsg, 700);
+  const m = result.match(/\{[\s\S]*\}/);
+  if (m) {
+    try {
+      const obj = JSON.parse(m[0]);
+      let steps = Array.isArray(obj) ? obj : (Array.isArray(obj.steps) ? obj.steps : []);
+      steps = steps
+        .filter(function(s) { return s && String(s.name != null ? s.name : '').trim(); })
+        .map(function(s) {
+          var budget = s.budget;
+          if (budget === '' || budget === undefined || budget === null) budget = null;
+          else {
+            budget = Number(budget);
+            if (!isFinite(budget) || budget < 0) budget = null;
+          }
+          return { name: String(s.name).trim().slice(0, 50), budget: budget };
+        })
+        .filter(function(s) { return !!s.name; })
+        .slice(0, 6);
+      if (!steps.length) return json({ ok: false, error: '没能拆出有效步骤' });
+      var projectTotal = obj && obj.projectTotal != null && obj.projectTotal !== ''
+        ? Number(obj.projectTotal) : null;
+      if (projectTotal == null || !isFinite(projectTotal) || projectTotal < 0) {
+        projectTotal = steps.reduce(function(sum, s) { return sum + (s.budget || 0); }, 0) || null;
+      }
+      return json({ ok: true, data: { steps: steps, projectTotal: projectTotal } });
+    } catch (e) { /* fallthrough */ }
+  }
+  return json({ ok: false, error: 'AI 返回格式错误', raw: String(result).slice(0, 500) });
+}
 
 // ===== AI 待办建议 =====
 async function handleGenerateTodo(apiKey, data, corsHeaders) {

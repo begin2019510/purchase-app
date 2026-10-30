@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.7";
+const APP_VERSION = "3.0.8";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.8',date:'2026-10-30',items:['新建项目：步骤规划改自然语言，点「AI 拆成步骤」整理成 1–6 步结构（名称+预算）','拆出的步骤可增删改，也可手动加步；不再要求自己写「名称 | 预算」']},
 {v:'3.0.7',date:'2026-10-30',items:['💬 Claude 对话仅管理员可用（服务端 403 + 设置项隐藏）','回复气泡支持安全 Markdown：加粗 / 斜体 / 行内代码 / 代码块','Claude 提问（AskUserQuestion）会以可读文本显示在聊天与历史中']},
 {v:'3.0.6',date:'2026-10-30',items:['新建项目可规划 1~6 步，每步可单独设预算；阶段里随时可改本步预算','账本新增「分步预算」对照表：显示每步已花/预算与百分比，点一下可跳到对应阶段','步骤写法支持「名称 | 预算」；总预算与本步预算独立，关联到该步的采购+记账自动计入已花']},
 {v:'3.0.3',date:'2026-10-30',items:['💬 和 Claude 对话新增会话管理：☰ 查看历史会话列表，点击切换并恢复聊天记录','会话可重命名 / 删除（删除为归档，网页版可恢复）；「新会话」随时开启全新对话','杀掉页面重进会自动拉取上次会话的历史气泡，不再只剩空白']},

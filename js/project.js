@@ -337,6 +337,114 @@ function pickColor(c) {
   renderProjColors(c);
 }
 
+// ===== 步骤规划：自然语言 → 结构（可编辑预览）=====
+var _pjStructuredSteps = []; // [{name, budget}]，新建时由 AI 拆解或手动维护
+
+function pjRenderStepsPreview() {
+  var box = document.getElementById('pjStepsPreview');
+  if (!box) return;
+  if (!_pjStructuredSteps.length) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  box.style.display = '';
+  var html = '<div class="pj-steps-head"><span>已整理成 ' + _pjStructuredSteps.length + ' 步（可改）</span></div>';
+  _pjStructuredSteps.forEach(function(s, i) {
+    var b = s.budget == null ? '' : s.budget;
+    html += '<div class="pjf-step-row">'
+      + '<span class="pjf-step-idx">' + (i + 1) + '</span>'
+      + '<input class="pjf-input" maxlength="50" placeholder="步骤名称" data-pj-step-i="' + i + '" data-pj-step-k="name" value="' + escAttr(s.name || '') + '" oninput="App.project.stepField(this)">'
+      + '<input class="pjf-input pjf-step-budget" type="number" step="1" min="0" placeholder="预算" data-pj-step-i="' + i + '" data-pj-step-k="budget" value="' + escAttr(b) + '" oninput="App.project.stepField(this)">'
+      + '<button type="button" class="pjf-step-del" title="删除" onclick="App.project.removeStepRow(' + i + ')">×</button>'
+      + '</div>';
+  });
+  html += '<div class="pjf-step-actions">'
+    + '<button type="button" class="btn btn-secondary pjf-step-btn" onclick="App.project.addStepRow()">＋ 加一步</button>'
+    + '<button type="button" class="btn btn-secondary pjf-step-btn" onclick="App.project.clearSteps()">清空步骤</button>'
+    + '</div>';
+  box.innerHTML = html;
+}
+
+function pjStepField(inp) {
+  var i = Number(inp.getAttribute('data-pj-step-i'));
+  var k = inp.getAttribute('data-pj-step-k');
+  if (!_pjStructuredSteps[i]) return;
+  if (k === 'budget') {
+    var v = inp.value.trim();
+    _pjStructuredSteps[i].budget = v === '' ? null : Number(v);
+    if (!isFinite(_pjStructuredSteps[i].budget) || _pjStructuredSteps[i].budget < 0) _pjStructuredSteps[i].budget = null;
+  } else {
+    _pjStructuredSteps[i].name = inp.value;
+  }
+}
+
+function pjAddStepRow() {
+  if (_pjStructuredSteps.length >= 6) { toast('最多 6 步'); return; }
+  _pjStructuredSteps.push({ name: '', budget: null });
+  pjRenderStepsPreview();
+}
+
+function pjRemoveStepRow(i) {
+  _pjStructuredSteps.splice(i, 1);
+  pjRenderStepsPreview();
+}
+
+function pjClearSteps() {
+  _pjStructuredSteps = [];
+  pjRenderStepsPreview();
+  var el = document.getElementById('projectSteps');
+  if (el) el.value = '';
+}
+
+async function pjParseSteps(opts) {
+  opts = opts || {};
+  var btn = document.getElementById('pjParseStepsBtn');
+  var raw = (document.getElementById('projectSteps') || {}).value || '';
+  raw = raw.trim();
+  var name = (document.getElementById('projectName') || {}).value || '';
+  if (!raw) { if (!opts.silent) toast('先写一段规划描述，再点 AI 拆解'); return null; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 拆解中…'; }
+  try {
+    var res = await aiRequest('parse-steps', { text: raw, projectName: name.trim() });
+    if (!res || !res.ok || !res.data || !Array.isArray(res.data.steps) || !res.data.steps.length) {
+      throw new Error((res && res.error) || '没能拆出步骤');
+    }
+    _pjStructuredSteps = res.data.steps.slice(0, 6).map(function(s) {
+      return {
+        name: String(s.name || '').trim().slice(0, 50),
+        budget: (s.budget == null || s.budget === '' || !isFinite(Number(s.budget)) || Number(s.budget) < 0) ? null : Number(s.budget),
+      };
+    }).filter(function(s) { return !!s.name; });
+    if (!_pjStructuredSteps.length) throw new Error('没能拆出步骤');
+    pjRenderStepsPreview();
+    if (!opts.silent) toast('已拆成 ' + _pjStructuredSteps.length + ' 步，可改后保存');
+    return _pjStructuredSteps.slice();
+  } catch (e) {
+    if (!opts.silent) toast('拆解失败: ' + pjErrorText(e));
+    throw e;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 拆成步骤'; }
+  }
+}
+
+function pjCollectSteps() {
+  // 以预览输入框当前值为准
+  var out = [];
+  _pjStructuredSteps.forEach(function(s, i) {
+    var nameEl = document.querySelector('[data-pj-step-i="' + i + '"][data-pj-step-k="name"]');
+    var budgetEl = document.querySelector('[data-pj-step-i="' + i + '"][data-pj-step-k="budget"]');
+    var name = String((nameEl ? nameEl.value : s.name) || '').trim().slice(0, 50);
+    var budget = null;
+    if (budgetEl && budgetEl.value.trim() !== '') {
+      budget = Number(budgetEl.value.trim());
+      if (!isFinite(budget) || budget < 0) budget = null;
+    }
+    if (name) out.push({ name: name, budget: budget });
+  });
+  return out.slice(0, 6);
+}
+
 // ===== 新建 / 编辑 =====
 function openProjectModal(id) {
   var overlay = document.getElementById('projectModalOverlay');
@@ -350,6 +458,8 @@ function openProjectModal(id) {
   if (_stepsGroup) _stepsGroup.style.display = p ? 'none' : '';
   var _stepsEl = document.getElementById('projectSteps');
   if (_stepsEl) _stepsEl.value = '';
+  _pjStructuredSteps = [];
+  pjRenderStepsPreview();
   if (p && p.dueDate) {
     var d = new Date(p.dueDate);
     document.getElementById('projectDueDate').value = d.getFullYear() + '-' + pjPad(d.getMonth() + 1) + '-' + pjPad(d.getDate()) + 'T' + pjPad(d.getHours()) + ':' + pjPad(d.getMinutes());
@@ -383,26 +493,24 @@ async function saveProject() {
   var reopenId = _pjReopenAfterEdit;
   var reopenTab = _pjReopenTab || 'list';
 
-  // 只规划现在知道的步骤；空行忽略，最多 6 步。服务端会把未填满的槽位标为未使用。
-  // 每行支持「名称 | 预算」，预算可空。
+  // 步骤：优先用预览里的结构化结果；只写了自然语言则先 AI 拆成结构，拆不动不让静默丢掉。
   var steps = [];
   if (!editing) {
-    var stepsEl = document.getElementById('projectSteps');
-    steps = (stepsEl ? stepsEl.value : '').split(/\r?\n/)
-      .map(function(s) { return s.trim(); })
-      .filter(function(s) { return !!s; })
-      .map(function(line) {
-        var parts = line.split(/\s*[|｜]\s*/);
-        var name = String(parts[0] || '').trim().slice(0, 50);
-        var budget = null;
-        if (parts.length > 1 && String(parts[1] || '').trim() !== '') {
-          budget = Number(String(parts[1]).trim());
-          if (!isFinite(budget) || budget < 0) return { invalid: true };
+    steps = pjCollectSteps();
+    if (!steps.length) {
+      var stepsEl = document.getElementById('projectSteps');
+      var raw = stepsEl ? stepsEl.value.trim() : '';
+      if (raw) {
+        try {
+          await pjParseSteps({ silent: true });
+          steps = pjCollectSteps();
+        } catch (e) {
+          toast('步骤规划还没整理成结构。请点「AI 拆成步骤」，或手动加一步、清空规划描述后再保存');
+          return;
         }
-        return { name: name, budget: budget };
-      });
-    if (steps.some(function(s) { return s.invalid; })) { toast('步骤预算请填 0 或正数，或留空'); return; }
-    steps = steps.filter(function(s) { return !!s.name; });
+        if (!steps.length) { toast('步骤规划里没有有效步骤，请检查名称'); return; }
+      }
+    }
     if (steps.length > 6) { toast('最多规划 6 步'); return; }
   }
 
@@ -1131,6 +1239,11 @@ App.project = {
   openProjectModal: openProjectModal,
   closeProjectModal: closeProjectModal,
   saveProject: saveProject,
+  parseSteps: pjParseSteps,
+  addStepRow: pjAddStepRow,
+  removeStepRow: pjRemoveStepRow,
+  clearSteps: pjClearSteps,
+  stepField: pjStepField,
   deleteProject: deleteProject,
   archiveProject: archiveProject,
   editFromDetail: editProjectFromDetail,
