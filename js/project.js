@@ -1027,11 +1027,14 @@ async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId,
   pjRememberTodoCategory(category);
   var pidx = (phaseIdx === null || phaseIdx === undefined || phaseIdx === '') ? null : Number(phaseIdx);
   if (pidx != null && !Number.isInteger(pidx)) pidx = null;
+  // 提交中防双击；乐观插入，但 DOM 里的 id 必须在拿到服务端 id 后重绘一次
+  if (inputEl) inputEl.disabled = true;
   var tmp = {
     id: 'tmpPJ_' + Date.now(), title: title, status: '待办', priority: '中',
     category: category, repeat: '无', projectId: projectId, phaseIdx: pidx, subtasks: '[]', tags: '[]'
   };
   todoList.unshift(tmp);
+  window._pjPendingTodoTitle = title;
   if (inputEl) inputEl.value = '';
   renderProject();
   if (_pjDetailId === projectId) pjRerenderDetail(projectId);
@@ -1043,6 +1046,7 @@ async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId,
     });
     if (r && r.error) throw new Error(r.error || '保存失败');
     if (r && r.id) tmp.id = r.id;
+    else throw new Error('服务端未返回 id');
   } catch (e) {
     // 只有保存失败才回滚；保存成功后的界面刷新错误不能把已入库的待办删掉
     todoList = todoList.filter(function(t) { return t !== tmp; });
@@ -1050,9 +1054,16 @@ async function pjCreateProjectTodo(projectId, title, category, inputEl, focusId,
     if (_pjDetailId === projectId) pjRerenderDetail(projectId);
     toast('添加失败: ' + pjErrorText(e));
     return;
+  } finally {
+    if (inputEl) { try { inputEl.disabled = false; } catch (e) {} }
   }
+  // 关键：POST 后内存里已是真实 id，但 DOM onclick 仍是 tmpPJ_*
+  // 不重绘则点详情/编辑找不到待办（标题丢失、无法立即编辑）
   try {
+    renderProject();
+    if (_pjDetailId === projectId) pjRerenderDetail(projectId);
     if (typeof currentTab !== 'undefined' && currentTab === 'todo' && typeof renderTodo === 'function') renderTodo();
+    try { setCachedData('todos', todoList); } catch (e) {}
   } catch (e) {}
   if (focusId) pjFocus(document.getElementById(focusId));
 }
@@ -1075,7 +1086,8 @@ async function quickAddTodo(projectId, phaseIdx) {
 async function toggleProjectTodo(todoId, done, projectId) {
   if (typeof todoList === 'undefined') return;
   var t = todoList.find(function(x) { return x.id === todoId; });
-  if (!t) return;
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
   var oldStatus = t.status, oldCompleted = t.completedAt;
   t.status = done ? '已完成' : '待办';
   t.completedAt = done ? Date.now() : null;

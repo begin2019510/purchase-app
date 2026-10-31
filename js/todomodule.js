@@ -691,17 +691,27 @@ function updateLinkOptions() {
 function openTodoModal(id) {
   try {
     console.log("openTodoModal called, id=" + id);
-    editingTodoId = id || null;
-    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u5206\u7c7b\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
-    var pendingPid = !id ? (window._pendingProjectId || "") : "";
-    var pendingCat = !id ? window._pendingTodoCategory : undefined;
     var overlay = document.getElementById("todoModalOverlay");
     if (!overlay) { console.log("ERROR: todoModalOverlay not found"); return; }
     var t = null;
     if (id) {
       t = todoList.find(function(x){ return x.id === id; });
-      console.log("Found todo: " + (t ? "YES, title=" + t.title + ", subtasks=" + (t.subtasks||"").substring(0,100) : "NOT FOUND, todoList.length=" + todoList.length));
+      // \u4e50\u89c2\u63d2\u5165\u540e DOM \u53ef\u80fd\u4ecd\u662f tmp id\u3001\u5185\u5b58\u5df2\u662f\u771f\u5b9e id\uff1a\u6309 title \u56de\u9000\u4e00\u6b21
+      if (!t && String(id).indexOf('tmp') === 0) {
+        var _hint = window._pjPendingTodoTitle || "";
+        if (_hint) t = todoList.find(function(x){ return x.title === _hint; });
+      }
+      if (!t) {
+        toast('\u8fd9\u6761\u5f85\u529e\u8fd8\u5728\u540c\u6b65\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5');
+        return;
+      }
+      // \u56de\u9000\u547d\u4e2d\u540e\u4e5f\u8981\u7528\u771f\u5b9e id\uff0c\u5426\u5219\u4fdd\u5b58\u4f1a\u6253\u5230\u4e0d\u5b58\u5728\u7684 tmp \u8bb0\u5f55
+      id = t.id;
     }
+    editingTodoId = t ? t.id : null;
+    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u5206\u7c7b\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
+    var pendingPid = !id ? (window._pendingProjectId || "") : "";
+    var pendingCat = !id ? window._pendingTodoCategory : undefined;
     document.getElementById("todoTitle").value = t ? t.title : "";
     document.getElementById("todoDesc").value = t ? t.description : "";
     document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
@@ -923,6 +933,8 @@ async function saveTodo() {
     if (!r) { toast('保存失败: 服务器无响应'); return; }
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); if(_tmpTodo)todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id});else loadTodos().then(render).catch(function(){}); render(); return; }
     toast(_editId ? '已更新' : '已创建');
+    // 必须在拿到真实 id 后再重绘，否则列表 onclick 仍是 tmpT_*，点开编辑会空标题
+    try { window._pjPendingTodoTitle = body.title; } catch (e) {}
     render();
     // 项目详情若还开着，立即刷新步骤标签/本步待办
     try {
@@ -938,7 +950,17 @@ async function saveTodo() {
 
 function openTodoDetail(id) {
   var t = todoList.find(function(x){ return x.id === id; });
-  if (!t) return;
+  if (!t) {
+    // tmp id 残留：用最近乐观插入的标题兜底
+    if (String(id).indexOf('tmp') === 0) {
+      var _hint = window._pjPendingTodoTitle || '';
+      if (_hint) t = todoList.find(function(x){ return x.title === _hint; });
+    }
+  }
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  // 后续按钮一律用解析后的真实 id，避免再点到 tmpPJ_*
+  id = t.id;
+  if (String(id).indexOf('tmp') !== 0) window._pjPendingTodoTitle = '';
   var overlay = document.getElementById('todoDetailOverlay');
   if (!overlay) return;
 
@@ -1088,7 +1110,9 @@ function closeTodoDetail() {
 
 function cycleTodoStatus(id) {
   var t = todoList.find(function(x){ return x.id === id; });
-  if (!t) return;
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  // 未拿到服务端 id 时禁止 PUT，避免用 tmp id 写库失败后把界面状态改乱
+  if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
   var oldStatus = t.status;
   var nextStatus = oldStatus === '待办' ? '进行中' : oldStatus === '进行中' ? '已完成' : '待办';
   var completedAt = nextStatus === '已完成' ? Date.now() : null;
@@ -1110,9 +1134,11 @@ function cycleTodoStatus(id) {
 }
 
 async function deleteTodo(id) {
+  if (String(id).indexOf('tmp') === 0) { toast('保存完成后再删除'); return; }
   if (!confirm('确定删除？')) return;
   closeTodoDetail();
   var t = todoList.find(function(x){ return x.id === id; });
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
   var oldStatus = t ? t.status : null;
   if (t) { t.status = '已删除'; }
   render();

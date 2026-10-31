@@ -97,7 +97,8 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .img-fullscreen img{max-width:95vw;max-height:95vh;border-radius:8px}
 
 /* ===== Header ===== */
-.header{background:var(--pri-g);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* 实色顶栏：去掉 text-shadow / 渐变叠加，避免 iOS 状态栏下看起来发虚发糊 */
+.header{background:var(--pri);color:#fff;padding:20px 16px 16px;position:sticky;top:0;z-index:50}
 /* Dynamic Island / notch: standalone web-app top inset */
 @supports (padding-top: env(safe-area-inset-top)){
   .header{padding-top:calc(20px + env(safe-area-inset-top,0px))}
@@ -719,7 +720,8 @@ span.desktop-only.hidden { display: none !important; }
 /* ===== Desktop (1024px+) ===== */
 @media (min-width: 1024px) {
   .container { max-width: 900px; }
-  .header { padding: 24px 32px 20px !important; }
+  /* 勿用 padding 简写：会清掉 safe-area padding-top */
+  .header { padding-left: 32px !important; padding-right: 32px !important; padding-bottom: 20px !important; }
   .header h1 { font-size: 22px !important; }
   .card, .swipe-card { padding: 20px 24px 18px !important; margin-bottom: 14px !important; }
   .search-bar { max-width: 900px; margin: 0 auto; }
@@ -752,7 +754,6 @@ span.desktop-only.hidden { display: none !important; }
 }
 
 /* ===== Mobile (< 768px) ===== */
-/* ===== Mobile (< 768px) ===== */
 @media (max-width: 767px) {
   .mobile-only { display: flex !important; }
   .mobile-only.settings-overlay { display: none !important; }
@@ -763,8 +764,10 @@ span.desktop-only.hidden { display: none !important; }
   /* ???????? */
   body { padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important; }
 
-  /* Header: ??????? */
-  .header { padding: 6px 12px 4px !important; }
+  /* Header: 手机端紧凑，但必须保留 safe-area（勿用 padding 简写覆盖 padding-top） */
+  .header { padding-left: 12px !important; padding-right: 12px !important; padding-bottom: 4px !important; }
+  /* 与顶部统一规则一致：灵动岛/刘海机型多留 6px 呼吸，普通屏至少 8px */
+  .header { padding-top: max(calc(var(--sat, 0px) + 6px), 8px) !important; }
   .header-top { margin-bottom: 0 !important; }
   .header-stats { display: none !important; }
   .header h1 { font-size: 15px !important; }
@@ -1169,13 +1172,11 @@ body.dark .ai-suggestion-card{background:rgba(255,255,255,.04)}
 body.dark .ai-todo-card{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
 
 
-/* Safe area for notch phones */
+/* Safe area for notch phones — 顶栏 padding 已在文件头 @supports + 手机 media 里写清，
+   这里不再用 !important 盖一遍（否则会盖掉手机 6px+safe-area，或把桌面 24px 压成 12px） */
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
-}
-.header {
-  padding-top: max(var(--sat), 8px) !important;
 }
 .bottom-nav {
   padding-bottom: max(var(--sab), 8px) !important;
@@ -1194,16 +1195,6 @@ body.dark .ai-todo-card{background:rgba(255,255,255,.04);border-color:rgba(255,2
 input, textarea {
   -webkit-user-select: text;
   user-select: text;
-}
-:root {
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-}
-.header {
-  padding-top: max(var(--sat), 8px) !important;
-}
-.bottom-nav {
-  padding-bottom: max(var(--sab), 8px) !important;
 }
 
 
