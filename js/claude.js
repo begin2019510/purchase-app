@@ -121,29 +121,99 @@ function newClaudeSession(){
   claudeRefreshSessions(true);
 }
 
-// 聊天气泡安全 Markdown：先 esc 再转换（加粗/斜体/行内码/代码块/简单列表）
-// 不允许任意 HTML；用户气泡仍纯 text
+// 聊天气泡安全 Markdown：块级结构先摘出（代码块/表格/引用/列表），再 esc + 行内语法。
+// 占位符 %%MDn%% 能扛住 esc；不允许任意 HTML。用户气泡仍纯 text。
 function claudeRenderMd(text){
-  var PH='@@F@@';
   var s=String(text==null?'':text);
-  var fences=[];
-  // 围栏代码块（含流式未闭合）
+  var stash=[];
+  function keep(html){ stash.push(html); return '%%MD'+(stash.length-1)+'%%'; }
+  function cell(t){
+    var x=esc(String(t==null?'':t));
+    x=x.replace(/`([^`]+)`/g,'<code class="md-code">$1</code>');
+    x=x.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    return x;
+  }
+
+  // 1) 围栏代码块（含流式未闭合）
   s=s.replace(/```([^\n`]*)\n([\s\S]*?)```/g,function(_,lang,code){
-    fences.push('<pre class="md-pre"><code>'+esc(code.replace(/\n$/,''))+'</code></pre>');
-    return PH+(fences.length-1)+PH;
+    return keep('<pre class="md-pre"><code>'+esc(code.replace(/\n$/,''))+'</code></pre>');
   });
   s=s.replace(/```([^\n`]*)\n([\s\S]*)$/,function(_,lang,code){
-    fences.push('<pre class="md-pre"><code>'+esc(code)+'</code></pre>');
-    return PH+(fences.length-1)+PH;
+    return keep('<pre class="md-pre"><code>'+esc(code)+'</code></pre>');
   });
+
+  // 2) GFM 管道表：| head | … | + |---| 分隔行
+  s=s.replace(/(?:^|\n)[ \t]*\|[^\n]+\|[ \t]*(?:\n[ \t]*\|[^\n]+\|)*/g,function(block){
+    var lines=block.replace(/^\n/,'').replace(/\s+$/,'').split('\n');
+    if(lines.length<2) return block;
+    function parseRow(line){
+      var t=String(line).trim().replace(/^\|/,'').replace(/\|$/,'');
+      return t.split('|').map(function(c){ return c.trim(); });
+    }
+    var head=parseRow(lines[0]);
+    var sep=parseRow(lines[1]);
+    if(!head.length||!sep||sep.length<head.length) return block;
+    for(var k=0;k<head.length;k++){
+      if(!/^:?-+:?$/.test(sep[k]||'')) return block;
+    }
+    var html='<div class="md-table-wrap"><table><thead><tr>';
+    head.forEach(function(c){ html+='<th>'+cell(c)+'</th>'; });
+    html+='</tr></thead><tbody>';
+    for(var i=2;i<lines.length;i++){
+      if(!/^\s*\|/.test(lines[i])) continue;
+      var row=parseRow(lines[i]);
+      html+='<tr>';
+      for(var j=0;j<head.length;j++) html+='<td>'+cell(row[j]||'')+'</td>';
+      html+='</tr>';
+    }
+    html+='</tbody></table></div>';
+    return '\n'+keep(html)+'\n';
+  });
+
+  // 3) 引用块
+  s=s.replace(/(?:^|\n)(?:>[ \t]?[^\n]*(?:\n|$))+/g,function(m){
+    var body=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').map(function(l){
+      return l.replace(/^>[ \t]?/,'');
+    }).join('\n');
+    return '\n'+keep('<blockquote>'+esc(body).replace(/\n/g,'<br>')+'</blockquote>')+'\n';
+  });
+
+  // 4) 无序 / 有序列表（连续行成组）
+  s=s.replace(/(?:^|\n)(?:[ \t]*[-*+][ \t]+[^\n]*(?:\n[ \t]*[-*+][ \t]+[^\n]*)*)/g,function(m){
+    var items=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').filter(Boolean).map(function(line){
+      return '<li>'+esc(line.replace(/^[ \t]*[-*+][ \t]+/,''))+'</li>';
+    }).join('');
+    if(!items) return m;
+    return '\n'+keep('<ul>'+items+'</ul>')+'\n';
+  });
+  s=s.replace(/(?:^|\n)(?:[ \t]*\d+\.[ \t]+[^\n]*(?:\n[ \t]*\d+\.[ \t]+[^\n]*)*)/g,function(m){
+    var items=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').filter(Boolean).map(function(line){
+      return '<li>'+esc(line.replace(/^[ \t]*\d+\.[ \t]+/,''))+'</li>';
+    }).join('');
+    if(!items) return m;
+    return '\n'+keep('<ol>'+items+'</ol>')+'\n';
+  });
+
+  // 5) 其余文本：esc + 行内语法
   s=esc(s);
   s=s.replace(/`([^`\n]+)`/g,'<code class="md-code">$1</code>');
-  s=s.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
-  s=s.replace(/(^|[^*\w])\*([^*\n]+?)\*(?=[^*\w]|$)/g,'$1<em>$2</em>');
-  s=s.replace(/__([^_\n]+?)__/g,'<strong>$1</strong>');
-  // 简单无序列表
-  s=s.replace(/(?:^|\n)[ \t]*[-*+] +(.*)/g,'\n• $1');
-  s=s.replace(/@@F@@(\d+)@@F@@/g,function(_,i){ return fences[+i]||''; });
+  s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/__([^_\n]+)__/g,'<strong>$1</strong>');
+  s=s.replace(/~~([^~\n]+)~~/g,'<del>$1</del>');
+  s=s.replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g,'$1<em>$2</em>');
+  // 标题（降为粗体行，聊天里不占太大）
+  s=s.replace(/(^|\n)[ \t]*#{1,6}[ \t]+(.+?)[ \t]*$/gm,'$1<strong class="md-h">$2</strong>');
+  // 分割线
+  s=s.replace(/(^|\n)[ \t]*([-*_])[ \t]*(?:\2[ \t]*){2,}[ \t]*$/gm,'$1<hr>');
+
+  // 6) 换行 → <br>，再还回块级
+  s=s.replace(/\n+/g,'<br>');
+  s=s.replace(/%%MD(\d+)%%/g,function(_,i){ return stash[+i]||''; });
+  // 去掉块级前后多余 <br>
+  s=s.replace(/<br>(?=<(?:pre\b|ul\b|ol\b|blockquote\b|div class="md-table-wrap"|hr\b|strong class="md-h"))/g,'');
+  s=s.replace(/(?:<br>)+(?=<\/(?:pre|ul|ol|blockquote|div|table)>)/g,'');
+  s=s.replace(/<br>(?=<hr>)/g,'');
+  s=s.replace(/(<hr>)<br>/g,'$1');
   return s;
 }
 

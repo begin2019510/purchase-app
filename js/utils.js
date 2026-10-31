@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.19";
+const APP_VERSION = "3.0.20";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.20',date:'2026-11-01',items:['和 Claude 对话：AI 回复完整 Markdown 渲染（表格/标题/列表/引用/分割线/删除线），不再「结构全乱」','表格窄屏横向滚动，气泡内不撑破；AI 气泡去掉 pre-wrap，粗体/列表按 HTML 排版','历史与流式更新同样走新渲染器']},
 {v:'3.0.19',date:'2026-11-01',items:['待办支持多档提前提醒：设了具体时间默认提前 20 分钟、10 分钟各推一次（如 15:00 到期 → 14:40 与 14:50）','提醒列表新增「提前20分钟」；自定义提醒档位逐档独立触发','服务端按 reminders 数组调度推送并幂等记录已发档位；创建待办不再丢弃提醒设置']},
 {v:'3.0.18',date:'2026-10-31',items:['项目待办与普通待办系统通知文案区分：项目显示「📁 项目 · 计划名 · 步骤」，普通显示「⏰/⚠️ 待办」','服务端启用待办到期/早间推送定时任务（每 5 分钟）','推送按钮按类型区分：待办用「去查看」，记账仍用「去记账」']},
 {v:'3.0.17',date:'2026-10-31',items:['修复新建/编辑待办保存时报「Can\'t find variable: todoTags」：标签/提醒变量已正确声明并在打开时加载，保存不再抛错','表单字段与 esc 不再把空值显示成字面量「undefined」','页脚与帮助/隐私页增加公安备案号']},
