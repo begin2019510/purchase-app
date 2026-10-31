@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.14";
+const APP_VERSION = "3.0.15";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.15',date:'2026-10-31',items:['修复点项目卡片无反应：详情头部「当前步」用了未声明的 cur，一点就抛 ReferenceError（3.0.13 引入）','回归：卡片/阶段/账本/切步/本步设置保存/待办标题带入弹窗 均通过本地用例']},
 {v:'3.0.14',date:'2026-10-31',items:['修复「网站打不开」：去掉首屏 jsDelivr 依赖，Sortable 本地托管且不阻塞渲染','Service Worker 页面导航超时放宽到 5s，安装时预缓存首页，升级瞬间不再白屏/卡旧版']},
 {v:'3.0.13',date:'2026-10-31',items:['项目阶段里输入待办后点「更多设置」，弹窗会带上刚输入的标题，保存后自动清掉快速框避免重复','弹窗统一淡入+上滑动画；项目详情/列表突出「当前步」脉冲高亮，一眼能看出做到哪一步','顶栏强制实色紫：状态栏区域至少留出高度、禁止 blur/阴影，页签吸顶跟随顶栏高度，不再漏内容显糊']},
 {v:'3.0.12',date:'2026-10-31',items:['修复项目里刚添加的待办点不开/标题丢失：服务端返回真实 id 后会立即重绘，不再残留临时 id','打开详情/编辑时若 id 还在同步会提示，不再静默打开空表单；保存中禁止用临时 id 勾选或删除','顶栏改为实色、去掉发虚的阴影与渐变叠加，刘海/灵动岛安全区 padding 不再被后写规则覆盖']},

@@ -619,6 +619,8 @@ function openProjectDetail(id, opts) {
   html += '<button class="pj2-icon-btn" onclick="closeProjectDetail()" aria-label="关闭">✕</button>';
   html += '</div>';
 
+  // v3.0.13 加 now-pill 时漏了 cur 声明 → ReferenceError，点卡片无反应
+  var cur = Number(p.currentPhase) || 0;
   var _cph = (p.phases || [])[cur] || {};
   var _live = p.status === '进行中';
   html += '<div class="pj2-summary">';
