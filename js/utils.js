@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.16";
+const APP_VERSION = "3.0.17";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.17',date:'2026-10-31',items:['修复新建/编辑待办保存时报「Can\'t find variable: todoTags」：标签/提醒变量已正确声明并在打开时加载，保存不再抛错','表单字段与 esc 不再把空值显示成字面量「undefined」','页脚与帮助/隐私页增加公安备案号']},
 {v:'3.0.16',date:'2026-10-31',items:['修复项目步骤里点开待办后「完成/删除」不同步：完成后列表会立刻更新（不再只刷待办页签）','修复弹层内提示被压住看不清：Toast 提到所有弹层之上、落在顶栏下方，成功/失败文案可读','改截止时间非法日期不再抛错；空日期安全保存为无日期']},
 {v:'3.0.15',date:'2026-10-31',items:['修复点项目卡片无反应：详情头部「当前步」用了未声明的 cur，一点就抛 ReferenceError（3.0.13 引入）','回归：卡片/阶段/账本/切步/本步设置保存/待办标题带入弹窗 均通过本地用例']},
 {v:'3.0.14',date:'2026-10-31',items:['修复「网站打不开」：去掉首屏 jsDelivr 依赖，Sortable 本地托管且不阻塞渲染','Service Worker 页面导航超时放宽到 5s，安装时预缓存首页，升级瞬间不再白屏/卡旧版']},
@@ -116,9 +117,10 @@ function validateAmount(input) {
   if (v < 0) input.value = 0;
   if (v > 999999) input.value = 999999;
 }
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+// null/undefined 必须变成空串：否则 input.value=undefined、esc(undefined) 会在表单里显示字面量 "undefined"
+function esc(s){const d=document.createElement('div');d.textContent=(s==null||s==='undefined')?'':String(s);return d.innerHTML}
 function stripMd(s){if(!s)return'';return s.replace(/\*\*(.+?)\*\*/g,'').replace(/\*(.+?)\*/g,'').replace(/`([^`]+)`/g,'').replace(/^#{1,6}\s+/gm,'').replace(/^>\s+/gm,'').replace(/^[-*]\s+/gm,'').replace(/^\d+\.\s+/gm,'').replace(/\n{3,}/g,'\n\n').trim()}
-function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escAttr(s){return String((s==null||s==='undefined')?'':s).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 function getMonth(d){if(!d)return null;try{const ts=typeof d==='number'?d:Date.parse(d);return new Date(ts+8*3600*1000).toISOString().slice(0,7)}catch{return null}}
 function getThisMonth(){return new Date(Date.now()+8*3600*1000).toISOString().slice(0,7)}

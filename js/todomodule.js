@@ -669,6 +669,11 @@ function switchTodoFilter(f) { todoFilter = f; renderTodo(); }
 
 var editingTodoId = null;
 var todoSubtaskRows = [];
+// 必须声明：saveTodo / renderTagChips / renderReminderUI / NLP 都会读它们。
+// 此前只「用」不「声明」，iOS Safari 直接 ReferenceError: Can't find variable: todoTags
+var todoTags = [];
+var todoReminders = [];
+var todoImage = '';
 
 // Populate link dropdown based on selected link type
 function updateLinkOptions() {
@@ -713,15 +718,30 @@ function openTodoModal(id) {
     var pendingPid = !id ? (window._pendingProjectId || "") : "";
     var pendingCat = !id ? window._pendingTodoCategory : undefined;
     var pendingTitle = !id ? (window._pendingTodoTitle || "") : "";
-    document.getElementById("todoTitle").value = t ? t.title : pendingTitle;
-    document.getElementById("todoDesc").value = t ? t.description : "";
-    document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
+    // \u6253\u5f00\u65f6\u91cd\u7f6e\u8349\u7a3f\u6001\uff0c\u907f\u514d\u4e0a\u4e00\u6b21\u7684 tags/reminders \u4e32\u5230\u8fd9\u4e00\u6761
+    todoTags = [];
+    todoReminders = [];
+    todoImage = '';
+    if (t) {
+      try {
+        var _tags0 = JSON.parse(t.tags || '[]');
+        if (Array.isArray(_tags0)) todoTags = _tags0.filter(function(x){ return x != null && String(x) !== ''; }).map(String);
+      } catch (e) {}
+      try {
+        var _rem0 = JSON.parse(t.reminders || '[]');
+        if (Array.isArray(_rem0)) todoReminders = _rem0.map(Number).filter(function(n){ return isFinite(n); });
+      } catch (e) {}
+      todoImage = t.image || '';
+    }
+    document.getElementById("todoTitle").value = (t && t.title) ? t.title : pendingTitle;
+    document.getElementById("todoDesc").value = (t && t.description) ? t.description : "";
+    document.getElementById("todoPriority").value = (t && t.priority) ? t.priority : "\u4e2d";
     var defaultCat = t ? (t.category || "\u5176\u4ed6") : (pendingCat || (pendingPid ? (function(){ try { return localStorage.getItem("pj_todo_category") || "\u5de5\u4f5c"; } catch(e) { return "\u5de5\u4f5c"; } })() : "\u5176\u4ed6"));
     document.getElementById("todoCategory").value = defaultCat;
-    document.getElementById("todoRepeat").value = t ? t.repeat : "\u65e0";
-    document.getElementById("todoLinkType").value = t ? (t.linkType || "\u65e0") : "\u65e0";
+    document.getElementById("todoRepeat").value = (t && t.repeat) ? t.repeat : "\u65e0";
+    document.getElementById("todoLinkType").value = (t && t.linkType) ? t.linkType : "\u65e0";
     updateLinkOptions();
-    document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
+    document.getElementById("todoLinkId").value = (t && t.linkId) ? t.linkId : "";
     var projSel = document.getElementById("todoProjectId");
     if (projSel && typeof getProjectOptions === "function") {
       var pid = t ? (t.projectId || "") : pendingPid;
@@ -753,6 +773,9 @@ function openTodoModal(id) {
       } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
     }
     renderSubtaskRows();
+    // 标签/提醒区：有容器才画；没有也安全（iOS 表单目前只有 reminder 容器）
+    try { if (typeof renderTagChips === 'function') renderTagChips(); } catch (e) {}
+    try { if (typeof renderReminderUI === 'function') renderReminderUI(); } catch (e) {}
     var _subEl = document.getElementById("todoSubtaskList");
     console.log("AFTER renderSubtaskRows: el=" + !!_subEl + ", html=" + (_subEl ? _subEl.innerHTML.length : "null") + ", rows=" + todoSubtaskRows.length + ", firstText=" + ((todoSubtaskRows[0]||{}).text||"EMPTY"));
     overlay.classList.add("active");
@@ -781,6 +804,9 @@ function closeTodoModal() {
   // \u8349\u7a3f\u5df2\u590d\u5236\u8fdb\u8868\u5355\uff1b\u5173\u95ed\u540e\u6e05\u6389\u6682\u5b58\uff0c\u907f\u514d\u4e0b\u6b21\u8bef\u5e26\u5165
   window._pendingTodoTitle = "";
   window._pendingQuickInputId = "";
+  todoTags = [];
+  todoReminders = [];
+  todoImage = '';
 }
 
 // 项目 → 步骤下拉：选了项目才有步骤；未使用的空槽不出现
@@ -923,10 +949,10 @@ async function saveTodo() {
       projectId: _projId,
       phaseIdx: _phaseIdx,
       linkId: document.getElementById('todoLinkId').value || '',
-      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
-      tags: JSON.stringify(todoTags),
-      reminders: JSON.stringify(todoReminders),
-      image: (typeof todoImage !== 'undefined' ? todoImage : '') || ''
+      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s && s.text && s.text.trim(); })),
+      tags: JSON.stringify(Array.isArray(todoTags) ? todoTags : []),
+      reminders: JSON.stringify(Array.isArray(todoReminders) ? todoReminders : []),
+      image: (typeof todoImage !== 'undefined' && todoImage) || ''
     };
     try {
       localStorage.setItem('todo_last_category', body.category);
@@ -1284,6 +1310,7 @@ function getAllTags() {
 function renderTagChips() {
   var el = document.getElementById('todoTagChips');
   if (!el) return;
+  if (!Array.isArray(todoTags)) todoTags = [];
   var html = '';
   todoTags.forEach(function(tag, i) {
     var c = stringHashColor(tag);
@@ -1327,6 +1354,7 @@ function showFullImage(src) {
 function renderReminderUI() {
   var el = document.getElementById('todoReminderChips');
   if (!el) return;
+  if (!Array.isArray(todoReminders)) todoReminders = [];
   var html = '';
   var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
   todoReminders.forEach(function(r, i) {
