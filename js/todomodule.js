@@ -951,7 +951,14 @@ async function saveTodo() {
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s && s.text && s.text.trim(); })),
       tags: JSON.stringify(Array.isArray(todoTags) ? todoTags : []),
-      reminders: JSON.stringify(Array.isArray(todoReminders) ? todoReminders : []),
+      reminders: (function(){
+        var _rems = Array.isArray(todoReminders) ? todoReminders.map(Number).filter(function(n){return isFinite(n)&&n>0;}) : [];
+        if (!_rems.length && body.dueDate) {
+          var _d = new Date(body.dueDate);
+          if (isFinite(_d.getTime()) && (_d.getHours() || _d.getMinutes())) _rems = [10, 20];
+        }
+        return JSON.stringify(_rems);
+      })(),
       image: (typeof todoImage !== 'undefined' && todoImage) || ''
     };
     try {
@@ -1356,7 +1363,7 @@ function renderReminderUI() {
   if (!el) return;
   if (!Array.isArray(todoReminders)) todoReminders = [];
   var html = '';
-  var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
+  var options = [{v:'10',l:'提前10分钟'},{v:'20',l:'提前20分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
   todoReminders.forEach(function(r, i) {
     var opt = options.find(function(o){ return o.v === String(r); });
     html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:color-mix(in srgb,var(--pri) 12%,var(--card));color:var(--pri);margin:2px">' + (opt ? opt.l : r + '分钟') + '<span onclick="todoReminders.splice(' + i + ',1);renderReminderUI()" style="cursor:pointer;font-weight:700">×</span></span>';
@@ -1392,6 +1399,8 @@ function scheduleLocalNotification(todo) {
   if (typeof Capacitor === 'undefined' || !Capacitor.Plugins || !Capacitor.Plugins.LocalNotifications) return;
   try {
     var reminders = JSON.parse(todo.reminders || '[]');
+    if (!Array.isArray(reminders) || !reminders.length) reminders = [10, 20];
+    reminders = reminders.map(Number).filter(function(n){ return isFinite(n) && n > 0; });
     var dueTime = new Date(todo.dueDate).getTime();
     var style = todoNotifyStyle(todo);
     var ids = [];
@@ -1559,34 +1568,31 @@ function checkTodoNotifications() {
         }
       }
     }
-    // Check reminders — 保存格式是分钟数组 [10,30]；兼容旧 {time,notified}
-    if (t.reminders) {
+    // Check reminders — 分钟数组逐档各触发一次（如 [20,10] → 14:40 与 14:50）
+    if (t.dueDate) {
       try {
-        var rems = typeof t.reminders === 'string' ? JSON.parse(t.reminders) : t.reminders;
-        if (!t._notifiedRem && Array.isArray(rems) && rems.length && typeof rems[0] === 'number' && t.dueDate) {
-          var dueMs = new Date(t.dueDate).getTime();
-          var min = rems[0];
-          var fire = dueMs - min * 60000;
-          if (now >= fire && now < dueMs && !t._notifiedRem) {
-            t._notifiedRem = true;
-            var when = min >= 60 ? ('还有' + Math.round(min/60) + '小时') : ('还有' + min + '分钟');
-            if (style.isProject) {
-              showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title + ' · ' + when);
-            } else {
-              showTodoNotification('🔔 待办提醒', t.title + ' · ' + when);
-            }
-          }
-        } else if (Array.isArray(rems)) {
-          rems.forEach(function(r) {
-            if (r && r.time && !r.notified) {
-              var rt = new Date(r.time).getTime();
-              if (Math.abs(rt - now) < 60000) {
-                r.notified = true;
-                if (style.isProject) {
-                  showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title);
-                } else {
-                  showTodoNotification('🔔 待办提醒', t.title);
-                }
+        var rems = [];
+        if (t.reminders) {
+          var _r0 = typeof t.reminders === 'string' ? JSON.parse(t.reminders) : t.reminders;
+          if (Array.isArray(_r0)) rems = _r0.map(Number).filter(function(n){ return isFinite(n) && n > 0; });
+        }
+        if (!rems.length) {
+          var _dd = new Date(t.dueDate);
+          if (isFinite(_dd.getTime()) && (_dd.getHours() || _dd.getMinutes())) rems = [10, 20];
+        }
+        if (!Array.isArray(t._notifiedRems)) t._notifiedRems = [];
+        if (rems.length) {
+          var dueMs2 = new Date(t.dueDate).getTime();
+          rems.forEach(function(min) {
+            if (t._notifiedRems.indexOf(min) >= 0) return;
+            var fire = dueMs2 - min * 60000;
+            if (now >= fire && now < dueMs2 + 25 * 60000) {
+              t._notifiedRems.push(min);
+              var when = min >= 60 ? ('还有' + Math.round(min/60) + '小时') : ('还有' + min + '分钟');
+              if (style.isProject) {
+                showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title + ' · ' + when);
+              } else {
+                showTodoNotification('🔔 待办提醒', t.title + ' · ' + when);
               }
             }
           });
