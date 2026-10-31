@@ -906,7 +906,16 @@ async function saveTodo() {
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
-      dueDate: (function(){ var v = document.getElementById('todoDueDate').value; return v ? new Date(v).toISOString() : null; })(),
+      // datetime-local 可能是 YYYY-MM-DDTHH:mm；空串/非法值必须变 null，不能让 toISOString 抛错变成「一行错误」
+      dueDate: (function(){
+        var v = document.getElementById('todoDueDate').value;
+        if (!v) return null;
+        var d = new Date(v);
+        if (!isFinite(d.getTime())) {
+          d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
+        }
+        return isFinite(d.getTime()) ? d.toISOString() : null;
+      })(),
       priority: document.getElementById('todoPriority').value,
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
@@ -1133,6 +1142,18 @@ function closeTodoDetail() {
   document.getElementById('todoDetailOverlay').classList.remove('active');
 }
 
+// 待办在项目详情里被完成/删除/改状态时：render() 只重画列表页签，
+// 打开的 #projectDetailBody 不会动 → 步骤下卡片永远不更新。必须连详情一起刷。
+function syncTodoProjectUI() {
+  try { if (typeof render === 'function') render(); } catch (e) {}
+  try {
+    if (typeof _pjDetailId !== 'undefined' && _pjDetailId && typeof pjRerenderDetail === 'function') {
+      var dO = document.getElementById('projectDetailOverlay');
+      if (dO && dO.classList.contains('active')) pjRerenderDetail(_pjDetailId);
+    }
+  } catch (e) {}
+}
+
 function cycleTodoStatus(id) {
   var t = todoList.find(function(x){ return x.id === id; });
   if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
@@ -1143,18 +1164,18 @@ function cycleTodoStatus(id) {
   var completedAt = nextStatus === '已完成' ? Date.now() : null;
   t.status = nextStatus;
   if (completedAt) t.completedAt = completedAt;
-  render();
+  syncTodoProjectUI();
   var detailOverlay = document.getElementById('todoDetailOverlay');
   if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
   (async function() {
     try {
       var r = await todoApi('PUT', { id: id, status: nextStatus, completedAt: completedAt });
-      if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; render(); return; }
-      if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){renderTodo();}); }
+      if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; syncTodoProjectUI(); return; }
+      if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){ syncTodoProjectUI(); if (typeof renderTodo === 'function') renderTodo(); }); }
       else toast(nextStatus === '已完成' ? '✅ 已完成' : nextStatus === '进行中' ? '▶ 进行中' : '↩ 已恢复待办');
       if (nextStatus === '已完成' || nextStatus === '已取消') cancelLocalNotification(t);
       else if (t.reminders) scheduleLocalNotification(t);
-    } catch(e) { t.status = oldStatus; render(); toast('操作失败: ' + e.message); }
+    } catch(e) { t.status = oldStatus; syncTodoProjectUI(); toast('操作失败: ' + e.message); }
   })();
 }
 
@@ -1166,9 +1187,9 @@ async function deleteTodo(id) {
   if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
   var oldStatus = t ? t.status : null;
   if (t) { t.status = '已删除'; }
-  render();
+  syncTodoProjectUI();
   var r = await todoApi('DELETE', null, id);
-  if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; render(); return; }
+  if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; syncTodoProjectUI(); return; }
   toast('已移入回收站');
 }
 async function toggleTodoSubtask(todoId, index) {
@@ -1189,7 +1210,7 @@ async function toggleTodoSubtask(todoId, index) {
       t.status = '进行中';
       t.completedAt = null;
     }
-    render();
+    syncTodoProjectUI();
     await todoApi('PUT', { id: todoId, subtasks: newSubs });
     if (allDone) {
       await todoApi('PUT', { id: todoId, status: '已完成', completedAt: t.completedAt });

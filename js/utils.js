@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.15";
+const APP_VERSION = "3.0.16";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.16',date:'2026-10-31',items:['修复项目步骤里点开待办后「完成/删除」不同步：完成后列表会立刻更新（不再只刷待办页签）','修复弹层内提示被压住看不清：Toast 提到所有弹层之上、落在顶栏下方，成功/失败文案可读','改截止时间非法日期不再抛错；空日期安全保存为无日期']},
 {v:'3.0.15',date:'2026-10-31',items:['修复点项目卡片无反应：详情头部「当前步」用了未声明的 cur，一点就抛 ReferenceError（3.0.13 引入）','回归：卡片/阶段/账本/切步/本步设置保存/待办标题带入弹窗 均通过本地用例']},
 {v:'3.0.14',date:'2026-10-31',items:['修复「网站打不开」：去掉首屏 jsDelivr 依赖，Sortable 本地托管且不阻塞渲染','Service Worker 页面导航超时放宽到 5s，安装时预缓存首页，升级瞬间不再白屏/卡旧版']},
 {v:'3.0.13',date:'2026-10-31',items:['项目阶段里输入待办后点「更多设置」，弹窗会带上刚输入的标题，保存后自动清掉快速框避免重复','弹窗统一淡入+上滑动画；项目详情/列表突出「当前步」脉冲高亮，一眼能看出做到哪一步','顶栏强制实色紫：状态栏区域至少留出高度、禁止 blur/阴影，页签吸顶跟随顶栏高度，不再漏内容显糊']},
