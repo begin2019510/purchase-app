@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.13";
+const APP_VERSION = "3.0.14";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.14',date:'2026-10-31',items:['修复「网站打不开」：去掉首屏 jsDelivr 依赖，Sortable 本地托管且不阻塞渲染','Service Worker 页面导航超时放宽到 5s，安装时预缓存首页，升级瞬间不再白屏/卡旧版']},
 {v:'3.0.13',date:'2026-10-31',items:['项目阶段里输入待办后点「更多设置」，弹窗会带上刚输入的标题，保存后自动清掉快速框避免重复','弹窗统一淡入+上滑动画；项目详情/列表突出「当前步」脉冲高亮，一眼能看出做到哪一步','顶栏强制实色紫：状态栏区域至少留出高度、禁止 blur/阴影，页签吸顶跟随顶栏高度，不再漏内容显糊']},
 {v:'3.0.12',date:'2026-10-31',items:['修复项目里刚添加的待办点不开/标题丢失：服务端返回真实 id 后会立即重绘，不再残留临时 id','打开详情/编辑时若 id 还在同步会提示，不再静默打开空表单；保存中禁止用临时 id 勾选或删除','顶栏改为实色、去掉发虚的阴影与渐变叠加，刘海/灵动岛安全区 padding 不再被后写规则覆盖']},
 {v:'3.0.11',date:'2026-10-30',items:['项目详情信息架构重排：先看待办/花费/操作，名称·预算·时间收进「本步设置」默认折叠','表单与按钮统一规格：输入等高 44px、主次操作同高圆角，去掉虚线彩虹按钮与大灰盒套控件','新建项目弹窗输入高度与详情一致，减少忽大忽小']},

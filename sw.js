@@ -1,9 +1,17 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v135';
-var STATIC_ASSETS = ['/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js'];
+var CACHE = 'purchase-cache-v136';
+// 首页用 '/'（/index.html 在 CF 上会 308，addAll 会让整次安装失败）
+var STATIC_ASSETS = ['/', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.0.14'];
 
 self.addEventListener('install', function(e) {
-  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll(STATIC_ASSETS); }));
+  e.waitUntil(
+    caches.open(CACHE).then(function(c) {
+      // 单资源失败不让整个 SW 安装失败（否则永远升不上来）
+      return Promise.all(STATIC_ASSETS.map(function(u) {
+        return c.add(u).catch(function() {});
+      }));
+    })
+  );
   self.skipWaiting();
 });
 
@@ -30,7 +38,7 @@ self.addEventListener('fetch', function(e) {
           return res;
         });
         var timeout = new Promise(function(resolve) {
-          setTimeout(function() { resolve(null); }, 2500);
+          setTimeout(function() { resolve(null); }, 5000);
         });
         return Promise.race([net, timeout]).then(function(r) {
           return r || c.match(e.request) || c.match('/') || net;
