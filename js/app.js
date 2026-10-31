@@ -502,7 +502,13 @@ function render(){
 function updateHeader(){
   var el=document.getElementById('headerStats');
   if(el) el.innerHTML='';
+  // 吸顶 tabs 跟随真实顶栏高度，避免顶栏与页签之间漏出内容（看起来像顶部发糊）
+  try{
+    var h=document.querySelector('.header');
+    if(h) document.documentElement.style.setProperty('--header-h', Math.round(h.getBoundingClientRect().height)+'px');
+  }catch(e){}
 }
+window.addEventListener('resize', function(){ try{ updateHeader(); }catch(e){} });
 // 单件商品在指定月份应计入「采购消耗」的金额：
 // - 非分期：购买月 = 当月时按总价计入
 // - 分期：分期窗口内每月按分期金额计入（与预算池的分期扣减同口径）

@@ -308,14 +308,15 @@ function renderProjectCard(p) {
   var cph = phases[cur] || { status: 'todo' };
   var stateCls = p.status === '已完成' ? 'done' : p.status === '已归档' ? 'arch' : 'act';
 
-  var h = '<div class="pj2-card' + (isDone ? ' pj2-dim' : '') + '" style="--pc:' + escAttr(color) + '" onclick="openProjectDetail(\'' + p.id + '\')">';
+  var isLive = !isDone && p.status === '进行中';
+  var h = '<div class="pj2-card' + (isDone ? ' pj2-dim' : '') + (isLive ? ' now' : '') + '" style="--pc:' + escAttr(color) + '" onclick="openProjectDetail(\'' + p.id + '\')">';
   h += '<div class="pj2-card-top">';
-  h += '<span class="pj2-dot" style="background:' + escAttr(color) + '"></span>';
+  h += '<span class="pj2-dot' + (isLive ? ' live' : '') + '" style="background:' + escAttr(color) + '"></span>';
   h += '<div class="pj2-card-name">' + esc(p.name) + '</div>';
   h += '<span class="pj2-state ' + stateCls + '">' + p.status + '</span>';
   h += '</div>';
 
-  h += '<div class="pj2-next"><span class="pj2-next-label">' + next.label + '</span><span class="pj2-next-text">' + esc(next.text) + '</span></div>';
+  h += '<div class="pj2-next' + (isLive ? ' live' : '') + '"><span class="pj2-next-label' + (isLive ? ' live' : '') + '">' + next.label + '</span><span class="pj2-next-text">' + esc(next.text) + '</span></div>';
 
   h += '<div class="pj2-meta">';
   h += '<span>' + esc(pjStepTitle(cph, cur)) + ' · ' + pjPhaseStatusText(cph.status) + '</span>';
@@ -618,8 +619,11 @@ function openProjectDetail(id, opts) {
   html += '<button class="pj2-icon-btn" onclick="closeProjectDetail()" aria-label="关闭">✕</button>';
   html += '</div>';
 
+  var _cph = (p.phases || [])[cur] || {};
+  var _live = p.status === '进行中';
   html += '<div class="pj2-summary">';
   html += '<span class="pj2-state ' + (p.status === '已完成' ? 'done' : p.status === '已归档' ? 'arch' : 'act') + '">' + p.status + '</span>';
+  if (_live) html += '<span class="pj2-pill now-pill">▶ 当前 · ' + esc(pjStepTitle(_cph, cur)) + '</span>';
   html += '<span class="pj2-pill">' + st.done + '/' + st.denom + ' 步</span>';
   if (openTodos) html += '<span class="pj2-pill">待办 ' + openTodos + '</span>';
   html += '<span class="pj2-pill money">' + pjMoney(totalSpend) + '</span>';
@@ -694,10 +698,11 @@ function renderProjectPhasesTab(p) {
     var planned = pjPlanRange(ph);
     var phOpen = pjPhaseTodos(p, i).filter(function(t) { return t.status !== '已完成'; }).length;
 
-    html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + '">';
+    var isCur = (i === cur && p.status !== '已完成' && p.status !== '已归档');
+    html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + (isCur ? ' is-current' : '') + '">';
     html += '<button class="pj2-step-head" aria-expanded="' + (expanded ? 'true' : 'false') + '" onclick="App.project.selectPhase(\'' + id + '\',' + i + ')">';
     html += '<span class="pj2-step-idx">' + (st === 'done' ? '✓' : st === 'skipped' ? '⏭' : (i + 1)) + '</span>';
-    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (i === cur ? '<i class="pj2-cur">当前</i>' : '') + (phOpen ? '<i class="pj2-cur todo">☑' + phOpen + '</i>' : '') + '</span>';
+    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (isCur ? '<i class="pj2-cur live">当前</i>' : '') + (phOpen ? '<i class="pj2-cur todo">☑' + phOpen + '</i>' : '') + '</span>';
     html += '<span class="pj2-step-sub">' + pjPhaseStatusText(st)
       + (planned ? ' · 📅 ' + planned : '')
       + ((phSpend || phBudget != null) ? ' · 💰 ' + pjMoney(phSpend) + (phBudget != null ? '/' + pjMoney(phBudget) : '') : '')
@@ -1218,8 +1223,13 @@ async function renamePhase(projectId, idx) {
 // ===== Todo 联动 =====
 function openTodoModalForProject(projectId, phaseIdx, category) {
   window._pendingProjectId = projectId;
-  window._pendingPhaseIdx = (phaseIdx === null || phaseIdx === undefined) ? null : Number(phaseIdx);
+  var pidx = (phaseIdx === null || phaseIdx === undefined) ? null : Number(phaseIdx);
+  window._pendingPhaseIdx = pidx;
   window._pendingTodoCategory = category || pjLastTodoCategory();
+  // 把快速输入框里刚打的标题带进弹窗（用户：输入后点「更多设置」标题不能丢）
+  var inp = document.getElementById('pjQuickTodo_' + pidx);
+  window._pendingTodoTitle = inp ? String(inp.value || '').trim() : '';
+  window._pendingQuickInputId = inp ? inp.id : '';
   // 不关闭项目详情：待办弹层叠在上面，保存后回到项目
   openTodoModal();
 }

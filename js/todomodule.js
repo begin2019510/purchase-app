@@ -709,10 +709,11 @@ function openTodoModal(id) {
       id = t.id;
     }
     editingTodoId = t ? t.id : null;
-    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u5206\u7c7b\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
+    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u5206\u7c7b / \u6807\u9898\u8349\u7a3f\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
     var pendingPid = !id ? (window._pendingProjectId || "") : "";
     var pendingCat = !id ? window._pendingTodoCategory : undefined;
-    document.getElementById("todoTitle").value = t ? t.title : "";
+    var pendingTitle = !id ? (window._pendingTodoTitle || "") : "";
+    document.getElementById("todoTitle").value = t ? t.title : pendingTitle;
     document.getElementById("todoDesc").value = t ? t.description : "";
     document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
     var defaultCat = t ? (t.category || "\u5176\u4ed6") : (pendingCat || (pendingPid ? (function(){ try { return localStorage.getItem("pj_todo_category") || "\u5de5\u4f5c"; } catch(e) { return "\u5de5\u4f5c"; } })() : "\u5176\u4ed6"));
@@ -755,6 +756,18 @@ function openTodoModal(id) {
     var _subEl = document.getElementById("todoSubtaskList");
     console.log("AFTER renderSubtaskRows: el=" + !!_subEl + ", html=" + (_subEl ? _subEl.innerHTML.length : "null") + ", rows=" + todoSubtaskRows.length + ", firstText=" + ((todoSubtaskRows[0]||{}).text||"EMPTY"));
     overlay.classList.add("active");
+    // \u5e26\u8349\u7a3f\u6253\u5f00\u65f6\u628a\u5149\u6807\u653e\u5230\u6807\u9898\u672b\u5c3e\uff0c\u65b9\u4fbf\u7ee7\u7eed\u8865\u5168
+    if (!t && pendingTitle) {
+      setTimeout(function () {
+        try {
+          var el = document.getElementById("todoTitle");
+          if (el && overlay.classList.contains("active")) {
+            el.focus();
+            if (el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length);
+          }
+        } catch (e) {}
+      }, 80);
+    }
     console.log("openTodoModal: form populated, title=" + document.getElementById("todoTitle").value);
   } catch(e) {
     console.error("openTodoModal ERROR: " + e.message + " at " + e.stack);
@@ -765,6 +778,9 @@ function openTodoModal(id) {
 function closeTodoModal() {
   document.getElementById("todoModalOverlay").classList.remove("active");console.log("TODO_MODAL: closed");
   editingTodoId = null;
+  // \u8349\u7a3f\u5df2\u590d\u5236\u8fdb\u8868\u5355\uff1b\u5173\u95ed\u540e\u6e05\u6389\u6682\u5b58\uff0c\u907f\u514d\u4e0b\u6b21\u8bef\u5e26\u5165
+  window._pendingTodoTitle = "";
+  window._pendingQuickInputId = "";
 }
 
 // 项目 → 步骤下拉：选了项目才有步骤；未使用的空槽不出现
@@ -911,6 +927,8 @@ async function saveTodo() {
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
     var r;
     var _editId = editingTodoId;
+    // 关弹窗会清掉 pending：先记下快速输入框，保存成功后若标题一致则清空，避免再点「添加」重复
+    var _quickInputId = window._pendingQuickInputId || '';
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
@@ -933,6 +951,13 @@ async function saveTodo() {
     if (!r) { toast('保存失败: 服务器无响应'); return; }
     if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); if(_tmpTodo)todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id});else loadTodos().then(render).catch(function(){}); render(); return; }
     toast(_editId ? '已更新' : '已创建');
+    // 新建成功且快速框仍是同一标题 → 清掉，防止重复添加
+    if (!_editId && _quickInputId) {
+      try {
+        var _qi = document.getElementById(_quickInputId);
+        if (_qi && String(_qi.value || '').trim() === body.title) _qi.value = '';
+      } catch (e) {}
+    }
     // 必须在拿到真实 id 后再重绘，否则列表 onclick 仍是 tmpT_*，点开编辑会空标题
     try { window._pjPendingTodoTitle = body.title; } catch (e) {}
     render();
