@@ -1372,22 +1372,42 @@ function renderReminderUI() {
   el.innerHTML = html;
 }
 
+/** 项目待办通知前缀/正文：与服务端 notify-todos 一致 */
+function todoNotifyStyle(todo) {
+  var isPj = !!(todo && todo.projectId);
+  var pjName = '';
+  if (isPj && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
+    var p = projectList.find(function(x){ return x.id === todo.projectId; });
+    if (p) pjName = p.name || '';
+  }
+  return {
+    isProject: isPj,
+    titlePrefix: isPj ? '📁 项目' : '⏰ 待办',
+    bodyPrefix: isPj && pjName ? ('📁 ' + pjName) : '',
+  };
+}
+
 function scheduleLocalNotification(todo) {
   if (!todo.dueDate || !todo.reminders) return;
   if (typeof Capacitor === 'undefined' || !Capacitor.Plugins || !Capacitor.Plugins.LocalNotifications) return;
   try {
     var reminders = JSON.parse(todo.reminders || '[]');
     var dueTime = new Date(todo.dueDate).getTime();
+    var style = todoNotifyStyle(todo);
     var ids = [];
     reminders.forEach(function(minutesBefore, i) {
       var fireTime = dueTime - minutesBefore * 60000;
       if (fireTime > Date.now()) {
         var notifId = parseInt(todo.id.replace(/\D/g,'').slice(-8)) * 10 + i;
         ids.push(notifId);
+        var when = minutesBefore >= 60 ? ('还有' + Math.round(minutesBefore/60) + '小时到截止') : ('还有' + minutesBefore + '分钟到截止');
+        var body = style.isProject
+          ? ((style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + todo.title + ' · ' + when)
+          : (todo.title + ' · ' + when);
         Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{
           id: notifId,
-          title: '\ud83d\udcc5 ' + todo.title,
-          body: minutesBefore >= 60 ? '\u8fd8有' + Math.round(minutesBefore/60) + '\u5c0f\u65f6\u5230\u622a\u6b62\u65e5\u671f' : '\u8fd8\u6709' + minutesBefore + '\u5206\u949f\u5230\u622a\u6b62\u65e5\u671f',
+          title: style.titlePrefix,
+          body: body,
           schedule: { at: new Date(fireTime) }
         }]});
       }
@@ -1526,25 +1546,47 @@ function checkTodoNotifications() {
   var now = Date.now();
   todoList.forEach(function(t) {
     if (t.status === '已完成' || t.status === '已取消' || t.status === '已删除') return;
+    var style = todoNotifyStyle(t);
     // Check overdue
     if (t.dueDate) {
       var due = new Date(t.dueDate).getTime();
       if (due < now && !t._notifiedOverdue) {
         t._notifiedOverdue = true;
-        showTodoNotification('⚠️ 待办已过期', t.title);
+        if (style.isProject) {
+          showTodoNotification('📁 项目待办已过期', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title);
+        } else {
+          showTodoNotification('⚠️ 待办已过期', t.title);
+        }
       }
     }
-    // Check reminders
+    // Check reminders — 保存格式是分钟数组 [10,30]；兼容旧 {time,notified}
     if (t.reminders) {
       try {
         var rems = typeof t.reminders === 'string' ? JSON.parse(t.reminders) : t.reminders;
-        if (Array.isArray(rems)) {
+        if (!t._notifiedRem && Array.isArray(rems) && rems.length && typeof rems[0] === 'number' && t.dueDate) {
+          var dueMs = new Date(t.dueDate).getTime();
+          var min = rems[0];
+          var fire = dueMs - min * 60000;
+          if (now >= fire && now < dueMs && !t._notifiedRem) {
+            t._notifiedRem = true;
+            var when = min >= 60 ? ('还有' + Math.round(min/60) + '小时') : ('还有' + min + '分钟');
+            if (style.isProject) {
+              showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title + ' · ' + when);
+            } else {
+              showTodoNotification('🔔 待办提醒', t.title + ' · ' + when);
+            }
+          }
+        } else if (Array.isArray(rems)) {
           rems.forEach(function(r) {
-            if (r.time && !r.notified) {
+            if (r && r.time && !r.notified) {
               var rt = new Date(r.time).getTime();
               if (Math.abs(rt - now) < 60000) {
                 r.notified = true;
-                showTodoNotification('🔔 待办提醒', t.title);
+                if (style.isProject) {
+                  showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title);
+                } else {
+                  showTodoNotification('🔔 待办提醒', t.title);
+                }
               }
             }
           });

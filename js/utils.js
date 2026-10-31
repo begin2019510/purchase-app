@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.17";
+const APP_VERSION = "3.0.18";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.18',date:'2026-10-31',items:['项目待办与普通待办系统通知文案区分：项目显示「📁 项目 · 计划名 · 步骤」，普通显示「⏰/⚠️ 待办」','服务端启用待办到期/早间推送定时任务（每 5 分钟）','推送按钮按类型区分：待办用「去查看」，记账仍用「去记账」']},
 {v:'3.0.17',date:'2026-10-31',items:['修复新建/编辑待办保存时报「Can\'t find variable: todoTags」：标签/提醒变量已正确声明并在打开时加载，保存不再抛错','表单字段与 esc 不再把空值显示成字面量「undefined」','页脚与帮助/隐私页增加公安备案号']},
 {v:'3.0.16',date:'2026-10-31',items:['修复项目步骤里点开待办后「完成/删除」不同步：完成后列表会立刻更新（不再只刷待办页签）','修复弹层内提示被压住看不清：Toast 提到所有弹层之上、落在顶栏下方，成功/失败文案可读','改截止时间非法日期不再抛错；空日期安全保存为无日期']},
 {v:'3.0.15',date:'2026-10-31',items:['修复点项目卡片无反应：详情头部「当前步」用了未声明的 cur，一点就抛 ReferenceError（3.0.13 引入）','回归：卡片/阶段/账本/切步/本步设置保存/待办标题带入弹窗 均通过本地用例']},

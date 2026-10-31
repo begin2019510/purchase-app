@@ -1,7 +1,7 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v139';
+var CACHE = 'purchase-cache-v140';
 // 首页用 '/'（/index.html 在 CF 上会 308，addAll 会让整次安装失败）
-var STATIC_ASSETS = ['/', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.0.17'];
+var STATIC_ASSETS = ['/', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.0.18'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -68,12 +68,19 @@ self.addEventListener('push', function(e) {
   var data = {};
   if (e.data) { try { data = e.data.json(); } catch(ex) { data = { body: e.data.text() }; } }
   var title = data.title || '采购管家';
+  var isTodo = data.kind === 'todo' || data.kind === 'project-todo' ||
+    /待办|到期|今日/.test(title) || /📁|⏰|📋/.test(title);
+  var actions = Array.isArray(data.actions) && data.actions.length
+    ? data.actions
+    : (isTodo
+      ? [{ action: 'open', title: '去查看' }, { action: 'dismiss', title: '知道了' }]
+      : [{ action: 'open', title: '去记账' }, { action: 'dismiss', title: '知道了' }]);
   e.waitUntil(self.registration.showNotification(title, {
-    body: data.body || '该记账了',
+    body: data.body || (isTodo ? '有新的待办提醒' : '该记账了'),
     icon: '/icon-192.png', badge: '/icon-192.png',
-    vibrate: [200,100,200,100,200], tag: data.tag || 'reminder',
-    requireInteraction: true, data: { url: data.url || '/' },
-    actions: [{ action: 'open', title: '去记账' }, { action: 'dismiss', title: '知道了' }]
+    vibrate: [200,100,200,100,200], tag: data.tag || (isTodo ? 'todo' : 'reminder'),
+    requireInteraction: true, data: { url: data.url || '/', kind: data.kind || (isTodo ? 'todo' : 'expense') },
+    actions: actions
   }));
 });
 
