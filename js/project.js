@@ -239,8 +239,152 @@ function pjNextInfo(p) {
   return { label: '提示', text: '到「阶段」里推进，或添加待办' };
 }
 
+// 步骤逾期：计划结束时间已过且未完成/跳过（仅进行中项目）
+function pjIsOverduePhase(p, ph, idx) {
+  if (!p || !ph) return false;
+  if (p.status !== '进行中') return false;
+  var st = ph.status || 'todo';
+  if (st === 'done' || st === 'skipped') return false;
+  if (ph.plannedEnd == null) return false;
+  return Date.now() > Number(ph.plannedEnd);
+}
+// 统一：逾期 N 天（不足一天也算第 1 天）
+function pjOverdueLabel(ms) {
+  var d = Math.max(1, Math.ceil((Date.now() - Number(ms)) / 86400000));
+  return '逾期 ' + d + ' 天';
+}
+function pjOverduePhases(p) {
+  var out = [];
+  if (!p || p.status !== '进行中') return out;
+  (p.phases || []).forEach(function(ph, i) {
+    if (pjIsOverduePhase(p, ph, i)) out.push({ idx: Number(ph.idx != null ? ph.idx : i), phase: ph, endMs: Number(ph.plannedEnd) });
+  });
+  return out.sort(function(a, b) { return a.endMs - b.endMs; });
+}
+// 预算水位：超支 over / ≥80% warn / 正常 ok / 未设 null
+function pjBudgetLevel(spend, budget) {
+  var b = budget == null ? null : Number(budget);
+  if (b == null || !isFinite(b) || b <= 0) return null;
+  var s = Number(spend) || 0;
+  if (s > b) return 'over';
+  if (s / b >= 0.8) return 'warn';
+  return 'ok';
+}
+function pjDayStart(ms) {
+  var d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+function pjIsToday(ms) {
+  if (ms == null) return false;
+  var n = pjDayStart(Date.now());
+  var t = pjDayStart(Number(ms));
+  return t >= n && t < n + 86400000;
+}
+function pjIsOverdueTodo(t) {
+  if (!t || t.status === '已完成' || t.status === '已删除' || t.status === '已取消') return false;
+  if (t.dueDate == null) return false;
+  return Date.now() > Number(t.dueDate) && !pjIsToday(t.dueDate);
+}
+
+// 今日推进：逾期步骤 → 今日到期待办 → 当前步未完成待办（进行中项目）
+function pjFocusItems() {
+  var out = [];
+  projectList.forEach(function(p) {
+    if (!p || p.status !== '进行中') return;
+    pjOverduePhases(p).forEach(function(o) {
+      out.push({
+        kind: 'overdue',
+        projectId: p.id,
+        phaseIdx: o.idx,
+        projectName: p.name,
+        color: p.color || '#6366f1',
+        text: pjStepTitle(o.phase, o.idx) + ' · ' + pjOverdueLabel(o.endMs),
+        rank: 0,
+      });
+    });
+    pjLinkedTodos(p).forEach(function(t) {
+      if (t.status === '已完成' || t.status === '已删除' || t.status === '已取消') return;
+      if (t.dueDate == null) return;
+      if (pjIsToday(t.dueDate)) {
+        out.push({
+          kind: 'todo-today',
+          projectId: p.id,
+          phaseIdx: (t.phaseIdx == null || t.phaseIdx === '') ? null : Number(t.phaseIdx),
+          todoId: t.id,
+          projectName: p.name,
+          color: p.color || '#6366f1',
+          text: t.title,
+          rank: 1,
+        });
+      } else if (pjIsOverdueTodo(t)) {
+        out.push({
+          kind: 'todo-late',
+          projectId: p.id,
+          phaseIdx: (t.phaseIdx == null || t.phaseIdx === '') ? null : Number(t.phaseIdx),
+          todoId: t.id,
+          projectName: p.name,
+          color: p.color || '#6366f1',
+          text: t.title + ' · 已过期',
+          rank: 0.5,
+        });
+      }
+    });
+    var phases = p.phases || [];
+    var cur = Number(p.currentPhase) || 0;
+    var cph = phases[cur];
+    if (cph && (cph.status === 'doing' || cph.status === 'todo')) {
+      var open = pjPhaseTodos(p, cur).filter(function(t) {
+        return t.status !== '已完成' && t.status !== '已删除' && t.status !== '已取消' && t.dueDate == null;
+      });
+      if (open.length) {
+        out.push({
+          kind: 'phase-open',
+          projectId: p.id,
+          phaseIdx: cur,
+          projectName: p.name,
+          color: p.color || '#6366f1',
+          text: pjStepTitle(cph, cur) + ' · ' + open[0].title,
+          rank: 2,
+        });
+      }
+    }
+  });
+  out.sort(function(a, b) {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return String(b.projectId).localeCompare(String(a.projectId), undefined, { numeric: true });
+  });
+  var seen = {};
+  var dedup = [];
+  out.forEach(function(x) {
+    var k = (x.kind === 'todo-today' || x.kind === 'todo-late') ? ('t:' + x.todoId) : (x.projectId + ':' + (x.phaseIdx == null ? '' : x.phaseIdx));
+    if (seen[k]) return;
+    seen[k] = 1;
+    dedup.push(x);
+  });
+  return dedup.slice(0, 8);
+}
+
+function pjOpenFocus(projectId, phaseIdx, todoId) {
+  if (phaseIdx != null && !isNaN(Number(phaseIdx))) selectedPhase[projectId] = Number(phaseIdx);
+  projectDetailTab = 'phases';
+  openProjectDetail(projectId);
+  if (todoId && typeof openTodoDetail === 'function') {
+    try { openTodoDetail(todoId); } catch (e) {}
+  }
+}
+
 function pjSortProjects(arr) {
   return arr.slice().sort(function(a, b) {
+    function rank(p) {
+      if (p.status !== '进行中') return 3;
+      if (pjOverduePhases(p).length) return 0;
+      if (pjIsToday(p.dueDate) || (p.dueDate && Date.now() > Number(p.dueDate))) return 1;
+      if (p.dueDate) return 2;
+      return 3;
+    }
+    var ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
     var ad = a.dueDate ? Number(a.dueDate) : null;
     var bd = b.dueDate ? Number(b.dueDate) : null;
     if (ad && bd && ad !== bd) return ad - bd;
@@ -248,6 +392,28 @@ function pjSortProjects(arr) {
     if (!ad && bd) return 1;
     return String(b.id).localeCompare(String(a.id), undefined, { numeric: true });
   });
+}
+
+function pjRenderFocusBar() {
+  if (projectFilter !== '全部' && projectFilter !== '进行中') return '';
+  var items = pjFocusItems();
+  if (!items.length) return '';
+  var html = '<div class="pj2-focus">';
+  html += '<div class="pj2-focus-head"><span>今日推进</span><b>' + items.length + '</b></div>';
+  items.forEach(function(x) {
+    var badge = x.kind === 'overdue' ? '逾期' : x.kind === 'todo-today' ? '今天' : x.kind === 'todo-late' ? '过期' : '当前';
+    var cls = (x.kind === 'overdue' || x.kind === 'todo-late') ? ' late' : (x.kind === 'todo-today' ? ' today' : '');
+    html += '<button type="button" class="pj2-focus-item' + cls + '" '
+      + 'onclick="App.project.openFocus(\'' + x.projectId + '\',' + (x.phaseIdx == null ? 'null' : x.phaseIdx) + ',' + (x.todoId ? '\'' + x.todoId + '\'' : 'null') + ')">'
+      + '<span class="pj2-focus-dot" style="background:' + escAttr(x.color) + '"></span>'
+      + '<span class="pj2-focus-badge' + cls + '">' + badge + '</span>'
+      + '<span class="pj2-focus-main"><span class="pj2-focus-proj">' + esc(x.projectName) + '</span>'
+      + '<span class="pj2-focus-text">' + esc(x.text) + '</span></span>'
+      + '<span class="pj2-focus-chev">›</span>'
+      + '</button>';
+  });
+  html += '</div>';
+  return html;
 }
 
 // ===== 列表 =====
@@ -271,6 +437,8 @@ function renderProject() {
     html += '<span class="pj2-filter' + (projectFilter === x[0] ? ' active' : '') + '" onclick="projectFilter=\'' + x[0] + '\';renderProject()">' + x[0] + '<b>' + x[1] + '</b></span>';
   });
   html += '</div>';
+
+  html += pjRenderFocusBar();
 
   var filtered = projectFilter === '全部' ? projectList : projectList.filter(function(p) { return p.status === projectFilter; });
 
@@ -318,11 +486,18 @@ function renderProjectCard(p) {
 
   h += '<div class="pj2-next' + (isLive ? ' live' : '') + '"><span class="pj2-next-label' + (isLive ? ' live' : '') + '">' + next.label + '</span><span class="pj2-next-text">' + esc(next.text) + '</span></div>';
 
+  var overdue = pjOverduePhases(p);
+  var budgetLv = pjBudgetLevel(spend, p.budget);
   h += '<div class="pj2-meta">';
   h += '<span>' + esc(pjStepTitle(cph, cur)) + ' · ' + pjPhaseStatusText(cph.status) + '</span>';
   h += pjDueHtml(p.dueDate, p.status);
   if (spend > 0) h += '<span>💰 ' + pjMoney(spend) + '</span>';
   if (openTodos > 0) h += '<span>☑ ' + openTodos + ' 待办</span>';
+  if (overdue.length) {
+    h += '<span class="pj2-tag late">逾期 ' + overdue.length + ' 步</span>';
+  }
+  if (budgetLv === 'over') h += '<span class="pj2-tag over">超预算</span>';
+  else if (budgetLv === 'warn') h += '<span class="pj2-tag warn">预算 ' + Math.round((Number(spend) / Number(p.budget)) * 100) + '%</span>';
   h += '</div>';
 
   h += '<div class="pj2-progress"><div class="bar"><i style="width:' + st.pct + '%;background:' + (st.pct >= 100 ? 'var(--green)' : escAttr(color)) + '"></i></div><span class="num">' + st.done + '/' + st.denom + ' 步</span></div>';
@@ -701,13 +876,16 @@ function renderProjectPhasesTab(p) {
     var phOpen = pjPhaseTodos(p, i).filter(function(t) { return t.status !== '已完成'; }).length;
 
     var isCur = (i === cur && p.status !== '已完成' && p.status !== '已归档');
-    html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + (isCur ? ' is-current' : '') + '">';
+    var phOverdue = pjIsOverduePhase(p, ph, i);
+    var phBudLv = pjBudgetLevel(phSpend, phBudget);
+    html += '<div class="pj2-step ' + st + (expanded ? ' expanded' : '') + (isCur ? ' is-current' : '') + (phOverdue ? ' is-overdue' : '') + '">';
     html += '<button class="pj2-step-head" aria-expanded="' + (expanded ? 'true' : 'false') + '" onclick="App.project.selectPhase(\'' + id + '\',' + i + ')">';
     html += '<span class="pj2-step-idx">' + (st === 'done' ? '✓' : st === 'skipped' ? '⏭' : (i + 1)) + '</span>';
-    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (isCur ? '<i class="pj2-cur live">当前</i>' : '') + (phOpen ? '<i class="pj2-cur todo">☑' + phOpen + '</i>' : '') + '</span>';
+    html += '<span class="pj2-step-main"><span class="pj2-step-name">' + pjStepTitleHtml(ph, i) + (isCur ? '<i class="pj2-cur live">当前</i>' : '') + (phOpen ? '<i class="pj2-cur todo">☑' + phOpen + '</i>' : '') + (phOverdue ? '<i class="pj2-cur late">' + pjOverdueLabel(ph.plannedEnd) + '</i>' : '') + '</span>';
     html += '<span class="pj2-step-sub">' + pjPhaseStatusText(st)
       + (planned ? ' · 📅 ' + planned : '')
       + ((phSpend || phBudget != null) ? ' · 💰 ' + pjMoney(phSpend) + (phBudget != null ? '/' + pjMoney(phBudget) : '') : '')
+      + ((phBudLv === 'over' || phBudLv === 'warn') ? '<em class="pj2-tag ' + (phBudLv === 'over' ? 'over' : 'warn') + '">' + (phBudLv === 'over' ? '超预算' : '预算紧张') + '</em>' : '')
       + '</span></span>';
     html += '<span class="pj2-chev' + (expanded ? ' open' : '') + '">›</span>';
     html += '</button>';
@@ -757,6 +935,7 @@ function renderPhaseBody(p, idx, ph) {
   var spendMap = (p.spend && p.spend.phases && p.spend.phases[idx]) || {};
   var phSpend = (Number(spendMap.buy) || 0) + (Number(spendMap.exp) || 0);
   var phBudget = (ph.budget == null) ? null : Number(ph.budget);
+  var phBudLv = pjBudgetLevel(phSpend, phBudget);
   var phLedger = (p.ledger || []).filter(function(x) { return x.phaseIdx === idx; });
   var settingsOpen = !!_pjSettingsOpen[pjSettingsKey(id, idx)];
   var hasCustom = !!(ph.displayName || phBudget != null || ph.plannedStart || ph.plannedEnd);
@@ -787,7 +966,7 @@ function renderPhaseBody(p, idx, ph) {
 
   // 2) 花费
   html += '<div class="pj2-sec">本步花费</div>';
-  html += '<div class="pj2-budget-line' + ((phBudget != null && phSpend > phBudget) ? ' over' : '') + '">';
+  html += '<div class="pj2-budget-line' + (phBudLv ? ' ' + phBudLv : '') + '">';
   html += '<div class="pj2-budget-text"><b>' + pjMoney(phSpend) + '</b>';
   if (phBudget != null) html += ' <span>/ 预算 ' + pjMoney(phBudget)
     + (phBudget > 0 ? '（' + Math.min(Math.round(phSpend / phBudget * 100), 999) + '%）' : '')
@@ -1320,4 +1499,6 @@ App.project = {
   openTodoModalForProject: openTodoModalForProject,
   getProjectOptions: getProjectOptions,
   fillProjectPhaseSelects: fillProjectPhaseSelects,
+  openFocus: pjOpenFocus,
+  focusItems: pjFocusItems,
 };
