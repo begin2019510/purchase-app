@@ -48,6 +48,7 @@ export async function onRequest(context) {
       case 'budget-analyze': return await handleBudgetAnalyze(apiKey, data, corsHeaders);
       case 'generate-todo': return await handleGenerateTodo(apiKey, data, corsHeaders);
       case 'parse-steps': return await handleParseSteps(apiKey, data, corsHeaders);
+      case 'suggest-next': return await handleSuggestNext(apiKey, data, corsHeaders);
       default: return jsonResponse({ error: 'Unknown action' }, 400, corsHeaders);
     }
   } catch (e) {
@@ -519,16 +520,18 @@ async function handleParseSteps(apiKey, data, corsHeaders) {
 
   const systemPrompt = `你是项目规划助手。用户会用自然语言描述一个项目怎么推进。
 把描述拆成结构化步骤（阶段），输出严格 JSON（不要 markdown 代码块）:
-{"steps":[{"name":"短名称(2~12字)","budget":数字或null}],"projectTotal":数字或null}
+{"steps":[{"name":"短名称(2~12字)","budget":数字或null,"plannedDays":整数或null,"todos":["短待办1","短待办2"]}],"projectTotal":数字或null}
 规则:
 - steps 最少 1 步、最多 6 步，按推进先后排列
 - name 要具体可执行，不要「第一步」「阶段1」「规划」这类空占位
 - 只在描述里提到金额、或能明确合理估出时才写 budget 数字；不确定必须 null，禁止编造精确预算
+- plannedDays 是这一步大致需要的天数（1~30 的整数）；描述里没线索时给一个合理默认，不要 null 成片
+- todos 是这一步里 0~4 条可执行待办（短、具体、可勾选）；没有就给 []，禁止编造夸张任务
 - projectTotal 是各步 budget 之和；若没有任何预算则为 null
 - 忽略描述中的格式噪音（换顿号、语气词），只提炼真正步骤`;
 
   const userMsg = (projectName ? '项目名: ' + projectName + '\n' : '') + '规划描述:\n' + text;
-  const result = await callAI(apiKey, systemPrompt, userMsg, 700);
+  const result = await callAI(apiKey, systemPrompt, userMsg, 900);
   const m = result.match(/\{[\s\S]*\}/);
   if (m) {
     try {
@@ -543,7 +546,20 @@ async function handleParseSteps(apiKey, data, corsHeaders) {
             budget = Number(budget);
             if (!isFinite(budget) || budget < 0) budget = null;
           }
-          return { name: String(s.name).trim().slice(0, 50), budget: budget };
+          var plannedDays = s.plannedDays;
+          if (plannedDays === '' || plannedDays === undefined || plannedDays === null) plannedDays = null;
+          else {
+            plannedDays = Math.round(Number(plannedDays));
+            if (!isFinite(plannedDays) || plannedDays < 1) plannedDays = null;
+            else if (plannedDays > 30) plannedDays = 30;
+          }
+          var todos = Array.isArray(s.todos)
+            ? s.todos
+              .map(function(t) { return String(t == null ? '' : t).trim().slice(0, 80); })
+              .filter(Boolean)
+              .slice(0, 4)
+            : [];
+          return { name: String(s.name).trim().slice(0, 50), budget: budget, plannedDays: plannedDays, todos: todos };
         })
         .filter(function(s) { return !!s.name; })
         .slice(0, 6);
@@ -557,6 +573,59 @@ async function handleParseSteps(apiKey, data, corsHeaders) {
     } catch (e) { /* fallthrough */ }
   }
   return json({ ok: false, error: 'AI 返回格式错误', raw: String(result).slice(0, 500) });
+}
+
+// 当前步推进：给 1~3 条可执行的下一步建议
+async function handleSuggestNext(apiKey, data, corsHeaders) {
+  const json = (d, s = 200) => jsonResponse(d, s, corsHeaders);
+  const projectName = String((data && data.projectName) || '').slice(0, 80);
+  const phaseName = String((data && data.phaseName) || '').slice(0, 80);
+  const description = String((data && data.description) || '').slice(0, 500);
+  const openTodos = Array.isArray(data && data.openTodos)
+    ? data.openTodos.map(function(t) { return String(t || '').slice(0, 80); }).filter(Boolean).slice(0, 12)
+    : [];
+  const donePhases = Array.isArray(data && data.donePhases)
+    ? data.donePhases.map(function(t) { return String(t || '').slice(0, 40); }).filter(Boolean).slice(0, 6)
+    : [];
+  if (!projectName && !phaseName) return json({ ok: false, error: '缺少项目上下文' }, 400, corsHeaders);
+
+  const systemPrompt = `你是个人项目推进助手。根据当前项目与这一步的状态，给出 1~3 条立刻能做的下一步建议。
+输出严格 JSON（不要 markdown 代码块）:
+{"suggestions":[{"title":"2~10字动作","detail":"一句具体说明（可空字符串）"}]}
+规则:
+- 建议必须可执行，不要空话（如「继续努力」）
+- 若 openTodos 非空，优先围绕这些待办推进或拆解
+- donePhases 表示已完成的步骤名，说明项目进度，不要重复已完成的事
+- 最多 3 条，title 互不重复`;
+
+  const userMsg = [
+    projectName ? '项目: ' + projectName : '',
+    phaseName ? '当前步骤: ' + phaseName : '',
+    description ? '项目说明: ' + description : '',
+    donePhases.length ? '已完成步骤: ' + donePhases.join(' / ') : '',
+    openTodos.length ? '本步未完成待办:\n- ' + openTodos.join('\n- ') : '本步暂无待办',
+  ].filter(Boolean).join('\n');
+
+  const result = await callAI(apiKey, systemPrompt, userMsg, 400);
+  const m = result.match(/\{[\s\S]*\}/);
+  if (m) {
+    try {
+      const obj = JSON.parse(m[0]);
+      const arr = Array.isArray(obj) ? obj : (Array.isArray(obj.suggestions) ? obj.suggestions : []);
+      const suggestions = arr
+        .filter(function(s) { return s && String(s.title || s.name || '').trim(); })
+        .map(function(s) {
+          return {
+            title: String(s.title || s.name).trim().slice(0, 40),
+            detail: String(s.detail || s.desc || '').trim().slice(0, 120),
+          };
+        })
+        .slice(0, 3);
+      if (!suggestions.length) return json({ ok: false, error: '没能给出建议' });
+      return json({ ok: true, data: { suggestions: suggestions } });
+    } catch (e) { /* fallthrough */ }
+  }
+  return json({ ok: false, error: 'AI 返回格式错误', raw: String(result).slice(0, 300) });
 }
 
 // ===== AI 待办建议 =====
