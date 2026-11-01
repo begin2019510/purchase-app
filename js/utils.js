@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.24";
+const APP_VERSION = "3.0.25";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.25',date:'2026-11-01',items:['iOS 主屏状态栏改为不透明 black（不再 black-translucent）：状态栏区域不再透出网页内容；保留 viewport-fit 与顶栏 safe-area padding']},
 {v:'3.0.24',date:'2026-11-01',items:['统计：采购/记账分类可点开明细，看清「花了哪些、怎么花的」（直接购买/分期第N期/记账逐笔）','月报 Top 分类可点进同一明细；分期概况改为列出本月所有还款商品（含更早购买仍在还的）']},
 {v:'3.0.23',date:'2026-11-01',items:['项目 C2：新建/账本显示分步预算合计 vs 总预算，超总预算时警告并二次确认','项目 C3：通关后详情页展示通关总结（步骤/花费/分步预算/待办/用时）并可一键看账本或归档']},
 {v:'3.0.22',date:'2026-11-01',items:['项目 B：AI 拆步可带计划天数与子待办，创建项目时写入阶段时间线','✨ AI 建议下一步：按当前步生成可点选待办草稿']},
