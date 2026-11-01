@@ -11,8 +11,13 @@ const router = express.Router();
 
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 function genSalt() { return crypto.randomBytes(16).toString('hex'); }
+// v2: PBKDF2-SHA256 100k。必须用异步——Sync 会卡住 2 核低内存机上的整个 purchase-server。
+// 版本号统一 Number()：MySQL 偶发把 TINYINT 读成字符串 "2" 时，严格 === 会退回 SHA-256 校验导致锁死。
 async function hashPwd(password, salt, ver) {
-  if (ver === 2) return crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex');
+  if (Number(ver) === 2) {
+    const buf = await crypto.promises.pbkdf2(password, salt, 100000, 32, 'sha256');
+    return buf.toString('hex');
+  }
   return sha256(salt + password);
 }
 function newInviteCode() {
@@ -135,9 +140,17 @@ router.all('/auth', async (req, res, next) => {
       if (!user) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
       const hash = await hashPwd(password, user.salt, user.hash_version);
       if (!safeEqual(hash, user.password_hash)) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
+      // 成功登录后把 v1（SHA-256）静默升到 v2。升级失败只记日志，绝不能让正确密码的登录 500。
       if (Number(user.hash_version) !== 2) {
-        const upgraded = await hashPwd(password, user.salt, 2);
-        await db.exec('UPDATE users SET password_hash = ?, hash_version = 2 WHERE id = ? AND hash_version = ?', [upgraded, user.id, user.hash_version]);
+        try {
+          const upgraded = await hashPwd(password, user.salt, 2);
+          await db.exec(
+            'UPDATE users SET password_hash = ?, hash_version = 2 WHERE id = ? AND hash_version = ? AND hash_version <> 2',
+            [upgraded, user.id, Number(user.hash_version)]
+          );
+        } catch (upErr) {
+          console.error('password hash upgrade failed:', upErr.message);
+        }
       }
       await db.exec('DELETE FROM login_fails WHERE ip = ?', [ip]);
       const t = await issueTokens(user.id, username);
