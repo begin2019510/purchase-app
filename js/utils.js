@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.22";
+const APP_VERSION = "3.0.23";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.23',date:'2026-11-01',items:['项目 C2：新建/账本显示分步预算合计 vs 总预算，超总预算时警告并二次确认','项目 C3：通关后详情页展示通关总结（步骤/花费/分步预算/待办/用时）并可一键看账本或归档']},
 {v:'3.0.22',date:'2026-11-01',items:['项目 B：AI 拆步可带计划天数与子待办，创建项目时写入阶段时间线','✨ AI 建议下一步：按当前步生成可点选待办草稿']},
 {v:'3.0.21',date:'2026-11-01',items:['项目 A：列表「今日推进」焦点条，按逾期/到期/当前步待办排序直达','逾期步骤与超/临预算标签；步骤头与卡片一眼看出风险']},
 {v:'3.0.20',date:'2026-11-01',items:['和 Claude 对话：AI 回复完整 Markdown 渲染（表格/标题/列表/引用/分割线/删除线），不再「结构全乱」','表格窄屏横向滚动，气泡内不撑破；AI 气泡去掉 pre-wrap，粗体/列表按 HTML 排版','历史与流式更新同样走新渲染器']},

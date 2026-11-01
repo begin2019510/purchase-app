@@ -565,6 +565,7 @@ function pjStepField(inp) {
     var v = inp.value.trim();
     _pjStructuredSteps[i].budget = v === '' ? null : Number(v);
     if (!isFinite(_pjStructuredSteps[i].budget) || _pjStructuredSteps[i].budget < 0) _pjStructuredSteps[i].budget = null;
+    pjUpdateBudgetSumWarn();
   } else if (k === 'plannedDays') {
     var dv = inp.value.trim();
     _pjStructuredSteps[i].plannedDays = dv === '' ? null : Math.round(Number(dv));
@@ -573,6 +574,66 @@ function pjStepField(inp) {
   } else {
     _pjStructuredSteps[i].name = inp.value;
   }
+}
+
+// ===== C2：分步预算合计 vs 总预算 =====
+function pjSumStepBudgets(steps) {
+  var sum = 0, n = 0;
+  (steps || []).forEach(function(s) {
+    if (s && s.budget != null && isFinite(Number(s.budget)) && Number(s.budget) > 0) {
+      sum += Number(s.budget);
+      n++;
+    }
+  });
+  return { sum: sum, n: n };
+}
+function pjSumPhaseBudgets(p) {
+  var sum = 0, n = 0;
+  pjActivePhaseIdxs(p).forEach(function(i) {
+    var ph = ((p && p.phases) || [])[i] || {};
+    var b = ph.budget == null ? null : Number(ph.budget);
+    if (b != null && isFinite(b) && b > 0) { sum += b; n++; }
+  });
+  return { sum: sum, n: n };
+}
+function pjReadTotalBudgetInput() {
+  var el = document.getElementById('projectBudget');
+  if (!el) return null;
+  var v = el.value.trim();
+  if (v === '') return null;
+  var n = Number(v);
+  if (!isFinite(n) || n < 0) return null;
+  return n;
+}
+function pjUpdateBudgetSumWarn() {
+  var box = document.getElementById('pjBudgetSumWarn');
+  if (!box) return;
+  var steps = pjCollectSteps();
+  var st = pjSumStepBudgets(steps);
+  var total = pjReadTotalBudgetInput();
+  if (!st.n || total == null || total <= 0) {
+    box.style.display = 'none';
+    box.hidden = true;
+    box.textContent = '';
+    box.className = 'pjf-budget-sum';
+    return;
+  }
+  box.hidden = false;
+  box.style.display = '';
+  if (st.sum > total) {
+    box.className = 'pjf-budget-sum warn';
+    box.textContent = '⚠️ 分步预算合计 ' + pjMoney(st.sum) + ' 超过总预算 ' + pjMoney(total) + '（超出 ' + pjMoney(st.sum - total) + '）';
+  } else {
+    box.className = 'pjf-budget-sum ok';
+    box.textContent = '分步预算合计 ' + pjMoney(st.sum) + ' / 总预算 ' + pjMoney(total) + '（剩 ' + pjMoney(total - st.sum) + '）';
+  }
+}
+// 新建保存前：合计超总预算 → 二次确认（不阻断）
+function pjConfirmStepBudgetOver(steps, total) {
+  if (total == null || total <= 0) return true;
+  var st = pjSumStepBudgets(steps);
+  if (!st.n || st.sum <= total) return true;
+  return confirm('分步预算合计 ' + pjMoney(st.sum) + ' 超过总预算 ' + pjMoney(total) + '。\n仍要保存吗？');
 }
 
 function pjAddStepRow() {
@@ -682,6 +743,7 @@ function openProjectModal(id) {
   } else document.getElementById('projectDueDate').value = '';
   var _bg = document.getElementById('projectBudget');
   if (_bg) _bg.value = (p && p.budget != null) ? p.budget : '';
+  pjUpdateBudgetSumWarn();
   document.getElementById('projectStatus').value = p ? p.status : '进行中';
   var statusGroup = document.getElementById('projectStatusGroup');
   if (statusGroup) statusGroup.style.display = p ? '' : 'none';
@@ -738,6 +800,7 @@ async function saveProject() {
     color: document.getElementById('projectColor').value,
     budget: (function() { var el = document.getElementById('projectBudget'); var v = el ? el.value.trim() : ''; return v === '' ? null : Number(v); })(),
   };
+  if (!editing && steps.length && !pjConfirmStepBudgetOver(steps, data.budget)) return;
   if (editing) data.id = id;
   else if (steps.length) data.steps = steps.map(function(s) {
     return { name: s.name, budget: s.budget, plannedDays: s.plannedDays, todos: s.todos || [] };
@@ -887,6 +950,88 @@ function renderProjectTodoRow(t, projectId, done) {
     + '</div><span class="pj2-chev">›</span></div>';
 }
 
+// ---- C3：通关总结页 ----
+function pjClearDays(p) {
+  var starts = [], ends = [];
+  (p.phases || []).forEach(function(ph) {
+    if (ph.startedAt) starts.push(Number(ph.startedAt));
+    if (ph.finishedAt) ends.push(Number(ph.finishedAt));
+  });
+  if (!ends.length) return null;
+  var end = Math.max.apply(null, ends);
+  // 没有真实开始时间就不算用时（截止日期是目标完成日，不是开始日）
+  if (!starts.length) return { days: null, endMs: end };
+  var start = Math.min.apply(null, starts);
+  if (!(end > start)) return { days: null, endMs: end };
+  var days = Math.max(1, Math.ceil((end - start) / 86400000));
+  return { days: days, endMs: end };
+}
+function renderClearSummary(p) {
+  if (p.status !== '已完成') return '';
+  var st = pjPhaseStats(p);
+  var spend = p.spend || { buy: 0, exp: 0, phases: {} };
+  var buy = Number(spend.buy) || 0;
+  var exp = Number(spend.exp) || 0;
+  var total = buy + exp;
+  var budget = (p.budget == null) ? null : Number(p.budget);
+  var todos = pjLinkedTodos(p);
+  var todoDone = todos.filter(function(t) { return t.status === '已完成'; }).length;
+  var dur = pjClearDays(p);
+  var phaseSum = pjSumPhaseBudgets(p);
+
+  var html = '<div class="pj2-clear">';
+  html += '<div class="pj2-clear-head"><span class="pj2-clear-flag">🏁</span><div><b>通关总结</b><span>' + esc(p.name) + '</span></div></div>';
+  html += '<div class="pj2-clear-grid">';
+  html += '<div class="pj2-clear-cell"><span>步骤</span><b>' + st.done + ' 完成</b>' + (st.skipped ? '<em>' + st.skipped + ' 跳过</em>' : '') + '</div>';
+  html += '<div class="pj2-clear-cell"><span>花费</span><b>' + pjMoney(total) + '</b>'
+    + (budget != null && budget > 0
+      ? '<em class="' + (total > budget ? 'over' : 'ok') + '">' + (total > budget ? '超 ' + pjMoney(total - budget) : '剩 ' + pjMoney(budget - total)) + ' / 预算 ' + pjMoney(budget) + '</em>'
+      : '<em>未设总预算</em>') + '</div>';
+  html += '<div class="pj2-clear-cell"><span>采购 / 记账</span><b>' + pjMoney(buy) + ' + ' + pjMoney(exp) + '</b></div>';
+  if (phaseSum.n > 0) {
+    html += '<div class="pj2-clear-cell"><span>分步预算</span><b>' + pjMoney(phaseSum.sum) + '</b>'
+      + (budget != null && budget > 0 && phaseSum.sum > budget
+        ? '<em class="over">超总预算 ' + pjMoney(phaseSum.sum - budget) + '</em>'
+        : '<em>' + phaseSum.n + ' 步已设</em>') + '</div>';
+  }
+  if (todos.length) {
+    html += '<div class="pj2-clear-cell"><span>待办</span><b>' + todoDone + '/' + todos.length + '</b><em>' + (todos.length - todoDone) + ' 条未勾</em></div>';
+  }
+  if (dur && dur.days) {
+    html += '<div class="pj2-clear-cell"><span>用时</span><b>' + dur.days + ' 天</b><em>完成于 ' + pjDateShort(dur.endMs) + '</em></div>';
+  } else if (dur && dur.endMs) {
+    html += '<div class="pj2-clear-cell"><span>完成</span><b>' + pjDateShort(dur.endMs) + '</b></div>';
+  }
+  html += '</div>';
+
+  // 分步一览
+  var rows = [];
+  pjActivePhaseIdxs(p).forEach(function(i) {
+    var ph = (p.phases || [])[i] || {};
+    var psMap = (spend.phases && spend.phases[i]) || {};
+    var ps = (Number(psMap.buy) || 0) + (Number(psMap.exp) || 0);
+    var pb = ph.budget == null ? null : Number(ph.budget);
+    rows.push({ i: i, ph: ph, spend: ps, budget: pb, status: ph.status || 'todo' });
+  });
+  if (rows.length) {
+    html += '<div class="pj2-clear-steps">';
+    rows.forEach(function(r) {
+      var mark = r.status === 'done' ? '✓' : r.status === 'skipped' ? '⏭' : '·';
+      html += '<div class="pj2-clear-step"><span class="m">' + mark + '</span>'
+        + '<span class="n">' + pjStepTitleHtml(r.ph, r.i) + '</span>'
+        + '<span class="v">' + pjMoney(r.spend) + (r.budget != null ? '/' + pjMoney(r.budget) : '') + '</span></div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="pj2-clear-actions">'
+    + '<button class="pj-btn pj-btn-secondary" type="button" onclick="App.project.setTab(\'money\')">看账本</button>'
+    + '<button class="pj-btn pj-btn-secondary" type="button" onclick="App.project.archiveProject(\'' + p.id + '\')">🗄️ 归档</button>'
+    + '</div>';
+  html += '</div>';
+  return html;
+}
+
 // ---- 阶段页 ----
 function renderProjectPhasesTab(p) {
   var id = p.id;
@@ -897,7 +1042,9 @@ function renderProjectPhasesTab(p) {
   if (sel === undefined || sel === null || sel < -1 || sel > 5) sel = pjDefaultPhase(p);
   else if (sel >= 0 && active.indexOf(sel) < 0) sel = pjDefaultPhase(p);
 
-  var html = '<div class="pj2-hint-one">待办挂在每一步；完成本步会勾掉未完成待办</div>';
+  var html = renderClearSummary(p);
+  if (p.status !== '已完成') html += '<div class="pj2-hint-one">待办挂在每一步；完成本步会勾掉未完成待办</div>';
+  else html += '<div class="pj2-hint-one">项目已通关；下面保留各步记录，可归档</div>';
   html += '<div class="pj2-timeline">';
   for (var i = 0; i < 6; i++) {
     var ph = phases[i] || { idx: i, name: 'P' + i, status: 'todo' };
@@ -1131,6 +1278,20 @@ function renderProjectMoneyTab(p) {
       + '</div>';
   } else {
     html += '<div class="pj2-budget pj2-budget-empty"><span>还没有目标预算，设一个更好控花费</span><button onclick="App.project.editFromDetail(\'' + id + '\')">设置预算</button></div>';
+  }
+
+  // C2：分步预算合计 vs 总预算
+  var _psum = pjSumPhaseBudgets(p);
+  if (_psum.n > 0) {
+    if (budget != null && budget > 0) {
+      if (_psum.sum > budget) {
+        html += '<div class="pj2-budget-sum warn">⚠️ 分步预算合计 ' + pjMoney(_psum.sum) + ' 超过总预算 ' + pjMoney(budget) + '（超出 ' + pjMoney(_psum.sum - budget) + '）</div>';
+      } else {
+        html += '<div class="pj2-budget-sum">分步预算合计 ' + pjMoney(_psum.sum) + ' / 总预算 ' + pjMoney(budget) + '（剩 ' + pjMoney(budget - _psum.sum) + '）</div>';
+      }
+    } else {
+      html += '<div class="pj2-budget-sum muted">分步预算合计 ' + pjMoney(_psum.sum) + '（未设总预算）</div>';
+    }
   }
 
   html += '<div class="pj2-money-grid">'
@@ -1425,6 +1586,15 @@ async function savePhasePlan(projectId, idx) {
     await phaseApi(body);
     toast('✅ 已保存');
     await refreshProjectUI(projectId, idx);
+    // C2：刷新后若分步合计已超总预算，补一条提示（不阻断）
+    var _p2 = projectList.find(function(x) { return x.id === projectId; });
+    if (_p2 && phaseBudget != null && phaseBudget > 0) {
+      var _tb = _p2.budget == null ? null : Number(_p2.budget);
+      if (_tb != null && _tb > 0) {
+        var _ps = pjSumPhaseBudgets(_p2);
+        if (_ps.sum > _tb) toast('⚠️ 分步预算合计 ' + pjMoney(_ps.sum) + ' 已超总预算 ' + pjMoney(_tb));
+      }
+    }
   } catch (e) {
     toast('保存失败: ' + pjErrorText(e));
   }
@@ -1576,6 +1746,7 @@ App.project = {
   removeStepRow: pjRemoveStepRow,
   clearSteps: pjClearSteps,
   stepField: pjStepField,
+  updateBudgetSumWarn: pjUpdateBudgetSumWarn,
   deleteProject: deleteProject,
   archiveProject: archiveProject,
   editFromDetail: editProjectFromDetail,
