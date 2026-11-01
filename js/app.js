@@ -356,9 +356,27 @@ function openReportModal(period){
     var maxCat=Math.max.apply(null,d.topCats.map(function(c){return c[1]}).concat([1]));
     html+='<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
     html+='<div style="font-size:13px;color:var(--muted);margin-bottom:10px">支出分类</div>';
+    var _repYm='';
+    try{
+      var _gt=new Date(Number(d.generatedAt||Date.now())+8*3600000);
+      _repYm=_gt.getUTCFullYear()+'-'+String(_gt.getUTCMonth()+1).padStart(2,'0');
+      // 月报 label 形如「10月」，优先用 label 所在年份+月；generatedAt 已是生成时（次月1日）
+      if(d.period==='monthly'&&d.label){
+        var _lm=/^(\d{1,2})月$/.exec(String(d.label));
+        if(_lm&&typeof openStatsCatDetail==='function'){
+          // 生成日在次月，label 月 = 生成月-1（若 label 是上月）
+          var _m=Number(_lm[1]); var _y=_gt.getUTCFullYear();
+          if(_gt.getUTCMonth()+1!==_m){ if(_m===12&&_gt.getUTCMonth()+1===1)_y=_gt.getUTCFullYear()-1; }
+          _repYm=_y+'-'+String(_m).padStart(2,'0');
+        }
+      }
+    }catch(_e){}
     d.topCats.forEach(function(c){
       var w=Math.max(Math.round(c[1]/maxCat*100),4);
-      html+='<div class="report-cat-row"><span class="report-cat-name">'+esc(c[0])+'</span><div class="report-cat-track"><div class="report-cat-fill" style="width:'+w+'%"></div></div><span class="report-cat-val">¥'+Number(c[1]).toLocaleString('zh-CN')+'</span></div>';
+      var _can=(typeof openStatsCatDetail==='function');
+      var _cls=_can?' report-cat-row is-clickable':' report-cat-row';
+      var _click=_can?(' onclick=\"openStatsCatDetail(\''+escAttr(c[0])+'\',\''+_repYm+'\')\"'):'';
+      html+='<div class="'+_cls+'"'+_click+'><span class="report-cat-name">'+esc(c[0])+'</span><div class="report-cat-track"><div class="report-cat-fill" style="width:'+w+'%"></div></div><span class="report-cat-val">¥'+Number(c[1]).toLocaleString('zh-CN')+'</span></div>';
     });
     html+='</div>';
   }
