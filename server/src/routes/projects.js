@@ -159,7 +159,7 @@ router.post('/projects', async (req, res, next) => {
     }
 
     // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
-    // 每步可以是字符串，也可以是 {name, budget}（本步预算，可空）。
+    // 每步可以是字符串，也可以是 {name, budget, plannedDays, todos}。
     // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
     let steps = [];
     if (b.steps !== undefined && b.steps !== null) {
@@ -167,6 +167,8 @@ router.post('/projects', async (req, res, next) => {
       for (const raw of b.steps) {
         let name = '';
         let stepBudget = null;
+        let plannedDays = null;
+        let todos = [];
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
           name = String(raw.name == null ? '' : raw.name).trim().slice(0, 50);
           if (raw.budget !== undefined && raw.budget !== null && raw.budget !== '') {
@@ -175,11 +177,22 @@ router.post('/projects', async (req, res, next) => {
               return res.status(400).json({ error: 'bad step budget' });
             }
           }
+          if (raw.plannedDays !== undefined && raw.plannedDays !== null && raw.plannedDays !== '') {
+            plannedDays = Math.round(Number(raw.plannedDays));
+            if (!Number.isFinite(plannedDays) || plannedDays < 1) plannedDays = null;
+            else if (plannedDays > 30) plannedDays = 30;
+          }
+          if (Array.isArray(raw.todos)) {
+            todos = raw.todos
+              .map(t => String(t == null ? '' : t).trim().slice(0, 80))
+              .filter(Boolean)
+              .slice(0, 4);
+          }
         } else {
           name = String(raw == null ? '' : raw).trim().slice(0, 50);
         }
         if (!name) continue;
-        steps.push({ name, budget: stepBudget });
+        steps.push({ name, budget: stepBudget, plannedDays, todos });
       }
       if (steps.length > PHASE_COUNT) return res.status(400).json({ error: '最多规划 6 步' });
     }
@@ -187,15 +200,46 @@ router.post('/projects', async (req, res, next) => {
     // 只写 4 步 → 前 3 步在 P0~P2，第 4 步在 P5；P3、P4 自动标为未使用。
     const slotNames = new Array(PHASE_COUNT).fill(null);
     const slotBudgets = new Array(PHASE_COUNT).fill(null);
+    const slotDays = new Array(PHASE_COUNT).fill(null);
+    const slotTodos = new Array(PHASE_COUNT).fill([]);
+    const usedSlotIdxs = [];
     if (steps.length > 0) {
       for (let i = 0; i < steps.length - 1; i++) {
         slotNames[i] = steps[i].name;
         slotBudgets[i] = steps[i].budget;
+        slotDays[i] = steps[i].plannedDays;
+        slotTodos[i] = steps[i].todos || [];
+        usedSlotIdxs.push(i);
       }
       slotNames[PHASE_COUNT - 1] = steps[steps.length - 1].name;
       slotBudgets[PHASE_COUNT - 1] = steps[steps.length - 1].budget;
+      slotDays[PHASE_COUNT - 1] = steps[steps.length - 1].plannedDays;
+      slotTodos[PHASE_COUNT - 1] = steps[steps.length - 1].todos || [];
+      usedSlotIdxs.push(PHASE_COUNT - 1);
     }
     const startPhase = steps.length === 1 ? PHASE_COUNT - 1 : 0;
+
+    // 计划时间：按 used 槽顺序把 plannedDays 铺开。
+    // 有 dueMs 且总天数>0 → 从 due 往前推；否则从今天往后排。
+    const DAY = 86400000;
+    const totalDays = usedSlotIdxs.reduce((s, i) => s + (slotDays[i] || 0), 0);
+    const slotPlan = new Array(PHASE_COUNT).fill(null);
+    if (totalDays > 0) {
+      let cursor = dueMs != null
+        ? (dueMs - totalDays * DAY)
+        : Date.now();
+      // 统一到本地日 0 点，避免碎时分
+      const d0 = new Date(cursor);
+      d0.setHours(0, 0, 0, 0);
+      cursor = d0.getTime();
+      for (const i of usedSlotIdxs) {
+        const days = slotDays[i] || 0;
+        if (days > 0) {
+          slotPlan[i] = { start: cursor, end: cursor + days * DAY - 1 };
+          cursor += days * DAY;
+        }
+      }
+    }
 
     await conn.beginTransaction();
     const [ins] = await conn.query(
@@ -204,12 +248,25 @@ router.post('/projects', async (req, res, next) => {
         status, color, budget, startPhase]);
     for (let i = 0; i < PHASE_COUNT; i++) {
       const unused = steps.length > 0 && slotNames[i] === null;
+      const plan = unused ? null : slotPlan[i];
       await conn.query(
-        'INSERT INTO project_phases (project_id, phase_idx, display_name, status, budget) VALUES (?,?,?,?,?)',
-        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i]]);
+        'INSERT INTO project_phases (project_id, phase_idx, display_name, status, budget, planned_start_ms, planned_end_ms) VALUES (?,?,?,?,?,?,?)',
+        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i],
+          plan ? plan.start : null, plan ? plan.end : null]);
+    }
+    // AI 拆出的本步待办直接落到 todos（project_id=rec_N + phase_idx）
+    const recId = 'rec_' + ins.insertId;
+    for (const i of usedSlotIdxs) {
+      const list = slotTodos[i] || [];
+      for (let k = 0; k < list.length; k++) {
+        await conn.query(
+          `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [uid, list[k], '', null, '', '中', '其他', '待办', '无', '[]', '', '无', '', recId, i, '[]', k, '[]']);
+      }
     }
     await conn.commit();
-    res.json({ id: 'rec_' + ins.insertId, ok: true, steps: steps.length });
+    res.json({ id: recId, ok: true, steps: steps.length });
   } catch (e) {
     try { await conn.rollback(); } catch (x) {}
     next(e);

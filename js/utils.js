@@ -6,9 +6,11 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.21";
+const APP_VERSION = "3.0.22";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.22',date:'2026-11-01',items:['项目 B：AI 拆步可带计划天数与子待办，创建项目时写入阶段时间线','✨ AI 建议下一步：按当前步生成可点选待办草稿']},
+{v:'3.0.21',date:'2026-11-01',items:['项目 A：列表「今日推进」焦点条，按逾期/到期/当前步待办排序直达','逾期步骤与超/临预算标签；步骤头与卡片一眼看出风险']},
 {v:'3.0.20',date:'2026-11-01',items:['和 Claude 对话：AI 回复完整 Markdown 渲染（表格/标题/列表/引用/分割线/删除线），不再「结构全乱」','表格窄屏横向滚动，气泡内不撑破；AI 气泡去掉 pre-wrap，粗体/列表按 HTML 排版','历史与流式更新同样走新渲染器']},
 {v:'3.0.19',date:'2026-11-01',items:['待办支持多档提前提醒：设了具体时间默认提前 20 分钟、10 分钟各推一次（如 15:00 到期 → 14:40 与 14:50）','提醒列表新增「提前20分钟」；自定义提醒档位逐档独立触发','服务端按 reminders 数组调度推送并幂等记录已发档位；创建待办不再丢弃提醒设置']},
 {v:'3.0.18',date:'2026-10-31',items:['项目待办与普通待办系统通知文案区分：项目显示「📁 项目 · 计划名 · 步骤」，普通显示「⏰/⚠️ 待办」','服务端启用待办到期/早间推送定时任务（每 5 分钟）','推送按钮按类型区分：待办用「去查看」，记账仍用「去记账」']},

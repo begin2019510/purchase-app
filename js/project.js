@@ -521,7 +521,7 @@ function pickColor(c) {
 }
 
 // ===== 步骤规划：自然语言 → 结构（可编辑预览）=====
-var _pjStructuredSteps = []; // [{name, budget}]，新建时由 AI 拆解或手动维护
+var _pjStructuredSteps = []; // [{name, budget, plannedDays, todos}]，新建时由 AI 拆解或手动维护
 
 function pjRenderStepsPreview() {
   var box = document.getElementById('pjStepsPreview');
@@ -535,12 +535,20 @@ function pjRenderStepsPreview() {
   var html = '<div class="pj-steps-head"><span>已整理成 ' + _pjStructuredSteps.length + ' 步（可改）</span></div>';
   _pjStructuredSteps.forEach(function(s, i) {
     var b = s.budget == null ? '' : s.budget;
+    var d = s.plannedDays == null ? '' : s.plannedDays;
+    var todos = Array.isArray(s.todos) ? s.todos : [];
     html += '<div class="pjf-step-row">'
       + '<span class="pjf-step-idx">' + (i + 1) + '</span>'
       + '<input class="pjf-input" maxlength="50" placeholder="步骤名称" data-pj-step-i="' + i + '" data-pj-step-k="name" value="' + escAttr(s.name || '') + '" oninput="App.project.stepField(this)">'
       + '<input class="pjf-input pjf-step-budget" type="number" step="1" min="0" placeholder="预算" data-pj-step-i="' + i + '" data-pj-step-k="budget" value="' + escAttr(b) + '" oninput="App.project.stepField(this)">'
+      + '<input class="pjf-input pjf-step-days" type="number" step="1" min="1" max="30" placeholder="天" title="计划天数" data-pj-step-i="' + i + '" data-pj-step-k="plannedDays" value="' + escAttr(d) + '" oninput="App.project.stepField(this)">'
       + '<button type="button" class="pjf-step-del" title="删除" onclick="App.project.removeStepRow(' + i + ')">×</button>'
       + '</div>';
+    if (todos.length) {
+      html += '<div class="pjf-step-todos">' + todos.map(function(t) {
+        return '<span class="pjf-step-todo-chip">' + esc(t) + '</span>';
+      }).join('') + '</div>';
+    }
   });
   html += '<div class="pjf-step-actions">'
     + '<button type="button" class="btn btn-secondary pjf-step-btn" onclick="App.project.addStepRow()">＋ 加一步</button>'
@@ -557,6 +565,11 @@ function pjStepField(inp) {
     var v = inp.value.trim();
     _pjStructuredSteps[i].budget = v === '' ? null : Number(v);
     if (!isFinite(_pjStructuredSteps[i].budget) || _pjStructuredSteps[i].budget < 0) _pjStructuredSteps[i].budget = null;
+  } else if (k === 'plannedDays') {
+    var dv = inp.value.trim();
+    _pjStructuredSteps[i].plannedDays = dv === '' ? null : Math.round(Number(dv));
+    if (!isFinite(_pjStructuredSteps[i].plannedDays) || _pjStructuredSteps[i].plannedDays < 1) _pjStructuredSteps[i].plannedDays = null;
+    else if (_pjStructuredSteps[i].plannedDays > 30) _pjStructuredSteps[i].plannedDays = 30;
   } else {
     _pjStructuredSteps[i].name = inp.value;
   }
@@ -564,7 +577,7 @@ function pjStepField(inp) {
 
 function pjAddStepRow() {
   if (_pjStructuredSteps.length >= 6) { toast('最多 6 步'); return; }
-  _pjStructuredSteps.push({ name: '', budget: null });
+  _pjStructuredSteps.push({ name: '', budget: null, plannedDays: null, todos: [] });
   pjRenderStepsPreview();
 }
 
@@ -594,9 +607,17 @@ async function pjParseSteps(opts) {
       throw new Error((res && res.error) || '没能拆出步骤');
     }
     _pjStructuredSteps = res.data.steps.slice(0, 6).map(function(s) {
+      var pd = s.plannedDays;
+      if (pd == null || pd === '' || !isFinite(Number(pd)) || Number(pd) < 1) pd = null;
+      else pd = Math.min(30, Math.max(1, Math.round(Number(pd))));
+      var todos = Array.isArray(s.todos)
+        ? s.todos.map(function(t) { return String(t || '').trim().slice(0, 80); }).filter(Boolean).slice(0, 4)
+        : [];
       return {
         name: String(s.name || '').trim().slice(0, 50),
         budget: (s.budget == null || s.budget === '' || !isFinite(Number(s.budget)) || Number(s.budget) < 0) ? null : Number(s.budget),
+        plannedDays: pd,
+        todos: todos,
       };
     }).filter(function(s) { return !!s.name; });
     if (!_pjStructuredSteps.length) throw new Error('没能拆出步骤');
@@ -617,13 +638,25 @@ function pjCollectSteps() {
   _pjStructuredSteps.forEach(function(s, i) {
     var nameEl = document.querySelector('[data-pj-step-i="' + i + '"][data-pj-step-k="name"]');
     var budgetEl = document.querySelector('[data-pj-step-i="' + i + '"][data-pj-step-k="budget"]');
+    var daysEl = document.querySelector('[data-pj-step-i="' + i + '"][data-pj-step-k="plannedDays"]');
     var name = String((nameEl ? nameEl.value : s.name) || '').trim().slice(0, 50);
     var budget = null;
     if (budgetEl && budgetEl.value.trim() !== '') {
       budget = Number(budgetEl.value.trim());
       if (!isFinite(budget) || budget < 0) budget = null;
     }
-    if (name) out.push({ name: name, budget: budget });
+    var plannedDays = null;
+    if (daysEl && daysEl.value.trim() !== '') {
+      plannedDays = Math.round(Number(daysEl.value.trim()));
+      if (!isFinite(plannedDays) || plannedDays < 1) plannedDays = null;
+      else if (plannedDays > 30) plannedDays = 30;
+    } else if (s.plannedDays != null) {
+      plannedDays = s.plannedDays;
+    }
+    var todos = Array.isArray(s.todos)
+      ? s.todos.map(function(t) { return String(t || '').trim().slice(0, 80); }).filter(Boolean).slice(0, 4)
+      : [];
+    if (name) out.push({ name: name, budget: budget, plannedDays: plannedDays, todos: todos });
   });
   return out.slice(0, 6);
 }
@@ -706,7 +739,9 @@ async function saveProject() {
     budget: (function() { var el = document.getElementById('projectBudget'); var v = el ? el.value.trim() : ''; return v === '' ? null : Number(v); })(),
   };
   if (editing) data.id = id;
-  else if (steps.length) data.steps = steps.map(function(s) { return { name: s.name, budget: s.budget }; });
+  else if (steps.length) data.steps = steps.map(function(s) {
+    return { name: s.name, budget: s.budget, plannedDays: s.plannedDays, todos: s.todos || [] };
+  });
   try {
     var r = editing ? await projectApi('PUT', data) : await projectApi('POST', data);
     if (!editing && !(r && r.ok && r.id)) throw new Error('服务端未返回项目 ID');
@@ -1001,6 +1036,22 @@ function renderPhaseBody(p, idx, ph) {
     html += '<button class="pj-btn pj-btn-ghost" type="button" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'todo\')">撤销完成</button>';
   } else if (st === 'skipped') {
     html += '<button class="pj-btn pj-btn-ghost" type="button" onclick="App.project.setPhase(\'' + id + '\',' + idx + ',\'todo\')">恢复这一步</button>';
+  }
+  html += '</div>';
+  html += '<div class="pj2-ai-next">';
+  html += '<button class="pj-btn pj-btn-ghost pj2-ai-next-btn" type="button" onclick="App.project.suggestNext(\'' + id + '\',' + idx + ')">✨ AI 建议下一步</button>';
+  var sugKey = id + ':' + idx;
+  var sug = _pjSuggestions[sugKey];
+  if (sug && sug.length) {
+    html += '<div class="pj2-ai-next-list">';
+    sug.forEach(function(s, si) {
+      html += '<button type="button" class="pj2-ai-next-item" onclick="App.project.suggestToTodo(\'' + id + '\',' + idx + ',' + si + ')">'
+        + '<b>' + esc(s.title) + '</b>'
+        + (s.detail ? '<span>' + esc(s.detail) + '</span>' : '')
+        + '<i>加入待办</i>'
+        + '</button>';
+    });
+    html += '</div>';
   }
   html += '</div>';
   if (!canSkip && st !== 'done' && st !== 'skipped') {
@@ -1466,6 +1517,52 @@ function fillProjectPhaseSelects(projSelId, phaseSelId, projId, phaseIdx) {
   rebuild();
 }
 
+// AI 建议下一步（按 project:phase 缓存）
+var _pjSuggestions = {};
+async function pjSuggestNext(projectId, phaseIdx) {
+  var p = projectList.find(function(x) { return x.id === projectId; });
+  if (!p) return;
+  var phases = p.phases || [];
+  var ph = phases[phaseIdx] || {};
+  var key = projectId + ':' + phaseIdx;
+  try {
+    toast('AI 正在想下一步…');
+    var openTodos = pjPhaseTodos(p, phaseIdx)
+      .filter(function(t) { return t.status !== '已完成' && t.status !== '已删除' && t.status !== '已取消'; })
+      .map(function(t) { return t.title; });
+    var donePhases = phases.filter(function(x) { return x && x.status === 'done'; })
+      .map(function(x) { return pjStepTitle(x, Number(x.idx) || 0); });
+    var res = await aiRequest('suggest-next', {
+      projectName: p.name,
+      description: p.description || '',
+      phaseName: pjStepTitle(ph, phaseIdx),
+      openTodos: openTodos,
+      donePhases: donePhases,
+    });
+    if (!res || !res.ok || !res.data || !Array.isArray(res.data.suggestions) || !res.data.suggestions.length) {
+      throw new Error((res && res.error) || '没有建议');
+    }
+    _pjSuggestions[key] = res.data.suggestions.slice(0, 3);
+    pjRerenderDetail(projectId);
+  } catch (e) {
+    toast('建议失败: ' + pjErrorText(e));
+  }
+}
+
+function pjSuggestToTodo(projectId, phaseIdx, sugIdx) {
+  var list = _pjSuggestions[projectId + ':' + phaseIdx] || [];
+  var s = list[Number(sugIdx)];
+  if (!s || !s.title) return;
+  var title = String(s.title).trim();
+  var input = document.getElementById('pjQuickTodo_' + phaseIdx);
+  if (input) {
+    input.value = title;
+    pjCreateProjectTodo(projectId, title, null, input, null, phaseIdx);
+  } else {
+    pjCreateProjectTodo(projectId, title, null, null, null, phaseIdx);
+  }
+}
+
 App.project = {
   loadProjects: loadProjects,
   renderProject: renderProject,
@@ -1493,6 +1590,8 @@ App.project = {
   quickAddPurchase: quickAddPurchase,
   quickAddExpense: quickAddExpense,
   quickAddTodo: quickAddTodo,
+  suggestNext: pjSuggestNext,
+  suggestToTodo: pjSuggestToTodo,
   rememberTodoCategory: rememberTodoCategory,
   togglePhaseSettings: togglePhaseSettings,
   toggleTodo: toggleProjectTodo,
