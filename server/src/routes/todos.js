@@ -14,6 +14,16 @@ function _phaseIdx(v) {
   const n = Number(v);
   return Number.isInteger(n) && n >= 0 && n <= 5 ? n : null;
 }
+function _projectId(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const m = /^(?:rec_)?(\d+)$/.exec(String(v).trim());
+  return m ? Number(m[1]) : NaN;
+}
+async function _ownedProject(uid, id) {
+  if (id === null) return true;
+  if (!Number.isSafeInteger(id) || id <= 0) return false;
+  return !!(await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [id, uid]));
+}
 
 const TZ = 8 * 3600000;
 const STATUSES = new Set(['待办', '进行中', '已完成', '已取消', '已删除']);
@@ -108,6 +118,10 @@ router.post('/todos', async (req, res, next) => {
     if (category.length > 10) return res.status(400).json({ error: '分类过长' });
     const dueMs = dueToMs(b.dueDate);
     if (Number.isNaN(dueMs)) return res.status(400).json({ error: '日期格式不正确' });
+    const projectId = _projectId(b.projectId);
+    if (Number.isNaN(projectId)) return res.status(400).json({ error: '项目ID格式不正确' });
+    if (!(await _ownedProject(uid, projectId))) return res.status(404).json({ error: '项目不存在' });
+    if (b.phaseIdx !== undefined && b.phaseIdx !== null && b.phaseIdx !== '' && _phaseIdx(b.phaseIdx) === null) return res.status(400).json({ error: '阶段序号不正确' });
     // 提醒档位：前端传分钟数组；设了具体时间且为空时默认提前 20/10 分钟各一次
     let rems = '[]';
     try {
@@ -126,7 +140,7 @@ router.post('/todos', async (req, res, next) => {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, title, String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
         b.priority || '中', category, b.status || '待办', b.repeat || '无', String(b.subtasks || '[]').slice(0, 20000),
-        imageRef, b.linkType || '无', String(b.linkId || '').slice(0, 40), String(b.projectId || '').slice(0, 40), _phaseIdx(b.phaseIdx),
+        imageRef, b.linkType || '无', String(b.linkId || '').slice(0, 40), projectId === null ? '' : 'rec_' + projectId, _phaseIdx(b.phaseIdx),
         String(b.tags || '[]').slice(0, 10000), Number(b.order) || 0, rems]);
     res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
   } catch (e) { next(e); }
@@ -181,8 +195,16 @@ router.put('/todos', async (req, res, next) => {
       cols.link_type = b.linkType;
     }
     if (b.linkId !== undefined) cols.link_id = String(b.linkId || '').slice(0, 40);
-    if (b.projectId !== undefined) cols.project_id = String(b.projectId || '').slice(0, 40);
-    if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b.phaseIdx);
+    if (b.projectId !== undefined) {
+      const projectId = _projectId(b.projectId);
+      if (Number.isNaN(projectId)) return res.status(400).json({ error: '项目ID格式不正确' });
+      if (!(await _ownedProject(uid, projectId))) return res.status(404).json({ error: '项目不存在' });
+      cols.project_id = projectId === null ? '' : 'rec_' + projectId;
+    }
+    if (b.phaseIdx !== undefined) {
+      if (b.phaseIdx !== null && b.phaseIdx !== '' && _phaseIdx(b.phaseIdx) === null) return res.status(400).json({ error: '阶段序号不正确' });
+      cols.phase_idx = _phaseIdx(b.phaseIdx);
+    }
     if (b.tags !== undefined) cols.tags = String(b.tags || '[]').slice(0, 10000);
     if (b.order !== undefined) cols.sort_no = Number(b.order) || 0;
     if (b.reminders !== undefined) {

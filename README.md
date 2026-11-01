@@ -122,6 +122,7 @@ purchase-app/
 | `FEISHU_BOT_WEBHOOK` | 飞书机器人 Webhook |
 | `MIMO_API_KEY` | MiMo AI API Key |
 | `INVITE_CODE` | 注册邀请码（可重复使用） |
+| `CRON_SECRET` | 定时推送接口密钥（必须配置；与 Worker/GitHub Actions 一致） |
 | `IMAGE_STORE` | Cloudflare KV namespace |
 
 ### Cloudflare Worker (cron-worker)
@@ -160,6 +161,19 @@ purchase-app/
 
 ## 部署
 
+### Android 发布签名
+
+发布构建通过环境变量读取签名信息，不要把 keystore 或密码提交到仓库：
+
+```bash
+ANDROID_KEYSTORE_PATH=/absolute/path/to/release-key.jks
+ANDROID_KEYSTORE_PASSWORD=...
+ANDROID_KEY_ALIAS=...
+ANDROID_KEY_PASSWORD=...
+```
+
+缺少以上变量时，Gradle 会生成未签名的 release 构建产物；发布到应用商店前必须配置签名变量。
+
 ### Cloudflare Pages
 
 ```bash
@@ -174,6 +188,7 @@ npx wrangler pages secret put JWT_SECRET
 npx wrangler pages secret put FEISHU_BOT_WEBHOOK
 npx wrangler pages secret put MIMO_API_KEY
 npx wrangler pages secret put INVITE_CODE
+npx wrangler pages secret put CRON_SECRET
 # ... 其他变量
 ```
 

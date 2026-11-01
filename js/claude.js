@@ -128,9 +128,16 @@ function claudeRenderMd(text){
   var stash=[];
   function keep(html){ stash.push(html); return '%%MD'+(stash.length-1)+'%%'; }
   function cell(t){
+    var x=inline(t);
+    return x;
+  }
+  function inline(t){
     var x=esc(String(t==null?'':t));
     x=x.replace(/`([^`]+)`/g,'<code class="md-code">$1</code>');
     x=x.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    x=x.replace(/__([^_]+)__/g,'<strong>$1</strong>');
+    x=x.replace(/~~([^~]+)~~/g,'<del>$1</del>');
+    x=x.replace(/(^|[^*\w])\*([^*]+)\*(?![*\w])/g,'$1<em>$2</em>');
     return x;
   }
 
@@ -148,7 +155,17 @@ function claudeRenderMd(text){
     if(lines.length<2) return block;
     function parseRow(line){
       var t=String(line).trim().replace(/^\|/,'').replace(/\|$/,'');
-      return t.split('|').map(function(c){ return c.trim(); });
+      var out=[], cur='', escaped=false;
+      for(var n=0;n<t.length;n++){
+        var ch=t[n];
+        if(escaped){ cur+=ch; escaped=false; continue; }
+        if(ch==='\\'){ escaped=true; continue; }
+        if(ch==='|'){ out.push(cur.trim()); cur=''; continue; }
+        cur+=ch;
+      }
+      if(escaped) cur+='\\';
+      out.push(cur.trim());
+      return out;
     }
     var head=parseRow(lines[0]);
     var sep=parseRow(lines[1]);
@@ -175,20 +192,20 @@ function claudeRenderMd(text){
     var body=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').map(function(l){
       return l.replace(/^>[ \t]?/,'');
     }).join('\n');
-    return '\n'+keep('<blockquote>'+esc(body).replace(/\n/g,'<br>')+'</blockquote>')+'\n';
+    return '\n'+keep('<blockquote>'+body.split('\n').map(inline).join('<br>')+'</blockquote>')+'\n';
   });
 
   // 4) 无序 / 有序列表（连续行成组）
   s=s.replace(/(?:^|\n)(?:[ \t]*[-*+][ \t]+[^\n]*(?:\n[ \t]*[-*+][ \t]+[^\n]*)*)/g,function(m){
     var items=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').filter(Boolean).map(function(line){
-      return '<li>'+esc(line.replace(/^[ \t]*[-*+][ \t]+/,''))+'</li>';
+      return '<li>'+inline(line.replace(/^[ \t]*[-*+][ \t]+/,''))+'</li>';
     }).join('');
     if(!items) return m;
     return '\n'+keep('<ul>'+items+'</ul>')+'\n';
   });
   s=s.replace(/(?:^|\n)(?:[ \t]*\d+\.[ \t]+[^\n]*(?:\n[ \t]*\d+\.[ \t]+[^\n]*)*)/g,function(m){
     var items=m.replace(/^\n/,'').replace(/\s+$/,'').split('\n').filter(Boolean).map(function(line){
-      return '<li>'+esc(line.replace(/^[ \t]*\d+\.[ \t]+/,''))+'</li>';
+      return '<li>'+inline(line.replace(/^[ \t]*\d+\.[ \t]+/,''))+'</li>';
     }).join('');
     if(!items) return m;
     return '\n'+keep('<ol>'+items+'</ol>')+'\n';
