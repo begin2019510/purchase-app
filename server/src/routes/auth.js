@@ -1,6 +1,7 @@
 'use strict';
 // /api/auth?action=... 全量镜像 CF functions/api/auth.js 的请求/响应契约
 const crypto = require('crypto');
+const util = require('util');
 const express = require('express');
 const cfg = require('../config');
 const db = require('../db');
@@ -12,10 +13,12 @@ const router = express.Router();
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 function genSalt() { return crypto.randomBytes(16).toString('hex'); }
 // v2: PBKDF2-SHA256 100k。必须用异步——Sync 会卡住 2 核低内存机上的整个 purchase-server。
+// 本机 Node 的 crypto 模块没有 crypto.promises（promises 属性被裁掉），用 util.promisify 包装回调版。
 // 版本号统一 Number()：MySQL 偶发把 TINYINT 读成字符串 "2" 时，严格 === 会退回 SHA-256 校验导致锁死。
+const pbkdf2Async = util.promisify(crypto.pbkdf2);
 async function hashPwd(password, salt, ver) {
   if (Number(ver) === 2) {
-    const buf = await crypto.promises.pbkdf2(password, salt, 100000, 32, 'sha256');
+    const buf = await pbkdf2Async(password, salt, 100000, 32, 'sha256');
     return buf.toString('hex');
   }
   return sha256(salt + password);
