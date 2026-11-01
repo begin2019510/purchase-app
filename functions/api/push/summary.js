@@ -61,7 +61,8 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const type = url.searchParams.get('type') || 'weekly';
   const token = url.searchParams.get('token');
-  if (env.CRON_SECRET && token !== env.CRON_SECRET) return json({ error: '未授权' }, 401, headers);
+  if (!env.CRON_SECRET) return json({ error: 'CRON_SECRET 未配置' }, 503, headers);
+  if (token !== env.CRON_SECRET) return json({ error: '未授权' }, 401, headers);
 
   if (!env.FEISHU_BOT_WEBHOOK) return json({ error: 'FEISHU_BOT_WEBHOOK 未配置' }, 500, headers);
 
