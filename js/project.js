@@ -747,14 +747,12 @@ function pjClearDays(p) {
     if (ph.startedAt) starts.push(Number(ph.startedAt));
     if (ph.finishedAt) ends.push(Number(ph.finishedAt));
   });
-  if (!ends.length) {
-    if (p.dueDate) return null;
-    return null;
-  }
+  if (!ends.length) return null;
   var end = Math.max.apply(null, ends);
-  var start = starts.length ? Math.min.apply(null, starts) : null;
-  if (start == null && p.dueDate) start = Number(p.dueDate);
-  if (start == null) return { days: null, endMs: end };
+  // 没有真实开始时间就不算用时（截止日期是目标完成日，不是开始日）
+  if (!starts.length) return { days: null, endMs: end };
+  var start = Math.min.apply(null, starts);
+  if (!(end > start)) return { days: null, endMs: end };
   var days = Math.max(1, Math.ceil((end - start) / 86400000));
   return { days: days, endMs: end };
 }
