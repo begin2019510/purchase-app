@@ -99,7 +99,7 @@ router.all('/auth', async (req, res, next) => {
       const inv = await validateInvite(inviteCode);
       if (!inv.valid) return res.json({ error: '邀请码无效或已被使用' });
       const salt = genSalt();
-      const hash = await hashPwd(password, salt, 1);   // 与 CF register 一致：v1
+      const hash = await hashPwd(password, salt, 2);
       const conn = await db.pool.getConnection();
       let uid;
       try {
@@ -110,7 +110,7 @@ router.all('/auth', async (req, res, next) => {
           if (!up.affectedRows) { await conn.rollback(); return res.json({ error: '邀请码无效或已被使用' }); }
         }
         const [r] = await conn.query('INSERT INTO users (username, password_hash, salt, hash_version, invite_code, invite_type) VALUES (?,?,?,?,?,?)',
-          [username, hash, salt, 1, inviteCode, inv.type]);
+          [username, hash, salt, 2, inviteCode, inv.type]);
         await conn.commit();
         uid = r.insertId;
       } catch (e) {
@@ -135,6 +135,10 @@ router.all('/auth', async (req, res, next) => {
       if (!user) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
       const hash = await hashPwd(password, user.salt, user.hash_version);
       if (!safeEqual(hash, user.password_hash)) { await rateRecord(ip, rl.recent); return res.status(401).json({ error: '用户名或密码错误' }); }
+      if (Number(user.hash_version) !== 2) {
+        const upgraded = await hashPwd(password, user.salt, 2);
+        await db.exec('UPDATE users SET password_hash = ?, hash_version = 2 WHERE id = ? AND hash_version = ?', [upgraded, user.id, user.hash_version]);
+      }
       await db.exec('DELETE FROM login_fails WHERE ip = ?', [ip]);
       const t = await issueTokens(user.id, username);
       await H.logOp(username, 'login', '登录成功', ip);

@@ -12,7 +12,8 @@ export async function onRequest(context) {
   const authHeader = request.headers.get('Authorization');
   const url = new URL(request.url);
   const token = url.searchParams.get('token') || (authHeader ? authHeader.replace('Bearer ', '') : '');
-  if (env.CRON_SECRET && token !== env.CRON_SECRET) return json({ error: '未授权' }, 401, headers);
+  if (!env.CRON_SECRET) return json({ error: 'CRON_SECRET 未配置' }, 503, headers);
+  if (token !== env.CRON_SECRET) return json({ error: '未授权' }, 401, headers);
 
   // 根据 UTC 时间推算北京时间，选文案
   const now = new Date();
