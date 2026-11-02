@@ -256,6 +256,26 @@ function renderStats() { console.log('renderStats START');
     + '<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 12px'+(_isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
     + '</div>';
 
+  // ===== 自定义日期区间小结 =====
+  (function () {
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    const first = thisMonth + '-01';
+    let s = (window._rangeFrom || first);
+    let e = (window._rangeTo || today);
+    if (s > today) s = first;
+    if (e > today) e = today;
+    if (s > e) { s = e; }
+    html += '<div class="stats-section" style="margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px">📅 自定义区间小结</div>'
+      + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">'
+      + '<div class="form-group" style="flex:1;min-width:120px;margin:0"><label>从</label>'
+      + '<input type="date" id="rangeFrom" value="' + esc(s) + '" max="' + today + '"></div>'
+      + '<div class="form-group" style="flex:1;min-width:120px;margin:0"><label>到</label>'
+      + '<input type="date" id="rangeTo" value="' + esc(e) + '" max="' + today + '"></div>'
+      + '<button class="chip active" style="padding:11px 16px;border:none;cursor:pointer;font-weight:700" onclick="openRangeSummary()">生成小结</button>'
+      + '</div></div>';
+  })();
+
   // ===== 预算池瀑布流 =====
   if (pool.totalBudget > 0) {
     const usagePct = pool.available > 0 ? Math.min((pool.directPurchaseSpend + pool.expenseSpend) / pool.available * 100, 100) : 0;
@@ -563,6 +583,218 @@ function closeStatsCatDetail() {
   }
 }
 
+// ===== 自定义日期区间小结（口径对齐 report.js：直接采购 + 分期事件；支出排除 [固定]/[采购]/[采购分期]）=====
+const RANGE_ACTIVE_BUY = ['已下单', '已到', '已归档'];
+
+function rangeDayStartMs(dayStr) {
+  // dayStr: YYYY-MM-DD（北京日）
+  const p = String(dayStr || '').split('-').map(Number);
+  if (p.length < 3 || !p[0] || !p[1] || !p[2]) return 0;
+  return Date.UTC(p[0], p[1] - 1, p[2]) - 8 * 3600000;
+}
+
+function rangeItemDayMs(d) {
+  if (typeof d === 'number' && isFinite(d)) return d;
+  const s = String(d || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return rangeDayStartMs(s.slice(0, 10));
+  const t = Date.parse(d);
+  return isFinite(t) ? t : 0;
+}
+
+function rangeExpDayMs(d) {
+  // expenses['日期'] = 'YYYY-MM-DDTHH:mm'
+  const s = String(d || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return rangeDayStartMs(s.slice(0, 10));
+  const t = Date.parse(d);
+  return isFinite(t) ? t : 0;
+}
+
+// 分期事件：只产出 [start,end) 内的月供（与服务端 installmentEvents 同口径）
+function rangeInstallmentEvents(start, end) {
+  const out = [];
+  const nowBj = new Date(Date.now() + 8 * 3600000);
+  const nowIdx = nowBj.getUTCFullYear() * 12 + nowBj.getUTCMonth();
+  const endBj = new Date(end - 1 + 8 * 3600000); // 区间最后一天所在月
+  // 枚举区间覆盖到的所有年月
+  const sBj = new Date(start + 8 * 3600000);
+  const y0 = sBj.getUTCFullYear(), m0 = sBj.getUTCMonth();
+  const y1 = endBj.getUTCFullYear(), m1 = endBj.getUTCMonth();
+  for (const i of (items || [])) {
+    const tp = Number(i['分期期数']) || 0;
+    if (tp <= 1) continue;
+    if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
+    const dateMs = rangeItemDayMs(i['日期']);
+    if (!dateMs) continue;
+    const pd = new Date(dateMs + 8 * 3600000);
+    let sm = String(i['分期开始月'] || '');
+    if (!/^\d{4}-\d{2}$/.test(sm)) sm = pd.getUTCFullYear() + '-' + String(pd.getUTCMonth() + 1).padStart(2, '0');
+    const parts = sm.split('-').map(Number);
+    const sy = parts[0], sMo = parts[1];
+    if (!sy || !sMo || sMo < 1 || sMo > 12) continue;
+    const amount = getItemInstallmentAmount(i);
+    if (!(amount > 0)) continue;
+    const payDay = pd.getUTCDate() || 1;
+    const cat = i['分类'] || '其他';
+    const name = i['商品名称'] || '分期';
+    for (let k = 0; k < tp; k++) {
+      const yy = sy + Math.floor((sMo - 1 + k) / 12);
+      const mm0 = (sMo - 1 + k) % 12;
+      const idx = yy * 12 + mm0;
+      if (idx > nowIdx) continue;
+      // 只关心落在区间内的月
+      if (idx < y0 * 12 + m0 || idx > y1 * 12 + m1) continue;
+      const dim = new Date(Date.UTC(yy, mm0 + 1, 0)).getUTCDate();
+      const evTs = Date.UTC(yy, mm0, Math.min(payDay, dim)) - 8 * 3600000;
+      if (evTs < start || evTs >= end) continue;
+      out.push({
+        kind: 'buy', name, amount, cat, ts: evTs,
+        how: '分期 · 第' + (k + 1) + '/' + tp + '期',
+        howSub: '期供 ¥' + amount + (i['平台'] ? ' · ' + i['平台'] : ''),
+      });
+    }
+  }
+  return out;
+}
+
+function computeRangeSummary(fromStr, toStr) {
+  const start = rangeDayStartMs(fromStr);
+  const end = rangeDayStartMs(toStr) + 86400000; // 含 toStr 当天
+  if (!start || !end || end <= start) return null;
+
+  const rows = [];
+  let buySum = 0, buyN = 0, expSum = 0, expN = 0;
+  const catMap = {};
+
+  for (const i of (items || [])) {
+    if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
+    const tp = Number(i['分期期数']) || 0;
+    if (tp > 1) continue; // 分期走事件
+    const ts = rangeItemDayMs(i['日期']);
+    if (ts < start || ts >= end) continue;
+    const amt = (Number(i['单价']) || 0) * (Number(i['数量']) || 1);
+    if (!(amt > 0)) continue;
+    buySum += amt; buyN++;
+    const cat = i['分类'] || '其他';
+    catMap[cat] = (catMap[cat] || 0) + amt;
+    const when = new Date(ts + 8 * 3600000);
+    const whenStr = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push({
+      kind: 'buy', name: i['商品名称'] || '未命名', amount: amt, cat, ts,
+      how: '直接购买',
+      howSub: '¥' + (Number(i['单价']) || 0) + ' × ' + (Number(i['数量']) || 1) + (i['平台'] ? ' · ' + i['平台'] : '') + (i['状态'] ? ' · ' + i['状态'] : ''),
+      when: whenStr,
+    });
+  }
+
+  for (const ev of rangeInstallmentEvents(start, end)) {
+    buySum += ev.amount; buyN++;
+    catMap[ev.cat] = (catMap[ev.cat] || 0) + ev.amount;
+    const when = new Date(ev.ts + 8 * 3600000);
+    ev.when = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push(ev);
+  }
+
+  for (const e of (expenses || [])) {
+    if ((e['类型'] || '支出') !== '支出') continue;
+    const note = String(e['备注'] || '');
+    if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
+    const ts = rangeExpDayMs(e['日期']);
+    if (ts < start || ts >= end) continue;
+    const amt = Number(e['金额']) || 0;
+    if (!(amt > 0)) continue;
+    expSum += amt; expN++;
+    const cat = e['分类'] || '其他';
+    catMap[cat] = (catMap[cat] || 0) + amt;
+    const when = new Date(ts + 8 * 3600000);
+    const whenStr = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push({
+      kind: 'exp', name: note.trim() || (cat + '支出'), amount: amt, cat, ts,
+      how: '记账', howSub: whenStr + ' · ' + cat, when: whenStr,
+    });
+  }
+
+  rows.sort((a, b) => b.ts - a.ts || b.amount - a.amount);
+  const topCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return {
+    from: fromStr, to: toStr,
+    total: buySum + expSum,
+    buySum, buyN, expSum, expN,
+    count: buyN + expN,
+    rows, topCats,
+  };
+}
+
+function openRangeSummary() {
+  try {
+    const fromEl = document.getElementById('rangeFrom');
+    const toEl = document.getElementById('rangeTo');
+    const fromStr = fromEl && fromEl.value;
+    const toStr = toEl && toEl.value;
+    if (!fromStr || !toStr) { if (typeof toast === 'function') toast('请选择起止日期'); return; }
+    if (fromStr > toStr) { if (typeof toast === 'function') toast('起始日期不能晚于结束日期'); return; }
+    window._rangeFrom = fromStr;
+    window._rangeTo = toStr;
+    const d = computeRangeSummary(fromStr, toStr);
+    if (!d) { if (typeof toast === 'function') toast('日期区间无效'); return; }
+
+    const box = document.getElementById('reportBody');
+    if (!box) return;
+    const yuan = n => '¥' + Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+    let html = '';
+    html += '<div style="text-align:center;padding:14px 0 4px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:2px">📅 区间小结</div>';
+    html += '<div style="font-size:13px;color:var(--muted);margin-top:6px">' + esc(d.from) + ' ~ ' + esc(d.to) + '</div>';
+    html += '<div style="font-size:14px;color:var(--muted);margin-top:16px">总支出</div>';
+    html += '<div class="report-hero-num" style="margin-top:4px">' + yuan(d.total) + '</div>';
+    html += '</div>';
+    html += '<div class="report-cells" style="margin:14px 0">';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">🛒 采购</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + yuan(d.buySum) + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + d.buyN + ' 笔</div></div>';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">💰 日常记账</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + yuan(d.expSum) + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + d.expN + ' 笔</div></div>';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">🧾 合计</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + d.count + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">含采购 ' + d.buyN + ' 笔</div></div>';
+    html += '</div>';
+
+    if (d.topCats.length) {
+      const maxCat = Math.max.apply(null, d.topCats.map(c => c[1]).concat([1]));
+      html += '<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+      html += '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">分类构成</div>';
+      d.topCats.forEach(function (c) {
+        const w = Math.max(Math.round(c[1] / maxCat * 100), 4);
+        html += '<div class="report-cat-row"><span class="report-cat-name">' + esc(c[0]) + '</span><div class="report-cat-track"><div class="report-cat-fill" style="width:' + w + '%"></div></div><span class="report-cat-val">' + yuan(c[1]) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div style="font-size:13px;color:var(--muted);margin:4px 0 8px">花钱明细 · ' + d.rows.length + ' 条</div>';
+    if (!d.rows.length) {
+      html += '<div style="text-align:center;color:var(--muted);padding:24px 0;font-size:13px">该区间没有计入消耗的流水</div>';
+    } else {
+      html += '<div style="background:var(--card);border-radius:14px;padding:4px 14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+      d.rows.forEach(function (r) {
+        const badge = r.kind === 'buy'
+          ? (String(r.how).indexOf('分期') === 0 ? '<span class="a-badge a-badge-purple" style="margin-left:6px">分期</span>' : '<span class="a-badge a-badge-green" style="margin-left:6px">采购</span>')
+          : '<span class="a-badge a-badge-orange" style="margin-left:6px">记账</span>';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;word-break:break-all">' + esc(r.name) + badge + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(r.how) + '</div>';
+        if (r.howSub) html += '<div style="font-size:11px;color:var(--muted);opacity:.85">' + esc(r.howSub) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:14px;font-weight:800">' + yuan(r.amount) + '</div>';
+        if (r.when) html += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(r.when) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      html += '<div style="font-size:11px;color:var(--muted);line-height:1.5;padding:0 4px 8px">口径：采购含直接购买与区间内到期的分期期供；日常记账不含 [固定]/[采购]/[采购分期] 标记。</div>';
+    }
+    html += '<button class="a-btn a-btn-primary a-btn-block" style="min-height:48px;font-size:16px;margin-top:4px" onclick="closeStatsCatDetail()">返回</button>';
+    box.innerHTML = html;
+    const ov = document.getElementById('reportOverlay');
+    if (ov) ov.classList.add('active');
+  } catch (e) {
+    console.error('openRangeSummary', e);
+    if (typeof toast === 'function') toast('生成小结失败');
+  }
+}
+
 // === App.stats namespace exports ===
 App.stats.barChart = barChart;
 App.stats.donutChart = donutChart;
@@ -576,3 +808,10 @@ App.stats.renderStats = renderStats;
 App.stats.switchStatsTab = switchStatsTab;
 App.stats.openStatsCatDetail = openStatsCatDetail;
 App.stats.closeStatsCatDetail = closeStatsCatDetail;
+App.stats.openRangeSummary = openRangeSummary;
+// onclick 内联需要全局
+if (typeof window !== 'undefined') {
+  window.openRangeSummary = openRangeSummary;
+  window.openStatsCatDetail = openStatsCatDetail;
+  window.closeStatsCatDetail = closeStatsCatDetail;
+}

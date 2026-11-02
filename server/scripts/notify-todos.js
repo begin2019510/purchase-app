@@ -1,9 +1,10 @@
 'use strict';
-// 待办提醒调度：早间摘要 + 多档提前提醒（Web Push）
+// 待办提醒调度：晚间小结（21:00-21:15）+ 多档提前提醒（Web Push）
 // 按 reminders（分钟数组）逐档各发一次：如 3 点到期 + [10,20] → 14:50、14:40 各一条
 // 空 reminders 且设了具体时间 → 默认 [10,20]
-// 项目/普通待办文案区分（📁 vs ⏰/📋）
+// 项目/普通待办文案区分（📁 vs ⏰）
 // 建议每 5 分钟跑一次（systemd timer）；幂等：notified_rems 记录已发档位
+// 晚间：users.notify_evening_date（DATE 列，必须 DATE_FORMAT 比对，勿用 Date 对象 !== 字符串）
 // 用法: sudo node server/scripts/notify-todos.js [--dry]
 const fs = require('fs');
 const cfg = require('../src/config');
@@ -13,10 +14,12 @@ const webpush = require('/opt/push-sender/node_modules/web-push');
 const CF = process.env.CF_BASE || 'https://121212121.top';
 const DRY = process.argv.includes('--dry');
 const TZ = 8 * 3600000;
+const MS = 86400000;
 const log = (...a) => console.log(new Date(Date.now() + TZ).toISOString().slice(11, 19), ...a);
 
 // 与前端 saveTodo 默认一致
 const DEFAULT_REMINDERS = [10, 20];
+const ACTIVE_BUY = ['已下单', '已到', '已归档'];
 
 const KEYS = JSON.parse(fs.readFileSync('/opt/push-sender/vapid-keys.json', 'utf8'));
 webpush.setVapidDetails('mailto:admin@121212121.top', KEYS.publicKey, KEYS.privateKey);
@@ -26,6 +29,7 @@ function bjParts(ts) {
   return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(), hh: d.getUTCHours(), mm: d.getUTCMinutes() };
 }
 const pad = n => String(n).padStart(2, '0');
+const yuan = n => '¥' + Math.round(n).toLocaleString('zh-CN');
 
 function parseRems(raw) {
   try {
@@ -62,15 +66,6 @@ function dueBody(t) {
   return todoLabel(t).body;
 }
 
-function morningLine(t) {
-  if (t.project_id) {
-    const phase = t.phase_name ? `·${t.phase_name}` : '';
-    const proj = t.project_name || '项目';
-    return `📁${proj}${phase} ${t.title}`;
-  }
-  return `⏰ ${t.title}`;
-}
-
 function whenStr(min) {
   return min >= 60 ? `${Math.round(min / 60)} 小时` : `${min} 分钟`;
 }
@@ -94,15 +89,78 @@ async function send(sub, payload) {
   }
 }
 
-async function markMorning(todoIds, dateStr) {
-  if (DRY || !todoIds.length) return;
-  const ph = todoIds.map(() => '?').join(',');
-  await db.pool.query(`UPDATE todos SET notify_morning_date = ? WHERE id IN (${ph})`, [dateStr, ...todoIds]);
+async function markEvening(userId, dateStr) {
+  if (DRY) return;
+  await db.exec('UPDATE users SET notify_evening_date = ? WHERE id = ?', [dateStr, userId]);
 }
 
 async function markRem(id, mins) {
   if (DRY || !mins.length) return;
   await db.exec('UPDATE todos SET notified_rems = ? WHERE id = ?', [JSON.stringify(mins), id]);
+}
+
+// 分期采购的每月付款日：取购买日的「日」，超出当月天数则取月末；
+// 起始月优先用 installment_start，缺失时退回购买月。只列 dayStart 那一天应还。
+function installmentsForDay(pRecs, dayStart) {
+  const dayEnd = dayStart + MS;
+  const nowBj = new Date(Date.now() + TZ);
+  const nowIdx = nowBj.getUTCFullYear() * 12 + nowBj.getUTCMonth();
+  const tBj = new Date(dayStart + TZ);
+  const tY = tBj.getUTCFullYear(), tM = tBj.getUTCMonth();
+  const tIdx = tY * 12 + tM;
+  const out = [];
+  for (const r of pRecs) {
+    const tp = Number(r.installments) || 0;
+    if (tp <= 1 || !ACTIVE_BUY.includes(r.status)) continue;
+    const dateMs = Number(r.date_ms) || 0;
+    if (!dateMs) continue;
+    const pd = new Date(dateMs + TZ);
+    let start = String(r.installment_start || '');
+    if (!/^\d{4}-\d{2}$/.test(start)) start = pd.getUTCFullYear() + '-' + String(pd.getUTCMonth() + 1).padStart(2, '0');
+    const [sy, sm] = start.split('-').map(Number);
+    if (!sy || !sm || sm < 1 || sm > 12) continue;
+    const amount = Number(r.installment_amount) || Math.round(((Number(r.price) || 0) * (Number(r.qty) || 1)) / tp);
+    if (amount <= 0) continue;
+    // dayStart 可能是明天（跨月也要算），上界放到 nowIdx+1
+    if (tIdx < sy * 12 + (sm - 1) || tIdx > nowIdx + 1) continue;
+    const payDay = pd.getUTCDate() || 1;
+    const dim = new Date(Date.UTC(tY, tM + 1, 0)).getUTCDate();
+    const evTs = Date.UTC(tY, tM, Math.min(payDay, dim)) - TZ;
+    if (evTs < dayStart || evTs >= dayEnd) continue;
+    // 期数越界不计；已还清与否按日历应还展示（用户可能未点还款）
+    const k = (tY - sy) * 12 + (tM - (sm - 1));
+    if (k < 0 || k >= tp) continue;
+    out.push({ name: r.name || '分期', amount });
+  }
+  return out;
+}
+
+function eveningBody(todayExp, todayPur, inst, tomTodos) {
+  const lines = [];
+  if (todayExp.amount > 0 || todayPur.amount > 0) {
+    const parts = [];
+    if (todayExp.amount > 0) parts.push(`记账 ${yuan(todayExp.amount)} · ${todayExp.count} 笔`);
+    if (todayPur.amount > 0) parts.push(`采购 ${yuan(todayPur.amount)} · ${todayPur.count} 笔`);
+    lines.push(parts.join('｜'));
+    if (todayExp.topCats.length) {
+      lines.push('分类 ' + todayExp.topCats.map(c => c[0] + ' ' + yuan(c[1])).join(' · '));
+    }
+  } else {
+    lines.push('今天还没有记账');
+  }
+  if (inst.length) {
+    const n = inst.slice(0, 2).map(x => `${x.name} ${yuan(x.amount)}`).join('、');
+    lines.push(`明天分期应还 ${inst.length > 2 ? n + ' 等' : n}`);
+  }
+  if (tomTodos.length) {
+    const names = tomTodos.slice(0, 3).map(t => todoLabel(t).body).join('、');
+    const more = tomTodos.length > 3 ? ` 等 ${tomTodos.length} 项` : '';
+    lines.push(`明天待办 ${tomTodos.length} 项：${names}${more}`);
+  }
+  if (!inst.length && !tomTodos.length && lines.length === 1 && lines[0] === '今天还没有记账') {
+    lines.push('明天暂无分期/待办');
+  }
+  return lines.join('\n');
 }
 
 (async () => {
@@ -120,13 +178,18 @@ async function markRem(id, mins) {
     const fuzzy = exact || allUsers.find(x => x.username.length > uname.length && x.username.endsWith(uname));
     if (fuzzy) users.push({ id: fuzzy.id, username: fuzzy.username, subKey: uname });
   }
-  let sentCount = 0, usersMorning = 0, usersDue = 0;
+  let sentCount = 0, usersEvening = 0, usersDue = 0;
+
+  // 晚间窗口与日期边界（BEIJING）
+  const inEvening = bj.hh === 21 && bj.mm >= 0 && bj.mm <= 15;
+  const dayStart = Date.UTC(bj.y, bj.m - 1, bj.d) - TZ;
+  const tomStart = dayStart + MS;
 
   for (const u of users) {
     const sub = subs[u.subKey];
     if (!sub) continue;
     const todos = await db.query(
-      `SELECT t.id, t.title, t.due_ms, t.priority, t.notified_due_ms, t.notify_morning_date,
+      `SELECT t.id, t.title, t.due_ms, t.priority, t.notified_due_ms,
               t.project_id, t.phase_idx, t.reminders, t.notified_rems,
               p.name AS project_name, ph.display_name AS phase_name
        FROM todos t
@@ -136,33 +199,77 @@ async function markRem(id, mins) {
        ORDER BY t.due_ms`,
       [u.id]);
 
-    // ---- A. 早间摘要（08:25-08:40，每天一次；只提醒当天到期的）----
-    const inMorning = bj.hh === 8 && bj.mm >= 25 && bj.mm <= 40;
-    if (inMorning) {
-      const dayStart = Date.UTC(bj.y, bj.m - 1, bj.d) - TZ;
-      const dayEnd = dayStart + 86400000;
-      const dueToday = todos.filter(t => t.due_ms >= dayStart && t.due_ms < dayEnd && t.notify_morning_date !== todayStr);
-      if (dueToday.length) {
-        const lines = dueToday.slice(0, 3).map(morningLine);
-        const names = lines.join('、') + (dueToday.length > 3 ? ` 等 ${dueToday.length} 项` : '');
-        const pjN = dueToday.filter(t => t.project_id).length;
+    // ---- A. 晚间小结（21:00-21:15，每天一次；即使很空也发，便于确认通道）----
+    if (inEvening) {
+      // DATE_FORMAT 保证拿字符串，避免 mysql2 返回 Date 对象导致 !== 恒真
+      const row = await db.one(
+        `SELECT DATE_FORMAT(notify_evening_date, '%Y-%m-%d') AS d FROM users WHERE id = ?`,
+        [u.id]);
+      const marked = row && row.d === todayStr;
+      if (!marked) {
+        const [expRows, todayPurRows, allPurRows] = await Promise.all([
+          db.query(
+            `SELECT amount, category, note FROM expenses
+             WHERE user_id = ? AND type = '支出' AND date_ms >= ? AND date_ms < ?`,
+            [u.id, dayStart, dayStart + MS]),
+          db.query(
+            `SELECT name, price, qty, category, status, installments
+             FROM purchases WHERE user_id = ? AND date_ms >= ? AND date_ms < ?`,
+            [u.id, dayStart, dayStart + MS]),
+          db.query(
+            `SELECT name, price, qty, category, status, installments, installment_amount,
+                    installment_start, installment_paid, date_ms
+             FROM purchases WHERE user_id = ?`,
+            [u.id]),
+        ]);
+
+        let expAmt = 0, expN = 0;
+        const byCat = {};
+        for (const e of expRows) {
+          const note = String(e.note || '');
+          if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
+          const amt = Number(e.amount) || 0;
+          if (amt <= 0) continue;
+          expAmt += amt; expN++;
+          const cat = e.category || '其他';
+          byCat[cat] = (byCat[cat] || 0) + amt;
+        }
+
+        let purAmt = 0, purN = 0;
+        for (const p of todayPurRows) {
+          if (!ACTIVE_BUY.includes(p.status)) continue;
+          if ((Number(p.installments) || 0) > 1) continue;
+          const amt = (Number(p.price) || 0) * (Number(p.qty) || 1);
+          if (amt <= 0) continue;
+          purAmt += amt; purN++;
+        }
+
+        const inst = installmentsForDay(allPurRows, tomStart);
+
+        const tomTodos = todos.filter(t => t.due_ms >= tomStart && t.due_ms < tomStart + MS);
+
+        const body = eveningBody(
+          { amount: expAmt, count: expN, topCats: Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 3) },
+          { amount: purAmt, count: purN },
+          inst,
+          tomTodos);
+
         const ok = await send(sub, {
-          title: `📋 今日待办 ${dueToday.length} 项`,
-          body: names,
+          title: `🌙 今日小结 · ${bj.m}-${bj.d}`,
+          body,
           url: '/',
-          tag: 'todo-morning-' + todayStr,
-          kind: 'todo',
-          hasProject: pjN > 0,
+          tag: 'evening-' + todayStr,
+          kind: 'evening',
           actions: [{ action: 'open', title: '去查看' }, { action: 'dismiss', title: '知道了' }],
         });
-        if (ok) { sentCount++; usersMorning++; await markMorning(dueToday.map(t => t.id), todayStr); }
+        if (ok) { sentCount++; usersEvening++; await markEvening(u.id, todayStr); }
       }
     }
 
     // ---- B. 多档提前提醒：对每个未发档位，在 fireAt ~ due 之间各发一次 ----
     for (const t of todos) {
       const p = bjParts(t.due_ms);
-      if (p.hh === 0 && p.mm === 0) continue; // 只设了日期 → 靠早间摘要
+      if (p.hh === 0 && p.mm === 0) continue; // 只设了日期 → 靠晚间小结里的「明天待办」
 
       let rems = parseRems(t.reminders);
       if (!rems.length) rems = DEFAULT_REMINDERS.slice();
@@ -209,6 +316,6 @@ async function markRem(id, mins) {
     }
   }
 
-  log(`done: sent=${sentCount} morning_users=${usersMorning} due_users=${usersDue}${DRY ? ' (dry)' : ''}`);
+  log(`done: sent=${sentCount} evening_users=${usersEvening} due_users=${usersDue}${DRY ? ' (dry)' : ''}`);
   process.exit(0);
 })().catch(e => { console.error('NOTIFY CRASH:', e.message); process.exit(1); });

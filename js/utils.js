@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.26";
+const APP_VERSION = "3.0.27";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.27',date:'2026-11-02',items:['统计页支持自定义日期区间小结：选起止日期生成总支出/采购 vs 日常/笔数与逐笔明细（口径对齐周报月报）','推送：删除早间待办摘要，新增每晚 21:00 今日小结（今日记账+采购、明日分期与待办）']},
 {v:'3.0.26',date:'2026-11-02',items:['状态栏不透光再收紧：去掉 viewport-fit=cover（配合 status-bar black，内容应在状态栏下）','safe-area 顶部固定实色黑条兜底，网页不再从状态栏区域透出']},
 {v:'3.0.25',date:'2026-11-01',items:['iOS 主屏状态栏改为不透明 black（不再 black-translucent）：状态栏区域不再透出网页内容；保留 viewport-fit 与顶栏 safe-area padding']},
 {v:'3.0.24',date:'2026-11-01',items:['统计：采购/记账分类可点开明细，看清「花了哪些、怎么花的」（直接购买/分期第N期/记账逐笔）','月报 Top 分类可点进同一明细；分期概况改为列出本月所有还款商品（含更早购买仍在还的）']},
