@@ -96,6 +96,21 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .img-fullscreen.active{display:flex}
 .img-fullscreen img{max-width:95vw;max-height:95vh;border-radius:8px}
 
+/* 状态栏区域不透光（2026-11-02）：
+   apple-mobile-web-app-status-bar-style=black 时内容应在状态栏下；
+   若设备仍是 translucent 或 viewport 行为异常，用实色条盖住 safe-area，避免网页从状态栏透出。 */
+@supports (height: env(safe-area-inset-top)){
+  body::before{
+    content:'';
+    position:fixed;
+    top:0;left:0;right:0;
+    height:env(safe-area-inset-top,0px);
+    background:#000;
+    z-index:10050;
+    pointer-events:none;
+  }
+}
+
 /* ===== Header ===== */
 /* 实色顶栏：禁止任何 blur/渐变/阴影/文字阴影；背景必须盖满状态栏区域 */
 .header{
