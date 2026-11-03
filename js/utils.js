@@ -6,9 +6,12 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.30";
+const APP_VERSION = "3.0.33";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.33',date:'2026-11-04',items:['首页样板：采购卡片/月份分区/FAB/列表入场动效统一']},
+{v:'3.0.32',date:'2026-11-04',items:['统一全站动画库（fade/rise/sheet/press 等 + reduced-motion）','底栏与顶栏图标改内联 SVG，active 只留紫 tint','按钮/卡片组件别名归一，主按钮去渐变']},
+{v:'3.0.31',date:'2026-11-04',items:['UI急救：去掉粉贴纸卡片边框阴影','修复浅色状态徽章乱码选择器（待评估/待审批/已审批/已下单/已到/已退/已归档/已取消）','统一设计 token：清理旧 slate :root，补齐 --amber/--pri-bg']},
 {v:'3.0.30',date:'2026-11-03',items:['修复普通待办不选提醒无法保存；未选时默认提前10/20分钟推送']},
 {v:'3.0.29',date:'2026-11-03',items:['会话被踢出（改密/令牌失效）后自动退回登录页，不再卡在过期错误']},
 {v:'3.0.28',date:'2026-11-03',items:['设置 → 账户 → 修改密码：验证当前密码后可改新密码（6-128位）','修改成功后其它设备与已授权 Agent 立即退出，当前会话自动换发新令牌']},
@@ -157,7 +160,18 @@ function skelStats(){
   return '<div class="stats-section"><div style="height:18px;width:100px;background:var(--border);border-radius:4px;margin-bottom:16px"></div><div style="height:120px;background:var(--border);border-radius:8px"></div></div>'.repeat(3);
 }
 
+// Phase 1: 入场动画工具 — 给元素加/重放 anim class
+function animateMount(el, cls){
+  if(!el||!el.classList) return el;
+  cls = cls || 'anim-rise';
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  return el;
+}
+
 // === App.utils namespace exports ===
+App.utils.animateMount = animateMount;
 App.utils.showVersion = showVersion;
 App.utils.openChangelog = openChangelog;
 App.utils.closeChangelog = closeChangelog;
