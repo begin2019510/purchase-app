@@ -143,7 +143,12 @@ async function api(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-if(r.status===401){return{error:'会话已过期，请刷新页面'}}
+if(r.status===401){
+      // refresh 也救不回（改密吊销 / token 作废）→ 清本地会话退回登录
+      if(typeof clearTokens==='function')clearTokens();
+      if(typeof setAuthLocked==='function')setAuthLocked(true);
+      return{error:'会话已过期，请重新登录'}
+    }
   }
   return r.json();
 }
@@ -159,7 +164,11 @@ async function expenseApi(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-if(r.status===401){return{error:'会话已过期，请刷新页面'}}
+    if(r.status===401){
+      if(typeof clearTokens==='function')clearTokens();
+      if(typeof setAuthLocked==='function')setAuthLocked(true);
+      return{error:'会话已过期，请重新登录'}
+    }
   }
   return r.json();
 }
