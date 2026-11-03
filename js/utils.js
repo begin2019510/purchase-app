@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.29";
+const APP_VERSION = "3.0.30";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.30',date:'2026-11-03',items:['修复普通待办不选提醒无法保存；未选时默认提前10/20分钟推送']},
 {v:'3.0.29',date:'2026-11-03',items:['会话被踢出（改密/令牌失效）后自动退回登录页，不再卡在过期错误']},
 {v:'3.0.28',date:'2026-11-03',items:['设置 → 账户 → 修改密码：验证当前密码后可改新密码（6-128位）','修改成功后其它设备与已授权 Agent 立即退出，当前会话自动换发新令牌']},
 {v:'3.0.27',date:'2026-11-02',items:['统计页支持自定义日期区间小结：选起止日期生成总支出/采购 vs 日常/笔数与逐笔明细（口径对齐周报月报）','推送：删除早间待办摘要，新增每晚 21:00 今日小结（今日记账+采购、明日分期与待办）']},

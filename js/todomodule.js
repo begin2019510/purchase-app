@@ -929,19 +929,25 @@ async function saveTodo() {
     var _phaseRaw = (document.getElementById('todoPhaseIdx')||{}).value;
     var _phaseIdx = (!_projId || _phaseRaw === '' || _phaseRaw == null) ? null : Number(_phaseRaw);
     if (_phaseIdx != null && (!Number.isInteger(_phaseIdx) || _phaseIdx < 0 || _phaseIdx > 5)) _phaseIdx = null;
+    // 先算 dueDate / reminders 局部变量：对象字面量里读 body.dueDate 会在 body 赋值完成前抛错（不选提醒时保存失败）
+    var dueDateIso = (function(){
+      var v = document.getElementById('todoDueDate').value;
+      if (!v) return null;
+      var d = new Date(v);
+      if (!isFinite(d.getTime())) {
+        d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
+      }
+      return isFinite(d.getTime()) ? d.toISOString() : null;
+    })();
+    var remsArr = Array.isArray(todoReminders) ? todoReminders.map(Number).filter(function(n){return isFinite(n)&&n>0;}) : [];
+    if (!remsArr.length && dueDateIso) {
+      var _dR = new Date(dueDateIso);
+      if (isFinite(_dR.getTime()) && (_dR.getHours() || _dR.getMinutes())) remsArr = [10, 20];
+    }
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
-      // datetime-local 可能是 YYYY-MM-DDTHH:mm；空串/非法值必须变 null，不能让 toISOString 抛错变成「一行错误」
-      dueDate: (function(){
-        var v = document.getElementById('todoDueDate').value;
-        if (!v) return null;
-        var d = new Date(v);
-        if (!isFinite(d.getTime())) {
-          d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
-        }
-        return isFinite(d.getTime()) ? d.toISOString() : null;
-      })(),
+      dueDate: dueDateIso,
       priority: document.getElementById('todoPriority').value,
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
@@ -951,14 +957,7 @@ async function saveTodo() {
       linkId: document.getElementById('todoLinkId').value || '',
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s && s.text && s.text.trim(); })),
       tags: JSON.stringify(Array.isArray(todoTags) ? todoTags : []),
-      reminders: (function(){
-        var _rems = Array.isArray(todoReminders) ? todoReminders.map(Number).filter(function(n){return isFinite(n)&&n>0;}) : [];
-        if (!_rems.length && body.dueDate) {
-          var _d = new Date(body.dueDate);
-          if (isFinite(_d.getTime()) && (_d.getHours() || _d.getMinutes())) _rems = [10, 20];
-        }
-        return JSON.stringify(_rems);
-      })(),
+      reminders: JSON.stringify(remsArr),
       image: (typeof todoImage !== 'undefined' && todoImage) || ''
     };
     try {
@@ -1376,6 +1375,8 @@ function renderReminderUI() {
     });
     html += '</div>';
   }
+  // 空选不是必填：设了具体时间时默认提前 10/20 分钟（与服务端 notify-todos 一致）
+  html += '<div style="margin-top:6px;font-size:10px;line-height:1.4;color:var(--muted)">不选也可以保存 · 设了具体时间默认提前 10/20 分钟推送</div>';
   el.innerHTML = html;
 }
 
