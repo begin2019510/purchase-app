@@ -820,11 +820,79 @@ function legacyCopy(el){
   try { el.focus(); el.select(); document.execCommand('copy'); } catch (e) { /* ignore */ }
 }
 
+// ===== 修改密码 =====
+function openChangePassword(){
+  var err = document.getElementById('cpError');
+  if (err) err.textContent = '';
+  ['cpOld','cpNew','cpNew2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var btn = document.getElementById('cpSubmitBtn');
+  if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+  document.getElementById('changePwOverlay').classList.add('active');
+}
+function closeChangePassword(){
+  ['cpOld','cpNew','cpNew2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var err = document.getElementById('cpError');
+  if (err) err.textContent = '';
+  document.getElementById('changePwOverlay').classList.remove('active');
+}
+async function submitChangePassword(){
+  var err = document.getElementById('cpError');
+  var btn = document.getElementById('cpSubmitBtn');
+  if (err) err.textContent = '';
+  var oldP = (document.getElementById('cpOld').value || '');
+  var newP = (document.getElementById('cpNew').value || '');
+  var new2 = (document.getElementById('cpNew2').value || '');
+  if (!oldP || !newP || !new2) { if (err) err.textContent = '请填写全部三个字段'; return; }
+  if (newP.length < 6 || newP.length > 128) { if (err) err.textContent = '新密码需为6-128位'; return; }
+  if (newP !== new2) { if (err) err.textContent = '两次输入的新密码不一致'; return; }
+  if (newP === oldP) { if (err) err.textContent = '新密码不能与当前密码相同'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+  try {
+    var req = function(t){
+      return fetch(API_BASE + '/api/auth?action=change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: JSON.stringify({ oldPassword: oldP, newPassword: newP }),
+      });
+    };
+    var r = await req(getPin());
+    if (r.status === 401) {
+      var d0 = await r.json().catch(function(){ return {}; });
+      // 当前密码错误 401 不触发 refresh；仅 token 失效时才换新再试
+      if (d0 && d0.error && d0.error !== '当前密码错误' && d0.error !== '账号不存在') {
+        var nt = await refreshAccessToken();
+        if (nt) r = await req(nt);
+      } else {
+        if (err) err.textContent = (d0 && d0.error) || ('HTTP ' + r.status);
+        if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+        return;
+      }
+    }
+    var d = await r.json().catch(function(){ return {}; });
+    if (!r.ok || !d || !d.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    if (d.token) setPin(d.token);
+    if (d.refreshToken) setRefreshToken(d.refreshToken);
+    closeChangePassword();
+    if (typeof toast === 'function') toast('密码已修改，其它设备已退出登录');
+  } catch (e) {
+    if (err) err.textContent = (e && e.message) || '修改失败，请稍后重试';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+  }
+}
+
 function settingsAction(action){
   closeSettings();
   switch(action){
     case 'claude': openClaudeChat(); break;
     case 'agent': openAgentLink(); break;
+    case 'changePassword': openChangePassword(); break;
     case 'darkMode': toggleDarkMode(); break;
     case 'background': toggleBgPicker(); break;
     case 'webpush': setupWebPush(); break;

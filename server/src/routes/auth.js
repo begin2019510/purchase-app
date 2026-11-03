@@ -167,6 +167,43 @@ router.all('/auth', async (req, res, next) => {
       return res.json({ ok: true, username: payload.username });
     }
 
+    // ===== 修改密码 =====
+    // 需已登录 + 验当前密码；换新 salt 并升到 hash_version=2。
+    // 成功后吊销该用户全部 refresh token（其它设备/Agent 立刻失效），再换发一对给当前会话。
+    if (action === 'change-password') {
+      const payload = req.user || {};
+      if (!payload.username) return res.status(401).json({ error: '未登录' });
+      const { oldPassword, newPassword } = body;
+      if (typeof oldPassword !== 'string' || typeof newPassword !== 'string' || !oldPassword || !newPassword) {
+        return res.json({ error: '请输入当前密码和新密码' });
+      }
+      if (newPassword.length < 6 || newPassword.length > 128) return res.json({ error: '新密码需为6-128位' });
+      if (newPassword === oldPassword) return res.json({ error: '新密码不能与当前密码相同' });
+      // 与登录共用 15 分钟 5 次限流，防爆破当前密码
+      const rl = await rateCheck(ip);
+      if (rl.blocked) {
+        await H.logOp(payload.username, 'change_password_blocked', '改密限流触发（IP: ' + ip + '）', ip);
+        return res.status(429).json({ error: `尝试过多，请 ${rl.waitSec} 秒后重试` });
+      }
+      const user = await getUser(payload.username);
+      if (!user) return res.status(401).json({ error: '账号不存在' });
+      const hash = await hashPwd(oldPassword, user.salt, user.hash_version);
+      if (!safeEqual(hash, user.password_hash)) {
+        await rateRecord(ip, rl.recent);
+        await H.logOp(payload.username, 'change_password_fail', '改密：当前密码错误', ip);
+        return res.status(401).json({ error: '当前密码错误' });
+      }
+      const salt = genSalt();
+      const newHash = await hashPwd(newPassword, salt, 2);
+      await db.exec('UPDATE users SET password_hash = ?, salt = ?, hash_version = 2 WHERE id = ?', [newHash, salt, user.id]);
+      // 吊销全部 refresh（含其它浏览器与 MCP Agent 安装），改密后需重新登录/重新授权
+      await db.exec('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0', [user.id]);
+      await db.exec('DELETE FROM login_fails WHERE ip = ?', [ip]);
+      const t = await issueTokens(user.id, user.username);
+      await H.logOp(user.username, 'change_password', '修改密码', ip);
+      return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken, username: user.username });
+    }
+
     // ===== Agent 一次性安装链接 =====
     // 生成：必须已登录；只返回明文票据一次，DB 只存哈希，10 分钟有效。
     if (action === 'agent-ticket') {

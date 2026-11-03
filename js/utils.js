@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.27";
+const APP_VERSION = "3.0.28";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.28',date:'2026-11-03',items:['设置 → 账户 → 修改密码：验证当前密码后可改新密码（6-128位）','修改成功后其它设备与已授权 Agent 立即退出，当前会话自动换发新令牌']},
 {v:'3.0.27',date:'2026-11-02',items:['统计页支持自定义日期区间小结：选起止日期生成总支出/采购 vs 日常/笔数与逐笔明细（口径对齐周报月报）','推送：删除早间待办摘要，新增每晚 21:00 今日小结（今日记账+采购、明日分期与待办）']},
 {v:'3.0.26',date:'2026-11-02',items:['状态栏不透光再收紧：去掉 viewport-fit=cover（配合 status-bar black，内容应在状态栏下）','safe-area 顶部固定实色黑条兜底，网页不再从状态栏区域透出']},
 {v:'3.0.25',date:'2026-11-01',items:['iOS 主屏状态栏改为不透明 black（不再 black-translucent）：状态栏区域不再透出网页内容；保留 viewport-fit 与顶栏 safe-area padding']},

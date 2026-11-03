@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-<meta name="app-version" content="3.0.27">
+<meta name="app-version" content="3.0.28">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=3.0.27">
+<link rel="stylesheet" href="theme.css?v=3.0.28">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="3.0.27">
-<script src="js/sortable.min.js?v=3.0.27" defer></script>
+<meta http-equiv="Expires" content="3.0.28">
+<script src="js/sortable.min.js?v=3.0.28" defer></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='3.0.27';
+  var V='3.0.28';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -188,6 +188,11 @@
     </div>
     <div class="settings-group">
       <div class="settings-group-title">账户</div>
+      <div class="settings-item" onclick="settingsAction('changePassword')">
+        <div class="settings-icon">🔑</div>
+        <div class="settings-label">修改密码</div>
+        <div class="settings-arrow">›</div>
+      </div>
       <div class="settings-item" onclick="settingsAction('logout')" style="color:var(--red)">
         <div class="settings-icon" style="background:rgba(239,68,68,.1)">🚪</div>
         <div class="settings-label">退出登录</div>
@@ -731,19 +736,19 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=3.0.27"></script>
-<script src="js/particles.js?v=3.0.27"></script>
-<script src="js/auth.js?v=3.0.27"></script>
-<script src="js/api.js?v=3.0.27"></script>
-<script src="js/stats.js?v=3.0.27"></script>
-<script src="js/expense.js?v=3.0.27"></script>
-<script src="js/items.js?v=3.0.27"></script>
-<script src="js/ai.js?v=3.0.27"></script>
-<script src="js/claude.js?v=3.0.27"></script>
-<script src="js/budget.js?v=3.0.27"></script>
-<script src="js/todomodule.js?v=3.0.27"></script>
-  <script src="js/project.js?v=3.0.27"></script>
-<script src="js/app.js?v=3.0.27"></script>
+<script src="js/utils.js?v=3.0.28"></script>
+<script src="js/particles.js?v=3.0.28"></script>
+<script src="js/auth.js?v=3.0.28"></script>
+<script src="js/api.js?v=3.0.28"></script>
+<script src="js/stats.js?v=3.0.28"></script>
+<script src="js/expense.js?v=3.0.28"></script>
+<script src="js/items.js?v=3.0.28"></script>
+<script src="js/ai.js?v=3.0.28"></script>
+<script src="js/claude.js?v=3.0.28"></script>
+<script src="js/budget.js?v=3.0.28"></script>
+<script src="js/todomodule.js?v=3.0.28"></script>
+  <script src="js/project.js?v=3.0.28"></script>
+<script src="js/app.js?v=3.0.28"></script>
 
 
 
@@ -862,6 +867,26 @@
     </div>
     <div class="btn-row" style="margin-top:14px">
       <button class="btn btn-secondary" onclick="closeAgentLink()">关闭</button>
+    </div>
+  </div>
+</div>
+<!-- 修改密码弹窗 -->
+<div class="modal-overlay" id="changePwOverlay" onclick="if(event.target===this)closeChangePassword()">
+  <div class="modal" style="max-width:420px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+    <h2>🔑 修改密码</h2>
+    <div style="font-size:13px;line-height:1.7;color:var(--muted);margin-bottom:14px">
+      需要验证当前密码。修改成功后，其它设备与已授权的 Agent 会立即退出，需重新登录或重新生成安装链接。
+    </div>
+    <div id="cpError" style="color:var(--red);font-size:13px;margin-bottom:10px"></div>
+    <label style="font-size:13px;font-weight:700;display:block;margin:0 0 6px">当前密码</label>
+    <input id="cpOld" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);margin-bottom:12px">
+    <label style="font-size:13px;font-weight:700;display:block;margin:0 0 6px">新密码（6-128 位）</label>
+    <input id="cpNew" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);margin-bottom:12px">
+    <label style="font-size:13px;font-weight:700;display:block;margin:0 0 6px">确认新密码</label>
+    <input id="cpNew2" type="password" autocomplete="new-password" style="width:100%;box-sizing:border-box;font-size:16px;padding:12px;border:1.5px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);margin-bottom:14px">
+    <button class="btn btn-primary" id="cpSubmitBtn" style="width:100%" onclick="submitChangePassword()">确认修改</button>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeChangePassword()">取消</button>
     </div>
   </div>
 </div>

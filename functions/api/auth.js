@@ -237,6 +237,17 @@ export async function onRequest(context) {
       if (action === 'register' || action === 'login' || action === 'refresh') {
         return await handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors);
       }
+      // 修改密码：服务端验旧密并换发 refresh；CF 仍是 JWT 签发方，成功后换发自己的 token
+      if (action === 'change-password') {
+        const payload = await cfUserPayload(request, env);
+        if (!payload) return json({ error: 'Unauthorized' }, 401, cors);
+        const sr = await serverAuth(env, action, body, request, payload.username);
+        const d = sr.data || {};
+        if (sr.status >= 200 && sr.status < 300 && d.ok && d.username && d.refreshToken) {
+          return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
+        }
+        return json(d, sr.status, cors);
+      }
       // 一次性 Agent 安装链接：生成需要登录态，兑换凭票据完成（密码不参与）。
       if (action === 'agent-ticket') {
         const payload = await cfUserPayload(request, env);
