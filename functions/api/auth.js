@@ -43,7 +43,26 @@ async function cfSession(username, refreshToken, JWT_SECRET) {
 async function cfUserPayload(request, env) {
   const auth = request.headers.get('Authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
-  return await verifyJWT(auth.replace('Bearer ', ''), env.JWT_SECRET);
+  const payload = await verifyJWT(auth.replace('Bearer ', ''), env.JWT_SECRET);
+  if (!payload) return null;
+  // 改密后立刻作废此前签发的 access JWT（iat < pwd_changed 秒）
+  if (await isJwtRevokedByPwdChange(env, payload)) return null;
+  return payload;
+}
+
+// 改密时写入 KV：pwd_changed:<username> = unix 秒。
+// 此后 iat < 该时间的 JWT 一律视为已吊销（其它设备无需等 24h 过期）。
+async function isJwtRevokedByPwdChange(env, payload) {
+  if (!payload || !payload.username) return false;
+  try {
+    const kv = env.IMAGE_STORE;
+    if (!kv) return false;
+    const pc = await kv.get('pwd_changed:' + payload.username);
+    if (!pc) return false;
+    return Number(payload.iat || 0) < Number(pc);
+  } catch (e) {
+    return false; // KV 故障时不挡登录主路径
+  }
 }
 
 async function handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors) {
@@ -52,13 +71,13 @@ async function handleMysqlSession(action, body, request, env, KV, JWT_SECRET, co
   if (sr.status >= 200 && sr.status < 300 && d.ok && d.username) {
     return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
   }
-  // 登录失败时保留旧的 KV/飞书账号作为兜底，避免历史管理员被锁在门外；
-  // 429 不能兜底，否则限流形同虚设。
-  if (action === 'login' && sr.status !== 429) {
-    return await handleLogin(request, body, KV, JWT_SECRET, cors, env);
-  }
-  if (action === 'refresh' && sr.status === 401) {
-    return await handleRefresh(body, KV, JWT_SECRET, cors);
+  // MySQL 是账号密码的唯一真源：401（密码错/refresh 已吊销）绝不能回落旧 KV，
+  // 否则改密后旧密码/旧 refresh 仍能登录（2026-11-03 实测踩坑）。
+  // 仅服务端 5xx 才兜底 KV，避免 purchase-server 挂掉时历史管理员被锁在门外。
+  // 429 限流同样不兜底。
+  if (sr.status >= 500) {
+    if (action === 'login') return await handleLogin(request, body, KV, JWT_SECRET, cors, env);
+    if (action === 'refresh') return await handleRefresh(body, KV, JWT_SECRET, cors);
   }
   return json(d, sr.status, cors);
 }
@@ -244,6 +263,12 @@ export async function onRequest(context) {
         const sr = await serverAuth(env, action, body, request, payload.username);
         const d = sr.data || {};
         if (sr.status >= 200 && sr.status < 300 && d.ok && d.username && d.refreshToken) {
+          // 记下改密时刻：其它设备手里旧 access JWT 立刻失效（不必等 24h）
+          try {
+            const nowSec = Math.floor(Date.now() / 1000);
+            await KV.put('pwd_changed:' + d.username, String(nowSec), { expirationTtl: 40 * 24 * 3600 });
+            await deleteAllRefreshTokens(KV, d.username);
+          } catch (e) { console.error('pwd_changed mark failed:', e && e.message); }
           return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
         }
         return json(d, sr.status, cors);
@@ -512,6 +537,15 @@ async function handleVerify(request, KV, JWT_SECRET, cors) {
   const payload = await verifyJWT(token, JWT_SECRET);
   if (!payload) {
     return json({ error: 'Token无效或已过期' }, 401, cors);
+  }
+  // 改密后的旧 token 在 verify 处直接 401，前端会走 refresh（refresh 也已吊销）→ 退回登录页
+  if (KV && await (async () => {
+    try {
+      const pc = await KV.get('pwd_changed:' + payload.username);
+      return !!pc && Number(payload.iat || 0) < Number(pc);
+    } catch (e) { return false; }
+  })()) {
+    return json({ error: '密码已修改，请重新登录' }, 401, cors);
   }
 
   return json({ ok: true, username: payload.username }, 200, cors);

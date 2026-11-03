@@ -18,7 +18,13 @@ export async function authUser(request, env) {
   }
   if (!token) return null;
   const p = await verifyJWT(token, env.JWT_SECRET);
-  return p && p.username ? p.username : null;
+  if (!p || !p.username) return null;
+  // 改密后旧 access JWT 立刻作废（与 auth.js 同一 KV 键）
+  try {
+    const pc = await env.IMAGE_STORE.get('pwd_changed:' + p.username);
+    if (pc && Number(p.iat || 0) < Number(pc)) return null;
+  } catch (e) { /* KV 故障不挡主路径 */ }
+  return p.username;
 }
 
 // 转发请求；返回 Response（透传状态码/JSON体）
