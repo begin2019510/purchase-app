@@ -252,6 +252,23 @@ export async function onRequest(context) {
   try {
     const body = request.method === 'POST' ? await request.json() : {};
 
+    // 内部维护：回填/覆盖 pwd_changed（需 X-Service-Token=env.SERVICE_TOKEN）。
+      // 用于补写历史改密时刻，使改密前签发的 access JWT 立即失效。
+      if (action === 'set-pwd-changed') {
+        const st = request.headers.get('X-Service-Token');
+        if (!st || st !== env.SERVICE_TOKEN) return json({ error: 'Unauthorized' }, 401, cors);
+        const username = String(body.username || '');
+        if (!username) return json({ error: 'username required' }, 400, cors);
+        const at = Math.floor(Number(body.at) || Date.now() / 1000);
+        try {
+          await KV.put('pwd_changed:' + username, String(at), { expirationTtl: 40 * 24 * 3600 });
+          await deleteAllRefreshTokens(KV, username);
+        } catch (e) {
+          return json({ error: 'kv write failed' }, 500, cors);
+        }
+        return json({ ok: true, username, at }, 200, cors);
+      }
+
     if (mysqlMode(env)) {
       if (action === 'register' || action === 'login' || action === 'refresh') {
         return await handleMysqlSession(action, body, request, env, KV, JWT_SECRET, cors);
