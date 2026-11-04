@@ -12,7 +12,42 @@ function _projId(b){var s=String(b.projectId||'').trim();var m=/^(?:rec_)?(\d+)$
 function _phaseIdx(b){if(b.phaseIdx===null||b.phaseIdx===undefined||b.phaseIdx==='')return null;var n=Number(b.phaseIdx);return Number.isInteger(n)&&n>=0&&n<=5?n:null;}
 function _dateMs(v){const t=H.dateStrToTs(v);return Number.isFinite(t)?t:NaN;}
 async function _ownedProject(uid,pid){if(!pid)return true;return !!(await db.one('SELECT id FROM projects WHERE id=? AND user_id=?',[pid,uid]));}
+// 解析 image_ref：裸 kv:/data: 单图，或 JSON 数组多图（新）
+function _parseImageRefs(v) {
+  if (!v) return [];
+  const s = String(v);
+  if (s.startsWith('[')) {
+    try {
+      const a = JSON.parse(s);
+      if (Array.isArray(a)) return a.filter(x => typeof x === 'string' && x);
+    } catch (e) {}
+  }
+  return [s];
+}
+function _kvKey(it) {
+  const k = String(it || '').replace(/^kv:/, '');
+  if (!k || !/^[A-Za-z0-9._-]{1,200}$/.test(k)) return null;
+  return k;
+}
 function _imageRef(b) {
+  // 多图：imageKeys: ["key1","kv:key2",...] → 单条仍存裸 kv:，多条存 JSON 数组
+  if (b.imageKeys !== undefined) {
+    let arr = b.imageKeys;
+    if (typeof arr === 'string') {
+      try { arr = JSON.parse(arr); } catch (e) { return null; }
+    }
+    if (!Array.isArray(arr)) return null;
+    if (arr.length > 9) return null;
+    const refs = [];
+    for (const it of arr) {
+      const k = _kvKey(it);
+      if (k === null) return null;
+      refs.push('kv:' + k);
+    }
+    if (!refs.length) return '';
+    if (refs.length === 1) return refs[0];
+    return JSON.stringify(refs);
+  }
   if (b.imageKey !== undefined) {
     const k = String(b.imageKey || '');
     if (!k) return '';
@@ -28,6 +63,7 @@ function _imageRef(b) {
 router.use(guard(['expenses']));
 
 function rowToExpense(r) {
+  const refs = _parseImageRefs(r.image_ref);
   return {
     id: 'rec_' + r.id,
     '日期': H.tsToBjStr(r.date_ms),
@@ -37,7 +73,8 @@ function rowToExpense(r) {
     '备注': r.note || '',
     '分摊周数': Number(r.split_weeks) || 0,
     '分摊开始周': r.split_start_week || '',
-    '图片': r.image_ref || '',
+    '图片': refs[0] || '',
+    '图片列表': refs,
     '项目ID': r.project_id ? 'rec_' + r.project_id : '',
     '阶段': r.phase_idx == null ? null : Number(r.phase_idx),
   };
@@ -125,7 +162,7 @@ router.put('/expenses', async (req, res, next) => {
       if (b.projectId !== undefined) cols.project_id = pid;
       if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b);
     }
-    if (b.imageKey !== undefined || b.image !== undefined) {
+    if (b.imageKey !== undefined || b.image !== undefined || b.imageKeys !== undefined) {
       const ref = _imageRef(b);
       if (ref === null) return res.status(400).json({ error: '图片格式不正确' });
       cols.image_ref = ref;
@@ -147,3 +184,5 @@ router.delete('/expenses', async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports._imageRef = _imageRef;
+module.exports._parseImageRefs = _parseImageRefs;

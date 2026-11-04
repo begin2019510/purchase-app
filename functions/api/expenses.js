@@ -28,6 +28,35 @@ export async function onRequest(context) {
     if (dateStr.includes('T')) return new Date(dateStr + '+08:00').getTime();
     return new Date(dateStr + 'T00:00:00+08:00').getTime();
   }
+  // 多图 imageKeys → 裸 kv: / JSON 数组；单图保持裸 kv: 兼容
+  function imageKeysToRef(keys) {
+    let arr = keys;
+    if (typeof arr === 'string') {
+      try { arr = JSON.parse(arr); } catch (e) { return null; }
+    }
+    if (!Array.isArray(arr)) return null;
+    if (arr.length > 9) return null;
+    const refs = [];
+    for (const it of arr) {
+      const k = String(it || '').replace(/^kv:/, '');
+      if (!k) continue;
+      if (!/^[A-Za-z0-9._-]{1,200}$/.test(k)) return null;
+      refs.push('kv:' + k);
+    }
+    if (!refs.length) return '';
+    return refs.length === 1 ? refs[0] : JSON.stringify(refs);
+  }
+  function parseImageRefs(v) {
+    if (!v) return [];
+    const s = String(v);
+    if (s.startsWith('[')) {
+      try {
+        const a = JSON.parse(s);
+        if (Array.isArray(a)) return a.filter(x => typeof x === 'string' && x);
+      } catch (e) {}
+    }
+    return [s];
+  }
 
   const feishuToken = await getFeishuToken(env);
   async function ensureExpenseFields() {
@@ -70,6 +99,7 @@ export async function onRequest(context) {
               dateStr = dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate()) + 'T' + pad(dt.getUTCHours()) + ':' + pad(dt.getUTCMinutes());
             } catch {}
           }
+          const imgRefs = parseImageRefs(f['图片'] || '');
           records.push({
             id: rec.record_id,
             '日期': dateStr,
@@ -79,7 +109,8 @@ export async function onRequest(context) {
             '备注': f['备注'] || '',
             '分摊周数': Number(f['分摊周数']) || 0,
             '分摊开始周': f['分摊开始周'] || '',
-            '图片': f['图片'] || '',
+            '图片': imgRefs[0] || '',
+            '图片列表': imgRefs,
           });
         });
       }
@@ -103,7 +134,11 @@ export async function onRequest(context) {
     };
     if (body.splitWeeks) fields['分摊周数'] = Number(body.splitWeeks) || 0;
     if (body.splitStartWeek) fields['分摊开始周'] = body.splitStartWeek;
-    if (body.imageKey) fields['图片'] = 'kv:' + body.imageKey;
+    if (body.imageKeys !== undefined) {
+      const ref = imageKeysToRef(body.imageKeys);
+      if (ref === null) return json({ error: '图片格式不正确' }, 400);
+      fields['图片'] = ref;
+    } else if (body.imageKey) fields['图片'] = 'kv:' + body.imageKey;
     else if (body.image && body.image.length <= 30000) fields['图片'] = body.image;
     let r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records`, {
       method: 'POST',
@@ -142,7 +177,11 @@ export async function onRequest(context) {
     if (body.splitWeeks !== undefined) fields['分摊周数'] = Number(body.splitWeeks) || 0;
     if (body.splitStartWeek !== undefined) fields['分摊开始周'] = body.splitStartWeek || '';
     if (body.date !== undefined) fields['日期'] = dateToTs(body.date);
-    if (body.imageKey !== undefined) fields['图片'] = body.imageKey ? 'kv:' + body.imageKey : '';
+    if (body.imageKeys !== undefined) {
+      const ref = imageKeysToRef(body.imageKeys);
+      if (ref === null) return json({ error: '图片格式不正确' }, 400);
+      fields['图片'] = ref;
+    } else if (body.imageKey !== undefined) fields['图片'] = body.imageKey ? 'kv:' + body.imageKey : '';
     else if (body.image !== undefined) { if (body.image && body.image.length <= 30000) fields['图片'] = body.image; else if (!body.image) fields['图片'] = ''; }
     const r = await fetch(`https://open.feishu.cn/open-apis/bitable/v1/apps/${APP}/tables/${TABLE}/records/${body.id}`, {
       method: 'PUT',
