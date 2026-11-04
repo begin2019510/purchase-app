@@ -288,10 +288,50 @@ function getFixedExpenseTotal() {
 }
 
 
-let currentImageData='';let currentImageKey='';
+// 记账多图：currentImages = [{ref:'kv:key'|'data:...', preview:dataURL|null}]
+// 单图旧变量保留给可能的外部引用，由 renderExpenseImageStrip 同步
+let currentImages = [];
+let currentImageData = '';
+let currentImageKey = '';
 function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');if(isDark){document.documentElement.classList.remove('light')}else{document.documentElement.classList.add('light')}var b=document.getElementById('darkModeBtn');if(b)b.title=isDark?'切换浅色':'暗色模式'}
 (function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');var b=document.getElementById('darkModeBtn');if(b)b.title='切换浅色'}else if(!localStorage.getItem('dark_mode')&&window.innerWidth>768){}else if(localStorage.getItem('dark_mode')==='0'){document.documentElement.classList.add('light')}})();
-function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement("canvas");const MAX=1600;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);let q=0.92;let dataUrl=canvas.toDataURL("image/jpeg",q);while(dataUrl.length>2000000&&q>0.3){q-=0.1;dataUrl=canvas.toDataURL("image/jpeg",q)}currentImageData=dataUrl;currentImageKey="";const preview=document.getElementById("eImagePreview");preview.src=dataUrl;document.getElementById("eImageWrap").style.display="block";const info=document.getElementById("imageSizeInfo");info.textContent="[Compressed: "+String((dataUrl.length/1024).toFixed(0))+"KB]";info.style.display="block";};img.src=e.target.result;};reader.readAsDataURL(file)}
+function _compressToDataUrl(img){
+  const canvas=document.createElement("canvas");const MAX=1600;
+  let w=img.width,h=img.height;
+  if(w>MAX){h=h*MAX/w;w=MAX}
+  if(h>MAX){w=w*MAX/h;h=MAX}
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);
+  let q=0.92;let dataUrl=canvas.toDataURL("image/jpeg",q);
+  while(dataUrl.length>2000000&&q>0.3){q-=0.1;dataUrl=canvas.toDataURL("image/jpeg",q)}
+  return dataUrl;
+}
+function handleImageUpload(input){
+  const files=Array.from(input.files||[]);
+  if(!files.length)return;
+  input.value='';
+  let pending=files.length;
+  const done=()=>{
+    pending--;
+    if(pending<=0){
+      if(typeof renderExpenseImageStrip==='function')renderExpenseImageStrip();
+    }
+  };
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      const img=new Image();
+      img.onload=function(){
+        try{currentImages.push({ref:_compressToDataUrl(img),preview:null});}catch(err){}
+        done();
+      };
+      img.onerror=done;
+      img.src=e.target.result;
+    };
+    reader.onerror=done;
+    reader.readAsDataURL(file);
+  });
+}
 function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
 
 // === App.api namespace exports ===
