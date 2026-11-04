@@ -60,7 +60,7 @@ async function insertRenewed(uid, old) {
   const ms = nextDue(old);
   if (ms == null) return false;
   let resetSubs = '[]';
-  try { const subs = JSON.parse(old.subtasks || '[]'); resetSubs = JSON.stringify(subs.map(s => ({ text: s.text, done: false }))); } catch (e) {}
+  try { const subs = JSON.parse(old.subtasks || '[]'); resetSubs = JSON.stringify(subs.map(s => ({ text: s.text, done: false, priority: s.priority || '中' }))); } catch (e) {}
   await db.exec(
     `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,

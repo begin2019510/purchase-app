@@ -217,7 +217,7 @@ return json({ id: d.data?.record?.record_id, ok: true }, 201);
         let resetSubs = '[]';
         try {
           const subs = JSON.parse(existingRecord.subtasks || '[]');
-          resetSubs = JSON.stringify(subs.map(s => ({text: s.text, done: false})));
+          resetSubs = JSON.stringify(subs.map(s => ({text: s.text, done: false, priority: s.priority || '中'})));
         } catch(e) {}
         const renewFields = {
           '标题': existingRecord.title,
