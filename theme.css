@@ -182,9 +182,11 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding-right:48px}
 .card .name{font-size:15px;font-weight:700;flex:1;line-height:1.3}
 .card .price{font-size:15px;font-weight:800;color:var(--pri);white-space:nowrap;text-align:right;max-width:80px;overflow:hidden;text-overflow:ellipsis}
-.card .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
-.card .meta span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:3px;line-height:1.4}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;row-gap:4px}
+.card .meta span{font-size:11px;color:var(--muted);display:inline-flex;align-items:center;gap:3px;line-height:1.4;max-width:100%}
 .card .meta .badge{font-size:10px}
+.card .meta .meta-sec{color:var(--muted);opacity:.9}
+.card .meta .meta-install{flex-basis:100%;color:var(--pri);font-weight:600;opacity:1}
 .card .meta span:empty{display:none}
 .badge{display:inline-block;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700;letter-spacing:.2px}
 .badge-待评估{background:#fef3c7;color:#92400e}
@@ -1231,7 +1233,7 @@ body.dark .week-card{border-color:var(--border)}
 .todo-tag.status-已取消{background:#f3f4f6;color:#9ca3af}
 .form-row{display:flex;gap:12px}
 @media(min-width:769px){.todo-card{max-width:1100px;margin-left:auto;margin-right:auto}.todo-compact-header{max-width:1100px;margin-left:auto;margin-right:auto}.gantt-container{max-width:1400px;margin:0 auto}}
-@media(max-width:767px){.modal{padding:14px;max-height:90vh;overflow-y:auto}.detail-header{padding:0}.detail-title{font-size:16px}.detail-price{font-size:20px}.detail-meta{gap:5px}.detail-meta span{font-size:11px;padding:3px 8px}.card .meta{flex-direction:column;gap:3px}.card .meta .meta-primary{display:flex;gap:4px;flex-wrap:wrap}.card .meta .meta-secondary{display:flex;gap:4px;flex-wrap:wrap;opacity:.7}.card .meta .meta-installment{display:block;margin-top:2px}}
+@media(max-width:767px){.modal{padding:14px;max-height:90vh;overflow-y:auto}.detail-header{padding:0}.detail-title{font-size:16px}.detail-price{font-size:20px}.detail-meta{gap:5px}.detail-meta span{font-size:11px;padding:3px 8px}.card .meta{flex-direction:row!important;flex-wrap:wrap;gap:4px 6px;align-items:center}.card .meta .meta-sec{font-size:10.5px;opacity:.8}.card .meta .meta-install{flex-basis:100%;margin-top:1px}}
 /* ===== AI Chat Bubbles ===== */
 .chat-area{max-height:400px;overflow-y:auto;padding:8px 0;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
 .chat-area:empty{display:none}

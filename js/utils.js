@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.34";
+const APP_VERSION = "3.0.35";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.35',date:'2026-11-04',items:['采购卡片 meta 改回横向一行（修手机端竖排）','状态更新等列表重绘不再重放入场动画']},
 {v:'3.0.34',date:'2026-11-04',items:['登录页重做：卡片式浅/深自适应表单，去大渐变与粒子','统计页移除账号调试卡','记账三格统计改 tint 底（去粉彩渐变）','设置页分组改 hairline 列表（对齐 a-group）']},
 {v:'3.0.33',date:'2026-11-04',items:['首页样板：采购卡片/月份分区/FAB/列表入场动效统一']},
 {v:'3.0.32',date:'2026-11-04',items:['统一全站动画库（fade/rise/sheet/press 等 + reduced-motion）','底栏与顶栏图标改内联 SVG，active 只留紫 tint','按钮/卡片组件别名归一，主按钮去渐变']},

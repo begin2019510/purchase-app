@@ -194,6 +194,7 @@ function doDetailModalAction(id,nextStatus){
 // ============================================================
 function switchTab(t){
   console.log("DBG_SWITCHTAB t="+t+" proj="+document.getElementById("tab-project")?.style.display);
+  var _prevTab=currentTab;
   currentTab=t;
   try{localStorage.setItem('activeTab',t)}catch(e){}
   // 电脑端标签高亮
@@ -213,6 +214,12 @@ function switchTab(t){
   // Phase 1: 切 tab 入场 fade（CSS .anim-fade）
   var pane=document.getElementById('tab-'+t);
   if(pane){pane.classList.remove('anim-fade');void pane.offsetWidth;pane.classList.add('anim-fade');}
+  // 采购列表：仅切到本 tab 时播一次 stagger；状态更新等 render 不重放
+  if(t==='purchase'){
+    var _pl=document.getElementById('list');
+    // 仅：真正切到采购 tab，或列表尚未播过首次入场（首屏）
+    if(_pl&&(_prevTab!==t||_pl.dataset.entered!=='1'))_pl.dataset.enter='1';
+  }
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense'||t==='todo'||t==='project')?'':'none';
   var ap=document.getElementById('actionPurchase');if(ap)ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
   var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
