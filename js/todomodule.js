@@ -8,8 +8,11 @@ var todoCalYear, todoCalMonth;
 var todoCalSelected = null;
 var todoSearch = "";
 var ganttExpanded = {};
-var ganttViewMode = "week";
+var ganttViewMode = "week"; // day | week | month
 var ganttWeekOffset = 0;
+var ganttDayOffset = 0;
+var ganttMonthOffset = 0;
+var ganttNoDateOpen = false;
 
 function localDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -175,7 +178,7 @@ function renderTodo() {
     return;
   }
   if (todoView === 'gantt') {
-    html += buildGanttHtml();
+    html += buildGanttHtml(filtered);
     el.innerHTML = html;
     return;
   }
@@ -274,71 +277,351 @@ function renderTodoCard(t) {
   return h;
 }
 
-function buildGanttHtml() {
+function buildGanttHtml(filtered) {
   var now = new Date();
-  var todayStr = localDateStr(now);
+  var info = ganttRangeInfo();
+  var list = Array.isArray(filtered) ? filtered : todoList.slice();
   var html = '';
 
+  // toolbar
   html += '<div class="gantt-wrapper">';
   html += '<div class="gantt-toolbar">';
-  html += '<div style="display:flex;align-items:center;gap:8px">';
-  html += '<button class="cal-nav-btn" onclick="ganttNav(-1)">&#8592;</button>';
-  
-  if (ganttViewMode === 'week') {
-    var weekStart = getGanttWeekStart();
-    var weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    var ws = (weekStart.getMonth()+1)+'/'+weekStart.getDate();
-    var we = (weekEnd.getMonth()+1)+'/'+weekEnd.getDate();
-    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + weekStart.getFullYear() + '\u5e74 ' + ws + ' - ' + we + '</span>';
-  } else {
-    if (!todoCalYear) { todoCalYear = now.getFullYear(); todoCalMonth = now.getMonth(); }
-    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + todoCalYear + '\u5e74' + (todoCalMonth+1) + '\u6708</span>';
-  }
-  
-  html += '<button class="cal-nav-btn" onclick="ganttNav(1)">&#8594;</button>';
-  html += '<button class="cal-nav-btn" onclick="ganttNav(0)" style="font-size:11px;padding:3px 8px">\u4eca\u5929</button>';
+  html += '<div class="gantt-nav-group">';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(-1)" aria-label="上一档">&#8592;</button>';
+  html += '<span class="cal-nav-title gantt-title">' + esc(info.label) + '</span>';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(1)" aria-label="下一档">&#8594;</button>';
+  html += '<button class="cal-nav-btn gantt-today-btn" onclick="ganttNav(0)">今天</button>';
   html += '</div>';
-  html += '<div class="gantt-view-switcher">';
-  html += '<button class="gantt-view-btn' + (ganttViewMode==='week'?' active':'') + '" onclick="switchGanttView(\'week\')">\u5468</button>';
-  html += '<button class="gantt-view-btn' + (ganttViewMode==='month'?' active':'') + '" onclick="switchGanttView(\'month\')">\u6708</button>';
+  html += '<div class="gantt-view-switcher" role="tablist">';
+  ['day','week','month'].forEach(function(m) {
+    var label = m === 'day' ? '天' : m === 'week' ? '周' : '月';
+    html += '<button class="gantt-view-btn' + (ganttViewMode===m?' active':'') + '" role="tab" aria-selected="' + (ganttViewMode===m) + '" onclick="switchGanttView(\'' + m + '\')">' + label + '</button>';
+  });
   html += '</div>';
   html += '</div>';
 
-  if (ganttViewMode === 'week') { html += buildGanttWeekView(); }
-  else { html += buildGanttMonthView(); }
+  // overdue top red bar (approved): incomplete + past-today
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var overdue = list.filter(function(t) {
+    if (!t.dueDate) return false;
+    if (t.status === '已完成' || t.status === '已取消' || t.status === '已删除') return false;
+    return new Date(t.dueDate).getTime() < todayStart;
+  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+
+  if (overdue.length) {
+    html += '<div class="gantt-overdue-bar" role="status">';
+    html += '<span class="gantt-overdue-ico">⚠</span>';
+    html += '<span class="gantt-overdue-count">' + overdue.length + ' 项已过期</span>';
+    html += '<span class="gantt-overdue-hint">点条目查看</span>';
+    html += '</div>';
+    html += '<div class="gantt-overdue-list">';
+    overdue.forEach(function(t) {
+      var d = new Date(t.dueDate);
+      var when = (d.getMonth()+1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      html += '<div class="gantt-overdue-item" onclick="openTodoDetail(\'' + t.id + '\')">';
+      html += '<span class="gantt-overdue-dot"></span>';
+      html += '<span class="gantt-overdue-title">' + esc(t.title) + '</span>';
+      html += '<span class="gantt-overdue-when">' + when + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += ganttGridHtml(list, info);
+
+  // no-date footer (collapsible)
+  var noDate = list.filter(function(t) {
+    return !t.dueDate && t.status !== '已完成' && t.status !== '已取消' && t.status !== '已删除';
+  });
+  if (noDate.length) {
+    html += '<div class="gantt-nodate">';
+    html += '<button class="gantt-nodate-toggle" onclick="toggleGanttNoDate()" aria-expanded="' + ganttNoDateOpen + '">';
+    html += '<span class="gantt-nodate-caret">' + (ganttNoDateOpen ? '▾' : '▸') + '</span>';
+    html += '<span>无日期</span><span class="gantt-nodate-n">' + noDate.length + '</span>';
+    html += '</button>';
+    if (ganttNoDateOpen) {
+      html += '<div class="gantt-nodate-list">';
+      noDate.forEach(function(t) {
+        var pri = t.priority === '高' ? '高' : t.priority === '低' ? '低' : '中';
+        html += '<div class="gantt-nodate-item" onclick="openTodoDetail(\'' + t.id + '\')">';
+        html += '<span class="gantt-pri-dot pri-' + pri + '"></span>';
+        html += '<span class="gantt-nodate-title">' + esc(t.title) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
 
   html += '</div>';
   return html;
 }
 
-function getGanttWeekStart() {
+function ganttRangeInfo() {
   var now = new Date();
+  var mode = ganttViewMode || 'week';
+  if (mode === 'day') {
+    var d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d0.setDate(d0.getDate() + ganttDayOffset);
+    var end = new Date(d0); end.setDate(end.getDate() + 1);
+    var wd = '日一二三四五六'[d0.getDay()];
+    return {
+      mode: 'day', start: d0, end: end, days: 1, cols: 24,
+      label: d0.getFullYear() + '年' + (d0.getMonth()+1) + '月' + d0.getDate() + '日 周' + wd
+    };
+  }
+  if (mode === 'month') {
+    var n = new Date(now.getFullYear(), now.getMonth(), 1);
+    n.setMonth(n.getMonth() + ganttMonthOffset);
+    var y = n.getFullYear(), mo = n.getMonth();
+    var dim = new Date(y, mo + 1, 0).getDate();
+    var mend = new Date(y, mo + 1, 1);
+    return {
+      mode: 'month', start: n, end: mend, days: dim, cols: dim, year: y, month: mo,
+      label: y + '年' + (mo + 1) + '月'
+    };
+  }
+  // week (Monday-based)
   var day = now.getDay();
   var diff = day === 0 ? 6 : day - 1;
-  var monday = new Date(now);
-  monday.setDate(now.getDate() - diff + ganttWeekOffset * 7);
-  monday.setHours(0,0,0,0);
-  return monday;
+  var mon = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  mon.setDate(mon.getDate() - diff + ganttWeekOffset * 7);
+  var wend = new Date(mon); wend.setDate(wend.getDate() + 7);
+  var last = new Date(wend); last.setDate(last.getDate() - 1);
+  return {
+    mode: 'week', start: mon, end: wend, days: 7, cols: 7,
+    label: mon.getFullYear() + '年 ' + (mon.getMonth()+1) + '/' + mon.getDate() + ' – ' + (last.getMonth()+1) + '/' + last.getDate()
+  };
+}
+
+function ganttDateAt(info, i) {
+  var d = new Date(info.start);
+  d.setDate(d.getDate() + i);
+  return d;
+}
+
+function ganttBarColor(t, isOverdue) {
+  if (isOverdue) return 'var(--red)';
+  if (t.priority === '高') return '#ef4444';
+  if (t.priority === '低') return '#9ca3af';
+  return '#f59e0b';
+}
+
+function ganttIsDone(t) {
+  return t.status === '已完成' || t.status === '已取消';
+}
+
+function ganttInScope(t, info) {
+  if (!t.dueDate) return false;
+  var ms = new Date(t.dueDate).getTime();
+  return ms >= info.start.getTime() && ms < info.end.getTime();
+}
+
+function ganttGridHtml(list, info) {
+  var now = new Date();
+  var todayStr = localDateStr(now);
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var n = info.cols || info.days; // day mode: 24 hour columns; week/month: day columns
+  var mode = info.mode;
+
+  var inRange = list.filter(function(t) { return ganttInScope(t, info); })
+    .sort(function(a, b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+
+  var html = '<div class="gantt-container mode-' + mode + '">';
+  html += '<div class="gantt-scroll">';
+
+  // header
+  html += '<div class="gantt-header">';
+  html += '<div class="gantt-label-header">待办</div>';
+  for (var i = 0; i < n; i++) {
+    var d = mode === 'day' ? new Date(info.start) : ganttDateAt(info, i);
+    var dateStr = localDateStr(d);
+    var isToday = dateStr === todayStr;
+    var dow = d.getDay();
+    var isWeekend = dow === 0 || dow === 6;
+    var hourCls = (mode === 'day' && isToday && i === now.getHours()) ? ' gantt-today-col' : '';
+    html += '<div class="gantt-day' + (isToday && mode !== 'day' ? ' today gantt-today-col' : '') + (mode === 'day' ? hourCls : '') + (isWeekend && mode !== 'day' ? ' weekend' : '') + '">';
+    if (mode === 'day') {
+      html += '<div class="gantt-day-name">' + (i < 10 ? '0' : '') + i + '时</div>';
+    } else if (mode === 'month') {
+      html += '<div class="gantt-day-name">' + '日一二三四五六'[dow] + '</div>';
+      html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
+    } else {
+      html += '<div class="gantt-day-name">' + '一二三四五六日'[(dow + 6) % 7] + '</div>';
+      html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // now line: only when range contains today
+  var nowFrac = null;
+  var dayFrac = (now.getHours() + now.getMinutes() / 60) / 24;
+  if (mode === 'day' && localDateStr(now) === localDateStr(info.start)) {
+    // 24 hour columns: frac across full track = (h + m/60) / 24
+    nowFrac = dayFrac;
+  } else if (mode === 'week') {
+    var dayIdx = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - info.start) / 86400000);
+    if (dayIdx >= 0 && dayIdx < n) nowFrac = (dayIdx + dayFrac) / n;
+  }
+  // month: no vertical now-line (too dense); today cell already highlighted
+
+  if (nowFrac != null) {
+    html += '<div class="gantt-now-line" style="--gantt-now-frac:' + nowFrac.toFixed(4) + '"></div>';
+  }
+
+  if (inRange.length === 0) {
+    html += '<div class="gantt-empty">该时段无待办</div>';
+  }
+
+  inRange.forEach(function(t) {
+    html += ganttRowHtml(t, info, { todayStr: todayStr, todayStart: todayStart, now: now });
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function ganttRowHtml(t, info, ctx) {
+  var n = info.cols || info.days;
+  var mode = info.mode;
+  var due = t.dueDate ? new Date(t.dueDate) : null;
+  var isDone = ganttIsDone(t);
+  var isOverdue = !isDone && due && due.getTime() < ctx.todayStart;
+  var priColor = ganttBarColor(t, isOverdue);
+  var subs = [];
+  try { subs = JSON.parse(t.subtasks || '[]'); } catch (e) {}
+  var hasSubs = subs.length > 0;
+  var title = t.title || '';
+  var short = title.length > 14 ? title.slice(0, 14) + '…' : title;
+
+  var html = '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + (isOverdue ? ' gantt-row-overdue' : '') + '">';
+  html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
+
+  // sticky label + quick complete
+  html += '<div class="gantt-label">';
+  if (hasSubs) {
+    html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')" title="展开子任务">' + (ganttExpanded[t.id] ? '▾' : '▸') + '</span>';
+  }
+  html += '<button class="gantt-check' + (isDone ? ' on' : '') + '" title="切换状态" onclick="event.stopPropagation();cycleTodoStatus(\'' + t.id + '\')">' + (isDone ? '✓' : '') + '</button>';
+  html += '<span class="gantt-label-text" title="' + escAttr(title) + '">' + esc(short) + '</span>';
+  html += '</div>';
+
+  // cells: day → 24 hour columns; week/month → day columns
+  var dayDateStr = mode === 'day' ? localDateStr(info.start) : null;
+  for (var i = 0; i < n; i++) {
+    var d, dateStr, isTodayCol, cellCls;
+    if (mode === 'day') {
+      dateStr = dayDateStr;
+      isTodayCol = dateStr === ctx.todayStr && i === ctx.now.getHours();
+      cellCls = 'gantt-cell' + (isTodayCol ? ' gantt-today-col' : '');
+    } else {
+      d = ganttDateAt(info, i);
+      dateStr = localDateStr(d);
+      isTodayCol = dateStr === ctx.todayStr;
+      cellCls = 'gantt-cell' + (isTodayCol ? ' gantt-today-col' : '');
+    }
+    html += '<div class="' + cellCls + '">';
+
+    var showBar = false;
+    if (due) {
+      if (mode === 'day') {
+        showBar = localDateStr(due) === dayDateStr && due.getHours() === i;
+      } else {
+        showBar = localDateStr(due) === dateStr;
+      }
+    }
+
+    if (showBar) {
+      var barStyle = 'background:' + priColor + ';';
+      var timeTxt = '';
+      if (mode === 'day' || mode === 'week') {
+        timeTxt = String(due.getHours()).padStart(2, '0') + ':' + String(due.getMinutes()).padStart(2, '0');
+      } else if (due.getHours() > 0 || due.getMinutes() > 0) {
+        timeTxt = String(due.getHours()).padStart(2, '0') + ':' + String(due.getMinutes()).padStart(2, '0');
+      }
+      if (mode === 'day') {
+        // bar sits inside its hour column; offset by minutes within the hour
+        var minFrac = due.getMinutes() / 60;
+        var remain = 1 - minFrac;
+        barStyle += 'position:absolute;left:' + (minFrac * 100) + '%;width:' + Math.max(14, remain * 96) + '%;top:50%;transform:translateY(-50%);';
+      } else if (mode === 'week') {
+        var hourFrac = (due.getHours() + due.getMinutes() / 60) / 24;
+        barStyle += 'position:absolute;left:' + (hourFrac * 100) + '%;width:' + Math.max(18, (1 - hourFrac) * 100 * 0.92) + '%;top:50%;transform:translateY(-50%);';
+      }
+      html += '<div class="gantt-bar' + (isDone ? ' done' : '') + (isOverdue ? ' overdue' : '') + '" style="' + barStyle + '">';
+      if (timeTxt && !isDone) html += '<span class="gantt-bar-time">' + timeTxt + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>'; // row
+
+  // subtask rows
+  if (hasSubs && ganttExpanded[t.id]) {
+    subs.forEach(function(sub, si) {
+      var subDone = !!sub.done;
+      var subPri = sub.priority || '中';
+      var subColor = subPri === '高' ? '#ef4444' : subPri === '低' ? '#9ca3af' : '#f59e0b';
+      var subDue = sub.dueDate ? new Date(sub.dueDate) : (due || null);
+      html += '<div class="gantt-sub-row">';
+      html += '<div class="gantt-label gantt-sub-label">';
+      html += '<span class="gantt-sub-check">' + (subDone ? '☑' : '☐') + '</span>';
+      html += '<span class="gantt-label-text" style="' + (subDone ? 'text-decoration:line-through;opacity:.6' : '') + '">' + esc((sub.text || '').slice(0, 12)) + '</span>';
+      html += '</div>';
+      for (var i = 0; i < n; i++) {
+        var dateStr, isTodayCol;
+        if (mode === 'day') {
+          dateStr = dayDateStr;
+          isTodayCol = dateStr === ctx.todayStr && i === ctx.now.getHours();
+        } else {
+          dateStr = localDateStr(ganttDateAt(info, i));
+          isTodayCol = dateStr === ctx.todayStr;
+        }
+        html += '<div class="gantt-cell gantt-sub-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
+        var mark = false;
+        if (subDue) {
+          if (mode === 'day') {
+            mark = localDateStr(subDue) === dayDateStr && subDue.getHours() === i;
+          } else {
+            mark = localDateStr(subDue) === dateStr;
+          }
+        }
+        if (mark) {
+          html += '<div class="gantt-sub-bar" style="background:' + subColor + ';opacity:' + (subDone ? '.3' : '.7') + '"></div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+  }
+
+  html += '</div>'; // wrap
+  return html;
+}
+
+function getGanttWeekStart() {
+  return ganttRangeInfo().start; // kept for any external callers
 }
 
 function ganttNav(dir) {
   if (dir === 0) {
     ganttWeekOffset = 0;
-    todoCalYear = null; todoCalMonth = null;
-  } else if (ganttViewMode === 'week') {
-    ganttWeekOffset += dir;
+    ganttDayOffset = 0;
+    ganttMonthOffset = 0;
+  } else if (ganttViewMode === 'day') {
+    ganttDayOffset += dir;
+  } else if (ganttViewMode === 'month') {
+    ganttMonthOffset += dir;
   } else {
-    if (!todoCalYear) { var n = new Date(); todoCalYear = n.getFullYear(); todoCalMonth = n.getMonth(); }
-    todoCalMonth += dir;
-    if (todoCalMonth > 11) { todoCalMonth = 0; todoCalYear++; }
-    if (todoCalMonth < 0) { todoCalMonth = 11; todoCalYear--; }
+    ganttWeekOffset += dir;
   }
   renderTodo();
 }
 
 function switchGanttView(mode) {
-  ganttViewMode = mode;
+  ganttViewMode = mode || 'week';
+  try { localStorage.setItem('ganttViewMode', ganttViewMode); } catch (e) {}
   renderTodo();
 }
 
@@ -347,209 +630,15 @@ function toggleGanttExpand(id) {
   renderTodo();
 }
 
-function buildGanttWeekView() {
-  var weekStart = getGanttWeekStart();
-  var today = new Date();
-  var todayStr = localDateStr(today);
-  var dayNames = ['\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d','\u65e5'];
-  var weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  
-  var weekTodos = todoList.filter(function(t) {
-    if (!t.dueDate) return false;
-    var d = new Date(t.dueDate);
-    return d >= weekStart && d < weekEnd;
-  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
-  
-  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
-  var html = '<div class="gantt-container">';
-  html += '<div class="gantt-scroll">';
-  
-  html += '<div class="gantt-header">';
-  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    var dateStr = localDateStr(d);
-    var isToday = dateStr === todayStr;
-    var isWeekend = i >= 5;
-    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">';
-    html += '<div class="gantt-day-name">' + dayNames[i] + '</div>';
-    html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
-    html += '</div>';
-  }
-  // Now line position
-  var nowDate = new Date();
-  var nowDayIdx = (nowDate.getDay() === 0 ? 6 : nowDate.getDay() - 1);
-  var nowHourPct = (nowDate.getHours() + nowDate.getMinutes()/60) / 24 * 100;
-  var nowLeftPct = (nowDayIdx / 7 * 100) + (nowHourPct / 7);
-  
-  html += '</div>';
-  html += '<div class="gantt-now-line" style="left:calc(80px + ' + nowLeftPct + '% * (1 - 80px/100%))"><div class="gantt-now-dot"></div></div>';
-  
-  var allTodos = weekTodos.concat(noDueTodos);
-  if (allTodos.length === 0) {
-    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u5468\u65e0\u5f85\u529e</div>';
-  }
-  
-  allTodos.forEach(function(t) {
-    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
-    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
-    var dueHour = dueDate ? dueDate.getHours() : -1;
-    var dueMin = dueDate ? dueDate.getMinutes() : 0;
-    var subs = [];
-    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
-    var hasSubs = subs.length > 0;
-    
-    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
-    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
-    html += '<div class="gantt-label">';
-    if (hasSubs) {
-      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
-    }
-    html += '<span class="gantt-label-text" style="' + (isDone ? 'text-decoration:line-through;opacity:.5' : '') + '">' + esc(t.title.slice(0,12)) + (t.title.length>12?'..':'') + '</span>';
-    html += '</div>';
-    
-    for (var i = 0; i < 7; i++) {
-      var d = new Date(weekStart); d.setDate(d.getDate() + i);
-      var dateStr = localDateStr(d);
-      var isDueDay = dueDate && localDateStr(new Date(t.dueDate)) === todoCalSelected;
-      var isTodayCol = dateStr === todayStr;
-      html += '<div class="gantt-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
-      if (isDueDay) {
-        var barStyle = 'background:' + priColor + ';';
-        if (dueHour > 0) {
-          var leftPct = Math.round(dueHour / 24 * 100);
-          var widthPct = Math.max(8, Math.round((24 - dueHour) / 24 * 50));
-          barStyle += 'margin-left:' + leftPct + '%;width:' + widthPct + '%;';
-        }
-        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="' + barStyle + '">';
-        if (dueHour > 0) {
-          html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':' + String(dueMin).padStart(2,'0') + '</span>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    
-    if (hasSubs && ganttExpanded[t.id]) {
-      subs.forEach(function(sub) {
-        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-        html += '<div class="gantt-sub-row">';
-        html += '<div class="gantt-label gantt-sub-label">';
-        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
-        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
-        html += '</div>';
-        for (var i = 0; i < 7; i++) {
-          var d2 = new Date(weekStart); d2.setDate(d2.getDate() + i);
-          html += '<div class="gantt-sub-cell gantt-cell">';
-          if (dueDate && localDateStr(dueDate) === localDateStr(d2)) {
-            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
-          }
-          html += '</div>';
-        }
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-  });
-  
-  html += '</div></div>';
-  return html;
+function toggleGanttNoDate() {
+  ganttNoDateOpen = !ganttNoDateOpen;
+  renderTodo();
 }
 
-function buildGanttMonthView() {
-  if (!todoCalYear) { var now = new Date(); todoCalYear = now.getFullYear(); todoCalMonth = now.getMonth(); }
-  var year = todoCalYear, month = todoCalMonth;
-  var daysInMonth = new Date(year, month+1, 0).getDate();
-  var today = localDateStr(new Date());
-  
-  var monthTodos = todoList.filter(function(t) {
-    if (!t.dueDate) return false;
-    var d = new Date(t.dueDate);
-    return d.getFullYear() === year && d.getMonth() === month;
-  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
-  
-  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
-  var allTodos = monthTodos.concat(noDueTodos);
-  
-  var html = '<div class="gantt-container">';
-  html += '<div class="gantt-scroll">';
-  
-  html += '<div class="gantt-header">';
-  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
-  for (var d = 1; d <= daysInMonth; d++) {
-    var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    var isToday = dateStr === today;
-    var dow = new Date(year, month, d).getDay();
-    var isWeekend = dow === 0 || dow === 6;
-    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">' + d + '</div>';
-  }
-  html += '</div>';
-  
-  if (allTodos.length === 0) {
-    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u6708\u65e0\u5f85\u529e</div>';
-    html += '</div></div>';
-    return html;
-  }
-  
-  allTodos.forEach(function(t) {
-    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
-    var dueDay = dueDate ? dueDate.getDate() : -1;
-    var dueHour = dueDate ? dueDate.getHours() : -1;
-    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
-    var subs = [];
-    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
-    var hasSubs = subs.length > 0;
-    
-    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
-    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
-    html += '<div class="gantt-label">';
-    if (hasSubs) {
-      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
-    }
-    html += '<span class="gantt-label-text">' + esc(t.title.slice(0,10)) + (t.title.length>10?'..':'') + '</span>';
-    html += '</div>';
-    for (var d = 1; d <= daysInMonth; d++) {
-      var isDue = d === dueDay;
-      html += '<div class="gantt-cell' + (isDue ? ' gantt-due' : '') + '">';
-      if (isDue) {
-        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="background:' + priColor + '">';
-        if (dueHour > 0) html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':00</span>';
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    
-    if (hasSubs && ganttExpanded[t.id]) {
-      subs.forEach(function(sub) {
-        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-        html += '<div class="gantt-sub-row">';
-        html += '<div class="gantt-label gantt-sub-label">';
-        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
-        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
-        html += '</div>';
-        for (var d = 1; d <= daysInMonth; d++) {
-          html += '<div class="gantt-sub-cell gantt-cell">';
-          if (d === dueDay) {
-            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
-          }
-          html += '</div>';
-        }
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-  });
-  
-  html += '</div></div>';
-  return html;
-}
-
+try {
+  var _gm = localStorage.getItem('ganttViewMode');
+  if (_gm === 'day' || _gm === 'week' || _gm === 'month') ganttViewMode = _gm;
+} catch (e) {}
 
 function buildCalendarHtml() {
   
@@ -767,7 +856,7 @@ function openTodoModal(id) {
       try {
         var parsed = JSON.parse(t.subtasks);
         if (Array.isArray(parsed)) {
-          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d"}; });
+          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d",dueDate:s.dueDate||null}; });
           console.log("Loaded " + todoSubtaskRows.length + " subtask rows");
         }
       } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
