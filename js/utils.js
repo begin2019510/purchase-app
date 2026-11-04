@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.33";
+const APP_VERSION = "3.0.34";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.34',date:'2026-11-04',items:['登录页重做：卡片式浅/深自适应表单，去大渐变与粒子','统计页移除账号调试卡','记账三格统计改 tint 底（去粉彩渐变）','设置页分组改 hairline 列表（对齐 a-group）']},
 {v:'3.0.33',date:'2026-11-04',items:['首页样板：采购卡片/月份分区/FAB/列表入场动效统一']},
 {v:'3.0.32',date:'2026-11-04',items:['统一全站动画库（fade/rise/sheet/press 等 + reduced-motion）','底栏与顶栏图标改内联 SVG，active 只留紫 tint','按钮/卡片组件别名归一，主按钮去渐变']},
 {v:'3.0.31',date:'2026-11-04',items:['UI急救：去掉粉贴纸卡片边框阴影','修复浅色状态徽章乱码选择器（待评估/待审批/已审批/已下单/已到/已退/已归档/已取消）','统一设计 token：清理旧 slate :root，补齐 --amber/--pri-bg']},

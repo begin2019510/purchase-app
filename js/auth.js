@@ -142,6 +142,7 @@ async function debugMyAuth(){
 }
 async function debugMyAuthStats(){
   const el=document.getElementById('debugResultStats');
+  if(!el) return;
   el.textContent='查询中...';
   try{
     const r=await fetch(API_BASE + '/api/items?debug=auth',{headers:{'Authorization':'Bearer '+getPin()}});
