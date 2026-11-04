@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.36";
+const APP_VERSION = "3.0.37";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.37',date:'2026-11-04',items:['记账支持多附件上传：相册可多选、每张可单独移除，最多 9 张','列表缩略图最多显示 3 张并显示 +N；编辑/删除全部图片走 imageKeys']},
 {v:'3.0.36',date:'2026-11-04',items:['待办甘特图重写：天/周/月视图、过期顶栏、粘性标签、修正条定位与筛选','编辑子任务保留截止日期；续期待办保留优先级']},
 {v:'3.0.35',date:'2026-11-04',items:['采购卡片 meta 改回横向一行（修手机端竖排）','状态更新等列表重绘不再重放入场动画']},
 {v:'3.0.34',date:'2026-11-04',items:['登录页重做：卡片式浅/深自适应表单，去大渐变与粒子','统计页移除账号调试卡','记账三格统计改 tint 底（去粉彩渐变）','设置页分组改 hairline 列表（对齐 a-group）']},

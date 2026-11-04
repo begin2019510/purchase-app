@@ -41,24 +41,29 @@ router.post('/images', async (req, res, next) => {
 
 // 存量图片仍在 KV（无 images 元数据）：只有该 key 确实被当前用户自己的数据引用时才允许 CF 回退 KV，
 // 否则任意登录用户都能拿别人的旧 key 读图。
+function _refInImageRef(v, ref) {
+  if (!v) return false;
+  if (v === ref) return true;
+  try {
+    const o = JSON.parse(v);
+    // 采购阶段图：对象 {stage: "kv:.."}；记账多图：数组 ["kv:..", ...]
+    if (Array.isArray(o)) return o.includes(ref);
+    if (o && typeof o === 'object') {
+      for (const k of Object.keys(o)) if (o[k] === ref) return true;
+    }
+  } catch (e) {}
+  return false;
+}
 async function legacyKeyOwnedBy(uid, key) {
   const ref = 'kv:' + key;
-  const direct = await db.one(
-    'SELECT 1 AS x FROM expenses WHERE user_id = ? AND image_ref = ? UNION ALL SELECT 1 AS x FROM todos WHERE user_id = ? AND image_ref = ? LIMIT 1',
-    [uid, ref, uid, ref]);
-  if (direct) return true;
-  // purchases.image_ref 可能是 'kv:xxx' 或阶段图片 JSON；LIKE 只用来缩小范围，最终按解析后的值精确比较
-  const rows = await db.query('SELECT image_ref FROM purchases WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
-  for (const row of rows) {
-    const v = row.image_ref;
-    if (v === ref) return true;
-    try {
-      const o = JSON.parse(v);
-      if (o && typeof o === 'object') {
-        for (const k of Object.keys(o)) if (o[k] === ref) return true;
-      }
-    } catch (e) {}
+  // expenses.image_ref：裸 kv: 或 JSON 多图数组；todos 通常裸 kv:
+  for (const table of ['expenses', 'todos']) {
+    const rows = await db.query('SELECT image_ref FROM ' + table + ' WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
+    for (const row of rows) if (_refInImageRef(row.image_ref, ref)) return true;
   }
+  // purchases.image_ref 可能是 'kv:xxx' 或阶段图片 JSON
+  const rows = await db.query('SELECT image_ref FROM purchases WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
+  for (const row of rows) if (_refInImageRef(row.image_ref, ref)) return true;
   return false;
 }
 
