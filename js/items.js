@@ -210,6 +210,9 @@ function switchTab(t){
   document.getElementById('tab-stats').style.display=t==='stats'?'':'none';
     var todoTab=document.getElementById('tab-todo');if(todoTab)todoTab.style.display=t==='todo'?'':'none';
   var projTab=document.getElementById('tab-project');if(projTab)projTab.style.display=t==='project'?'':'none';
+  // Phase 1: 切 tab 入场 fade（CSS .anim-fade）
+  var pane=document.getElementById('tab-'+t);
+  if(pane){pane.classList.remove('anim-fade');void pane.offsetWidth;pane.classList.add('anim-fade');}
   document.getElementById('fabBtn').style.display=(t==='purchase'||t==='expense'||t==='todo'||t==='project')?'':'none';
   var ap=document.getElementById('actionPurchase');if(ap)ap.className=t==='purchase'?'desktop-only':'desktop-only hidden';
   var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';

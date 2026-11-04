@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-<meta name="app-version" content="3.0.30">
+<meta name="app-version" content="3.0.34">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -13,16 +13,16 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f2f2f7}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=3.0.30">
+<link rel="stylesheet" href="theme.css?v=3.0.34">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="3.0.30">
-<script src="js/sortable.min.js?v=3.0.30" defer></script>
+<meta http-equiv="Expires" content="3.0.34">
+<script src="js/sortable.min.js?v=3.0.34" defer></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='3.0.30';
+  var V='3.0.34';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -76,13 +76,10 @@
       <h1 id="headerTitle" class="logo-text">个人管家<sup class="header-version" id="versionBadge" onclick="openChangelog()" style="cursor:pointer"></sup></h1>
     </div>
     <div class="header-actions" id="headerActions">
-      <button class="icon-btn desktop-only" onclick="manualRefresh()" id="refreshBtn" title="刷新数据">🔄</button>
-      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式">🌙</button>
-      
-      
-      
-      <button class="icon-btn desktop-only" onclick="logout()" title="退出">🚪</button>
-      <button class="settings-btn" onclick="openSettings()" title="设置">⚙️</button>
+      <button class="icon-btn desktop-only" onclick="manualRefresh()" id="refreshBtn" title="刷新数据"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+      <button class="icon-btn desktop-only" onclick="toggleDarkMode()" id="darkModeBtn" title="暗色模式"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg></button>
+      <button class="icon-btn desktop-only" onclick="logout()" title="退出"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/><path d="M15 12H9M15 12l-3-3M15 12l-3 3"/></svg></button>
+      <button class="settings-btn" onclick="openSettings()" title="设置"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.5l1.2 2.2 2.4-.3 1 2.3 2.3 1-.3 2.4L21 12l-1.4 1.9.3 2.4-2.3 1-1 2.3-2.4-.3L12 21l-1.9-1.4-2.4.3-1-2.3-2.3-1 .3-2.4L3 12l1.4-1.9-.3-2.4 2.3-1 1-2.3 2.4.3z"/></svg></button>
     </div>
   </div>
   <div class="header-stats" id="headerStats" style="display:none"></div>
@@ -205,23 +202,23 @@
 <!-- Bottom Nav - Mobile only -->
 <nav class="bottom-nav mobile-only" id="bottomNav">
   <div class="nav-item active" onclick="switchTab('purchase')" data-tab="purchase">
-    <span class="nav-icon">🛒</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.5L21 8H7"/><circle cx="10" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg></span>
     <span class="nav-label">采购</span>
   </div>
   <div class="nav-item" onclick="switchTab('expense')" data-tab="expense">
-    <span class="nav-icon">📝</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h6"/></svg></span>
     <span class="nav-label">记账</span>
   </div>
   <div class="nav-item" onclick="switchTab('stats')" data-tab="stats">
-    <span class="nav-icon">📊</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M21 19H3"/></svg></span>
     <span class="nav-label">统计</span>
   </div>
   <div class="nav-item" onclick="switchTab('todo')" data-tab="todo">
-    <span class="nav-icon">📋</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v2H9zM9 11l1.5 1.5L14 9M9 16h6"/></svg></span>
     <span class="nav-label">待办</span>
   </div>
   <div class="nav-item" onclick="switchTab('project')" data-tab="project">
-    <span class="nav-icon">📁</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
     <span class="nav-label">项目</span>
   </div>
 </nav>
@@ -268,7 +265,7 @@
     <div class="container stats-page">
       <div class="ai-analysis" id="aiAnalysis">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <h3 style="margin:0;font-size:16px">🤖 AI 助手</h3>
+          <h3 class="ai-analysis-title">AI 助手</h3>
           <button onclick="clearChatHistory()" style="font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px">🗑️ 清空</button>
         </div>
         <div id="statsChatArea" class="chat-area"></div>
@@ -283,13 +280,6 @@
         </div>
       </div>
       <div id="statsContent"></div>
-      <div style="margin-top:16px;padding:12px;background:var(--card);border-radius:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;color:var(--muted)">🔍 账号调试</span>
-          <button onclick="debugMyAuthStats()" style="background:none;border:none;font-size:12px;color:var(--pri);cursor:pointer">检查认证状态</button>
-        </div>
-        <div id="debugResultStats" style="font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -314,7 +304,7 @@
 <div class="icp-footer"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2026035353号</a><span class="icp-sep">·</span><a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener">皖公网安备34012202341289号</a></div>
 
 <!-- 管理员面板 -->
-<div id="adminPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
+<div id="adminPanel" class="admin-panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <h2 style="font-size:18px;font-weight:800">👑 管理面板</h2>
@@ -355,7 +345,7 @@
 </div>
 
 <!-- 操作日志面板 -->
-<div id="logsPanel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
+<div id="logsPanel" class="logs-panel" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:998;overflow-y:auto;padding:20px 16px">
   <div style="max-width:500px;margin:0 auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <h2 style="font-size:18px;font-weight:800">📋 操作日志</h2>
@@ -629,26 +619,44 @@
 </div>
 
 <!-- PIN 锁屏 -->
-<div id="authScreen" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#6366f1,#8b5cf6);z-index:999;display:none;align-items:center;justify-content:center;overflow-y:auto;overscroll-behavior:none">
-  <canvas id="authParticles" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0"></canvas>
-  <div style="text-align:center;padding:20px;width:100%;max-width:320px;position:relative;z-index:1">
-    <div style="font-size:56px;margin-bottom:16px">🔐</div>
-    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;color:#fff">个人管家</h2>
-    <p id="authSubtitle" style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:20px">请登录</p>
-    <div id="loginForm">
-      <input id="loginUsername" type="text" placeholder="用户名" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
-      <input id="loginPassword" type="password" placeholder="密码" autocomplete="current-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff">
-      <p id="authError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doLogin()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">登 录</button>
-      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showRegister()">没有账号？邀请码注册</p>
+<div id="authScreen" class="auth-screen" style="display:none">
+  <div class="auth-card anim-rise">
+    <div class="auth-brand" aria-hidden="true">
+      <div class="auth-mark">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      </div>
+      <h2 class="auth-title">个人管家</h2>
+      <p id="authSubtitle" class="auth-sub">请登录</p>
     </div>
-    <div id="registerForm" style="display:none">
-      <input id="regUsername" type="text" placeholder="用户名（3-20字符）" autocomplete="username" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
-      <input id="regPassword" type="password" placeholder="密码（至少6位）" autocomplete="new-password" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff;margin-bottom:10px">
-      <input id="regInviteCode" type="text" placeholder="邀请码" style="width:100%;padding:14px;border:2px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;outline:none;background:rgba(255,255,255,.1);color:#fff">
-      <p id="regError" style="color:#fca5a5;font-size:12px;margin-top:8px;height:16px"></p>
-      <button onclick="doRegister()" style="width:100%;padding:15px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;font-size:16px;font-weight:700;margin-top:10px;cursor:pointer;transition:.2s">注 册</button>
-      <p style="color:rgba(255,255,255,.6);font-size:12px;margin-top:14px;cursor:pointer" onclick="showLogin()">已有账号？去登录</p>
+    <div id="loginForm" class="auth-form">
+      <label class="auth-field">
+        <span class="auth-label">用户名</span>
+        <input id="loginUsername" class="auth-input" type="text" placeholder="用户名" autocomplete="username">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">密码</span>
+        <input id="loginPassword" class="auth-input" type="password" placeholder="密码" autocomplete="current-password">
+      </label>
+      <p id="authError" class="auth-error" role="alert"></p>
+      <button type="button" class="auth-btn" onclick="doLogin()">登 录</button>
+      <button type="button" class="auth-link" onclick="showRegister()">没有账号？邀请码注册</button>
+    </div>
+    <div id="registerForm" class="auth-form" style="display:none">
+      <label class="auth-field">
+        <span class="auth-label">用户名</span>
+        <input id="regUsername" class="auth-input" type="text" placeholder="用户名（3-20字符）" autocomplete="username">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">密码</span>
+        <input id="regPassword" class="auth-input" type="password" placeholder="密码（至少6位）" autocomplete="new-password">
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">邀请码</span>
+        <input id="regInviteCode" class="auth-input" type="text" placeholder="邀请码">
+      </label>
+      <p id="regError" class="auth-error" role="alert"></p>
+      <button type="button" class="auth-btn" onclick="doRegister()">注 册</button>
+      <button type="button" class="auth-link" onclick="showLogin()">已有账号？去登录</button>
     </div>
   </div>
   <div class="auth-icp"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">皖ICP备2026035353号</a><span class="icp-sep">·</span><a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener">皖公网安备34012202341289号</a></div>
@@ -736,19 +744,18 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=3.0.30"></script>
-<script src="js/particles.js?v=3.0.30"></script>
-<script src="js/auth.js?v=3.0.30"></script>
-<script src="js/api.js?v=3.0.30"></script>
-<script src="js/stats.js?v=3.0.30"></script>
-<script src="js/expense.js?v=3.0.30"></script>
-<script src="js/items.js?v=3.0.30"></script>
-<script src="js/ai.js?v=3.0.30"></script>
-<script src="js/claude.js?v=3.0.30"></script>
-<script src="js/budget.js?v=3.0.30"></script>
-<script src="js/todomodule.js?v=3.0.30"></script>
-  <script src="js/project.js?v=3.0.30"></script>
-<script src="js/app.js?v=3.0.30"></script>
+<script src="js/utils.js?v=3.0.34"></script>
+<script src="js/auth.js?v=3.0.34"></script>
+<script src="js/api.js?v=3.0.34"></script>
+<script src="js/stats.js?v=3.0.34"></script>
+<script src="js/expense.js?v=3.0.34"></script>
+<script src="js/items.js?v=3.0.34"></script>
+<script src="js/ai.js?v=3.0.34"></script>
+<script src="js/claude.js?v=3.0.34"></script>
+<script src="js/budget.js?v=3.0.34"></script>
+<script src="js/todomodule.js?v=3.0.34"></script>
+  <script src="js/project.js?v=3.0.34"></script>
+<script src="js/app.js?v=3.0.34"></script>
 
 
 
