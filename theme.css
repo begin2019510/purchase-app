@@ -643,6 +643,7 @@ body{background:var(--bg);transition:background-color .25s ease}
 @media(prefers-reduced-motion:reduce){
   .anim-fade,.anim-rise,.anim-sheet,.anim-overlay,.anim-toast,.anim-pulse{animation:none!important;opacity:1!important;transform:none!important}
   .anim-press:active{transform:none}
+  .anim-stagger>*,#list.anim-stagger>*{animation:none!important;animation-delay:0s!important;opacity:1!important;transform:none!important}
 }
 
 /* ===== Apple-style Components ===== */
@@ -738,6 +739,9 @@ body.dark .a-badge-orange{color:#ff9f0a}
 .anim-stagger>*:nth-child(7){--i:6}.anim-stagger>*:nth-child(8){--i:7}
 .anim-stagger>*{opacity:0;animation:animRise var(--dur-sheet) var(--ease-sheet) both;animation-delay:calc(var(--i,0)*30ms)}
 #list.anim-stagger>*{opacity:0;animation:animRise var(--dur-sheet) var(--ease-sheet) both;animation-delay:calc(var(--i,0)*30ms)}
+@media(prefers-reduced-motion:reduce){
+  .anim-stagger>*,#list.anim-stagger>*{animation:none!important;animation-delay:0s!important;opacity:1!important;transform:none!important}
+}
 /* Hairline separator */
 .a-hair{height:.5px;background:var(--border);margin:0 var(--sp-4)}
 
