@@ -65,7 +65,7 @@
 
 - 根目录模块 JS 通过 `node --check`；`git diff --check` 通过。
 - Chromium 本地 390px 预览确认新增样式已加载；安全区背景、主题 token、暗色变量、弹层圆角与减少动态效果媒体查询可解析。
-- `www/` 与根目录 23 个 HTML/CSS/JS/Service Worker/manifest/icon 文件哈希一致；Android 发布脚本使用统一同步脚本。
+- `www/` 与根目录 26 个 HTML/CSS/JS/Service Worker/manifest/icon 文件哈希一致；Android 发布脚本使用统一同步脚本，`npm run check:sync` 阻断漂移。
 - 浏览器 mock 数据交互确认采购分类按钮更新过滤结果并标记 `aria-pressed`；语义按钮改造覆盖待办、项目、记账与统计筛选/月份浏览控件。
 - 手工检查 MySQL 选择/缺少代理配置时 fail-closed，以及明确 Feishu 模式仍可进入兼容端点。
 - 未验证：生产登录和多用户隔离、真实 MySQL 写读事务、日期与月末边界端到端、图片磁盘上传/读取/备份、PWA 离线实际设备行为、Android Gradle/APK 构建及原生壳交互。这些需要测试账号、数据库/磁盘环境或 Android SDK/设备；本次未连接生产数据。

@@ -2,6 +2,10 @@
   "name": "purchase-tracker",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "sync:ui": "node scripts/sync-ui.js",
+    "check:sync": "node scripts/sync-ui.js && git diff --exit-code -- www"
+  },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.0",

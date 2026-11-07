@@ -307,7 +307,7 @@ function renderExpense(){
       +'<button type="button" class="chip '+(isCur?'active':'')+'" onclick="shiftViewMonth(0);viewMonth=null;render()" aria-label="回到本月" style="min-width:88px;text-align:center">'+monthLabel(thisMonth)+'</button>'
       +'<button type="button" class="chip" onclick="shiftViewMonth(1)" aria-label="下个月"'+(isCur?' disabled':'')+'>›</button>'
       +'<span class="filter-separator" aria-hidden="true"></span>'
-      +'<button type="button" class="chip '+(currentWeekFilter===-1&&!isCur?'active':'')+'" aria-pressed="'+(currentWeekFilter===-1)+'" onclick="currentWeekFilter=-1;render()">'+(isCur?'本月':'全月')+'</button>';
+      +'<button type="button" class="chip '+(currentWeekFilter===-1&&!isCur?'active':'')+'" aria-pressed="'+(currentWeekFilter===-1&&!isCur)+'" onclick="currentWeekFilter=-1;render()">'+(isCur?'本月':'全月')+'</button>';
     monthWeeks.forEach((w,i)=>{ch+='<button type="button" class="chip '+(currentWeekFilter===i?'active':'')+'" aria-pressed="'+(currentWeekFilter===i)+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</button>'});
     ch+='<span class="filter-separator" aria-hidden="true"></span>';
     ch+='<button type="button" class="chip '+(expenseTypeFilter==='all'?'active':'')+'" aria-pressed="'+(expenseTypeFilter==='all')+'" onclick="expenseTypeFilter='+'\'all\''+';render()">全部</button>';

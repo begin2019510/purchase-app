@@ -4,7 +4,11 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const webDir = path.join(root, 'www');
-for (const name of ['index.html', 'theme.css', 'sw.js', 'ui-refresh.css', 'manifest.json', 'icon-180.png', 'icon-192.png', 'icon-512.png']) {
+for (const name of [
+  'index.html', 'help.html', 'privacy.html', 'agent.html',
+  'theme.css', 'sw.js', 'ui-refresh.css', 'manifest.json',
+  'icon-180.png', 'icon-192.png', 'icon-512.png',
+]) {
   fs.copyFileSync(path.join(root, name), path.join(webDir, name));
 }
 const sourceJs = path.join(root, 'js');

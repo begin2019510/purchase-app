@@ -247,8 +247,8 @@ function renderTodoCard(t) {
   if (finished) h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
   h += '</button>';
   h += '<button type="button" class="td3-main" onclick="openTodoDetail(\x27' + idAttr + '\x27)" aria-label="查看待办 ' + escAttr(t.title) + '">';
-  h += '<div class="td3-row-title">' + esc(t.title) + '</div>';
-  h += '<div class="td3-row-meta">';
+  h += '<span class="td3-row-title">' + esc(t.title) + '</span>';
+  h += '<span class="td3-row-meta">';
   if (t.dueDate) h += '<span class="td2-due ' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span>';
   h += '<span class="td2-chip">' + (catIcon[t.category] || '📌') + ' ' + esc(t.category) + '</span>';
   if (t.repeat && t.repeat !== '无') h += '<span class="td2-chip">🔄 ' + t.repeat + '</span>';
@@ -273,7 +273,7 @@ function renderTodoCard(t) {
   } else {
     if (t.status === '进行中') h += '<span class="td3-doing">进行中</span>';
     else if (!finished && t.priority === '高') h += '<span class="td3-pri">高</span>';
-    h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+    h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer" onclick="openTodoDetail(\x27' + idAttr + '\x27)"><path d="M9 6l6 6-6 6"/></svg>';
   }
   h += '</div></article>';
   return h;

@@ -178,7 +178,7 @@ Express 服务器从 `/etc/purchase-app/db.env` 和 `/etc/purchase-app/server.en
 
 详见 [IMAGE_ARCH.md](IMAGE_ARCH.md)
 
-- 前端压缩（max 800px, quality 0.7, 上限 500KB）
+- 前端压缩（最长边 1600px, JPEG quality 0.92，体积超过约 2MB 时逐步降质；服务端单图上限 5MiB）
 - 生产环境写入 `/var/lib/purchase-app/images/{username}`，MySQL `images` 表记录用户、文件 key、MIME 与大小
 - `kv:key` 引用继续用于兼容旧数据；该前缀不表示生产新图片存入 Cloudflare KV
 - GET 返回二进制图片（支持 `<img src>` 直接加载）

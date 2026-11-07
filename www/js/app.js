@@ -1100,7 +1100,7 @@ App.app.openSettings = openSettings;
 App.app.closeSettings = closeSettings;
 // ===== Background theme picker =====
 const BG_PRESETS = [
-  ['default','默认','#f2f2f7'],['white','纯白','#ffffff'],['paper','纸感','#faf9f6'],
+  ['default','默认','#f5f6fa'],['white','纯白','#ffffff'],['paper','纸感','#faf9f6'],
   ['mist','雾灰','#eef2f7'],['lavender','淡紫','#f3f0ff'],['mint','薄荷','#eefaf3'],
   ['peach','蜜桃','#fff5ee'],['slate','岩灰','#e8eaf0']
 ];

@@ -42,13 +42,15 @@ button { -webkit-tap-highlight-color: transparent; }
 
 /* App shell and five destinations */
 .header { color: var(--ui-ink); background: var(--ui-bg) !important; border-bottom: 1px solid transparent; padding-bottom: 10px; }
-.header h1 { color: var(--ui-ink); font-size: 21px; font-weight: 720; letter-spacing: -.45px; }
+.header h1 { color: var(--ui-ink); font-size: 21px !important; font-weight: 720; letter-spacing: -.45px; }
 .header .logo-icon { filter: saturate(.72); }
 .header-version { background: var(--ui-surface-2); color: var(--ui-muted); }
 .header-actions button { color: var(--ui-secondary); background: var(--ui-surface) !important; border: 1px solid var(--ui-line); box-shadow: 0 1px 2px rgba(20,24,45,.04); }
+/* theme.css .header-actions .icon-btn{color:#fff} 特异性更高：浅色头部下白图标贴白底，必须显式压过 */
+.header-actions .icon-btn { color: var(--ui-secondary); }
 .header-actions button:active { transform: scale(.96); background: var(--ui-surface-2) !important; }
-.tabs { background: transparent; border: 0; gap: 5px; padding: 6px max(16px,calc((100vw - 1020px)/2)); }
-.tab { border: 0; border-radius: 11px; color: var(--ui-muted); padding: 10px 12px; font-size: 13px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
+.tabs { background: transparent; border: 0; gap: 5px; padding: 6px max(16px,calc((100vw - 1020px)/2)) !important; }
+.tab { border: 0; border-radius: 11px; color: var(--ui-muted); padding: 10px 12px !important; font-size: 13px !important; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
 .tab.active { color: var(--ui-accent); background: var(--ui-accent-soft); }
 .bottom-nav { background: rgba(255,255,255,.97); border-top: 1px solid var(--ui-line); box-shadow: 0 -5px 22px rgba(25,30,55,.035); padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
 .nav-item { color: #868996; border-radius: 14px; min-height: 48px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) var(--ui-ease); }
@@ -57,15 +59,16 @@ button { -webkit-tap-highlight-color: transparent; }
 .nav-item.active .nav-label { color: var(--ui-accent); font-weight: 700; }
 .nav-item:active { transform: scale(.96); }
 
-/* Grouped content, purchase/todo/project cards and finance surfaces */
-.container { max-width: 760px; padding-left: 18px; padding-right: 18px; }
+/* Grouped content, purchase/todo/project cards and finance surfaces
+   注：theme.css 的 Phase-0 覆盖大量使用 !important，这里同值加 !important 才能成为最终生效的一层。 */
+.container { max-width: 760px; padding-left: 18px !important; padding-right: 18px !important; }
 .section-title { color: var(--ui-muted); font-size: 12px; font-weight: 680; letter-spacing: .035em; padding-top: 18px; }
 .card, .stat-card, .ex-section, .ex-total-card, .week-card, .pj2-card, .project-card,
 .todo-card, .todo-item, .ai-analysis, .ai-suggestion-card {
   background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-md);
   box-shadow: var(--ui-shadow); transition: border-color var(--ui-fast) ease, box-shadow var(--ui-fast) ease, transform var(--ui-fast) var(--ui-ease);
 }
-.card { padding-top: 16px; padding-bottom: 16px; margin-bottom: 10px; }
+.card { padding-top: 16px !important; padding-bottom: 16px !important; margin-bottom: 10px !important; }
 .card:active, .project-card:active, .todo-card:active { transform: scale(.992); }
 @media (hover:hover) {
   .card:hover, .project-card:hover, .todo-card:hover { border-color: rgba(88,101,217,.19); box-shadow: 0 5px 18px rgba(25,30,55,.07); }
@@ -73,10 +76,14 @@ button { -webkit-tap-highlight-color: transparent; }
 .card .name, .todo-title, .pj2-card-title { color: var(--ui-ink); letter-spacing: -.02em; }
 .card .price, .detail-price { font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
 .section-title + .card { margin-top: 3px; }
-.chips { gap: 8px; padding: 8px 18px; }
-.chip { border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-secondary); padding: 8px 14px; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap; cursor: pointer; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
+.chips { gap: 8px; padding: 8px 18px !important; }
+.chip { border: 1px solid var(--ui-line) !important; background: var(--ui-surface) !important; color: var(--ui-secondary) !important; padding: 8px 14px !important; font: inherit; font-size: 12px !important; font-weight: 600; line-height: 1.25; white-space: nowrap; cursor: pointer; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
 .chip.active { background: var(--ui-accent) !important; border-color: var(--ui-accent) !important; box-shadow: none !important; }
 .chip:disabled { opacity: .38; cursor: default; }
+/* 月份标签等非交互 span 不应显示手型光标 */
+span.chip { cursor: default; }
+/* 筛选组分隔线（采购状态/分类、记账月份/周/类型之间） */
+.filter-separator { width: 1px; align-self: stretch; flex-shrink: 0; margin: 0 2px; background: var(--ui-line); }
 .pj2-filter { font: inherit; font-size: 12px; line-height: 1.25; }
 .pj2-filter:focus-visible, .chip:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .search-bar { background: transparent; padding: 12px 18px 5px; }
@@ -153,7 +160,9 @@ input:not([type=checkbox]):not([type=radio]), select, textarea { accent-color: v
 .auth-card { border: 1px solid var(--ui-line); border-radius: 24px; box-shadow: var(--ui-shadow); }
 .auth-title, .auth-card h1, .auth-card h2 { letter-spacing: -.035em; }
 .auth-input { border: 1px solid var(--ui-line) !important; border-radius: 13px !important; }
-body[data-bg="default"]:not(.dark) { --ui-bg: #f2f2f7; }
+/* border 简写是 important，focus 描边必须同级 important 才能生效（设计规范：强调色描边 + halo） */
+.auth-input:focus { border-color: var(--ui-accent) !important; }
+/* 默认背景 = :root 的 --ui-bg（#f5f6fa）；applyBgTheme 对 default 会移除 data-bg，故不再有 default 覆盖规则 */
 body[data-bg="white"]:not(.dark) { --ui-bg: #fff; }
 body[data-bg="paper"]:not(.dark) { --ui-bg: #faf9f6; }
 body[data-bg="mist"]:not(.dark) { --ui-bg: #eef2f7; }
@@ -208,13 +217,15 @@ body.dark .search-input, body.dark .settings-group, body.dark .settings-panel { 
 @media (max-width: 767px) {
   body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   .header { position: sticky; top: 0; }
-  .container { padding-left: 14px; padding-right: 14px; }
+  .container { padding-left: 14px !important; padding-right: 14px !important; }
   .search-bar { padding-left: 14px; padding-right: 14px; }
-  .chips { padding-left: 14px; padding-right: 14px; }
+  .chips { padding-left: 14px !important; padding-right: 14px !important; }
   .bottom-nav { padding-left: max(8px,env(safe-area-inset-left)); padding-right: max(8px,env(safe-area-inset-right)); }
   .nav-item { min-width: 0; flex: 1 1 20%; }
   .modal-overlay { align-items: flex-end; padding: 0; }
-  .modal-overlay .modal { width: 100%; max-width: 620px; max-height: min(92dvh, 900px); margin: 0 auto; border-radius: 22px 22px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  /* 无 header 的 sheet 才补安全区 padding；有 .modal-header 的由 theme.css 置 0，避免双份空条 */
+  .modal-overlay .modal:not(:has(.modal-header)) { width: 100%; max-width: 620px; max-height: min(92dvh, 900px); margin: 0 auto; border-radius: 22px 22px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .modal-overlay .modal:has(.modal-header) { width: 100%; max-width: 620px; max-height: min(92dvh, 900px); margin: 0 auto; border-radius: 22px 22px 0 0; }
   #projectDetailOverlay { align-items: flex-end; padding: 0; }
   #projectDetailOverlay .pj2-modal { max-height: 94dvh; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
   .todo-detail-modal { width: min(100% - 24px, 500px); }
