@@ -74,8 +74,11 @@ button { -webkit-tap-highlight-color: transparent; }
 .card .price, .detail-price { font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
 .section-title + .card { margin-top: 3px; }
 .chips { gap: 8px; padding: 8px 18px; }
-.chip { border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-secondary); padding: 8px 14px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
+.chip { border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-secondary); padding: 8px 14px; font: inherit; font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap; cursor: pointer; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
 .chip.active { background: var(--ui-accent) !important; border-color: var(--ui-accent) !important; box-shadow: none !important; }
+.chip:disabled { opacity: .38; cursor: default; }
+.pj2-filter { font: inherit; font-size: 12px; line-height: 1.25; }
+.pj2-filter:focus-visible, .chip:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .search-bar { background: transparent; padding: 12px 18px 5px; }
 .search-input { min-height: 44px; border: 1px solid var(--ui-line); border-radius: 14px; background-color: var(--ui-surface); color: var(--ui-ink); }
 .search-input:focus { border-color: rgba(88,101,217,.48); box-shadow: 0 0 0 4px var(--ui-accent-soft); }
@@ -91,6 +94,52 @@ button { -webkit-tap-highlight-color: transparent; }
 .pj-btn:active, .btn:active, .a-btn:active, .ai-confirm-btn:active { transform: scale(.98); }
 .fab { box-shadow: 0 5px 18px rgba(88,101,217,.25); transition: transform var(--ui-fast) var(--ui-ease), box-shadow var(--ui-fast) ease; }
 .fab:active { transform: scale(.94); }
+
+/* Module-specific structure: grouped purchase cards, task controls and ledgers. */
+.purchase-card { border-left: 3px solid var(--purchase-accent, var(--ui-accent)); }
+.purchase-card-main { display: block; width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.purchase-card-main:focus-visible { outline-offset: 5px; border-radius: 10px; }
+.purchase-card-main .top { padding-right: 44px; }
+.purchase-card-main .budget-price { color: var(--orange); }
+.purchase-card .meta-install.settled { color: var(--ui-green); }
+.purchase-timestamp { display: block; margin-top: 5px; color: var(--ui-muted); font-size: 11px; }
+.purchase-card .actions button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 10px; font-size: 14px; }
+.td3-group { background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-md); box-shadow: var(--ui-shadow); }
+.td3-row { align-items: center; min-height: 68px; padding: 12px 14px; cursor: default; }
+.td3-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.td3-main:focus-visible { border-radius: 8px; }
+.td3-row-title { font-size: 15px; font-weight: 620; }
+.td3-check { flex: 0 0 24px; width: 24px; height: 24px; border-color: var(--todo-priority, var(--ui-line)); }
+.td3-check.on { border-color: var(--ui-green); background: var(--ui-green); }
+.td3-cell .metric-pending { color: var(--ui-accent); }
+.td3-cell .metric-doing { color: #6372d5; }
+.td3-cell .metric-overdue { color: var(--ui-muted); }
+.td3-cell .metric-overdue.has-overdue { color: var(--ui-red); }
+.td3-cell .metric-done { color: var(--ui-green); }
+.td3-doing, .td3-pri { border-radius: 999px; padding: 4px 8px; }
+.pj2-card { border-radius: var(--ui-radius-md); box-shadow: var(--ui-shadow); transition: transform var(--ui-fast) var(--ui-ease), border-color var(--ui-fast) ease, box-shadow var(--ui-fast) ease; }
+.pj2-card:focus-visible { outline: 3px solid rgba(88,101,217,.28); outline-offset: 3px; }
+.pj2-card-name { font-size: 16px; font-weight: 680; }
+.pj2-next { border-radius: 12px; }
+.pj2-money-cell, .pj2-focus, .pj2-budget { border-color: var(--ui-line); box-shadow: none; }
+.pj2-step, .pj2-todo, .pj2-ledger { transition: background-color var(--ui-fast) ease; }
+.ex-entry-modern { position: relative; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 14px; padding: 10px 12px; margin: 0 0 7px; box-shadow: 0 1px 3px rgba(20,24,45,.025); }
+.ex-entry.ex-entry-modern { background: var(--ui-surface); border-left: 1px solid var(--ui-line); }
+.ex-entry-modern .ex-entry-icon { border-radius: 11px; }
+.ex-entry-modern .ex-entry-cat { font-size: 14px; font-weight: 620; }
+.ex-entry-modern .ex-entry-note { line-height: 1.4; }
+.ex-entry-time { color: var(--ui-accent); font-size: 11px; font-weight: 620; }
+.ex-entry-modern .ex-entry-amount { font-size: 15px; font-weight: 650; }
+.ex-entry-modern .ex-entry-del { opacity: .6; min-width: 36px; min-height: 36px; border-radius: 10px; }
+.ex-entry-modern .a-badge { margin-left: 4px; }
+.ex-entry-modern .a-badge:first-child { margin-left: 6px; }
+.ex-section-title { margin: 0 0 12px; }
+.stats-section { border: 1px solid var(--ui-line); box-shadow: var(--ui-shadow); }
+.report-card { cursor: pointer; transition: border-color var(--ui-fast) ease, transform var(--ui-fast) var(--ui-ease), box-shadow var(--ui-fast) ease; }
+.report-card:focus-visible { outline: 3px solid rgba(88,101,217,.28); outline-offset: 3px; }
+.report-card:active { transform: scale(.992); }
+.stat-card, .a-card { border: 1px solid var(--ui-line); }
+.td3-hero, .td3-ring, .td3-grid { transition: background-color var(--ui-fast) ease, border-color var(--ui-fast) ease; }
 
 /* Forms and settings */
 input:not([type=checkbox]):not([type=radio]), select, textarea { accent-color: var(--ui-accent); }
@@ -129,7 +178,7 @@ body[data-bg="slate"]:not(.dark) { --ui-bg: #e8eaf0; }
 /* Dark mode follows the existing explicit/system setting with matching surfaces. */
 body.dark, :root[data-theme="dark"] {
   --ui-bg: #111216; --ui-surface: #1c1d23; --ui-surface-2: #272830;
-  --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7;
+  --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7; --ui-red: #ff686d;
   --ui-line: rgba(220,222,240,.10); --ui-accent: #929aff; --ui-accent-soft: rgba(146,154,255,.14);
   --ui-shadow: 0 2px 10px rgba(0,0,0,.13), 0 12px 30px rgba(0,0,0,.08);
   --bg: var(--ui-bg); --card: var(--ui-surface); --text: var(--ui-ink); --text-2: var(--ui-secondary);
@@ -143,7 +192,7 @@ body.dark .search-input, body.dark .settings-group, body.dark .settings-panel { 
 @media (prefers-color-scheme: dark) {
   :root:not(.light):not([data-theme="light"]):not(.dark) {
     --ui-bg: #111216; --ui-surface: #1c1d23; --ui-surface-2: #272830;
-    --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7;
+    --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7; --ui-red: #ff686d;
     --ui-line: rgba(220,222,240,.10); --ui-accent: #929aff; --ui-accent-soft: rgba(146,154,255,.14);
     --ui-shadow: 0 2px 10px rgba(0,0,0,.13), 0 12px 30px rgba(0,0,0,.08);
     --bg: var(--ui-bg); --card: var(--ui-surface); --text: var(--ui-ink); --text-2: var(--ui-secondary);

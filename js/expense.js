@@ -303,16 +303,16 @@ function renderExpense(){
   const monthWeeks=getMonthWeeks(thisMonth);
   const chipsEl=document.getElementById('expenseChips');
   if(chipsEl){
-    let ch='<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 10px">‹</div>'
-      +'<div class="chip '+(isCur?'active':'')+'" onclick="shiftViewMonth(0);viewMonth=null;render()" style="min-width:88px;text-align:center">'+monthLabel(thisMonth)+'</div>'
-      +'<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 10px'+(isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
-      +'<span style="width:1px;background:var(--border);flex-shrink:0;margin:0 2px"></span>'
-      +'<div class="chip '+(currentWeekFilter===-1&&!isCur?'active':'')+'" onclick="currentWeekFilter=-1;render()">'+(isCur?'本月':'全月')+'</div>';
-    monthWeeks.forEach((w,i)=>{ch+='<div class="chip '+(currentWeekFilter===i?'active':'')+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</div>'});
-    ch+='<span style="width:1px;background:var(--border);flex-shrink:0"></span>';
-    ch+='<div class="chip '+(expenseTypeFilter==='all'?'active':'')+'" onclick="expenseTypeFilter='+'\'all\''+';render()">全部</div>';
-    ch+='<div class="chip '+(expenseTypeFilter==='支出'?'active':'')+'" onclick="expenseTypeFilter='+'\'支出\''+';render()">日常</div>';
-    ch+='<div class="chip '+(expenseTypeFilter==='采购'?'active':'')+'" onclick="expenseTypeFilter='+'\'采购\''+';render()">采购</div>';
+    let ch='<button type="button" class="chip" onclick="shiftViewMonth(-1)" aria-label="上个月">‹</button>'
+      +'<button type="button" class="chip '+(isCur?'active':'')+'" onclick="shiftViewMonth(0);viewMonth=null;render()" aria-label="回到本月" style="min-width:88px;text-align:center">'+monthLabel(thisMonth)+'</button>'
+      +'<button type="button" class="chip" onclick="shiftViewMonth(1)" aria-label="下个月"'+(isCur?' disabled':'')+'>›</button>'
+      +'<span class="filter-separator" aria-hidden="true"></span>'
+      +'<button type="button" class="chip '+(currentWeekFilter===-1&&!isCur?'active':'')+'" aria-pressed="'+(currentWeekFilter===-1)+'" onclick="currentWeekFilter=-1;render()">'+(isCur?'本月':'全月')+'</button>';
+    monthWeeks.forEach((w,i)=>{ch+='<button type="button" class="chip '+(currentWeekFilter===i?'active':'')+'" aria-pressed="'+(currentWeekFilter===i)+'" onclick="currentWeekFilter='+i+';render()">第'+w.num+'周</button>'});
+    ch+='<span class="filter-separator" aria-hidden="true"></span>';
+    ch+='<button type="button" class="chip '+(expenseTypeFilter==='all'?'active':'')+'" aria-pressed="'+(expenseTypeFilter==='all')+'" onclick="expenseTypeFilter='+'\'all\''+';render()">全部</button>';
+    ch+='<button type="button" class="chip '+(expenseTypeFilter==='支出'?'active':'')+'" aria-pressed="'+(expenseTypeFilter==='支出')+'" onclick="expenseTypeFilter='+'\'支出\''+';render()">日常</button>';
+    ch+='<button type="button" class="chip '+(expenseTypeFilter==='采购'?'active':'')+'" aria-pressed="'+(expenseTypeFilter==='采购')+'" onclick="expenseTypeFilter='+'\'采购\''+';render()">采购</button>';
     chipsEl.innerHTML=ch;
   }
   let monthExpenses=expenses.filter(e=>{
@@ -378,11 +378,11 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
   }
   
   if(catEntries.length){
-    html+=`<div class="ex-section" style="background:var(--card);border-radius:var(--r-lg,16px);box-shadow:var(--shadow-1)"><div class="ex-section-title" style="font-size:var(--fs-sm);color:var(--muted);font-weight:600;text-transform:none;letter-spacing:.2px">支出分类</div><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></div>`;
+    html+=`<section class="ex-section"><h2 class="ex-section-title">支出分类</h2><div class="ex-chart-area">${donutChart(catEntries,170,'支出')}${donutLegend(catEntries,totalOut)}</div></section>`;
   }
   const dayGroups={};
   searched.forEach(e=>{let day='未知日期';if(e['日期']){try{day=e['日期'].slice(0,10)}catch{}}if(!dayGroups[day])dayGroups[day]=[];dayGroups[day].push(e);});
-  html+=`<div class="ex-section" style="background:var(--card);border-radius:var(--r-lg,16px);box-shadow:var(--shadow-1)"><div class="ex-section-title" style="font-size:var(--fs-sm);color:var(--muted);font-weight:600">消费记录</div><div class="ex-timeline">`;
+  html+=`<section class="ex-section"><h2 class="ex-section-title">消费记录</h2><div class="ex-timeline">`;
   if(!searched.length) html+=`<div class="a-empty"><div class="a-empty-icon">💰</div><div class="a-empty-title">该月暂无记账</div><div class="a-empty-sub">点右下角 + 记一笔</div></div>`;
   for(const[day,list]of Object.entries(dayGroups)){
     const dayTotal=list.filter(e=>(e['类型']==='支出'||e['类型']==='采购')).reduce((s,e)=>s+Number(e['金额']||0),0);
@@ -391,21 +391,21 @@ let searched=sq?monthExpenses.filter(e=>(e['备注']||'').toLowerCase().includes
       <div class="ex-day-content"><div class="ex-day-header"><span class="ex-day-date">${date} ${weekday}</span><span class="ex-day-total">-¥${dayTotal.toFixed(2)}</span></div>`;
     list.forEach(e=>{
       const isOut=e['类型']==='支出'||e['类型']==='采购';
-      const typeBadge=e['类型']==='采购'?'<span class="a-badge a-badge-purple" style="margin-left:6px">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span class="a-badge a-badge-orange" style="margin-left:4px">'+e['分摊周数']+'周</span>':'';
+      const typeBadge=e['类型']==='采购'?'<span class="a-badge a-badge-purple">采购</span>':'';const splitBadge=Number(e['分摊周数'])>0?'<span class="a-badge a-badge-orange">'+e['分摊周数']+'周</span>':'';
       const cc=catColor(e['分类']||'其他');
       // ===== 图片显示 =====
 // kv:前缀 -> KV key -> /api/images?key=xxx
 // 无kv:前缀 -> base64直接显示（旧数据兼容）
 const imgSrc=e['图片']&&e['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(e['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):e['图片'];
-      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${escAttr(imgSrc)}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><div class="ex-entry swipe-card" data-id="${e.id}" data-type="expense" style="border-left:none;background:transparent;border-radius:0;padding:10px 4px;box-shadow:none">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}">${catIcon(e['分类']||'其他')}</div>
-        <div class="ex-entry-info"><div class="ex-entry-cat" style="font-size:var(--fs-lg);font-weight:500">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note" style="color:var(--pri);font-weight:600;font-size:11px">${e['日期'].slice(11,16)}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
-        <div class="ex-entry-amount a-num ${isOut?'ex-amount-out':'ex-amount-in'}" style="font-size:var(--fs-lg);font-weight:600;${isOut?'color:var(--text)':'color:var(--green)'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
-        <button class="ex-entry-del" data-expense-edit="${e.id}" title="编辑" style="font-size:15px;padding:8px;min-width:36px;min-height:36px">⋯</button></div></div>`;
+      const thumbHtml=imgSrc?`<img class="ex-thumb" src="${escAttr(imgSrc)}" alt="${escAttr((e['备注']||e['分类']||'记账')+'图片')}" onclick="event.stopPropagation();showFullscreenImg(this.src)">`:'';
+      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-left"><span>删除</span></div><article class="ex-entry ex-entry-modern swipe-card" data-id="${escAttr(e.id)}" data-type="expense">${thumbHtml}<div class="ex-entry-icon" style="background:${cc}22;color:${cc}" aria-hidden="true">${catIcon(e['分类']||'其他')}</div>
+        <div class="ex-entry-info"><div class="ex-entry-cat">${esc(e['分类']||'其他')}${typeBadge}${splitBadge}</div>${e['日期']&&e['日期'].includes('T')?`<div class="ex-entry-note ex-entry-time">${esc(e['日期'].slice(11,16))}</div>`:''}${e['备注']?`<div class="ex-entry-note">${esc(e['备注'])}</div>`:''}</div>
+        <div class="ex-entry-amount a-num ${isOut?'ex-amount-out':'ex-amount-in'}">${isOut?'-':'+'}¥${Number(e['金额']||0).toFixed(2)}</div>
+        <button type="button" class="ex-entry-del" data-expense-edit="${escAttr(e.id)}" title="编辑" aria-label="编辑记账：${escAttr(e['备注']||e['分类']||'记录')}">⋯</button></article></div>`;
     });
     html+=`</div></div>`;
   }
-  html+=`</div></div>`;
+  html+=`</div></section>`;
   document.getElementById('expenseContent').innerHTML=html;
 }
 ;

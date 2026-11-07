@@ -160,15 +160,16 @@ function renderTodo() {
   html += '<div class="td3-hero">';
   html += '<div class="td3-ring"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="var(--border)" stroke-width="7"/><circle cx="38" cy="38" r="26" fill="none" stroke="var(--pri)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIRC.toFixed(1) + '"/></svg><div class="pct">' + pct + '%</div></div>';
   html += '<div class="td3-grid">';
-  html += '<div class="td3-cell"><b style="color:var(--orange)">' + pending + '</b><span>待办</span></div>';
-  html += '<div class="td3-cell"><b style="color:var(--pri)">' + doing + '</b><span>进行中</span></div>';
-  html += '<div class="td3-cell"><b style="color:' + (overdue?'var(--red)':'var(--muted)') + '">' + overdue + '</b><span>已过期</span></div>';
-  html += '<div class="td3-cell"><b style="color:var(--green)">' + done + '</b><span>已完成</span></div>';
+  html += '<div class="td3-cell"><b class="metric-pending">' + pending + '</b><span>待办</span></div>';
+  html += '<div class="td3-cell"><b class="metric-doing">' + doing + '</b><span>进行中</span></div>';
+  html += '<div class="td3-cell"><b class="metric-overdue' + (overdue?' has-overdue':'') + '">' + overdue + '</b><span>已过期</span></div>';
+  html += '<div class="td3-cell"><b class="metric-done">' + done + '</b><span>已完成</span></div>';
   html += '</div></div>';
 
   html += '<div class="td3-chips">';
   ['全部','待办','进行中','已完成','高优先级','已取消','回收站'].forEach(function(c) {
-    html += '<span class="chip' + (todoFilter===c?' active':'') + '" onclick="switchTodoFilter(\x27' + c + '\x27)">' + c + '</span>';
+    var active = todoFilter === c;
+    html += '<button type="button" class="chip' + (active?' active':'') + '" aria-pressed="' + active + '" onclick="switchTodoFilter(\x27' + c + '\x27)">' + c + '</button>';
   });
   html += '</div></div>';
 
@@ -240,11 +241,12 @@ function renderTodoCard(t) {
   var priColor = t.priority === '高' ? 'var(--red)' : t.priority === '低' ? 'var(--muted)' : 'var(--orange)';
   var idAttr = t.id;
 
-  var h = '<div class="td3-row' + (isDone ? ' td3-done' : '') + (isCancel ? ' td3-cancelled' : '') + '" data-id="' + idAttr + '" onclick="openTodoDetail(\x27' + idAttr + '\x27)">';
-  h += '<button class="td3-check' + (finished ? ' on' : '') + '"' + (!finished ? ' style="border-color:' + priColor + '"' : '') + ' onclick="event.stopPropagation();cycleTodoStatus(\x27' + idAttr + '\x27)">';
+  var rowClass = 'td3-row' + (isDone ? ' td3-done' : '') + (isCancel ? ' td3-cancelled' : '');
+  var h = '<article class="' + rowClass + '" data-id="' + escAttr(idAttr) + '">';
+  h += '<button type="button" class="td3-check' + (finished ? ' on' : '') + ' priority-' + String(t.priority || '中') + '"' + (!finished ? ' style="--todo-priority:' + priColor + '"' : '') + ' onclick="cycleTodoStatus(\x27' + idAttr + '\x27)" aria-label="' + (finished ? '重新打开' : '完成') + '待办 ' + escAttr(t.title) + '" aria-pressed="' + finished + '">';
   if (finished) h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
   h += '</button>';
-  h += '<div class="td3-main">';
+  h += '<button type="button" class="td3-main" onclick="openTodoDetail(\x27' + idAttr + '\x27)" aria-label="查看待办 ' + escAttr(t.title) + '">';
   h += '<div class="td3-row-title">' + esc(t.title) + '</div>';
   h += '<div class="td3-row-meta">';
   if (t.dueDate) h += '<span class="td2-due ' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span>';
@@ -263,7 +265,7 @@ function renderTodoCard(t) {
     } catch(e) {}
   }
   if (t.image) h += '<span class="td2-chip">🖼</span>';
-  h += '</div></div>';
+  h += '</div></button>';
   h += '<div class="td3-right">';
   if (t.status === '已删除') {
     h += '<button class="td3-mini" onclick="event.stopPropagation();restoreTodo(\x27' + idAttr + '\x27)">恢复</button>';
@@ -273,7 +275,7 @@ function renderTodoCard(t) {
     else if (!finished && t.priority === '高') h += '<span class="td3-pri">高</span>';
     h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
   }
-  h += '</div></div>';
+  h += '</div></article>';
   return h;
 }
 

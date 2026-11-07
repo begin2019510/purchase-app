@@ -239,7 +239,7 @@ function renderStats() { console.log('renderStats START');
     if(!_d)return;
     var _period=_d.period==='monthly'?'monthly':'weekly';
     var _dc=_d.deltaGood===true?'var(--green)':_d.deltaGood===false?'var(--red)':'var(--muted)';
-    html += '<div class="stats-section" style="margin-bottom:12px;cursor:pointer" data-period="'+_period+'" onclick="openReportModal(this.dataset.period)">'
+    html += '<article class="stats-section report-card" data-period="'+_period+'" role="button" tabindex="0" aria-label="查看'+(_period==='weekly'?'周报':'月报')+'详情" onclick="openReportModal(this.dataset.period)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openReportModal(this.dataset.period)}">'
       + '<div style="display:flex;justify-content:space-between;align-items:center">'
       + '<div style="font-size:13px;font-weight:700">📊 '+(_period==='weekly'?'周报':'月报')
       + ' <span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:4px">'+esc(_d.rangeText||'')+'</span></div>'
@@ -247,13 +247,13 @@ function renderStats() { console.log('renderStats START');
       + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'
       + '<span class="a-num" style="font-size:26px;font-weight:900;letter-spacing:-.8px">¥'+Number(_d.total||0).toLocaleString('zh-CN')+'</span>'
       + '<span style="font-size:13px;font-weight:700;color:'+_dc+'">较'+esc(_d.prevLabel||'')+' '+esc(_d.deltaText||'')+'</span>'
-      + '</div></div>';
+      + '</div></article>';
   });
   const _isCur = thisMonth===getThisMonth();
   html += '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">'
-    + '<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 12px">‹</div>'
-    + '<div class="chip active" style="min-width:100px;text-align:center">'+monthLabel(thisMonth)+'</div>'
-    + '<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 12px'+(_isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
+    + '<button type="button" class="chip" onclick="shiftViewMonth(-1)" aria-label="上个月">‹</button>'
+    + '<span class="chip active" style="min-width:100px;text-align:center">'+monthLabel(thisMonth)+'</span>'
+    + '<button type="button" class="chip" onclick="shiftViewMonth(1)" aria-label="下个月"'+(_isCur?' disabled':'')+'>›</button>'
     + '</div>';
 
   // ===== 自定义日期区间小结 =====

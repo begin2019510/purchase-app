@@ -546,7 +546,18 @@ function renderPurchase(){
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
   const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档','已取消'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
-  document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${esc(c)}</div>`}).join('');
+  const filterEl=document.getElementById('statusChips');
+  filterEl.innerHTML=statuses.map(s=>{const active=s===currentStatusFilter;const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="status" data-filter-value="${escAttr(s)}" aria-pressed="${active}">${esc(s)} <span>${n}</span></button>`}).join('')+'<span class="filter-separator" aria-hidden="true"></span>'+cats.map(c=>{const active=c===currentCatFilter;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="category" data-filter-value="${escAttr(c)}" aria-pressed="${active}">${esc(c)}</button>`}).join('');
+  if(filterEl.dataset.bound!=='1'){
+    filterEl.dataset.bound='1';
+    filterEl.addEventListener('click',function(event){
+      const chip=event.target.closest('button[data-filter-kind]');
+      if(!chip||!filterEl.contains(chip))return;
+      if(chip.dataset.filterKind==='status')currentStatusFilter=chip.dataset.filterValue||'全部';
+      else currentCatFilter=chip.dataset.filterValue||'全部';
+      render();
+    });
+  }
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
   if(!sorted.length){listEl.classList.remove('anim-stagger');listEl.dataset.enter='0';listEl.dataset.entered='1';listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
@@ -555,15 +566,7 @@ function renderPurchase(){
   for(const[month,list]of Object.entries(groups)){
     const mt=totalCost(list);const dm=month==='待评估'?'待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
-    const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};const catColors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444','云服务':'#0ea5e9','API':'#8b5cf6','会员':'#f59e0b','软件':'#6366f1'};const catEmoji={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','云服务':'☁️','API':'🔌','会员':'🎫','软件':'💿','其他':'📦'};
-    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch(e){console.error('loadAll fetch error:', e)}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
-    let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
-    // 待评估卡片：显示预算+AI摘要
-    if(status==='待评估'){const budgetLine=i['预算区间']?'¥'+esc(i['预算区间']):'预算未知';const summaryLine=i['评估摘要']?i['评估摘要'].slice(0,80)+'...':'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:3px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}">${i['极速']==='1'?'<div class="quick-badge">极速免审</div>':''}<div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div><div class="price" style="color:var(--orange)">${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${esc(cat)}</span>${i['虚拟']==='1'?'<span class="virtual-chip">💾 虚拟</span>':''}</div>${summaryLine?`<div class="note" style="color:var(--muted)">${esc(summaryLine)}</div>`:''}</div></div></div>`}
-    else{
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:3px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}">${i['极速']==='1'?'<div class="quick-badge">极速免审</div>':''}<div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${esc(cat)}</span>${i['平台']?`<span class="meta-sec">${esc(i['平台'])}</span>`:''}${i['虚拟']==='1'?'<span class="virtual-chip">虚拟</span>':''}${ds?`<span class="meta-sec">${ds}</span>`:''}${qty>1?`<span class="meta-sec">×${qty}</span>`:''}${(function(){var tp=Number(i['分期期数'])||0;if(tp<=0)return'';var pd=getEffectivePaid(i);if(pd>=tp)return'<span class="meta-install" style="color:var(--green)">已结清</span>';var ia=Number(i['分期金额'])||Math.round(((Number(i['单价'])||0)*(i['数量']||1))/tp);var pa=ia*pd;var tt=(Number(i['单价'])||0)*(i['数量']||1);return'<span class="meta-install">¥'+ia+'/期 · 已付¥'+pa+'/¥'+tt+'</span>'})()}</div>${i['备注']?`<div class="note">${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`}
-    });
+    list.forEach(i=>{html+=renderPurchaseCard(i)});
   }
   listEl.innerHTML=html;
   // 入场 stagger 仅：切到采购 tab / 首屏播一次；状态更新等静默 render 不重放
@@ -582,6 +585,50 @@ function renderPurchase(){
     listEl.dataset.enter='0';
     listEl.dataset.entered='1';
   }
+}
+function renderPurchaseCard(i){
+  const id=String(i.id||'');
+  const status=i['状态']||'待审批';
+  const category=i['分类']||'其他';
+  const quantity=Number(i['数量'])||1;
+  const price=Number(i['单价'])||0;
+  const isEvaluation=status==='待评估';
+  const selected=selectedIds.has(i.id);
+  const colors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444','云服务':'#0ea5e9','API':'#8b5cf6','会员':'#f59e0b','软件':'#6366f1'};
+  const icons={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','云服务':'☁️','API':'🔌','会员':'🎫','软件':'💿','其他':'📦'};
+  let date='';
+  if(i['日期']){try{date=new Date(i['日期']).toISOString().slice(0,10)}catch(e){date=''}}
+  const eventTime=i['到货时间']?'到货 '+i['到货时间']:i['下单时间']?'下单 '+i['下单时间']:i['审批时间']?'审批 '+i['审批时间']:i['创建时间']?'创建 '+i['创建时间']:'';
+  let installment='';
+  const terms=Number(i['分期期数'])||0;
+  if(terms>0){
+    const paid=getEffectivePaid(i);
+    if(paid>=terms)installment='<span class="meta-install settled">已结清</span>';
+    else{
+      const each=Number(i['分期金额'])||Math.round(price*quantity/terms);
+      installment='<span class="meta-install">¥'+each+'/期 · 已付¥'+(each*paid)+'/'+(price*quantity)+'</span>';
+    }
+  }
+  const openAction=batchMode?`toggleSelect('${id}')`:isEvaluation?`openEvalModal('${id}')`:`openDetailModal('${id}')`;
+  const mainPrice=isEvaluation?(i['预算区间']?'预算 ¥'+esc(i['预算区间']):'预算未知'):(price?'¥'+(price*quantity).toFixed(2):'');
+  let meta='<span class="badge badge-'+escAttr(status)+'">'+esc(status)+'</span><span class="cat-badge">'+esc(category)+'</span>';
+  if(!isEvaluation&&i['平台'])meta+='<span class="meta-sec">'+esc(i['平台'])+'</span>';
+  if(i['虚拟']==='1')meta+='<span class="virtual-chip">'+(isEvaluation?'💾 虚拟':'虚拟')+'</span>';
+  if(date)meta+='<span class="meta-sec">'+esc(date)+'</span>';
+  if(!isEvaluation&&quantity>1)meta+='<span class="meta-sec">×'+quantity+'</span>';
+  if(!isEvaluation)meta+=installment;
+  const note=isEvaluation?(i['评估摘要']?String(i['评估摘要']).slice(0,80)+(String(i['评估摘要']).length>80?'…':''):''):i['备注'];
+  const quick=i['极速']==='1'?'<span class="quick-badge">极速免审</span>':'';
+  return '<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div>'
+    +'<article class="card swipe-card purchase-card'+(selected?' selected':'')+'" style="--purchase-accent:'+escAttr(colors[category]||'#64748b')+'" data-id="'+escAttr(id)+'" data-type="purchase">'
+    +quick
+    +'<button type="button" class="checkbox'+(selected?' checked':'')+'" onclick="event.stopPropagation();toggleSelect(\''+escAttr(id)+'\')" aria-label="'+(selected?'取消选择':'选择')+' '+escAttr(i['商品名称']||'采购记录')+'">'+(selected?'✓':'')+'</button>'
+    +'<button type="button" class="purchase-card-main" onclick="'+openAction+'" aria-label="打开 '+escAttr(i['商品名称']||'采购记录')+'">'
+    +'<span class="top"><span class="name">'+(icons[category]||'📦')+' '+esc(i['商品名称']||'')+'</span>'+(mainPrice?'<span class="price'+(isEvaluation?' budget-price':'')+'">'+mainPrice+'</span>':'')+'</span>'
+    +'<span class="meta">'+meta+'</span>'
+    +(note?'<span class="note">'+esc(note)+'</span>':'')
+    +(eventTime?'<span class="purchase-timestamp">'+esc(eventTime)+'</span>':'')
+    +'</button><div class="actions"><button type="button" onclick="event.stopPropagation();editItem(\''+escAttr(id)+'\')" title="编辑" aria-label="编辑 '+escAttr(i['商品名称']||'采购记录')+'">✏️</button><button type="button" onclick="event.stopPropagation();delItem(\''+escAttr(id)+'\')" title="删除" aria-label="删除 '+escAttr(i['商品名称']||'采购记录')+'">🗑️</button></div></article></div>';
 }
 function changeLogDate(delta) {
   const parts = logDateState.split('-').map(Number);

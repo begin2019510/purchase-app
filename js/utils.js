@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.37";
+const APP_VERSION = "3.0.38";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.38',date:'2026-11-07',items:['采购筛选改为可访问的按钮并修复分类筛选未响应','采购、待办、项目与统计卡片统一语义结构和键盘交互；记账列表改用共享组件样式']},
 {v:'3.0.37',date:'2026-11-07',items:['全站 iOS 轻盈视觉规范：统一背景、卡片、导航、表单与弹层层级','统一 PWA 与 Android 前端资源，改善暗色模式、安全区和减少动态效果适配']},
 {v:'3.0.36',date:'2026-11-04',items:['待办甘特图重写：天/周/月视图、过期顶栏、粘性标签、修正条定位与筛选','编辑子任务保留截止日期；续期待办保留优先级']},
 {v:'3.0.35',date:'2026-11-04',items:['采购卡片 meta 改回横向一行（修手机端竖排）','状态更新等列表重绘不再重放入场动画']},

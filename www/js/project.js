@@ -434,7 +434,8 @@ function renderProject() {
 
   html += '<div class="pj2-filters">';
   [['全部', total], ['进行中', active], ['已完成', done], ['已归档', archived]].forEach(function(x) {
-    html += '<span class="pj2-filter' + (projectFilter === x[0] ? ' active' : '') + '" onclick="projectFilter=\'' + x[0] + '\';renderProject()">' + x[0] + '<b>' + x[1] + '</b></span>';
+    var selected = projectFilter === x[0];
+    html += '<button type="button" class="pj2-filter' + (selected ? ' active' : '') + '" aria-pressed="' + selected + '" onclick="projectFilter=\'' + x[0] + '\';renderProject()">' + x[0] + '<b>' + x[1] + '</b></button>';
   });
   html += '</div>';
 
@@ -477,7 +478,7 @@ function renderProjectCard(p) {
   var stateCls = p.status === '已完成' ? 'done' : p.status === '已归档' ? 'arch' : 'act';
 
   var isLive = !isDone && p.status === '进行中';
-  var h = '<div class="pj2-card' + (isDone ? ' pj2-dim' : '') + (isLive ? ' now' : '') + '" style="--pc:' + escAttr(color) + '" onclick="openProjectDetail(\'' + p.id + '\')">';
+  var h = '<article class="pj2-card' + (isDone ? ' pj2-dim' : '') + (isLive ? ' now' : '') + '" style="--pc:' + escAttr(color) + '" role="button" tabindex="0" aria-label="打开项目 ' + escAttr(p.name) + '" onclick="openProjectDetail(\'' + p.id + '\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openProjectDetail(\'' + p.id + '\')}">';
   h += '<div class="pj2-card-top">';
   h += '<span class="pj2-dot' + (isLive ? ' live' : '') + '" style="background:' + escAttr(color) + '"></span>';
   h += '<div class="pj2-card-name">' + esc(p.name) + '</div>';
@@ -501,7 +502,7 @@ function renderProjectCard(p) {
   h += '</div>';
 
   h += '<div class="pj2-progress"><div class="bar"><i style="width:' + st.pct + '%;background:' + (st.pct >= 100 ? 'var(--green)' : escAttr(color)) + '"></i></div><span class="num">' + st.done + '/' + st.denom + ' 步</span></div>';
-  h += '</div>';
+  h += '</article>';
   return h;
 }
 
