@@ -13,13 +13,16 @@ if ($LASTEXITCODE -ne 0) { throw "Failed to sync web assets to www." }
 
 Write-Output "2. Syncing to Android..."
 npx cap sync android 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Failed to sync Capacitor Android assets." }
 
 Write-Output "3. Building APK..."
 Set-Location "android"
 & .\gradlew.bat assembleDebug --no-daemon 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Android Gradle build failed." }
 
 Write-Output "4. Installing to phone..."
 & "$env:ANDROID_HOME\platform-tools\adb.exe" install -r app\build\outputs\apk\debug\app-debug.apk 2>&1
+if ($LASTEXITCODE -ne 0) { throw "APK installation failed." }
 
 Set-Location $ProjectRoot
 Write-Output ""
