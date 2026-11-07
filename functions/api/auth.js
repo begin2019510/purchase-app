@@ -13,6 +13,14 @@ const corsHeaders = getCorsHeaders;
 // ===== MySQL 模式：认证转发到 Node 服务 =====
 // 请求体在 onRequest 里已被解析，不能复用 _proxy.toServer（它会重新读 arrayBuffer）。
 async function serverAuth(env, action, body, request, authUserHeader) {
+  // fail-closed：选了 mysql 但凭证不全 → 返回可识别的配置错误，绝不回落 KV/飞书
+  if (!env.SERVER_API_BASE || !env.SERVICE_TOKEN) {
+    return {
+      status: 500,
+      configError: true,
+      data: { error: 'DATA_BACKEND=mysql 需要配置 SERVER_API_BASE 和 SERVICE_TOKEN' },
+    };
+  }
   const base = String(env.SERVER_API_BASE || '').replace(/\/+$/, '');
   const headers = { 'Content-Type': 'application/json', 'X-Service-Token': env.SERVICE_TOKEN };
   if (authUserHeader) headers['X-Auth-User'] = authUserHeader;
@@ -31,6 +39,9 @@ async function serverAuth(env, action, body, request, authUserHeader) {
     let data;
     try { data = JSON.parse(text); } catch (e) { data = { error: '服务端响应异常' }; }
     return { status: r.status, data };
+  } catch (e) {
+    // 网络故障转成 502 JSON（走既有的 5xx → KV 兜底语义），不再把 throw 逃逸成 HTML 500
+    return { status: 502, data: { error: '认证服务暂时不可用，请稍后重试' } };
   } finally { clearTimeout(timer); }
 }
 
@@ -71,6 +82,8 @@ async function handleMysqlSession(action, body, request, env, KV, JWT_SECRET, co
   if (sr.status >= 200 && sr.status < 300 && d.ok && d.username) {
     return json(await cfSession(d.username, d.refreshToken, JWT_SECRET), 200, cors);
   }
+  // 配置错误（凭证不全）必须原样返回：既不回落 KV，也不伪装成可重试的服务端 5xx 兜底
+  if (sr.configError) return json(sr.data, sr.status, cors);
   // MySQL 是账号密码的唯一真源：401（密码错/refresh 已吊销）绝不能回落旧 KV，
   // 否则改密后旧密码/旧 refresh 仍能登录（2026-11-03 实测踩坑）。
   // 仅服务端 5xx 才兜底 KV，避免 purchase-server 挂掉时历史管理员被锁在门外。

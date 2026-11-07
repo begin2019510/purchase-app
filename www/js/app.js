@@ -108,54 +108,318 @@ function showSkeleton(){
   else if(currentTab==='expense') el.innerHTML=skelStats()+skelCards(4);
   else el.innerHTML=skelStats()+skelCards(3);
 }
+async function autoPromptNotification(){
+  try{
+    if(!('Notification' in window)||!('PushManager' in window)||!('serviceWorker' in navigator))return;
+    const standalone=(typeof navigator.standalone==='boolean')?navigator.standalone:window.matchMedia('(display-mode: standalone)').matches;
+    if(!standalone)return;
+    if(Notification.permission==='denied')return;
+    const reg=await navigator.serviceWorker.ready;
+    if(!reg.pushManager)return;
+    const sub=await reg.pushManager.getSubscription().catch(function(){return null});
+    if(sub){
+      if(!localStorage.getItem('webpush_on')){
+        try{
+          var r=await fetch(API_BASE+'/api/push/subscribe',{
+            method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},
+            body:JSON.stringify({subscription:sub.toJSON()})
+          });
+          if(r.ok)localStorage.setItem('webpush_on','1');
+        }catch(e){}
+      }
+      return;
+    }
+    if(Notification.permission!=='granted'){
+      var perm=await Notification.requestPermission();
+      if(perm!=='granted')return;
+    }
+    if(typeof _urlB64ToUint8==='undefined'||typeof WEBPUSH_VAPID_PUBLIC==='undefined')return;
+    var newSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:_urlB64ToUint8(WEBPUSH_VAPID_PUBLIC)});
+    var r2=await fetch(API_BASE+'/api/push/subscribe',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+getPin()},
+      body:JSON.stringify({subscription:newSub.toJSON()})
+    });
+    if(r2&&r2.ok){localStorage.setItem('webpush_on','1');toast('🔔 已开启系统通知')}
+  }catch(e){console.log('autoPromptNotification:',e.message)}
+}
 function setupPullToRefresh(){
+  // iOS 风：悬浮圆徽章，拖动 1:1 跟手，无过渡拖动 / 松手回弹有过渡
   var pullIndicator=document.createElement('div');
   pullIndicator.id='pullIndicator';
-  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:60px;display:flex;align-items:center;justify-content:center;z-index:9999;transform:translateY(-60px);transition:transform .4s cubic-bezier(.25,.46,.45,.94);background:var(--bg,#fff);';
-  pullIndicator.innerHTML='<div class="ptr-spinner" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:20px;transition:transform .2s">↓</div>';
+  pullIndicator.style.cssText='position:fixed;top:0;left:0;right:0;height:0;z-index:9999;pointer-events:none;transform:translateY(-70px);transition:transform .4s cubic-bezier(.25,.46,.54,1.02)';
+  pullIndicator.innerHTML=
+    '<div class="ptr-badge" style="position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:50%;margin-left:-19px;width:38px;height:38px;border-radius:50%;background:var(--card,#fff);box-shadow:0 3px 12px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;border:1px solid var(--border,#e2e8f0)">'
+    +'<svg class="ptr-arrow" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted,#8e8e93);transition:color .15s"><path d="M12 5v14M5 12l7 7 7-7"/></svg>'
+    +'<div class="ptr-ring" style="display:none;width:18px;height:18px;border:2.5px solid var(--border,#e2e8f0);border-top-color:var(--pri,#6366f1);border-radius:50%;animation:ptr-spin .7s linear infinite"></div>'
+    +'<svg class="ptr-check" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:none;color:var(--green,#10b981)"><path d="M20 6L9 17l-5-5"/></svg>'
+    +'</div>';
   document.body.appendChild(pullIndicator);
-  var spinner=pullIndicator.querySelector('.ptr-spinner');
+  var badge=pullIndicator.querySelector('.ptr-badge');
+  var arrow=pullIndicator.querySelector('.ptr-arrow');
+  var ring=pullIndicator.querySelector('.ptr-ring');
+  var check=pullIndicator.querySelector('.ptr-check');
 
-  document.addEventListener('touchstart',function(e){
-    if(window.scrollY>5||ptrRefreshing)return;
-    if(document.querySelector('.overlay.active,.modal-overlay.active')){console.log('PTR: BLOCKED by modal');return;}
-    // Block PTR when on todo/project/stats tab with content
-    if((currentTab==='todo'||currentTab==='project'||currentTab==='stats')&&document.getElementById(currentTab==='todo'?'todoContent':currentTab==='project'?'projectContent':'statsContent')?.innerHTML?.length>0){console.log('PTR: BLOCKED on '+currentTab+' tab');return;}
-    console.log('PTR: allowed, modals='+document.querySelectorAll('.modal-overlay.active').length);
-    ptrStartY=e.touches[0].clientY;
-    isPulling=true;
-  },{passive:true});
-  document.addEventListener('touchmove',function(e){
-    if(!isPulling)return;
-    ptrDist=Math.max(0,e.touches[0].clientY-ptrStartY);
-    if(ptrDist>10){
-      var pull=Math.min(ptrDist*0.4,70);
-      pullIndicator.style.transform='translateY('+pull+'px)';
-      var deg=Math.min(ptrDist*2,360);
-      spinner.style.transform='rotate('+deg+'deg)';
-      spinner.textContent=pull>40?'↑':'↓';
-      spinner.style.color=pull>40?'var(--pri,#6366f1)':'var(--muted,#888)';
-    }
-  },{passive:true});
-  document.addEventListener('touchend',async function(){
-    if(!isPulling)return;
-    isPulling=false;
-    if(ptrDist>80&&!ptrRefreshing){
+  var THRESHOLD=80;       // 触发下拉刷新的拖动距离
+  var MAXPULL=90;
+
+  function blockedByUI(){
+    if(document.querySelector('.overlay.active,.modal-overlay.active,.todo-detail-overlay.active,.settings-overlay.active'))return true;
+    return false;   // 2026-10-17 修复：此前错误地禁用了待办/项目/统计页的下拉刷新
+  }
+  function setState(s){
+    arrow.style.display=s==='pull'||s==='ready'?'':'none';
+    ring.style.display=s==='loading'?'':'none';
+    check.style.display=s==='done'?'':'none';
+    badge.style.borderColor=s==='ready'?'var(--green,#10b981)':'var(--border,#e2e8f0)';
+  }
+
+  var startY=0,dist=0,active=false;
+
+  function onMove(clientY){
+    if(!active||ptrRefreshing)return;
+    dist=Math.max(0,clientY-startY);
+    if(dist<15)return;                      // 小幅移动不弹指示器（防误触）
+    if(document.getSelection&&document.getSelection().toString())return;  // 正在选文字不触发
+    // 拖动阶段：关掉过渡，1:1 跟手
+    pullIndicator.style.transition='none';
+    var pull=Math.min(dist*0.55,MAXPULL);
+    pullIndicator.style.transform='translateY('+ (pull-40) +'px)';
+    var deg=Math.min(dist/THRESHOLD*180,180);   // 到阈值恰好 180°（箭头朝上）
+    arrow.style.transform='rotate('+deg+'deg)';
+    var ready=dist>=THRESHOLD;
+    arrow.style.color=ready?'var(--green,#10b981)':(deg>90?'var(--pri,#6366f1)':'var(--muted,#8e8e93)');
+    setState(ready?'ready':'pull');
+    // 越过阈值轻微放大反馈
+    badge.style.transform=ready?'scale(1.08)':'scale(1)';
+  }
+  async function onRelease(){
+    if(!active)return;
+    active=false;
+    if(dist>=THRESHOLD&&!ptrRefreshing){
       ptrRefreshing=true;
-      spinner.textContent='↻';
-      spinner.classList.add('ptr-spinning');
-      pullIndicator.style.transform='translateY(50px)';
-      await loadAll();
-      spinner.classList.remove('ptr-spinning');
-      spinner.textContent='✓';
-      spinner.style.color='var(--green,#10b981)';
-      setTimeout(function(){pullIndicator.style.transform='translateY(-60px)';ptrRefreshing=false;spinner.style.color=''},500);
+      pullIndicator.style.transition='transform .3s ease';
+      pullIndicator.style.transform='translateY(12px)';   // 锁定在顶部
+      badge.style.transform='scale(1)';
+      setState('loading');
+      try{ await loadAll(); }catch(e){ console.error('PTR load error',e); }
+      setState('done');
+      setTimeout(function(){
+        pullIndicator.style.transition='transform .35s ease';
+        pullIndicator.style.transform='translateY(-70px)';
+        setTimeout(function(){setState('pull');ptrRefreshing=false;arrow.style.transform='';},360);
+      },600);
     }else{
-      pullIndicator.style.transform='translateY(-60px)';
+      pullIndicator.style.transition='transform .3s ease';
+      pullIndicator.style.transform='translateY(-70px)';
+      badge.style.transform='scale(1)';
+      setTimeout(function(){arrow.style.transform='';},300);
     }
-    ptrDist=0;
+    dist=0;
+  }
+  function startPull(clientY){
+    if(window.scrollY>5||ptrRefreshing||blockedByUI())return;
+    startY=clientY;dist=0;active=true;
+  }
+
+  // ---- 触摸（手机）----
+  document.addEventListener('touchstart',function(e){startPull(e.touches[0].clientY)},{passive:true});
+  document.addEventListener('touchmove',function(e){if(active)onMove(e.touches[0].clientY)},{passive:true});
+  document.addEventListener('touchend',function(){if(active)onRelease()});
+
+  // ---- 鼠标（电脑）----
+  document.addEventListener('mousedown',function(e){
+    if(e.button!==0)return;
+    if(e.target&&e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))return;
+    startPull(e.clientY);
   });
-}async function cleanupOrphanExpenses(){
+  document.addEventListener('mousemove',function(e){
+    if(!active)return;
+    if(Math.abs(e.clientY-startY)>3)onMove(e.clientY);
+  });
+  document.addEventListener('mouseup',function(){if(active)onRelease()});
+}
+// ===== 静默刷新：无变动零打扰，有变动自动更新（手机/电脑通用）=====
+var _silentBusy=false,_lastSilentAt=0;
+function _snap(){return JSON.stringify([items||[],expenses||[],
+  (typeof todoList!=='undefined'?todoList:[]),(typeof projectList!=='undefined'?projectList:[]),
+  (typeof getBudgets==='function'?getBudgets():{})])}
+async function silentRefresh(force){
+  if(_silentBusy)return false;
+  if(!force&&Date.now()-_lastSilentAt<30000)return false;  // 30s 节流
+  if(!getPin||!getPin())return false;
+  _silentBusy=true;_lastSilentAt=Date.now();
+  try{
+    var snap=_snap();
+    await Promise.all([
+      api('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))items=r}),
+      expenseApi('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))expenses=r}),
+      (typeof loadTodos==='function'?loadTodos():Promise.resolve()),
+      (typeof loadProjects==='function'?loadProjects():Promise.resolve())
+    ]);
+    var changed=_snap()!==snap;
+    if(changed){
+      try{setCachedData('items',items);setCachedData('expenses',expenses)}catch(e){}
+      if(typeof render==='function'){try{render()}catch(e){}}
+      window._lastAllAt=Date.now();
+    }
+    return changed;
+  }catch(e){console.log('silentRefresh:',e&&e.message);return false}
+  finally{_silentBusy=false}
+}
+// 自动刷新：回到窗口 / 页面可见时静默比对；前台每 2 分钟轻量轮询（有变动才动界面）
+(function setupAutoRefresh(){
+  function maybe(){ if(document.hidden)return; silentRefresh(); }
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)maybe()});
+  window.addEventListener('focus',maybe);
+  setInterval(function(){if(!document.hidden)silentRefresh();},120000);
+})();
+// 电脑端手动刷新按钮（🔄）
+async function manualRefresh(){
+  var b=document.getElementById('refreshBtn');
+  if(!b||b.dataset.busy)return;
+  b.dataset.busy='1';b.classList.add('spinning');
+  try{
+    var changed=await silentRefresh(true);
+    if(changed)toast('数据已更新');
+    // 无变动：静默结束，不打扰
+  }finally{
+    b.classList.remove('spinning');delete b.dataset.busy;
+  }
+}
+// ===== 周报/月报：拉取 + 专属界面 + 每期只弹一次 =====
+function fetchReportPeriod(tok,period){
+  return fetch(API_BASE+'/api/push/report?mine=1&period='+period,{headers:{'Authorization':'Bearer '+tok}})
+    .then(function(r){return r&&r.json?r.json():null})
+    .then(function(j){return (j&&j.report)||null})
+    .catch(function(){return null});
+}
+function fetchMyReport(){
+  if(window._myReportPromise)return window._myReportPromise; // 每会话只拉一次
+  window._myReport=null;
+  window._myReports={weekly:null,monthly:null};
+  function go(tok){
+    return Promise.all([fetchReportPeriod(tok,'weekly'),fetchReportPeriod(tok,'monthly')])
+      .then(function(pair){
+        window._myReports={weekly:pair[0]||null,monthly:pair[1]||null};
+        window._myReport=pair[0]||pair[1]||null;
+        return window._myReports;
+      });
+  }
+  var pin=getPin();
+  if(!pin){window._myReportPromise=Promise.resolve(null);return window._myReportPromise;}
+  window._myReportPromise=go(pin).then(function(res){
+    if(res&&(res.weekly||res.monthly))return res;
+    return refreshAccessToken().then(function(t){return t?go(t):null});
+  });
+  return window._myReportPromise;
+}
+function openReportModal(period){
+  var r=(period&&window._myReports&&window._myReports[period])||window._myReport;
+  if(!r||!r.data){return}
+  var d=r.data;
+  var box=document.getElementById('reportBody');
+  if(!box)return;
+  var W=d.period==='weekly'?'周报':'月报';
+  var bigW=(d.label||'');
+  var deltaColor=d.deltaGood===true?'var(--green)':d.deltaGood===false?'var(--red)':'var(--muted)';
+  var gt=new Date(d.generatedAt+8*3600000);
+  var gts=String(gt.getUTCMonth()+1).padStart(2,'0')+'-'+String(gt.getUTCDate()).padStart(2,'0')+' '+String(gt.getUTCHours()).padStart(2,'0')+':'+String(gt.getUTCMinutes()).padStart(2,'0');
+  var html='';
+  html+='<div style="text-align:center;padding:14px 0 4px">';
+  html+='<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:2px">📊 '+W+'</div>';
+  html+='<div style="font-size:13px;color:var(--muted);margin-top:6px">'+esc(d.rangeText||'')+'</div>';
+  html+='<div style="font-size:14px;color:var(--muted);margin-top:16px">'+bigW+'支出</div>';
+  html+='<div class="report-hero-num" style="margin-top:4px">¥'+Number(d.total||0).toLocaleString('zh-CN')+'</div>';
+  html+='<div style="margin-top:8px;font-size:14px;font-weight:700;color:'+deltaColor+'">较'+esc(d.prevLabel||'')+' '+esc(d.deltaText||'')+'</div>';
+  html+='</div>';
+  html+='<div class="report-cells" style="margin:14px 0">';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">采购</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">¥'+Number(d.buy||0).toLocaleString('zh-CN')+'</div></div>';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">记账</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">¥'+Number(d.exp||0).toLocaleString('zh-CN')+'</div></div>';
+  html+='<div class="report-cell"><div style="font-size:11px;color:var(--muted)">笔数</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">'+Number(d.count||0)+'</div></div>';
+  html+='</div>';
+  if(d.topDay){
+    html+='<div style="display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<span style="font-size:20px">🏆</span>';
+    html+='<div style="flex:1"><div style="font-size:12px;color:var(--muted)">最高一天</div><div style="font-size:14px;font-weight:700">'+esc(d.topDay.text||'')+'</div></div>';
+    html+='<div class="a-num" style="font-size:17px;font-weight:800">¥'+Number(d.topDay.val||0).toLocaleString('zh-CN')+'</div>';
+    html+='</div>';
+  }
+  if(d.budget&&d.budget.total>0){
+    var pct=Math.min(Number(d.budget.pct||0),100);
+    var bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
+    html+='<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px"><span style="color:var(--muted)">预算 ¥'+Number(d.budget.total).toLocaleString('zh-CN')+'</span><span style="font-weight:700;color:'+bc+'">已用 '+d.budget.pct+'%</span></div>';
+    html+='<div style="height:8px;background:rgba(120,120,128,.14);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px"></div></div>';
+    html+='</div>';
+  }
+  if(d.topCats&&d.topCats.length){
+    var maxCat=Math.max.apply(null,d.topCats.map(function(c){return c[1]}).concat([1]));
+    html+='<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+    html+='<div style="font-size:13px;color:var(--muted);margin-bottom:10px">支出分类</div>';
+    var _repYm='';
+    try{
+      var _gt=new Date(Number(d.generatedAt||Date.now())+8*3600000);
+      _repYm=_gt.getUTCFullYear()+'-'+String(_gt.getUTCMonth()+1).padStart(2,'0');
+      // 月报 label 形如「10月」，优先用 label 所在年份+月；generatedAt 已是生成时（次月1日）
+      if(d.period==='monthly'&&d.label){
+        var _lm=/^(\d{1,2})月$/.exec(String(d.label));
+        if(_lm&&typeof openStatsCatDetail==='function'){
+          // 生成日在次月，label 月 = 生成月-1（若 label 是上月）
+          var _m=Number(_lm[1]); var _y=_gt.getUTCFullYear();
+          if(_gt.getUTCMonth()+1!==_m){ if(_m===12&&_gt.getUTCMonth()+1===1)_y=_gt.getUTCFullYear()-1; }
+          _repYm=_y+'-'+String(_m).padStart(2,'0');
+        }
+      }
+    }catch(_e){}
+    d.topCats.forEach(function(c){
+      var w=Math.max(Math.round(c[1]/maxCat*100),4);
+      var _can=(typeof openStatsCatDetail==='function');
+      var _cls=_can?' report-cat-row is-clickable':' report-cat-row';
+      var _click=_can?(' onclick=\"openStatsCatDetail(\''+escAttr(c[0])+'\',\''+_repYm+'\')\"'):'';
+      html+='<div class="'+_cls+'"'+_click+'><span class="report-cat-name">'+esc(c[0])+'</span><div class="report-cat-track"><div class="report-cat-fill" style="width:'+w+'%"></div></div><span class="report-cat-val">¥'+Number(c[1]).toLocaleString('zh-CN')+'</span></div>';
+    });
+    html+='</div>';
+  }
+  html+='<div style="text-align:center;font-size:11px;color:var(--muted);margin:4px 0 12px">'+gts+' 生成</div>';
+  html+='<button class="a-btn a-btn-primary a-btn-block" style="min-height:48px;font-size:16px" onclick="closeReportModal()">好的</button>';
+  box.innerHTML=html;
+  document.getElementById('reportOverlay').classList.add('active');
+}
+function closeReportModal(){
+  var o=document.getElementById('reportOverlay');
+  if(o)o.classList.remove('active');
+}
+// 每期只自动弹一次：localStorage 记录已看的 generatedAt
+var _reportPopupSession=false;
+function maybeShowReportPopup(){
+  if(_reportPopupSession)return;
+  _reportPopupSession=true;
+  fetchMyReport().then(function(res){
+    try{
+      var reps=[];
+      if(res&&res.weekly)reps.push(res.weekly);
+      if(res&&res.monthly)reps.push(res.monthly);
+      if(!reps.length&&res&&res.data)reps.push(res); // 兼容旧返回
+      if(!reps.length)return;
+      var newest=reps[0];
+      reps.forEach(function(x){if(Number((x.data&&x.data.generatedAt)||0)>Number((newest.data&&newest.data.generatedAt)||0))newest=x});
+      var key='report_seen_'+(newest.data.period||'weekly');
+      var seen=parseInt(localStorage.getItem(key)||'0',10)||0;
+      var should=Number(newest.data.generatedAt)>seen;
+      reps.forEach(function(x){ // 两张卡片都标记已读，避免下次再弹旧的那张
+        try{
+          var k='report_seen_'+(x.data.period||'weekly');
+          var old=parseInt(localStorage.getItem(k)||'0',10)||0;
+          var g=Number(x.data.generatedAt)||0;
+          if(g>old)localStorage.setItem(k,String(g));
+        }catch(e){}
+      });
+      if(should){ setTimeout(function(){openReportModal(newest.data.period)},600); } // 等首帧画完再弹
+    }catch(e){}
+  });
+}
+
+async function cleanupOrphanExpenses(){
   try{
     // Delete ALL purchase-related expense records (purchases tracked via items data now)
     var toDelete=expenses.filter(function(e){
@@ -173,44 +437,56 @@ function setupPullToRefresh(){
   }catch(e){console.error('cleanupOrphanExpenses error:',e)}
 }
 // Cache helpers
-function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);if(Date.now()-d.t>300000)return null;return d.v}catch(e){return null}}
+function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);return d.v}catch(e){return null}}  // 永不过期SWR：任何时间打开都秒开，后台静默校验新数据
 function setCachedData(key,val){try{localStorage.setItem('cache_'+key,JSON.stringify({t:Date.now(),v:val}))}catch(e){}}
 
 async function loadAll(){
+  window._lastAllAt=Date.now();
   var _dbg=document.getElementById("debugBanner");
   function _log(m){console.log("LOADALL:",m);if(_dbg){_dbg.style.display="block";_dbg.innerHTML+="<div style=\"border-bottom:1px solid rgba(255,255,255,.3);padding:2px 0\">"+m+"</div>"}}
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
 
-  // Stale-while-revalidate: show cached data first
-  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos');
-  if(ci&&ce){items=ci;expenses=ce;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){}}
-  else{showSkeleton()}
+  // Stale-while-revalidate: 缓存秒开（7天有效），后台校验，仅真首次冷启动见骨架
+  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos'),cp=getCachedData('projects');
+  var renderedFromCache=false;
+  if(ci&&ce){items=ci;expenses=ce;if(ct)todoList=ct;if(cp&&typeof projectList!=='undefined')projectList=cp;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){} renderedFromCache=true}
+  else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}
+  var preSnap=_snap();
 
   try{
-    _log("Fetching data (parallel)...");
-    const [budgetOk, results, todoOk] = await Promise.all([
-      loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
-      Promise.all([api("GET"),expenseApi("GET")]),
-      loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
-      (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
-    ]);
+    _log("Fetching critical (items+expenses)...");
+    const results=await Promise.all([api("GET"),expenseApi("GET")]);
     var r=results[0], e=results[1];
     if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
     else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
     if(e && !e.error && Array.isArray(e)){expenses=e;setCachedData('expenses',e);_log("Expenses loaded: "+e.length)}
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
-    if(todoOk&&Array.isArray(todoOk)){setCachedData('todos',todoOk)}
-  }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message)}
-  isLoadingData=false;
+    isLoadingData=false;
+    // 关键数据到齐即可首绘（骨架/缓存路径按需），不等待办/项目/预算
+    var postCritical=_snap();
+    if(!renderedFromCache||postCritical!==preSnap){try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}}
+  }catch(ex){console.error("loadAll fetch error:", ex);_log("FETCH ERROR: "+ex.message);isLoadingData=false;
+    if(!renderedFromCache){try{switchTab(currentTab)}catch(e2){}}}  // 离线兜底：展示空态而非卡在骨架
+
+  try{
+    await Promise.all([
+      loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
+      loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
+      (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
+    ]);
+    // 次要数据有变化才补一帧渲染（无变化零打扰）
+    if(_snap()!==postCritical){try{switchTab(currentTab)}catch(ex){}}
+  }catch(ex){_log("secondary fetch error: "+(ex&&ex.message))}
+
+  if(typeof loadExpenseCats==='function')loadExpenseCats().then(function(){try{if(typeof render==='function')render()}catch(ex){}}).catch(function(){});
   loadRecurringData().then(function(){
     if(currentTab==='expense'||currentTab==='stats') render();
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
   Promise.all([checkRecurring(), cleanupOrphanExpenses()])
     .catch(function(ex){console.log("background tasks error:",ex.message)});
-    // Load projects (non-blocking)
-  // loadProjects now runs in parallel above
-  _log("Rendering, items="+items.length+", expenses="+expenses.length);
-  try{switchTab(currentTab)}catch(ex){_log("RENDER ERROR: "+ex.message)}
+  _log("loadAll done, items="+items.length+", expenses="+expenses.length);
+  if(getPin&&getPin())setTimeout(maybeShowReportPopup,800);
+  if(getPin&&getPin())setTimeout(autoPromptNotification,1500);
   _log("loadAll complete");console.log("STATE_DUMP: "+JSON.stringify({ct:currentTab,pDisp:document.getElementById("tab-project")?.style.display,pComp:getComputedStyle(document.getElementById("tab-project")).display,pHTML:document.getElementById("projectContent")?.innerHTML?.length,listHTML:document.getElementById("list")?.innerHTML?.substring(0,200),todoHTML:document.getElementById("todoContent")?.innerHTML?.length,todoErr:window._todoRenderErr}));
 }
 
@@ -230,15 +506,36 @@ function render(){
     else if(currentTab==='expense'){fab.onclick=function(){openExpenseModal()}}
     else{fab.style.display='none'}
   }
+  // 极速采购副 FAB：仅采购/记账页显示（拇指区双按钮）
+  var fabQ=document.getElementById('fabQuickBtn');
+  if(fabQ){
+    if(currentTab==='purchase'||currentTab==='expense'){
+      fabQ.style.display='flex';
+      fabQ.onclick=function(){openQuickPurchaseModal()};
+    } else {fabQ.style.display='none'}
+  }
   // DEBUG: 在页面顶部显示状态
   // 延迟检测：3秒后再检查一次
 }
 function updateHeader(){
   var el=document.getElementById('headerStats');
   if(el) el.innerHTML='';
+  // 吸顶 tabs 跟随真实顶栏高度，避免顶栏与页签之间漏出内容（看起来像顶部发糊）
+  try{
+    var h=document.querySelector('.header');
+    if(h) document.documentElement.style.setProperty('--header-h', Math.round(h.getBoundingClientRect().height)+'px');
+  }catch(e){}
 }
-function getMonthInstallmentTotal(ym){return items.filter(function(i){var tp=Number(i['分期期数'])||0;var pd=Number(i['分期已还'])||0;var sm=i['分期开始月']||'';if(!sm&&tp>0){var d=i['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}if(tp<=0||pd>=tp||!sm)return false;var parts=sm.split('-').map(Number);var tm=ym.split('-').map(Number);var diff=(tm[0]-parts[0])*12+(tm[1]-parts[1]);return diff>=0&&diff<tp}).reduce(function(s,i){var tp=Number(i['分期期数'])||1;var ia=Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp);return s+ia},0)}
-function getEffectivePaid(item){var tp=Number(item['分期期数'])||0;if(tp<=0)return 0;var pd=Number(item['分期已还'])||0;if(pd>0)return Math.min(pd,tp);var sm=item['分期开始月']||'';if(!sm){var d=item['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}if(!sm)return 0;var now=new Date(Date.now()+8*3600000);var cy=now.getUTCFullYear();var cm=now.getUTCMonth()+1;var parts=sm.split('-').map(Number);var diff=(cy-parts[0])*12+(cm-parts[1]);if(diff<0)return 0;return Math.min(diff+1,tp)}
+window.addEventListener('resize', function(){ try{ updateHeader(); }catch(e){} });
+// 单件商品在指定月份应计入「采购消耗」的金额：
+// - 非分期：购买月 = 当月时按总价计入
+// - 分期：分期窗口内每月按分期金额计入（与预算池的分期扣减同口径）
+function getItemInstallmentStartMonth(i){var sm=i['分期开始月']||'';if(!sm){var d=i['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);if(!isNaN(dd.getTime()))sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}return sm}
+function getItemInstallmentAmount(i){var tp=Number(i['分期期数'])||1;return Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp)}
+function getItemMonthInstallmentAmount(i,ym){var st=i['状态']||'';if(st!=='已下单'&&st!=='已到'&&st!=='已归档')return 0;var tp=Number(i['分期期数'])||0;var sm=getItemInstallmentStartMonth(i);if(tp<=0||!/^\d{4}-\d{2}$/.test(sm))return 0;var parts=sm.split('-').map(Number);var tm=ym.split('-').map(Number);if(tm.length<2||!tm[0]||!tm[1])return 0;var diff=(tm[0]-parts[0])*12+(tm[1]-parts[1]);var now=new Date(Date.now()+8*3600000);var curIdx=now.getUTCFullYear()*12+now.getUTCMonth();var targetIdx=tm[0]*12+(tm[1]-1);return diff>=0&&diff<tp&&targetIdx<=curIdx?getItemInstallmentAmount(i):0}
+function getItemMonthPurchaseAmount(i,ym){if((Number(i['分期期数'])||0)>1)return getItemMonthInstallmentAmount(i,ym);var s=i['状态']||'';if(s==='已退'||s==='已取消'||s==='待评估'||s==='待审批')return 0;if(getMonth(i['日期'])!==ym)return 0;return (Number(i['单价'])||0)*(Number(i['数量'])||1)}
+function getMonthInstallmentTotal(ym){return (items||[]).reduce(function(s,i){return s+getItemMonthInstallmentAmount(i,ym)},0)}
+function getEffectivePaid(item){var tp=Number(item['分期期数'])||0;if(tp<=0)return 0;var pd=Number(item['分期已还'])||0;var sm=item['分期开始月']||'';if(!sm){var d=item['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}var timePaid=0;if(sm&&/^\d{4}-\d{2}$/.test(sm)){var now=new Date(Date.now()+8*3600000);var cy=now.getUTCFullYear();var cm=now.getUTCMonth()+1;var parts=sm.split('-').map(Number);var diff=(cy-parts[0])*12+(cm-parts[1]);if(diff>=0)timePaid=diff+1}return Math.min(Math.max(pd,timePaid),tp)}
 function getMonthPurchaseTotal(ym){return items.filter(function(i){var s=i['状态']||'';return getMonth(i['日期'])===ym&&(s==='已下单'||s==='已到'||s==='已归档')&&s!=='已退'}).reduce(function(s,i){var tp=Number(i['分期期数'])||0;if(tp>0){var ia=Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp);return s+ia}return s+(Number(i['单价'])||0)*(Number(i['数量'])||1)},0)}
 function renderPurchase(){
   const q=document.getElementById('searchInput').value.toLowerCase();
@@ -249,26 +546,89 @@ function renderPurchase(){
   const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
   const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档','已取消'];
   const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
-  document.getElementById('statusChips').innerHTML=statuses.map(s=>{const c=s===currentStatusFilter?'active':'';const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<div class="chip ${c}" onclick="currentStatusFilter='${s}';render()">${s} ${n}</div>`}).join('')+'<span style="width:1px;background:var(--border);flex-shrink:0"></span>'+cats.map(c=>{const ac=c===currentCatFilter?'active':'';return`<div class="chip ${ac}" data-cat="${escAttr(c)}">${c}</div>`}).join('');
+  const filterEl=document.getElementById('statusChips');
+  filterEl.innerHTML=statuses.map(s=>{const active=s===currentStatusFilter;const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="status" data-filter-value="${escAttr(s)}" aria-pressed="${active}">${esc(s)} <span>${n}</span></button>`}).join('')+'<span class="filter-separator" aria-hidden="true"></span>'+cats.map(c=>{const active=c===currentCatFilter;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="category" data-filter-value="${escAttr(c)}" aria-pressed="${active}">${esc(c)}</button>`}).join('');
+  if(filterEl.dataset.bound!=='1'){
+    filterEl.dataset.bound='1';
+    filterEl.addEventListener('click',function(event){
+      const chip=event.target.closest('button[data-filter-kind]');
+      if(!chip||!filterEl.contains(chip))return;
+      if(chip.dataset.filterKind==='status')currentStatusFilter=chip.dataset.filterValue||'全部';
+      else currentCatFilter=chip.dataset.filterValue||'全部';
+      render();
+    });
+  }
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
+  if(!sorted.length){listEl.classList.remove('anim-stagger');listEl.dataset.enter='0';listEl.dataset.entered='1';listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
   const groups={};sorted.forEach(i=>{const isEval=i['状态']==='待评估';const m=isEval?'待评估':(getMonth(i['日期'])||'未设置日期');if(!groups[m])groups[m]=[];groups[m].push(i)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
-    const mt=totalCost(list);const dm=month==='待评估'?'📋 待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
+    const mt=totalCost(list);const dm=month==='待评估'?'待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
-    const statusColors={'待评估':'#f97316','待审批':'#f59e0b','已审批':'#3b82f6','已下单':'#8b5cf6','已到':'#10b981','已退':'#ef4444','已归档':'#6b7280'};const catColors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444'};const catEmoji={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','其他':'📦'};
-    list.forEach(i=>{const qty=i['数量']||1;const price=i['单价']||0;const status=i['状态']||'待审批';const cat=i['分类']||'其他';let ds='';if(i['日期']){try{ds=new Date(i['日期']).toISOString().slice(0,10)}catch(e){console.error('loadAll fetch error:', e)}}const ck=selectedIds.has(i.id);const bc=statusColors[status]||'#94a3b8';
-    let tsHtml='';if(i['到货时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 到货 ${i['到货时间']}</div>`}else if(i['下单时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 下单 ${i['下单时间']}</div>`}else if(i['审批时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">⏰ 审批 ${i['审批时间']}</div>`}else if(i['创建时间']){tsHtml=`<div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7">创建 ${i['创建时间']}</div>`}
-    // 待评估卡片：显示预算+AI摘要
-    if(status==='待评估'){const budgetLine=i['预算区间']?'¥'+i['预算区间']:'预算未知';const summaryLine=i['评估摘要']?i['评估摘要'].slice(0,80)+'...':'';
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openEvalModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div><div class="price" style="color:#f97316">💰 ${budgetLine}</div></div><div class="meta"><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span></div>${summaryLine?`<div class="note" style="color:var(--muted)">🤖 ${esc(summaryLine)}</div>`:''}</div></div></div>`}
-    else{
-      html+=`<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div><div class="card ${ck?'selected':''} swipe-card" style="border-left:5px solid ${catColors[cat]||'#0d9488'}" data-id="${i.id}" data-type="purchase" onclick="${batchMode?`toggleSelect('${i.id}')`:`openDetailModal('${i.id}')`}"><div class="checkbox ${ck?'checked':''}" onclick="event.stopPropagation();toggleSelect('${i.id}')">${ck?'✓':''}</div><div class="actions"><button onclick="event.stopPropagation();editItem('${i.id}')" title="编辑">✏️</button><button onclick="event.stopPropagation();delItem('${i.id}')" title="删除">🗑️</button></div><div class="top"><div class="name">${catEmoji[cat]||'📦'} ${esc(i['商品名称']||'')}</div>${price?`<div class="price">¥${(price*qty).toFixed(2)}</div>`:''}</div><div class="meta"><span>🏪 ${esc(i['平台']||'')}</span><span class="badge badge-${status}">${status}</span><span class="cat-badge">${cat}</span>${ds?`<span>📅 ${ds}</span>`:''}${qty>1?`<span>×${qty}</span>`:''}${(function(){var tp=Number(i['分期期数'])||0;if(tp<=0)return'';var pd=getEffectivePaid(i);if(pd>=tp)return'<span style="color:#10b981">✅ 已结清</span>';var ia=Number(i['分期金额'])||Math.round(((Number(i['单价'])||0)*(Number(i['数量'])||1))/tp);var pa=ia*pd;var tt=(Number(i['单价'])||0)*(Number(i['数量'])||1);return'<span style="color:var(--pri)">¥'+ia+'/期 · 已付¥'+pa+'/¥'+tt+'</span>'})()}</div>${i['备注']?`<div class="note">💬 ${esc(i['备注'])}</div>`:''}${tsHtml}</div></div></div>`}
-    });
+    list.forEach(i=>{html+=renderPurchaseCard(i)});
   }
   listEl.innerHTML=html;
+  // 入场 stagger 仅：切到采购 tab / 首屏播一次；状态更新等静默 render 不重放
+  listEl.classList.remove('anim-stagger');
+  var _reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(listEl.dataset.enter==='1'&&!_reduceMotion){
+    listEl.dataset.enter='0';
+    listEl.dataset.entered='1';
+    listEl.classList.add('anim-stagger');
+    var kids=listEl.children;
+    for(var ki=0;ki<kids.length;ki++){
+      if(ki>=8){kids[ki].style.animation='none';kids[ki].style.opacity='1';}
+      else kids[ki].style.setProperty('--i', String(ki));
+    }
+  }else{
+    listEl.dataset.enter='0';
+    listEl.dataset.entered='1';
+  }
+}
+function renderPurchaseCard(i){
+  const id=String(i.id||'');
+  const status=i['状态']||'待审批';
+  const category=i['分类']||'其他';
+  const quantity=Number(i['数量'])||1;
+  const price=Number(i['单价'])||0;
+  const isEvaluation=status==='待评估';
+  const selected=selectedIds.has(i.id);
+  const colors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444','云服务':'#0ea5e9','API':'#8b5cf6','会员':'#f59e0b','软件':'#6366f1'};
+  const icons={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','云服务':'☁️','API':'🔌','会员':'🎫','软件':'💿','其他':'📦'};
+  let date='';
+  if(i['日期']){try{date=new Date(i['日期']).toISOString().slice(0,10)}catch(e){date=''}}
+  const eventTime=i['到货时间']?'到货 '+i['到货时间']:i['下单时间']?'下单 '+i['下单时间']:i['审批时间']?'审批 '+i['审批时间']:i['创建时间']?'创建 '+i['创建时间']:'';
+  let installment='';
+  const terms=Number(i['分期期数'])||0;
+  if(terms>0){
+    const paid=getEffectivePaid(i);
+    if(paid>=terms)installment='<span class="meta-install settled">已结清</span>';
+    else{
+      const each=Number(i['分期金额'])||Math.round(price*quantity/terms);
+      installment='<span class="meta-install">¥'+each+'/期 · 已付¥'+(each*paid)+'/'+(price*quantity)+'</span>';
+    }
+  }
+  const openAction=batchMode?`toggleSelect('${id}')`:isEvaluation?`openEvalModal('${id}')`:`openDetailModal('${id}')`;
+  const mainPrice=isEvaluation?(i['预算区间']?'预算 ¥'+esc(i['预算区间']):'预算未知'):(price?'¥'+(price*quantity).toFixed(2):'');
+  let meta='<span class="badge badge-'+escAttr(status)+'">'+esc(status)+'</span><span class="cat-badge">'+esc(category)+'</span>';
+  if(!isEvaluation&&i['平台'])meta+='<span class="meta-sec">'+esc(i['平台'])+'</span>';
+  if(i['虚拟']==='1')meta+='<span class="virtual-chip">'+(isEvaluation?'💾 虚拟':'虚拟')+'</span>';
+  if(date)meta+='<span class="meta-sec">'+esc(date)+'</span>';
+  if(!isEvaluation&&quantity>1)meta+='<span class="meta-sec">×'+quantity+'</span>';
+  if(!isEvaluation)meta+=installment;
+  const note=isEvaluation?(i['评估摘要']?String(i['评估摘要']).slice(0,80)+(String(i['评估摘要']).length>80?'…':''):''):i['备注'];
+  const quick=i['极速']==='1'?'<span class="quick-badge">极速免审</span>':'';
+  return '<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div>'
+    +'<article class="card swipe-card purchase-card'+(selected?' selected':'')+'" style="--purchase-accent:'+escAttr(colors[category]||'#64748b')+'" data-id="'+escAttr(id)+'" data-type="purchase">'
+    +quick
+    +'<button type="button" class="checkbox'+(selected?' checked':'')+'" onclick="event.stopPropagation();toggleSelect(\''+escAttr(id)+'\')" aria-label="'+(selected?'取消选择':'选择')+' '+escAttr(i['商品名称']||'采购记录')+'">'+(selected?'✓':'')+'</button>'
+    +'<button type="button" class="purchase-card-main" onclick="'+openAction+'" aria-label="打开 '+escAttr(i['商品名称']||'采购记录')+'">'
+    +'<span class="top"><span class="name">'+(icons[category]||'📦')+' '+esc(i['商品名称']||'')+'</span>'+(mainPrice?'<span class="price'+(isEvaluation?' budget-price':'')+'">'+mainPrice+'</span>':'')+'</span>'
+    +'<span class="meta">'+meta+'</span>'
+    +(note?'<span class="note">'+esc(note)+'</span>':'')
+    +(eventTime?'<span class="purchase-timestamp">'+esc(eventTime)+'</span>':'')
+    +'</button><div class="actions"><button type="button" onclick="event.stopPropagation();editItem(\''+escAttr(id)+'\')" title="编辑" aria-label="编辑 '+escAttr(i['商品名称']||'采购记录')+'">✏️</button><button type="button" onclick="event.stopPropagation();delItem(\''+escAttr(id)+'\')" title="删除" aria-label="删除 '+escAttr(i['商品名称']||'采购记录')+'">🗑️</button></div></article></div>';
 }
 function changeLogDate(delta) {
   const parts = logDateState.split('-').map(Number);
@@ -393,7 +753,7 @@ function showAddRecurring(){
   if(isNaN(amount)||amount<=0)return alert('请输入有效金额');
   var day=parseInt(prompt('每月几号扣款? (1-28)', '1'));
   if(isNaN(day)||day<1||day>28)day=1;
-  var cats=['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
+  var cats=(typeof getExpenseCats==='function')?getExpenseCats():['餐饮','交通','购物','娱乐','居住','医疗','教育','其他'];
   var cat=prompt('分类: '+cats.join(', '), '居住');
   if(!cat)cat='其他';
   var note=prompt('备注 (选填)')||'';
@@ -439,10 +799,166 @@ function openSettings(){
 function closeSettings(){
   document.getElementById('settingsOverlay').classList.remove('active');
 }
+// ===== 连接 Agent（MCP）：一次性安装链接 =====
+// 链接里的票据只放在 #fragment，不会随请求发到服务器；10 分钟有效、只能兑换一次。
+function agentLinkOrigin(){
+  // App 内（Capacitor）没有 http(s) 源，改用配置的 API 地址
+  var o = location.origin;
+  try {
+    var u = new URL(API_BASE || o, o);
+    if (/^https?:$/.test(u.protocol)) return u.origin;
+  } catch (e) {}
+  return o;
+}
+function openAgentLink(){
+  var err = document.getElementById('agentLinkError');
+  if (err) err.textContent = '';
+  var box = document.getElementById('agentLinkResult');
+  if (box) box.style.display = 'none';
+  var btn = document.getElementById('agentLinkBtn');
+  if (btn) btn.style.display = '';
+  document.getElementById('agentOverlay').classList.add('active');
+}
+function closeAgentLink(){
+  var box = document.getElementById('agentLinkResult');
+  if (box) box.style.display = 'none';
+  var urlEl = document.getElementById('agentLinkUrl');
+  if (urlEl) urlEl.value = '';
+  document.getElementById('agentOverlay').classList.remove('active');
+}
+async function createAgentLink(){
+  var btn = document.getElementById('agentLinkBtn');
+  var err = document.getElementById('agentLinkError');
+  if (err) err.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  try {
+    var req = function(t){
+      return fetch(API_BASE + '/api/auth?action=agent-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: '{}',
+      });
+    };
+    var r = await req(getPin());
+    if (r.status === 401) {
+      var nt = await refreshAccessToken();
+      if (nt) r = await req(nt);
+    }
+    var d = await r.json().catch(function(){ return {}; });
+    if (!r.ok || !d || !d.ticket) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    var url = agentLinkOrigin() + '/agent#t=' + encodeURIComponent(d.ticket);
+    document.getElementById('agentLinkUrl').value = url;
+    document.getElementById('agentLinkCmd').value = 'npx -y github:begin2019510/purchase-app-mcp install "' + url + '"';
+    var expTxt = '10 分钟内有效、只能使用一次';
+    if (d.expiresAt) {
+      var dt = new Date(d.expiresAt);
+      if (!isNaN(dt.getTime())) {
+        expTxt = '有效期至 ' + dt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) + '（只能使用一次）';
+      }
+    }
+    document.getElementById('agentLinkExp').textContent = expTxt;
+    document.getElementById('agentLinkResult').style.display = '';
+    if (btn) btn.style.display = 'none';
+    copyAgentLink();
+  } catch (e) {
+    if (err) err.textContent = '生成失败：' + (e && e.message ? e.message : '请稍后重试');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '生成安装链接'; }
+  }
+}
+function copyAgentLink(){
+  var el = document.getElementById('agentLinkUrl');
+  if (!el || !el.value) return;
+  var done = function(){ toast('安装链接已复制，请立即发给 agent'); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.value).then(done).catch(function(){ legacyCopy(el); done(); });
+      return;
+    }
+  } catch (e) { /* fall through */ }
+  legacyCopy(el);
+  done();
+}
+function legacyCopy(el){
+  try { el.focus(); el.select(); document.execCommand('copy'); } catch (e) { /* ignore */ }
+}
+
+// ===== 修改密码 =====
+function openChangePassword(){
+  var err = document.getElementById('cpError');
+  if (err) err.textContent = '';
+  ['cpOld','cpNew','cpNew2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var btn = document.getElementById('cpSubmitBtn');
+  if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+  document.getElementById('changePwOverlay').classList.add('active');
+}
+function closeChangePassword(){
+  ['cpOld','cpNew','cpNew2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  var err = document.getElementById('cpError');
+  if (err) err.textContent = '';
+  document.getElementById('changePwOverlay').classList.remove('active');
+}
+async function submitChangePassword(){
+  var err = document.getElementById('cpError');
+  var btn = document.getElementById('cpSubmitBtn');
+  if (err) err.textContent = '';
+  var oldP = (document.getElementById('cpOld').value || '');
+  var newP = (document.getElementById('cpNew').value || '');
+  var new2 = (document.getElementById('cpNew2').value || '');
+  if (!oldP || !newP || !new2) { if (err) err.textContent = '请填写全部三个字段'; return; }
+  if (newP.length < 6 || newP.length > 128) { if (err) err.textContent = '新密码需为6-128位'; return; }
+  if (newP !== new2) { if (err) err.textContent = '两次输入的新密码不一致'; return; }
+  if (newP === oldP) { if (err) err.textContent = '新密码不能与当前密码相同'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '提交中…'; }
+  try {
+    var req = function(t){
+      return fetch(API_BASE + '/api/auth?action=change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: JSON.stringify({ oldPassword: oldP, newPassword: newP }),
+      });
+    };
+    var r = await req(getPin());
+    if (r.status === 401) {
+      var d0 = await r.json().catch(function(){ return {}; });
+      // 当前密码错误 401 不触发 refresh；仅 token 失效时才换新再试
+      if (d0 && d0.error && d0.error !== '当前密码错误' && d0.error !== '账号不存在') {
+        var nt = await refreshAccessToken();
+        if (nt) r = await req(nt);
+      } else {
+        if (err) err.textContent = (d0 && d0.error) || ('HTTP ' + r.status);
+        if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+        return;
+      }
+    }
+    var d = await r.json().catch(function(){ return {}; });
+    if (!r.ok || !d || !d.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+    if (d.token) setPin(d.token);
+    if (d.refreshToken) setRefreshToken(d.refreshToken);
+    closeChangePassword();
+    if (typeof toast === 'function') toast('密码已修改，其它设备已退出登录');
+  } catch (e) {
+    if (err) err.textContent = (e && e.message) || '修改失败，请稍后重试';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '确认修改'; }
+  }
+}
+
 function settingsAction(action){
   closeSettings();
   switch(action){
+    case 'claude': openClaudeChat(); break;
+    case 'agent': openAgentLink(); break;
+    case 'changePassword': openChangePassword(); break;
     case 'darkMode': toggleDarkMode(); break;
+    case 'background': toggleBgPicker(); break;
+    case 'webpush': setupWebPush(); break;
     case 'admin': openAdminPanel(); break;
     case 'logs': openLogsPanel(); break;
     case 'help': window.open('/help','_blank'); break;
@@ -452,6 +968,7 @@ function settingsAction(action){
       break;
     case 'batch': toggleBatch(); break;
     case 'budget': openBudgetModal(); break;
+    case 'cats': openCatManager(); break;
     case 'push': setupPush(); break;
     case 'changelog': openChangelog(); break;
     case 'recurring': openRecurringModal(); break;
@@ -462,36 +979,30 @@ function settingsAction(action){
 setupPullToRefresh();
 setupSwipe();
 
-// ===== Modal Scroll Lock =====
-// Lock body scroll when any modal overlay is open
+// ===== Modal Scroll Lock v2（2026-10-17）=====
+// iOS 上 body overflow:hidden 锁不住页面，改用 position:fixed + 记录滚动位置；
+// 覆盖所有弹层类型（modal-overlay / overlay / todo-detail-overlay / settings-overlay）
 (function(){
-  function updateScrollLock(){
-    var hasActive = document.querySelector('.modal-overlay.active');
-    if(hasActive){
+  var lockedY = 0;
+  var SEL = '.modal-overlay.active, .overlay.active, .todo-detail-overlay.active, .settings-overlay.active';
+  function anyOverlay(){ return !!document.querySelector(SEL); }
+  function update(){
+    var has = anyOverlay();
+    var locked = document.body.classList.contains('modal-open');
+    if (has && !locked) {
+      lockedY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.top = (-lockedY) + 'px';
       document.body.classList.add('modal-open');
-    }else{
+    } else if (!has && locked) {
       document.body.classList.remove('modal-open');
+      document.body.style.top = '';
+      window.scrollTo(0, lockedY);
     }
   }
-  // Intercept touchmove when modal is open to prevent background scroll
-  document.addEventListener('touchmove', function(e){
-    if(!document.querySelector('.modal-overlay.active')) return;
-    var modal = e.target.closest('.modal');
-    if(!modal){
-      e.preventDefault();
-    }
-  }, {passive:false});
-  // Watch for class changes on modal overlays
-  var observer = new MutationObserver(function(mutations){
-    for(var i=0;i<mutations.length;i++){
-      if(mutations[i].attributeName==='class' && mutations[i].target.classList.contains('modal-overlay')){
-        updateScrollLock();
-        return;
-      }
-    }
-  });
-  observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
-})();
+  var observer = new MutationObserver(update);
+  observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  update();
+})();;
 
 
 
@@ -563,6 +1074,10 @@ if (IS_NATIVE) {
 // === App.app namespace exports ===
 App.app.setupSwipe = setupSwipe;
 App.app.showSkeleton = showSkeleton;
+App.app.fetchMyReport = fetchMyReport;
+App.app.openReportModal = openReportModal;
+App.app.closeReportModal = closeReportModal;
+App.app.maybeShowReportPopup = maybeShowReportPopup;
 App.app.setupPullToRefresh = setupPullToRefresh;
 App.app.cleanupOrphanExpenses = cleanupOrphanExpenses;
 App.app.loadAll = loadAll;
@@ -583,4 +1098,36 @@ App.app.deleteRecurringItem = deleteRecurringItem;
 App.app.toggleRecurringActive = toggleRecurringActive;
 App.app.openSettings = openSettings;
 App.app.closeSettings = closeSettings;
+// ===== Background theme picker =====
+const BG_PRESETS = [
+  ['default','默认','#f5f6fa'],['white','纯白','#ffffff'],['paper','纸感','#faf9f6'],
+  ['mist','雾灰','#eef2f7'],['lavender','淡紫','#f3f0ff'],['mint','薄荷','#eefaf3'],
+  ['peach','蜜桃','#fff5ee'],['slate','岩灰','#e8eaf0']
+];
+function applyBgTheme(name){
+  try{
+    document.body.removeAttribute('data-bg');
+    if(name && name!=='default') document.body.setAttribute('data-bg', name);
+    localStorage.setItem('bg_theme', name||'default');
+    document.querySelectorAll('#bgSwatches .bg-sw').forEach(function(el){
+      el.style.outline = (el.dataset.bg===(name||'default')) ? '2px solid var(--pri)' : 'none';
+      el.style.outlineOffset = '2px';
+    });
+  }catch(e){}
+}
+function toggleBgPicker(){
+  var box = document.getElementById('bgSwatches');
+  if(!box) return;
+  if(box.style.display==='none' || !box.style.display){
+    var cur = localStorage.getItem('bg_theme')||'default';
+    box.innerHTML = BG_PRESETS.map(function(p){
+      return '<div class="bg-sw" data-bg="'+p[0]+'" title="'+p[1]+'" onclick="applyBgTheme(\''+p[0]+'\')" style="width:34px;height:34px;border-radius:50%;background:'+p[2]+';cursor:pointer;border:1px solid var(--border);box-shadow:'+(p[0]===cur?'2px solid var(--pri)':'none')+';outline:'+(p[0]===cur?'2px solid var(--pri)':'none')+';outline-offset:2px"></div>';
+    }).join('');
+    box.style.display='flex';
+  } else {
+    box.style.display='none';
+  }
+}
+(function(){ try{ var b=localStorage.getItem('bg_theme'); if(b&&b!=='default'){document.body.setAttribute('data-bg',b);} }catch(e){} })();
+
 App.app.settingsAction = settingsAction;

@@ -1,6 +1,21 @@
-# 个人管家 v3.0.1
+# 个人管家 v3.0.37
 
-多用户采购记账 PWA，基于飞书 Bitable + Cloudflare Pages。
+多用户采购、记账、待办与项目管理应用。线上前端部署在 Cloudflare Pages；生产业务 API 经 Pages Functions 代理到 Express 服务，MySQL 保存业务数据，服务器磁盘保存图片。飞书 Bitable 代码保留为兼容/回退路径，不能代表当前生产主存储。
+
+## 当前生产架构
+
+```text
+PWA (Pages root) / Android (Capacitor www)
+                   │ /api/*
+                   ▼
+Cloudflare Pages Functions ── JWT 校验、服务端令牌、用户身份转发
+                   │ DATA_BACKEND=mysql
+                   ▼
+Nginx HTTPS → Express (127.0.0.1) → MySQL
+                                  └→ /var/lib/purchase-app/images
+```
+
+运行开关和密钥存放在 Cloudflare 与服务器配置中，仓库不包含生产值。`DATA_BACKEND=mysql` 是生产配置基准；选择 MySQL 后若缺少 `SERVER_API_BASE` 或 `SERVICE_TOKEN`，Functions 会失败关闭，避免写入飞书。明确将 `DATA_BACKEND` 设为 `feishu`（或未设置）才会选择兼容路径。回退能力并非完全等价，项目阶段和交付物 API 仅由 MySQL 服务实现。
 
 ## 功能
 
@@ -16,7 +31,7 @@
 - 收支记录（类型、分类、金额、备注、时间）
 - 日历视图：按天聚合，点击查看明细
 - 列表视图：按时间线展示
-- 图片附件：拍照/相册上传，压缩后存 Cloudflare KV
+- 图片附件：拍照/相册上传，前端压缩后存服务器磁盘，MySQL 保存图片元数据
 - 导出 CSV/TSV
 
 ### AI 功能（MiMo）
@@ -54,9 +69,11 @@
 | 层 | 技术 |
 |----|------|
 | 前端 | HTML + CSS + 原生 JS（模块化，无框架），PWA |
-| 后端 | Cloudflare Pages Functions |
-| 数据库 | 飞书 Bitable（多维表格） |
-| 图片存储 | Cloudflare KV（IMAGE_STORE） |
+| API 前置层 | Cloudflare Pages Functions（JWT 校验、代理） |
+| 业务服务 | Express（由 Nginx 暴露 TLS，服务监听 127.0.0.1） |
+| 生产数据库 | MySQL（mysql2/promise） |
+| 生产图片存储 | 服务器磁盘 + MySQL 图片元数据 |
+| 兼容存储 | 飞书 Bitable / Cloudflare KV 旧路径（回退能力有限） |
 | AI | MiMo API（xiaomimimo.com） |
 | 认证 | JWT（HS256）+ PBKDF2 密码哈希 + Refresh Token |
 | 推送 | 飞书自定义机器人 Webhook |
@@ -90,7 +107,7 @@ purchase-app/
 │       ├── auth.js         # 多用户认证（注册/登录/邀请码/管理员）
 │       ├── items.js        # 采购 CRUD + 缓存
 │       ├── expenses.js     # 记账 CRUD
-│       ├── images.js       # 图片上传/读取/删除（KV）
+│       ├── images.js       # 图片 API（MySQL 模式代理到 Express）
 │       ├── ai.js           # AI 代理（解析/分类/分析/画像/查询/评估）
 │       ├── notify.js       # 飞书机器人消息推送
 │       ├── budgets.js      # 预算存储
@@ -102,11 +119,15 @@ purchase-app/
 ├── cron-worker/            # Cloudflare Worker Cron
 │   ├── index.js            # 定时任务调度
 │   └── wrangler.toml       # Worker 配置
-├── .github/workflows/      # GitHub Actions（双通道兜底）
+├── .github/workflows/      # GitHub Actions 定时通知任务
 │   ├── daily-reminder.yml
 │   ├── archive-check.yml
 │   ├── summary-weekly.yml
 │   └── summary-monthly.yml
+├── server/                 # Express 路由、MySQL 和图片磁盘存储
+├── schema.sql              # MySQL 初始 schema
+├── scripts/sync-ui.js      # 同步 Pages 前端、manifest 与图标到 Android webDir
+├── www/                    # Capacitor Android webDir（由脚本同步）
 └── _headers                # Cloudflare Pages 响应头
 ```
 
@@ -116,14 +137,17 @@ purchase-app/
 
 | 变量名 | 用途 |
 |--------|------|
+| `DATA_BACKEND` | 生产设为 `mysql`，选择 Express/MySQL 主路径 |
+| `SERVER_API_BASE` | Express API 的 HTTPS 基础地址 |
+| `SERVICE_TOKEN` | Pages Functions 到 Express 的服务鉴权 |
 | `JWT_SECRET` | JWT 签名密钥 |
-| `FEISHU_APP_ID` | 飞书应用 ID |
-| `FEISHU_APP_SECRET` | 飞书应用密钥 |
 | `FEISHU_BOT_WEBHOOK` | 飞书机器人 Webhook |
 | `MIMO_API_KEY` | MiMo AI API Key |
 | `INVITE_CODE` | 注册邀请码（可重复使用） |
 | `CRON_SECRET` | 定时推送接口密钥（必须配置；与 Worker/GitHub Actions 一致） |
-| `IMAGE_STORE` | Cloudflare KV namespace |
+| `IMAGE_STORE` | 旧图像与认证兼容路径使用的 KV namespace |
+
+Express 服务器从 `/etc/purchase-app/db.env` 和 `/etc/purchase-app/server.env` 读取 MySQL、JWT、服务令牌及图片目录配置。具体生产值不应写入仓库。
 
 ### Cloudflare Worker (cron-worker)
 
@@ -144,7 +168,7 @@ purchase-app/
 - **输入校验**: 所有 API 端点有长度/范围/白名单校验
 
 ### 多用户（v2.6.0 新增）
-1. **注册**：用户名 + 密码 + 邀请码 → 创建独立 Bitable 表 → 返回 JWT
+1. **注册**：用户名 + 密码 + 邀请码 → 创建 MySQL 用户记录 → 返回 JWT
 2. **登录**：用户名 + 密码 → 验证 → 返回 JWT + Refresh Token
 3. **认证方式**：`Authorization: Bearer <jwt_token>`
 4. **管理员**：`admin` 账户可创建邀请码、删除用户
@@ -154,8 +178,9 @@ purchase-app/
 
 详见 [IMAGE_ARCH.md](IMAGE_ARCH.md)
 
-- 前端压缩（max 800px, quality 0.7, 上限 500KB）
-- 存入 Cloudflare KV，Bitable 只存 `kv:key` 引用
+- 前端压缩（最长边 1600px, JPEG quality 0.92，体积超过约 2MB 时逐步降质；服务端单图上限 5MiB）
+- 生产环境写入 `/var/lib/purchase-app/images/{username}`，MySQL `images` 表记录用户、文件 key、MIME 与大小
+- `kv:key` 引用继续用于兼容旧数据；该前缀不表示生产新图片存入 Cloudflare KV
 - GET 返回二进制图片（支持 `<img src>` 直接加载）
 - 图片认证：`?token=jwt` 查询参数（浏览器 img 不支持自定义头）
 
@@ -183,14 +208,11 @@ npm install
 # 部署
 npx wrangler pages deploy . --project-name=purchase-app
 
-# 设置环境变量
-npx wrangler pages secret put JWT_SECRET
-npx wrangler pages secret put FEISHU_BOT_WEBHOOK
-npx wrangler pages secret put MIMO_API_KEY
-npx wrangler pages secret put INVITE_CODE
-npx wrangler pages secret put CRON_SECRET
-# ... 其他变量
+# DATA_BACKEND、SERVER_API_BASE、SERVICE_TOKEN 和其它 secrets
+# 在 Cloudflare Pages 项目设置中配置；生产 secret 不写入仓库或命令历史。
 ```
+
+Express/MySQL 部署和备份需要在服务器上单独管理；先将 `schema.sql` 应用到目标数据库，再按服务器部署手册发布服务。MySQL 与图片目录应一起备份并做恢复演练。
 
 ### Cloudflare Worker Cron
 
@@ -201,7 +223,7 @@ npx wrangler deploy
 
 ### GitHub Actions
 
-代码推送到 GitHub 后自动部署，Actions cron 作为 Cloudflare Worker 的兜底。
+仓库内 GitHub Actions 用于定时通知；Pages 的部署由当前仓库工作流/Cloudflare 设置决定，不能据此推断生产 MySQL 或 server 配置已经成功。Android 打包前运行 `node scripts/sync-ui.js`，将 Pages 根目录前端同步到 Capacitor 的 `www/`。
 
 ## 版本历史
 

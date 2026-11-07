@@ -5,12 +5,20 @@ var _budgetCache=null;
 function getBudgets(){if(_budgetCache)return _budgetCache;try{_budgetCache=JSON.parse(localStorage.getItem('purchase_budgets')||'{}')}catch{_budgetCache={}}return _budgetCache}
 function setBudgets(b){_budgetCache=b;localStorage.setItem('purchase_budgets',JSON.stringify(b));syncBudgetToServer(b)}
 function getBudget(m){return getBudgets()[m]||0}
+var _budgetDirty=false,_budgetSyncing=false;
 async function syncBudgetToServer(b){
+  if(_budgetSyncing){_budgetDirty=true;return}   // 正在写：标记脏，写完自动补一轮（合并最新值）
+  _budgetSyncing=true;_budgetDirty=false;
   try{
-    var token=getPin();
-    var r=await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:b})});
-    if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:b})})}}
+    do{
+      _budgetDirty=false;
+      var payload=getBudgets();              // 总是发送当下最新状态，不发旧引用
+      var token=getPin();
+      var r=await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({data:payload})});
+      if(r.status===401){var nt=await refreshAccessToken();if(nt){await fetch(API_BASE + '/api/budgets',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+nt},body:JSON.stringify({data:payload})})}}
+    }while(_budgetDirty);                     // 期间又有新改动 → 补发
   }catch(e){}
+  _budgetSyncing=false;
 }
 async function loadBudgetFromServer(){
   try{
@@ -19,7 +27,8 @@ async function loadBudgetFromServer(){
     if(r.status===401){var nt=await refreshAccessToken();if(nt){r=await fetch(API_BASE + '/api/budgets',{headers:{'Authorization':'Bearer '+nt}})}}
     if(!r.ok)return getBudgets();
     var d=await r.json();
-    if(d&&d.data){_budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
+    if(d&&d.data){if(_budgetDirty||_budgetSyncing)return getBudgets();  // 本地有未落盘的修改：拒绝旧数据回灌
+    _budgetCache=d.data;localStorage.setItem('purchase_budgets',JSON.stringify(d.data));return d.data}
     return getBudgets();
   }catch(e){return getBudgets()}
 }
@@ -47,7 +56,7 @@ function getWeekForDate(ds,ym){
 }
 function getWeekBudgets(m){const b=getBudgets();if(!b[m])return{total:0,perWeek:0,weeks:{}};if(typeof b[m]==='number')return{total:b[m],perWeek:0,weeks:{}};return{total:b[m].total||0,perWeek:b[m].perWeek||0,weeks:b[m].weeks||{}}}
 function getWeekBudget(m,i){const wb=getWeekBudgets(m);if(wb.weeks[i]!==undefined)return wb.weeks[i];if(wb.perWeek>0)return wb.perWeek;return 0}
-function setWeekBudgets(m,total,pw,wo){const b=getBudgets();b[m]={total:total,perWeek:pw||0,weeks:wo||{}};setBudgets(b)}
+function setWeekBudgets(m,total,pw,wo){const b=getBudgets();const prev=(b[m]&&typeof b[m]==='object')?b[m]:{};b[m]={total:total,perWeek:pw||0,weeks:wo||{}};if(prev.additions)b[m].additions=prev.additions;setBudgets(b)}
 function renderWeekBudgetInputs(m,total){
   const weeks=getMonthWeeks(m);
   const wb=getWeekBudgets(m);
@@ -134,7 +143,12 @@ async function api(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-if(r.status===401){return{error:'会话已过期，请刷新页面'}}
+if(r.status===401){
+      // refresh 也救不回（改密吊销 / token 作废）→ 清本地会话退回登录
+      if(typeof clearTokens==='function')clearTokens();
+      if(typeof setAuthLocked==='function')setAuthLocked(true);
+      return{error:'会话已过期，请重新登录'}
+    }
   }
   return r.json();
 }
@@ -150,7 +164,11 @@ async function expenseApi(method,body,id){
       opts.headers['Authorization']='Bearer '+newToken;
       r=await fetch(url,opts);
     }
-if(r.status===401){return{error:'会话已过期，请刷新页面'}}
+    if(r.status===401){
+      if(typeof clearTokens==='function')clearTokens();
+      if(typeof setAuthLocked==='function')setAuthLocked(true);
+      return{error:'会话已过期，请重新登录'}
+    }
   }
   return r.json();
 }
@@ -271,8 +289,8 @@ function getFixedExpenseTotal() {
 
 
 let currentImageData='';let currentImageKey='';
-function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');if(isDark){document.documentElement.classList.remove('light')}else{document.documentElement.classList.add('light')}document.getElementById('darkModeBtn').textContent=isDark?'\u2600\ufe0f':'\ud83c\udf19'}
-(function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');document.getElementById('darkModeBtn').textContent='\u2600\ufe0f'}else if(!localStorage.getItem('dark_mode')&&window.innerWidth>768){}else if(localStorage.getItem('dark_mode')==='0'){document.documentElement.classList.add('light')}})();
+function toggleDarkMode(){const isDark=document.body.classList.toggle('dark');localStorage.setItem('dark_mode',isDark?'1':'0');if(isDark){document.documentElement.classList.remove('light')}else{document.documentElement.classList.add('light')}var b=document.getElementById('darkModeBtn');if(b)b.title=isDark?'切换浅色':'暗色模式'}
+(function(){if(localStorage.getItem('dark_mode')==='1'){document.body.classList.add('dark');var b=document.getElementById('darkModeBtn');if(b)b.title='切换浅色'}else if(!localStorage.getItem('dark_mode')&&window.innerWidth>768){}else if(localStorage.getItem('dark_mode')==='0'){document.documentElement.classList.add('light')}})();
 function handleImageUpload(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const img=new Image();img.onload=function(){const canvas=document.createElement("canvas");const MAX=1600;let w=img.width,h=img.height;if(w>MAX){h=h*MAX/w;w=MAX}if(h>MAX){w=w*MAX/h;h=MAX}canvas.width=w;canvas.height=h;const ctx=canvas.getContext("2d");ctx.drawImage(img,0,0,w,h);let q=0.92;let dataUrl=canvas.toDataURL("image/jpeg",q);while(dataUrl.length>2000000&&q>0.3){q-=0.1;dataUrl=canvas.toDataURL("image/jpeg",q)}currentImageData=dataUrl;currentImageKey="";const preview=document.getElementById("eImagePreview");preview.src=dataUrl;document.getElementById("eImageWrap").style.display="block";const info=document.getElementById("imageSizeInfo");info.textContent="[Compressed: "+String((dataUrl.length/1024).toFixed(0))+"KB]";info.style.display="block";};img.src=e.target.result;};reader.readAsDataURL(file)}
 function showFullscreenImg(src){document.getElementById('imgFullscreenImg').src=src;document.getElementById('imgFullscreen').classList.add('active')}
 

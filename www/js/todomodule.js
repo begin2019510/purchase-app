@@ -8,8 +8,11 @@ var todoCalYear, todoCalMonth;
 var todoCalSelected = null;
 var todoSearch = "";
 var ganttExpanded = {};
-var ganttViewMode = "week";
+var ganttViewMode = "week"; // day | week | month
 var ganttWeekOffset = 0;
+var ganttDayOffset = 0;
+var ganttMonthOffset = 0;
+var ganttNoDateOpen = false;
 
 function localDateStr(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -73,6 +76,20 @@ function initTodoSearch() {
 }
 
 
+function todoDueBucket(t) {
+  if (!t.dueDate) return 'nodate';
+  var ts = new Date(t.dueDate).getTime();
+  if (isNaN(ts)) return 'nodate';
+  var n = new Date();
+  var start = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  var diff = ts - start;
+  if (diff < 0) return 'overdue';
+  if (diff < 86400000) return 'today';
+  if (diff < 172800000) return 'tomorrow';
+  if (diff < 604800000) return 'week';
+  return 'later';
+}
+
 function renderTodo() {
   var el = document.getElementById('todoContent');
   if (!el) return;
@@ -102,7 +119,6 @@ function renderTodo() {
     });
   }
 
-  var now = Date.now();
   filtered.sort(function(a, b) {
     if (a.status === '已完成' && b.status !== '已完成') return 1;
     if (a.status !== '已完成' && b.status === '已完成') return -1;
@@ -113,112 +129,88 @@ function renderTodo() {
     return (pri[a.priority] || 1) - (pri[b.priority] || 1);
   });
 
-  // Stats
-  var total=todoList.filter(function(t){return t.status!=='已删除'}).length, pending=0, doing=0, done=0, overdue=0;
+  var pending = 0, doing = 0, done = 0, overdue = 0;
   todoList.forEach(function(t){
-    if(t.status==='待办') pending++;
-    if(t.status==='进行中') doing++;
-    if(t.status==='已完成') done++;
-    if(t.dueDate&&getDueClass(t.dueDate,t.status)==='due-overdue') overdue++;
+    if (t.status === '已删除') return;
+    if (t.status === '待办') pending++;
+    if (t.status === '进行中') doing++;
+    if (t.status === '已完成') done++;
+    if (t.dueDate && getDueClass(t.dueDate, t.status) === 'due-overdue') overdue++;
   });
-  var activeTotal = pending + doing + done; var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
+  var activeTotal = pending + doing + done;
+  var pct = activeTotal > 0 ? Math.round(done / activeTotal * 100) : 0;
+
+  var now = new Date();
+  var weekdays = ['日','一','二','三','四','五','六'];
+  var dateStr = (now.getMonth()+1) + '月' + now.getDate() + '日 周' + weekdays[now.getDay()];
+
+  var CIRC = 2 * Math.PI * 26;
+  var dash = (CIRC * pct / 100).toFixed(1);
 
   var html = '';
+  html += '<div class="td3-header">';
+  html += '<div class="td3-titlebar">';
+  html += '<div><div class="td3-title">待办</div><div class="td3-date">' + dateStr + '</div></div>';
+  html += '<div class="td2-seg">';
+  html += '<button class="' + (todoView==='list'?'on':'') + '" onclick="switchTodoView(\x27list\x27)">列表</button>';
+  html += '<button class="' + (todoView==='calendar'?'on':'') + '" onclick="switchTodoView(\x27calendar\x27)">日历</button>';
+  html += '<button class="' + (todoView==='gantt'?'on':'') + '" onclick="switchTodoView(\x27gantt\x27)">甘特</button>';
+  html += '</div></div>';
 
-  // === Compact header: segmented control + progress ===
-  // Search box
+  html += '<div class="td3-hero">';
+  html += '<div class="td3-ring"><svg width="76" height="76"><circle cx="38" cy="38" r="26" fill="none" stroke="var(--border)" stroke-width="7"/><circle cx="38" cy="38" r="26" fill="none" stroke="var(--pri)" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + CIRC.toFixed(1) + '"/></svg><div class="pct">' + pct + '%</div></div>';
+  html += '<div class="td3-grid">';
+  html += '<div class="td3-cell"><b class="metric-pending">' + pending + '</b><span>待办</span></div>';
+  html += '<div class="td3-cell"><b class="metric-doing">' + doing + '</b><span>进行中</span></div>';
+  html += '<div class="td3-cell"><b class="metric-overdue' + (overdue?' has-overdue':'') + '">' + overdue + '</b><span>已过期</span></div>';
+  html += '<div class="td3-cell"><b class="metric-done">' + done + '</b><span>已完成</span></div>';
+  html += '</div></div>';
 
-  html += '<div class="todo-compact-header">';
-  
-  // View switcher (segmented control)
-  html += '<div class="todo-view-switcher">';
-  html += '<button class="todo-view-btn' + (todoView==='list'?' active':'') + '" onclick="switchTodoView(\x27list\x27)">📋 列表</button>';
-  html += '<button class="todo-view-btn' + (todoView==='calendar'?' active':'') + '" onclick="switchTodoView(\x27calendar\x27)">📅 日历</button>';
-  html += '<button class="todo-view-btn' + (todoView==='gantt'?' active':'') + '" onclick="switchTodoView(\x27gantt\x27)">📊 甘特图</button>';
-  html += '</div>';
-
-  // Stats row (compact)
-  html += '<div class="todo-stats-row">';
-  html += '<div class="todo-stat"><span class="todo-stat-num">' + total + '</span><span class="todo-stat-lbl">全部</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#f59e0b">' + pending + '</span><span class="todo-stat-lbl">待办</span></div>';
-  html += '<div class="todo-stat"><span class="todo-stat-num" style="color:var(--pri)">' + doing + '</span><span class="todo-stat-lbl">进行中</span></div>';
-  if(overdue>0) html += '<div class="todo-stat"><span class="todo-stat-num" style="color:#ef4444">' + overdue + '</span><span class="todo-stat-lbl">过期</span></div>';
-  html += '<div class="todo-stat" style="margin-left:auto"><span class="todo-stat-num" style="color:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+';font-size:18px">' + pct + '%</span><span class="todo-stat-lbl">完成</span></div>';
-  html += '</div>';
-
-  // Progress bar
-  html += '<div class="todo-mini-progress"><div class="todo-mini-fill" data-width="' + pct + '" style="width:0;background:'+(pct>=80?'#16a34a':pct>=50?'var(--pri)':'#f59e0b')+'"></div></div>';
-  html += '</div>';
-
-  // Filter chips (smaller)
-  html += '<div class="chips-wrap" style="margin:8px 0 10px">';
-  var chips = ['全部', '待办', '进行中', '已完成', '高优先级', '已取消', '回收站'];
-  chips.forEach(function(c) {
-    html += '<span class="chip' + (todoFilter===c ? ' active' : '') + '" onclick="switchTodoFilter(' + "'" + c + "'" + ')" style="padding:4px 10px;font-size:12px">' + c + '</span>';
+  html += '<div class="td3-chips">';
+  ['全部','待办','进行中','已完成','高优先级','已取消','回收站'].forEach(function(c) {
+    var active = todoFilter === c;
+    html += '<button type="button" class="chip' + (active?' active':'') + '" aria-pressed="' + active + '" onclick="switchTodoFilter(\x27' + c + '\x27)">' + c + '</button>';
   });
-  html += '</div>';
+  html += '</div></div>';
 
-  // Content based on view
   if (todoView === 'calendar') {
     html += buildCalendarHtml();
-    console.log("renderSubtaskRows: rows=" + todoSubtaskRows.length + ", firstText=" + (todoSubtaskRows[0]||{}).text + ", html=" + html.substring(0,300));
-  el.innerHTML = html;
+    el.innerHTML = html;
     return;
   }
   if (todoView === 'gantt') {
-    html += buildGanttHtml();
+    html += buildGanttHtml(filtered);
     el.innerHTML = html;
     return;
   }
 
-  // List view
   if (filtered.length === 0) {
-    html += '<div style="text-align:center;padding:60px 20px;color:var(--muted)">';
-    html += '<div style="font-size:56px;margin-bottom:16px;opacity:0.6">📋</div>';
-    html += '<div style="font-size:16px;font-weight:700;margin-bottom:6px">暂无待办</div>';
-    html += '<div style="font-size:13px;opacity:0.7">点击右下角 + 新建</div>';
-    html += '</div>';
-  } else {
-    var active = filtered.filter(function(t){ return t.status !== '已完成' && t.status !== '已取消'; });
-    var completed = filtered.filter(function(t){ return t.status === '已完成' || t.status === '已取消'; });
-    if (active.length > 0) {
-      active.forEach(function(t) { html += renderTodoCard(t); });
-    }
-    if (completed.length > 0) {
-      html += '<div class="todo-section-title">✅ 已完成 <span class="todo-section-count">'+completed.length+'</span></div>';
-      completed.forEach(function(t) { html += renderTodoCard(t); });
-    }
+    html += '<div class="td3-empty"><div class="ico">🌿</div><div class="t">没有待办</div><div class="s">' + (todoFilter==='全部' ? '轻松一下，或点右下角 + 新建' : '该筛选下暂无内容') + '</div></div>';
+    el.innerHTML = html;
+    return;
   }
+
+  var groups = { overdue: [], today: [], tomorrow: [], week: [], later: [], nodate: [], done: [] };
+  filtered.forEach(function(t) {
+    if (t.status === '已完成' || t.status === '已取消') groups.done.push(t);
+    else groups[todoDueBucket(t)].push(t);
+  });
+  var meta = {
+    overdue: { label: '已过期', dot: 'var(--red)' }, today: { label: '今天', dot: 'var(--orange)' },
+    tomorrow: { label: '明天', dot: 'var(--pri)' }, week: { label: '本周', dot: 'var(--pri)' },
+    later: { label: '以后', dot: 'var(--muted)' }, nodate: { label: '无日期', dot: 'var(--muted)' },
+    done: { label: '已完成 / 已取消', dot: 'var(--green)' }
+  };
+  ['overdue','today','tomorrow','week','later','nodate','done'].forEach(function(key){
+    var arr = groups[key];
+    if (!arr.length) return;
+    html += '<div class="td3-sec"><span class="td3-dot" style="background:' + meta[key].dot + '"></span>' + meta[key].label + '<span class="td3-n">' + arr.length + '</span></div>';
+    html += '<div class="td3-group">';
+    arr.forEach(function(t){ html += renderTodoCard(t); });
+    html += '</div>';
+  });
 
   el.innerHTML = html;
-
-  // Animate progress bar
-  setTimeout(function() {
-    document.querySelectorAll('.todo-mini-fill[data-width]').forEach(function(el) {
-      el.style.width = el.getAttribute('data-width') + '%';
-    });
-  }, 50);
-
-  // Init SortableJS drag sort
-  if (typeof Sortable !== 'undefined' && todoView === 'list' && todoFilter !== '回收站') {
-    var container = el.querySelector('.todo-list-container');
-    if (container) {
-      Sortable.create(container, {
-        animation: 200,
-        ghostClass: 'todo-drag-ghost',
-        handle: '.todo-card',
-        onEnd: function(evt) {
-          var cards = container.querySelectorAll('.todo-card');
-          var order = 0;
-          cards.forEach(function(card) {
-            var id = card.getAttribute('data-id');
-            var t = todoList.find(function(x){ return x.id === id; });
-            if (t) { t.order = order; todoApi('PUT', { id: id, order: order }); order++; }
-          });
-        }
-      });
-    }
-  }
 }
 
 function getLinkDisplay(linkType, linkId) {
@@ -242,153 +234,396 @@ function getLinkDisplay(linkType, linkId) {
 }
 
 function renderTodoCard(t) {
-  var priColor = t.priority === '高' ? '#ef4444' : t.priority === '低' ? '#9ca3af' : '#f59e0b';
   var catIcon = { '采购': '🛒', '记账': '💰', '生活': '🏠', '工作': '💼', '健康': '🏥', '其他': '📌' };
-  var isDone = t.status === '已完成' || t.status === '已取消';
-  var statusClass = t.status === '已完成' ? 'todo-done' : t.status === '已取消' ? 'todo-cancelled' : '';
+  var isDone = t.status === '已完成';
+  var isCancel = t.status === '已取消';
+  var finished = isDone || isCancel;
+  var priColor = t.priority === '高' ? 'var(--red)' : t.priority === '低' ? 'var(--muted)' : 'var(--orange)';
+  var idAttr = t.id;
 
-  var h = '<div class="todo-card ' + statusClass + '" data-id="' + t.id + '" onclick="openTodoDetail(' + "'" + t.id + "'" + ')">';
-  h += '<div class="todo-card-accent" style="background:' + priColor + '"></div>';
-  h += '<div class="todo-card-inner">';
-  h += '<div class="todo-card-main">';
-
-  // Checkbox (quick complete)
-  if (isDone) {
-    h += '<div class="todo-quick-check done" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')">✅</div>';
-  } else {
-    h += '<div class="todo-quick-check" style="border-color:' + priColor + '" onclick="event.stopPropagation();cycleTodoStatus(' + "'" + t.id + "'" + ')"></div>';
-  }
-
-  // Content
-  h += '<div class="todo-card-content">';
-  h += '<div class="todo-card-title' + (isDone ? ' strikethrough' : '') + '">' + esc(t.title) + '</div>';
-
-  // Due date line
-  if (t.dueDate) {
-    var dueStr = formatDueDate(t.dueDate);
-    var dueClass = getDueClass(t.dueDate, t.status);
-    h += '<div class="todo-due ' + dueClass + '">📅 ' + dueStr + '</div>';
-  }
-
-  // Tags row
-  h += '<div class="todo-card-tags">';
-  h += '<span class="todo-tag status-' + t.status + '">' + t.status + '</span>';
-  h += '<span class="todo-tag cat">' + (catIcon[t.category]||'📌') + t.category + '</span>';
-  if (t.repeat && t.repeat !== '无') h += '<span class="todo-tag repeat">🔄 ' + t.repeat + '</span>';
-    try {
-      var tags = JSON.parse(t.tags || '[]');
-      tags.forEach(function(tag) {
-        var tagColor = stringHashColor(tag);
-        h += '<span class="todo-tag" style="background:' + tagColor.bg + ';color:' + tagColor.text + ';font-size:10px">' + esc(tag) + '</span>';
-      });
-    } catch(e) {}
-  h += '</div>';
-
-  // Subtask progress
+  var rowClass = 'td3-row' + (isDone ? ' td3-done' : '') + (isCancel ? ' td3-cancelled' : '');
+  var h = '<article class="' + rowClass + '" data-id="' + escAttr(idAttr) + '">';
+  h += '<button type="button" class="td3-check' + (finished ? ' on' : '') + ' priority-' + String(t.priority || '中') + '"' + (!finished ? ' style="--todo-priority:' + priColor + '"' : '') + ' onclick="cycleTodoStatus(\x27' + idAttr + '\x27)" aria-label="' + (finished ? '重新打开' : '完成') + '待办 ' + escAttr(t.title) + '" aria-pressed="' + finished + '">';
+  if (finished) h += '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+  h += '</button>';
+  h += '<button type="button" class="td3-main" onclick="openTodoDetail(\x27' + idAttr + '\x27)" aria-label="查看待办 ' + escAttr(t.title) + '">';
+  h += '<span class="td3-row-title">' + esc(t.title) + '</span>';
+  h += '<span class="td3-row-meta">';
+  if (t.dueDate) h += '<span class="td2-due ' + getDueClass(t.dueDate, t.status) + '">' + formatDueDate(t.dueDate) + '</span>';
+  h += '<span class="td2-chip">' + (catIcon[t.category] || '📌') + ' ' + esc(t.category) + '</span>';
+  if (t.repeat && t.repeat !== '无') h += '<span class="td2-chip">🔄 ' + t.repeat + '</span>';
+  try {
+    JSON.parse(t.tags || '[]').forEach(function(tag) {
+      h += '<span class="td2-chip td2-tag">' + esc(tag) + '</span>';
+    });
+  } catch(e) {}
   if (t.subtasks && t.subtasks !== '[]') {
     try {
       var subs = JSON.parse(t.subtasks);
-      var doneCount = subs.filter(function(s){ return s.done; }).length;
-      var subPct = subs.length ? Math.round(doneCount/subs.length*100) : 0;
-      h += '<div class="todo-sub-progress"><div class="todo-sub-bar"><div class="todo-sub-fill" style="width:' + subPct + '%;background:' + (subPct>=100?'#16a34a':'var(--pri)') + '"></div></div><span class="todo-sub-text">' + doneCount + '/' + subs.length + '</span></div>';
+      var dn = subs.filter(function(s){ return s.done; }).length;
+      if (subs.length) h += '<span class="td2-chip">☑ ' + dn + '/' + subs.length + '</span>';
     } catch(e) {}
   }
-
-  // Link
-  // Project link
-  if (t.projectId && typeof projectList !== 'undefined') {
-    var proj = projectList.find(function(p){ return p.id === t.projectId; });
-    if (proj) {
-      h += '<div class="detail-row"><span class="detail-label">📁 项目</span><span class="detail-value" style="cursor:pointer;color:var(--pri)" onclick="closeTodoDetail();openProjectDetail(\x27' + t.projectId + '\x27)">' + esc(proj.name) + ' ➤</span></div>';
-    }
-  }
-  if (t.linkType && t.linkType !== '无') {
-    var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-    if (linkDisp) h += '<div class="todo-link" onclick="event.stopPropagation();showLinkPreview(' + "'" + t.linkType + "'" + ',' + "'" + t.linkId + "'" + ')">' + linkDisp + ' ➡</div>';
-  }
-
-  h += '</div>'; // content
-
-  // Priority dot (right side)
-  h += '<div class="todo-pri-dot" style="background:' + priColor + '"></div>';
-
-  h += '</div>'; // main
-  // Recycle bin actions
+  if (t.image) h += '<span class="td2-chip">🖼</span>';
+  h += '</div></button>';
+  h += '<div class="td3-right">';
   if (t.status === '已删除') {
-    h += '<div style="display:flex;gap:8px;padding:8px 18px 12px;border-top:1px solid var(--border)">';
-    h += '<button onclick="event.stopPropagation();restoreTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid var(--pri);color:var(--pri);border-radius:8px;background:transparent;cursor:pointer;font-size:12px">↩ 恢复</button>';
-    h += '<button onclick="event.stopPropagation();purgeTodo(\x27' + t.id + '\x27)" style="flex:1;padding:6px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;cursor:pointer;font-size:12px">🗑️ 彻底删除</button>';
-    h += '</div>';
+    h += '<button class="td3-mini" onclick="event.stopPropagation();restoreTodo(\x27' + idAttr + '\x27)">恢复</button>';
+    h += '<button class="td3-mini danger" onclick="event.stopPropagation();purgeTodo(\x27' + idAttr + '\x27)">删除</button>';
+  } else {
+    if (t.status === '进行中') h += '<span class="td3-doing">进行中</span>';
+    else if (!finished && t.priority === '高') h += '<span class="td3-pri">高</span>';
+    h += '<svg class="td3-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer" onclick="openTodoDetail(\x27' + idAttr + '\x27)"><path d="M9 6l6 6-6 6"/></svg>';
   }
-  h += '</div></div>'; // inner + card
+  h += '</div></article>';
   return h;
 }
 
-﻿function buildGanttHtml() {
+function buildGanttHtml(filtered) {
   var now = new Date();
-  var todayStr = localDateStr(now);
+  var info = ganttRangeInfo();
+  var list = Array.isArray(filtered) ? filtered : todoList.slice();
   var html = '';
 
+  // toolbar
   html += '<div class="gantt-wrapper">';
   html += '<div class="gantt-toolbar">';
-  html += '<div style="display:flex;align-items:center;gap:8px">';
-  html += '<button class="cal-nav-btn" onclick="ganttNav(-1)">&#8592;</button>';
-  
-  if (ganttViewMode === 'week') {
-    var weekStart = getGanttWeekStart();
-    var weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    var ws = (weekStart.getMonth()+1)+'/'+weekStart.getDate();
-    var we = (weekEnd.getMonth()+1)+'/'+weekEnd.getDate();
-    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + weekStart.getFullYear() + '\u5e74 ' + ws + ' - ' + we + '</span>';
-  } else {
-    if (!todoCalYear) { todoCalYear = now.getFullYear(); todoCalMonth = now.getMonth(); }
-    html += '<span class="cal-nav-title" style="font-size:14px;font-weight:700">' + todoCalYear + '\u5e74' + (todoCalMonth+1) + '\u6708</span>';
-  }
-  
-  html += '<button class="cal-nav-btn" onclick="ganttNav(1)">&#8594;</button>';
-  html += '<button class="cal-nav-btn" onclick="ganttNav(0)" style="font-size:11px;padding:3px 8px">\u4eca\u5929</button>';
+  html += '<div class="gantt-nav-group">';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(-1)" aria-label="上一档">&#8592;</button>';
+  html += '<span class="cal-nav-title gantt-title">' + esc(info.label) + '</span>';
+  html += '<button class="cal-nav-btn" onclick="ganttNav(1)" aria-label="下一档">&#8594;</button>';
+  html += '<button class="cal-nav-btn gantt-today-btn" onclick="ganttNav(0)">今天</button>';
   html += '</div>';
-  html += '<div class="gantt-view-switcher">';
-  html += '<button class="gantt-view-btn' + (ganttViewMode==='week'?' active':'') + '" onclick="switchGanttView(\'week\')">\u5468</button>';
-  html += '<button class="gantt-view-btn' + (ganttViewMode==='month'?' active':'') + '" onclick="switchGanttView(\'month\')">\u6708</button>';
+  html += '<div class="gantt-view-switcher" role="tablist">';
+  ['day','week','month'].forEach(function(m) {
+    var label = m === 'day' ? '天' : m === 'week' ? '周' : '月';
+    html += '<button class="gantt-view-btn' + (ganttViewMode===m?' active':'') + '" role="tab" aria-selected="' + (ganttViewMode===m) + '" onclick="switchGanttView(\'' + m + '\')">' + label + '</button>';
+  });
   html += '</div>';
   html += '</div>';
 
-  if (ganttViewMode === 'week') { html += buildGanttWeekView(); }
-  else { html += buildGanttMonthView(); }
+  // overdue top red bar (approved): incomplete + past-today
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var overdue = list.filter(function(t) {
+    if (!t.dueDate) return false;
+    if (t.status === '已完成' || t.status === '已取消' || t.status === '已删除') return false;
+    return new Date(t.dueDate).getTime() < todayStart;
+  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+
+  if (overdue.length) {
+    html += '<div class="gantt-overdue-bar" role="status">';
+    html += '<span class="gantt-overdue-ico">⚠</span>';
+    html += '<span class="gantt-overdue-count">' + overdue.length + ' 项已过期</span>';
+    html += '<span class="gantt-overdue-hint">点条目查看</span>';
+    html += '</div>';
+    html += '<div class="gantt-overdue-list">';
+    overdue.forEach(function(t) {
+      var d = new Date(t.dueDate);
+      var when = (d.getMonth()+1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      html += '<div class="gantt-overdue-item" onclick="openTodoDetail(\'' + t.id + '\')">';
+      html += '<span class="gantt-overdue-dot"></span>';
+      html += '<span class="gantt-overdue-title">' + esc(t.title) + '</span>';
+      html += '<span class="gantt-overdue-when">' + when + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += ganttGridHtml(list, info);
+
+  // no-date footer (collapsible)
+  var noDate = list.filter(function(t) {
+    return !t.dueDate && t.status !== '已完成' && t.status !== '已取消' && t.status !== '已删除';
+  });
+  if (noDate.length) {
+    html += '<div class="gantt-nodate">';
+    html += '<button class="gantt-nodate-toggle" onclick="toggleGanttNoDate()" aria-expanded="' + ganttNoDateOpen + '">';
+    html += '<span class="gantt-nodate-caret">' + (ganttNoDateOpen ? '▾' : '▸') + '</span>';
+    html += '<span>无日期</span><span class="gantt-nodate-n">' + noDate.length + '</span>';
+    html += '</button>';
+    if (ganttNoDateOpen) {
+      html += '<div class="gantt-nodate-list">';
+      noDate.forEach(function(t) {
+        var pri = t.priority === '高' ? '高' : t.priority === '低' ? '低' : '中';
+        html += '<div class="gantt-nodate-item" onclick="openTodoDetail(\'' + t.id + '\')">';
+        html += '<span class="gantt-pri-dot pri-' + pri + '"></span>';
+        html += '<span class="gantt-nodate-title">' + esc(t.title) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
 
   html += '</div>';
   return html;
 }
 
-function getGanttWeekStart() {
+function ganttRangeInfo() {
   var now = new Date();
+  var mode = ganttViewMode || 'week';
+  if (mode === 'day') {
+    var d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d0.setDate(d0.getDate() + ganttDayOffset);
+    var end = new Date(d0); end.setDate(end.getDate() + 1);
+    var wd = '日一二三四五六'[d0.getDay()];
+    return {
+      mode: 'day', start: d0, end: end, days: 1, cols: 24,
+      label: d0.getFullYear() + '年' + (d0.getMonth()+1) + '月' + d0.getDate() + '日 周' + wd
+    };
+  }
+  if (mode === 'month') {
+    var n = new Date(now.getFullYear(), now.getMonth(), 1);
+    n.setMonth(n.getMonth() + ganttMonthOffset);
+    var y = n.getFullYear(), mo = n.getMonth();
+    var dim = new Date(y, mo + 1, 0).getDate();
+    var mend = new Date(y, mo + 1, 1);
+    return {
+      mode: 'month', start: n, end: mend, days: dim, cols: dim, year: y, month: mo,
+      label: y + '年' + (mo + 1) + '月'
+    };
+  }
+  // week (Monday-based)
   var day = now.getDay();
   var diff = day === 0 ? 6 : day - 1;
-  var monday = new Date(now);
-  monday.setDate(now.getDate() - diff + ganttWeekOffset * 7);
-  monday.setHours(0,0,0,0);
-  return monday;
+  var mon = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  mon.setDate(mon.getDate() - diff + ganttWeekOffset * 7);
+  var wend = new Date(mon); wend.setDate(wend.getDate() + 7);
+  var last = new Date(wend); last.setDate(last.getDate() - 1);
+  return {
+    mode: 'week', start: mon, end: wend, days: 7, cols: 7,
+    label: mon.getFullYear() + '年 ' + (mon.getMonth()+1) + '/' + mon.getDate() + ' – ' + (last.getMonth()+1) + '/' + last.getDate()
+  };
+}
+
+function ganttDateAt(info, i) {
+  var d = new Date(info.start);
+  d.setDate(d.getDate() + i);
+  return d;
+}
+
+function ganttBarColor(t, isOverdue) {
+  if (isOverdue) return 'var(--red)';
+  if (t.priority === '高') return '#ef4444';
+  if (t.priority === '低') return '#9ca3af';
+  return '#f59e0b';
+}
+
+function ganttIsDone(t) {
+  return t.status === '已完成' || t.status === '已取消';
+}
+
+function ganttInScope(t, info) {
+  if (!t.dueDate) return false;
+  var ms = new Date(t.dueDate).getTime();
+  return ms >= info.start.getTime() && ms < info.end.getTime();
+}
+
+function ganttGridHtml(list, info) {
+  var now = new Date();
+  var todayStr = localDateStr(now);
+  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var n = info.cols || info.days; // day mode: 24 hour columns; week/month: day columns
+  var mode = info.mode;
+
+  var inRange = list.filter(function(t) { return ganttInScope(t, info); })
+    .sort(function(a, b) { return new Date(a.dueDate) - new Date(b.dueDate); });
+
+  var html = '<div class="gantt-container mode-' + mode + '">';
+  html += '<div class="gantt-scroll">';
+
+  // header
+  html += '<div class="gantt-header">';
+  html += '<div class="gantt-label-header">待办</div>';
+  for (var i = 0; i < n; i++) {
+    var d = mode === 'day' ? new Date(info.start) : ganttDateAt(info, i);
+    var dateStr = localDateStr(d);
+    var isToday = dateStr === todayStr;
+    var dow = d.getDay();
+    var isWeekend = dow === 0 || dow === 6;
+    var hourCls = (mode === 'day' && isToday && i === now.getHours()) ? ' gantt-today-col' : '';
+    html += '<div class="gantt-day' + (isToday && mode !== 'day' ? ' today gantt-today-col' : '') + (mode === 'day' ? hourCls : '') + (isWeekend && mode !== 'day' ? ' weekend' : '') + '">';
+    if (mode === 'day') {
+      html += '<div class="gantt-day-name">' + (i < 10 ? '0' : '') + i + '时</div>';
+    } else if (mode === 'month') {
+      html += '<div class="gantt-day-name">' + '日一二三四五六'[dow] + '</div>';
+      html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
+    } else {
+      html += '<div class="gantt-day-name">' + '一二三四五六日'[(dow + 6) % 7] + '</div>';
+      html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // now line: only when range contains today
+  var nowFrac = null;
+  var dayFrac = (now.getHours() + now.getMinutes() / 60) / 24;
+  if (mode === 'day' && localDateStr(now) === localDateStr(info.start)) {
+    // 24 hour columns: frac across full track = (h + m/60) / 24
+    nowFrac = dayFrac;
+  } else if (mode === 'week') {
+    var dayIdx = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - info.start) / 86400000);
+    if (dayIdx >= 0 && dayIdx < n) nowFrac = (dayIdx + dayFrac) / n;
+  }
+  // month: no vertical now-line (too dense); today cell already highlighted
+
+  if (nowFrac != null) {
+    html += '<div class="gantt-now-line" style="--gantt-now-frac:' + nowFrac.toFixed(4) + '"></div>';
+  }
+
+  if (inRange.length === 0) {
+    html += '<div class="gantt-empty">该时段无待办</div>';
+  }
+
+  inRange.forEach(function(t) {
+    html += ganttRowHtml(t, info, { todayStr: todayStr, todayStart: todayStart, now: now });
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+function ganttRowHtml(t, info, ctx) {
+  var n = info.cols || info.days;
+  var mode = info.mode;
+  var due = t.dueDate ? new Date(t.dueDate) : null;
+  var isDone = ganttIsDone(t);
+  var isOverdue = !isDone && due && due.getTime() < ctx.todayStart;
+  var priColor = ganttBarColor(t, isOverdue);
+  var subs = [];
+  try { subs = JSON.parse(t.subtasks || '[]'); } catch (e) {}
+  var hasSubs = subs.length > 0;
+  var title = t.title || '';
+  var short = title.length > 14 ? title.slice(0, 14) + '…' : title;
+
+  var html = '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + (isOverdue ? ' gantt-row-overdue' : '') + '">';
+  html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
+
+  // sticky label + quick complete
+  html += '<div class="gantt-label">';
+  if (hasSubs) {
+    html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')" title="展开子任务">' + (ganttExpanded[t.id] ? '▾' : '▸') + '</span>';
+  }
+  html += '<button class="gantt-check' + (isDone ? ' on' : '') + '" title="切换状态" onclick="event.stopPropagation();cycleTodoStatus(\'' + t.id + '\')">' + (isDone ? '✓' : '') + '</button>';
+  html += '<span class="gantt-label-text" title="' + escAttr(title) + '">' + esc(short) + '</span>';
+  html += '</div>';
+
+  // cells: day → 24 hour columns; week/month → day columns
+  var dayDateStr = mode === 'day' ? localDateStr(info.start) : null;
+  for (var i = 0; i < n; i++) {
+    var d, dateStr, isTodayCol, cellCls;
+    if (mode === 'day') {
+      dateStr = dayDateStr;
+      isTodayCol = dateStr === ctx.todayStr && i === ctx.now.getHours();
+      cellCls = 'gantt-cell' + (isTodayCol ? ' gantt-today-col' : '');
+    } else {
+      d = ganttDateAt(info, i);
+      dateStr = localDateStr(d);
+      isTodayCol = dateStr === ctx.todayStr;
+      cellCls = 'gantt-cell' + (isTodayCol ? ' gantt-today-col' : '');
+    }
+    html += '<div class="' + cellCls + '">';
+
+    var showBar = false;
+    if (due) {
+      if (mode === 'day') {
+        showBar = localDateStr(due) === dayDateStr && due.getHours() === i;
+      } else {
+        showBar = localDateStr(due) === dateStr;
+      }
+    }
+
+    if (showBar) {
+      var barStyle = 'background:' + priColor + ';';
+      var timeTxt = '';
+      if (mode === 'day' || mode === 'week') {
+        timeTxt = String(due.getHours()).padStart(2, '0') + ':' + String(due.getMinutes()).padStart(2, '0');
+      } else if (due.getHours() > 0 || due.getMinutes() > 0) {
+        timeTxt = String(due.getHours()).padStart(2, '0') + ':' + String(due.getMinutes()).padStart(2, '0');
+      }
+      if (mode === 'day') {
+        // bar sits inside its hour column; offset by minutes within the hour
+        var minFrac = due.getMinutes() / 60;
+        var remain = 1 - minFrac;
+        barStyle += 'position:absolute;left:' + (minFrac * 100) + '%;width:' + Math.max(14, remain * 96) + '%;top:50%;transform:translateY(-50%);';
+      } else if (mode === 'week') {
+        var hourFrac = (due.getHours() + due.getMinutes() / 60) / 24;
+        barStyle += 'position:absolute;left:' + (hourFrac * 100) + '%;width:' + Math.max(18, (1 - hourFrac) * 100 * 0.92) + '%;top:50%;transform:translateY(-50%);';
+      }
+      html += '<div class="gantt-bar' + (isDone ? ' done' : '') + (isOverdue ? ' overdue' : '') + '" style="' + barStyle + '">';
+      if (timeTxt && !isDone) html += '<span class="gantt-bar-time">' + timeTxt + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>'; // row
+
+  // subtask rows
+  if (hasSubs && ganttExpanded[t.id]) {
+    subs.forEach(function(sub, si) {
+      var subDone = !!sub.done;
+      var subPri = sub.priority || '中';
+      var subColor = subPri === '高' ? '#ef4444' : subPri === '低' ? '#9ca3af' : '#f59e0b';
+      var subDue = sub.dueDate ? new Date(sub.dueDate) : (due || null);
+      html += '<div class="gantt-sub-row">';
+      html += '<div class="gantt-label gantt-sub-label">';
+      html += '<span class="gantt-sub-check">' + (subDone ? '☑' : '☐') + '</span>';
+      html += '<span class="gantt-label-text" style="' + (subDone ? 'text-decoration:line-through;opacity:.6' : '') + '">' + esc((sub.text || '').slice(0, 12)) + '</span>';
+      html += '</div>';
+      for (var i = 0; i < n; i++) {
+        var dateStr, isTodayCol;
+        if (mode === 'day') {
+          dateStr = dayDateStr;
+          isTodayCol = dateStr === ctx.todayStr && i === ctx.now.getHours();
+        } else {
+          dateStr = localDateStr(ganttDateAt(info, i));
+          isTodayCol = dateStr === ctx.todayStr;
+        }
+        html += '<div class="gantt-cell gantt-sub-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
+        var mark = false;
+        if (subDue) {
+          if (mode === 'day') {
+            mark = localDateStr(subDue) === dayDateStr && subDue.getHours() === i;
+          } else {
+            mark = localDateStr(subDue) === dateStr;
+          }
+        }
+        if (mark) {
+          html += '<div class="gantt-sub-bar" style="background:' + subColor + ';opacity:' + (subDone ? '.3' : '.7') + '"></div>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+  }
+
+  html += '</div>'; // wrap
+  return html;
+}
+
+function getGanttWeekStart() {
+  return ganttRangeInfo().start; // kept for any external callers
 }
 
 function ganttNav(dir) {
   if (dir === 0) {
     ganttWeekOffset = 0;
-    todoCalYear = null; todoCalMonth = null;
-  } else if (ganttViewMode === 'week') {
-    ganttWeekOffset += dir;
+    ganttDayOffset = 0;
+    ganttMonthOffset = 0;
+  } else if (ganttViewMode === 'day') {
+    ganttDayOffset += dir;
+  } else if (ganttViewMode === 'month') {
+    ganttMonthOffset += dir;
   } else {
-    if (!todoCalYear) { var n = new Date(); todoCalYear = n.getFullYear(); todoCalMonth = n.getMonth(); }
-    todoCalMonth += dir;
-    if (todoCalMonth > 11) { todoCalMonth = 0; todoCalYear++; }
-    if (todoCalMonth < 0) { todoCalMonth = 11; todoCalYear--; }
+    ganttWeekOffset += dir;
   }
   renderTodo();
 }
 
 function switchGanttView(mode) {
-  ganttViewMode = mode;
+  ganttViewMode = mode || 'week';
+  try { localStorage.setItem('ganttViewMode', ganttViewMode); } catch (e) {}
   renderTodo();
 }
 
@@ -397,209 +632,15 @@ function toggleGanttExpand(id) {
   renderTodo();
 }
 
-function buildGanttWeekView() {
-  var weekStart = getGanttWeekStart();
-  var today = new Date();
-  var todayStr = localDateStr(today);
-  var dayNames = ['\u4e00','\u4e8c','\u4e09','\u56db','\u4e94','\u516d','\u65e5'];
-  var weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  
-  var weekTodos = todoList.filter(function(t) {
-    if (!t.dueDate) return false;
-    var d = new Date(t.dueDate);
-    return d >= weekStart && d < weekEnd;
-  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
-  
-  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
-  var html = '<div class="gantt-container">';
-  html += '<div class="gantt-scroll">';
-  
-  html += '<div class="gantt-header">';
-  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
-  for (var i = 0; i < 7; i++) {
-    var d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    var dateStr = localDateStr(d);
-    var isToday = dateStr === todayStr;
-    var isWeekend = i >= 5;
-    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">';
-    html += '<div class="gantt-day-name">' + dayNames[i] + '</div>';
-    html += '<div class="gantt-day-num">' + d.getDate() + '</div>';
-    html += '</div>';
-  }
-  // Now line position
-  var nowDate = new Date();
-  var nowDayIdx = (nowDate.getDay() === 0 ? 6 : nowDate.getDay() - 1);
-  var nowHourPct = (nowDate.getHours() + nowDate.getMinutes()/60) / 24 * 100;
-  var nowLeftPct = (nowDayIdx / 7 * 100) + (nowHourPct / 7);
-  
-  html += '</div>';
-  html += '<div class="gantt-now-line" style="left:calc(80px + ' + nowLeftPct + '% * (1 - 80px/100%))"><div class="gantt-now-dot"></div></div>';
-  
-  var allTodos = weekTodos.concat(noDueTodos);
-  if (allTodos.length === 0) {
-    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u5468\u65e0\u5f85\u529e</div>';
-  }
-  
-  allTodos.forEach(function(t) {
-    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
-    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
-    var dueHour = dueDate ? dueDate.getHours() : -1;
-    var dueMin = dueDate ? dueDate.getMinutes() : 0;
-    var subs = [];
-    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
-    var hasSubs = subs.length > 0;
-    
-    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
-    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
-    html += '<div class="gantt-label">';
-    if (hasSubs) {
-      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
-    }
-    html += '<span class="gantt-label-text" style="' + (isDone ? 'text-decoration:line-through;opacity:.5' : '') + '">' + esc(t.title.slice(0,12)) + (t.title.length>12?'..':'') + '</span>';
-    html += '</div>';
-    
-    for (var i = 0; i < 7; i++) {
-      var d = new Date(weekStart); d.setDate(d.getDate() + i);
-      var dateStr = localDateStr(d);
-      var isDueDay = dueDate && localDateStr(new Date(t.dueDate)) === todoCalSelected;
-      var isTodayCol = dateStr === todayStr;
-      html += '<div class="gantt-cell' + (isTodayCol ? ' gantt-today-col' : '') + '">';
-      if (isDueDay) {
-        var barStyle = 'background:' + priColor + ';';
-        if (dueHour > 0) {
-          var leftPct = Math.round(dueHour / 24 * 100);
-          var widthPct = Math.max(8, Math.round((24 - dueHour) / 24 * 50));
-          barStyle += 'margin-left:' + leftPct + '%;width:' + widthPct + '%;';
-        }
-        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="' + barStyle + '">';
-        if (dueHour > 0) {
-          html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':' + String(dueMin).padStart(2,'0') + '</span>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    
-    if (hasSubs && ganttExpanded[t.id]) {
-      subs.forEach(function(sub) {
-        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-        html += '<div class="gantt-sub-row">';
-        html += '<div class="gantt-label gantt-sub-label">';
-        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
-        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
-        html += '</div>';
-        for (var i = 0; i < 7; i++) {
-          var d2 = new Date(weekStart); d2.setDate(d2.getDate() + i);
-          html += '<div class="gantt-sub-cell gantt-cell">';
-          if (dueDate && localDateStr(dueDate) === localDateStr(d2)) {
-            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
-          }
-          html += '</div>';
-        }
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-  });
-  
-  html += '</div></div>';
-  return html;
+function toggleGanttNoDate() {
+  ganttNoDateOpen = !ganttNoDateOpen;
+  renderTodo();
 }
 
-function buildGanttMonthView() {
-  if (!todoCalYear) { var now = new Date(); todoCalYear = now.getFullYear(); todoCalMonth = now.getMonth(); }
-  var year = todoCalYear, month = todoCalMonth;
-  var daysInMonth = new Date(year, month+1, 0).getDate();
-  var today = localDateStr(new Date());
-  
-  var monthTodos = todoList.filter(function(t) {
-    if (!t.dueDate) return false;
-    var d = new Date(t.dueDate);
-    return d.getFullYear() === year && d.getMonth() === month;
-  }).sort(function(a,b) { return new Date(a.dueDate) - new Date(b.dueDate); });
-  
-  var noDueTodos = todoList.filter(function(t) { return !t.dueDate && t.status !== '\u5df2\u5b8c\u6210' && t.status !== '\u5df2\u53d6\u6d88'; });
-  var allTodos = monthTodos.concat(noDueTodos);
-  
-  var html = '<div class="gantt-container">';
-  html += '<div class="gantt-scroll">';
-  
-  html += '<div class="gantt-header">';
-  html += '<div class="gantt-label-header">\u5f85\u529e</div>';
-  for (var d = 1; d <= daysInMonth; d++) {
-    var dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    var isToday = dateStr === today;
-    var dow = new Date(year, month, d).getDay();
-    var isWeekend = dow === 0 || dow === 6;
-    html += '<div class="gantt-day' + (isToday ? ' today gantt-today-col' : '') + (isWeekend ? ' weekend' : '') + '">' + d + '</div>';
-  }
-  html += '</div>';
-  
-  if (allTodos.length === 0) {
-    html += '<div style="text-align:center;padding:40px;color:var(--muted)">\u672c\u6708\u65e0\u5f85\u529e</div>';
-    html += '</div></div>';
-    return html;
-  }
-  
-  allTodos.forEach(function(t) {
-    var dueDate = t.dueDate ? new Date(t.dueDate) : null;
-    var dueDay = dueDate ? dueDate.getDate() : -1;
-    var dueHour = dueDate ? dueDate.getHours() : -1;
-    var priColor = t.priority === '\u9ad8' ? '#ef4444' : t.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-    var isDone = t.status === '\u5df2\u5b8c\u6210' || t.status === '\u5df2\u53d6\u6d88';
-    var subs = [];
-    try { subs = JSON.parse(t.subtasks || '[]'); } catch(e) {}
-    var hasSubs = subs.length > 0;
-    
-    html += '<div class="gantt-row-wrap' + (isDone ? ' gantt-row-done' : '') + '">';
-    html += '<div class="gantt-row" onclick="openTodoDetail(\'' + t.id + '\')">';
-    html += '<div class="gantt-label">';
-    if (hasSubs) {
-      html += '<span class="gantt-expand" onclick="event.stopPropagation();toggleGanttExpand(\'' + t.id + '\')">' + (ganttExpanded[t.id] ? '\u25bc' : '\u25b6') + '</span>';
-    }
-    html += '<span class="gantt-label-text">' + esc(t.title.slice(0,10)) + (t.title.length>10?'..':'') + '</span>';
-    html += '</div>';
-    for (var d = 1; d <= daysInMonth; d++) {
-      var isDue = d === dueDay;
-      html += '<div class="gantt-cell' + (isDue ? ' gantt-due' : '') + '">';
-      if (isDue) {
-        html += '<div class="gantt-bar' + (isDone ? ' done' : '') + '" style="background:' + priColor + '">';
-        if (dueHour > 0) html += '<span class="gantt-bar-time">' + String(dueHour).padStart(2,'0') + ':00</span>';
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    
-    if (hasSubs && ganttExpanded[t.id]) {
-      subs.forEach(function(sub) {
-        var subColor = sub.priority === '\u9ad8' ? '#ef4444' : sub.priority === '\u4f4e' ? '#9ca3af' : '#f59e0b';
-        html += '<div class="gantt-sub-row">';
-        html += '<div class="gantt-label gantt-sub-label">';
-        html += '<span class="gantt-sub-check">' + (sub.done ? '\u2611' : '\u2610') + '</span> ';
-        html += '<span style="' + (sub.done ? 'text-decoration:line-through;opacity:.6' : '') + ';font-size:11px">' + esc((sub.text||'').slice(0,10)) + '</span>';
-        html += '</div>';
-        for (var d = 1; d <= daysInMonth; d++) {
-          html += '<div class="gantt-sub-cell gantt-cell">';
-          if (d === dueDay) {
-            html += '<div style="width:60%;height:10px;border-radius:3px;background:' + subColor + ';opacity:' + (sub.done ? '.3' : '.6') + '"></div>';
-          }
-          html += '</div>';
-        }
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-  });
-  
-  html += '</div></div>';
-  return html;
-}
-
+try {
+  var _gm = localStorage.getItem('ganttViewMode');
+  if (_gm === 'day' || _gm === 'week' || _gm === 'month') ganttViewMode = _gm;
+} catch (e) {}
 
 function buildCalendarHtml() {
   
@@ -719,6 +760,11 @@ function switchTodoFilter(f) { todoFilter = f; renderTodo(); }
 
 var editingTodoId = null;
 var todoSubtaskRows = [];
+// 必须声明：saveTodo / renderTagChips / renderReminderUI / NLP 都会读它们。
+// 此前只「用」不「声明」，iOS Safari 直接 ReferenceError: Can't find variable: todoTags
+var todoTags = [];
+var todoReminders = [];
+var todoImage = '';
 
 // Populate link dropdown based on selected link type
 function updateLinkOptions() {
@@ -741,29 +787,64 @@ function updateLinkOptions() {
 function openTodoModal(id) {
   try {
     console.log("openTodoModal called, id=" + id);
-    editingTodoId = id || null;
     var overlay = document.getElementById("todoModalOverlay");
     if (!overlay) { console.log("ERROR: todoModalOverlay not found"); return; }
     var t = null;
     if (id) {
       t = todoList.find(function(x){ return x.id === id; });
-      console.log("Found todo: " + (t ? "YES, title=" + t.title + ", subtasks=" + (t.subtasks||"").substring(0,100) : "NOT FOUND, todoList.length=" + todoList.length));
+      // \u4e50\u89c2\u63d2\u5165\u540e DOM \u53ef\u80fd\u4ecd\u662f tmp id\u3001\u5185\u5b58\u5df2\u662f\u771f\u5b9e id\uff1a\u6309 title \u56de\u9000\u4e00\u6b21
+      if (!t && String(id).indexOf('tmp') === 0) {
+        var _hint = window._pjPendingTodoTitle || "";
+        if (_hint) t = todoList.find(function(x){ return x.title === _hint; });
+      }
+      if (!t) {
+        toast('\u8fd9\u6761\u5f85\u529e\u8fd8\u5728\u540c\u6b65\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5');
+        return;
+      }
+      // \u56de\u9000\u547d\u4e2d\u540e\u4e5f\u8981\u7528\u771f\u5b9e id\uff0c\u5426\u5219\u4fdd\u5b58\u4f1a\u6253\u5230\u4e0d\u5b58\u5728\u7684 tmp \u8bb0\u5f55
+      id = t.id;
     }
-    document.getElementById("todoTitle").value = t ? t.title : "";
-    document.getElementById("todoDesc").value = t ? t.description : "";
-    document.getElementById("todoPriority").value = t ? t.priority : "\u4e2d";
-    document.getElementById("todoCategory").value = t ? t.category : "\u5176\u4ed6";
-    document.getElementById("todoRepeat").value = t ? t.repeat : "\u65e0";
-    document.getElementById("todoLinkType").value = t ? (t.linkType || "\u65e0") : "\u65e0";
+    editingTodoId = t ? t.id : null;
+    // \u4ece\u9879\u76ee\u9875\u9762\u5e26\u5165\u7684\u9879\u76ee / \u5206\u7c7b / \u6807\u9898\u8349\u7a3f\uff08\u4ec5\u65b0\u5efa\u65f6\uff09
+    var pendingPid = !id ? (window._pendingProjectId || "") : "";
+    var pendingCat = !id ? window._pendingTodoCategory : undefined;
+    var pendingTitle = !id ? (window._pendingTodoTitle || "") : "";
+    // \u6253\u5f00\u65f6\u91cd\u7f6e\u8349\u7a3f\u6001\uff0c\u907f\u514d\u4e0a\u4e00\u6b21\u7684 tags/reminders \u4e32\u5230\u8fd9\u4e00\u6761
+    todoTags = [];
+    todoReminders = [];
+    todoImage = '';
+    if (t) {
+      try {
+        var _tags0 = JSON.parse(t.tags || '[]');
+        if (Array.isArray(_tags0)) todoTags = _tags0.filter(function(x){ return x != null && String(x) !== ''; }).map(String);
+      } catch (e) {}
+      try {
+        var _rem0 = JSON.parse(t.reminders || '[]');
+        if (Array.isArray(_rem0)) todoReminders = _rem0.map(Number).filter(function(n){ return isFinite(n); });
+      } catch (e) {}
+      todoImage = t.image || '';
+    }
+    document.getElementById("todoTitle").value = (t && t.title) ? t.title : pendingTitle;
+    document.getElementById("todoDesc").value = (t && t.description) ? t.description : "";
+    document.getElementById("todoPriority").value = (t && t.priority) ? t.priority : "\u4e2d";
+    var defaultCat = t ? (t.category || "\u5176\u4ed6") : (pendingCat || (pendingPid ? (function(){ try { return localStorage.getItem("pj_todo_category") || "\u5de5\u4f5c"; } catch(e) { return "\u5de5\u4f5c"; } })() : "\u5176\u4ed6"));
+    document.getElementById("todoCategory").value = defaultCat;
+    document.getElementById("todoRepeat").value = (t && t.repeat) ? t.repeat : "\u65e0";
+    document.getElementById("todoLinkType").value = (t && t.linkType) ? t.linkType : "\u65e0";
     updateLinkOptions();
-    document.getElementById("todoLinkId").value = t ? (t.linkId || "") : "";
+    document.getElementById("todoLinkId").value = (t && t.linkId) ? t.linkId : "";
     var projSel = document.getElementById("todoProjectId");
     if (projSel && typeof getProjectOptions === "function") {
-      projSel.innerHTML = getProjectOptions();
-      // Read pending projectId from project page (Bug #3 fix)
-      var pid = t ? (t.projectId || "") : (window._pendingProjectId || "");
+      var pid = t ? (t.projectId || "") : pendingPid;
+      projSel.innerHTML = getProjectOptions(pid);
       projSel.value = pid;
       if (window._pendingProjectId) window._pendingProjectId = "";
+      var pendingPhase = (t && t.phaseIdx != null && t.phaseIdx !== "")
+        ? t.phaseIdx
+        : window._pendingPhaseIdx;
+      window._pendingPhaseIdx = null;
+      window._pendingTodoCategory = null;
+      rebuildTodoPhaseSelect(pid, pendingPhase);
     }
     if (t && t.dueDate) {
       var d = new Date(t.dueDate);
@@ -777,15 +858,30 @@ function openTodoModal(id) {
       try {
         var parsed = JSON.parse(t.subtasks);
         if (Array.isArray(parsed)) {
-          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d"}; });
+          todoSubtaskRows = parsed.map(function(s){ return {text:s.text||"",done:!!s.done,priority:s.priority||"\u4e2d",dueDate:s.dueDate||null}; });
           console.log("Loaded " + todoSubtaskRows.length + " subtask rows");
         }
       } catch(e) { console.log("Subtask parse error: " + e.message + ", raw=" + (t.subtasks||"").substring(0,100)); }
     }
     renderSubtaskRows();
+    // 标签/提醒区：有容器才画；没有也安全（iOS 表单目前只有 reminder 容器）
+    try { if (typeof renderTagChips === 'function') renderTagChips(); } catch (e) {}
+    try { if (typeof renderReminderUI === 'function') renderReminderUI(); } catch (e) {}
     var _subEl = document.getElementById("todoSubtaskList");
     console.log("AFTER renderSubtaskRows: el=" + !!_subEl + ", html=" + (_subEl ? _subEl.innerHTML.length : "null") + ", rows=" + todoSubtaskRows.length + ", firstText=" + ((todoSubtaskRows[0]||{}).text||"EMPTY"));
     overlay.classList.add("active");
+    // \u5e26\u8349\u7a3f\u6253\u5f00\u65f6\u628a\u5149\u6807\u653e\u5230\u6807\u9898\u672b\u5c3e\uff0c\u65b9\u4fbf\u7ee7\u7eed\u8865\u5168
+    if (!t && pendingTitle) {
+      setTimeout(function () {
+        try {
+          var el = document.getElementById("todoTitle");
+          if (el && overlay.classList.contains("active")) {
+            el.focus();
+            if (el.setSelectionRange) el.setSelectionRange(el.value.length, el.value.length);
+          }
+        } catch (e) {}
+      }, 80);
+    }
     console.log("openTodoModal: form populated, title=" + document.getElementById("todoTitle").value);
   } catch(e) {
     console.error("openTodoModal ERROR: " + e.message + " at " + e.stack);
@@ -796,6 +892,39 @@ function openTodoModal(id) {
 function closeTodoModal() {
   document.getElementById("todoModalOverlay").classList.remove("active");console.log("TODO_MODAL: closed");
   editingTodoId = null;
+  // \u8349\u7a3f\u5df2\u590d\u5236\u8fdb\u8868\u5355\uff1b\u5173\u95ed\u540e\u6e05\u6389\u6682\u5b58\uff0c\u907f\u514d\u4e0b\u6b21\u8bef\u5e26\u5165
+  window._pendingTodoTitle = "";
+  window._pendingQuickInputId = "";
+  todoTags = [];
+  todoReminders = [];
+  todoImage = '';
+}
+
+// 项目 → 步骤下拉：选了项目才有步骤；未使用的空槽不出现
+function rebuildTodoPhaseSelect(projectId, selectedPhaseIdx) {
+  var sel = document.getElementById('todoPhaseIdx');
+  if (!sel) return;
+  var pid = projectId !== undefined ? projectId : ((document.getElementById('todoProjectId') || {}).value || '');
+  if (!pid) {
+    sel.innerHTML = '<option value="">先选项目</option>';
+    sel.value = '';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  var p = (typeof projectList !== 'undefined' && Array.isArray(projectList))
+    ? projectList.find(function(x) { return x.id === pid; })
+    : null;
+  var html = '<option value="">无</option>';
+  if (p && p.phases) {
+    p.phases.forEach(function(ph) {
+      if (typeof pjIsUnusedPhase === 'function' && pjIsUnusedPhase(ph, ph.idx)) return;
+      html += '<option value="' + ph.idx + '">' + esc(typeof pjStepTitle === 'function' ? pjStepTitle(ph, ph.idx) : ('第' + (Number(ph.idx) + 1) + '步')) + '</option>';
+    });
+  }
+  sel.innerHTML = html;
+  if (selectedPhaseIdx === null || selectedPhaseIdx === undefined || selectedPhaseIdx === '') sel.value = '';
+  else sel.value = String(selectedPhaseIdx);
 }
 
 function renderSubtaskRows() {
@@ -887,29 +1016,55 @@ async function saveTodo() {
     var title = document.getElementById('todoTitle').value.trim();
     if (!title) return toast('请输入标题');
 
+    var _projId = (document.getElementById('todoProjectId')||{}).value || '';
+    var _phaseRaw = (document.getElementById('todoPhaseIdx')||{}).value;
+    var _phaseIdx = (!_projId || _phaseRaw === '' || _phaseRaw == null) ? null : Number(_phaseRaw);
+    if (_phaseIdx != null && (!Number.isInteger(_phaseIdx) || _phaseIdx < 0 || _phaseIdx > 5)) _phaseIdx = null;
+    // 先算 dueDate / reminders 局部变量：对象字面量里读 body.dueDate 会在 body 赋值完成前抛错（不选提醒时保存失败）
+    var dueDateIso = (function(){
+      var v = document.getElementById('todoDueDate').value;
+      if (!v) return null;
+      var d = new Date(v);
+      if (!isFinite(d.getTime())) {
+        d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
+      }
+      return isFinite(d.getTime()) ? d.toISOString() : null;
+    })();
+    var remsArr = Array.isArray(todoReminders) ? todoReminders.map(Number).filter(function(n){return isFinite(n)&&n>0;}) : [];
+    if (!remsArr.length && dueDateIso) {
+      var _dR = new Date(dueDateIso);
+      if (isFinite(_dR.getTime()) && (_dR.getHours() || _dR.getMinutes())) remsArr = [10, 20];
+    }
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
-      dueDate: (function(){ var v = document.getElementById('todoDueDate').value; return v ? new Date(v).toISOString() : null; })(),
+      dueDate: dueDateIso,
       priority: document.getElementById('todoPriority').value,
       category: document.getElementById('todoCategory').value,
       repeat: document.getElementById('todoRepeat').value,
       linkType: document.getElementById('todoLinkType').value,
-      projectId: (document.getElementById('todoProjectId')||{}).value || '',
+      projectId: _projId,
+      phaseIdx: _phaseIdx,
       linkId: document.getElementById('todoLinkId').value || '',
-      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s.text.trim(); })),
-      tags: JSON.stringify(todoTags),
-      reminders: JSON.stringify(todoReminders),
-      image: (typeof todoImage !== 'undefined' ? todoImage : '') || ''
+      subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s && s.text && s.text.trim(); })),
+      tags: JSON.stringify(Array.isArray(todoTags) ? todoTags : []),
+      reminders: JSON.stringify(remsArr),
+      image: (typeof todoImage !== 'undefined' && todoImage) || ''
     };
+    try {
+      localStorage.setItem('todo_last_category', body.category);
+      if (_projId) localStorage.setItem('pj_todo_category', body.category);
+    } catch (e) {}
 
     console.log('saveTodo: sending', JSON.stringify(body).substring(0,200));
     var r;
     var _editId = editingTodoId;
+    // 关弹窗会清掉 pending：先记下快速输入框，保存成功后若标题一致则清空，避免再点「添加」重复
+    var _quickInputId = window._pendingQuickInputId || '';
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; todoList[_ti].phaseIdx = body.phaseIdx; }
     }
     closeTodoModal();
     render();
@@ -917,7 +1072,7 @@ async function saveTodo() {
       body.id = _editId;
       r = await todoApi('PUT', body);
     } else {
-      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,subtasks:body.subtasks,completedAt:null};
+      var _tmpTodo = {id:'tmpT_'+Date.now(),title:body.title,description:body.description,dueDate:body.dueDate,priority:body.priority,category:body.category,status:'待办',repeat:body.repeat,linkType:body.linkType,linkId:body.linkId,projectId:body.projectId,phaseIdx:body.phaseIdx,subtasks:body.subtasks,completedAt:null};
       todoList.unshift(_tmpTodo);
       render();
       r = await todoApi('POST', body);
@@ -926,9 +1081,24 @@ async function saveTodo() {
     console.log('saveTodo: response', JSON.stringify(r));
 
     if (!r) { toast('保存失败: 服务器无响应'); return; }
-    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id}); render(); return; }
+    if (r.error) { toast('保存失败: ' + (r.error || '') + (r.detail ? ' ' + JSON.stringify(r.detail).substring(0,100) : '')); if(_tmpTodo)todoList=todoList.filter(function(t){return t.id!==_tmpTodo.id});else loadTodos().then(render).catch(function(){}); render(); return; }
     toast(_editId ? '已更新' : '已创建');
+    // 新建成功且快速框仍是同一标题 → 清掉，防止重复添加
+    if (!_editId && _quickInputId) {
+      try {
+        var _qi = document.getElementById(_quickInputId);
+        if (_qi && String(_qi.value || '').trim() === body.title) _qi.value = '';
+      } catch (e) {}
+    }
+    // 必须在拿到真实 id 后再重绘，否则列表 onclick 仍是 tmpT_*，点开编辑会空标题
+    try { window._pjPendingTodoTitle = body.title; } catch (e) {}
     render();
+    // 项目详情若还开着，立即刷新步骤标签/本步待办
+    try {
+      if (typeof refreshProjectUI === 'function' && typeof _pjDetailId !== 'undefined' && _pjDetailId) {
+        await refreshProjectUI(_pjDetailId);
+      }
+    } catch (e) {}
   } catch(e) {
     console.error('saveTodo error:', e);
     toast('保存失败: ' + e.message);
@@ -937,7 +1107,17 @@ async function saveTodo() {
 
 function openTodoDetail(id) {
   var t = todoList.find(function(x){ return x.id === id; });
-  if (!t) return;
+  if (!t) {
+    // tmp id 残留：用最近乐观插入的标题兜底
+    if (String(id).indexOf('tmp') === 0) {
+      var _hint = window._pjPendingTodoTitle || '';
+      if (_hint) t = todoList.find(function(x){ return x.title === _hint; });
+    }
+  }
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  // 后续按钮一律用解析后的真实 id，避免再点到 tmpPJ_*
+  id = t.id;
+  if (String(id).indexOf('tmp') !== 0) window._pjPendingTodoTitle = '';
   var overlay = document.getElementById('todoDetailOverlay');
   if (!overlay) return;
 
@@ -957,7 +1137,17 @@ function openTodoDetail(id) {
 
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
-  html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + t.category + '</span></div>';
+  html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + esc(t.category) + '</span></div>';
+  if (t.projectId && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
+    var _dp = projectList.find(function(x){ return x.id === t.projectId; });
+    if (_dp) {
+      var _phLabel = '';
+      if (t.phaseIdx != null && t.phaseIdx !== '' && _dp.phases && _dp.phases[Number(t.phaseIdx)]) {
+        _phLabel = ' · ' + (typeof pjStepTitle === 'function' ? pjStepTitle(_dp.phases[Number(t.phaseIdx)], Number(t.phaseIdx)) : ('第' + (Number(t.phaseIdx) + 1) + '步'));
+      }
+      html += '<div class="detail-row"><span class="detail-label">项目</span><span class="detail-value">📁 ' + esc(_dp.name) + esc(_phLabel) + '</span></div>';
+    }
+  }
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';
   if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
 
@@ -1075,39 +1265,54 @@ function closeTodoDetail() {
   document.getElementById('todoDetailOverlay').classList.remove('active');
 }
 
+// 待办在项目详情里被完成/删除/改状态时：render() 只重画列表页签，
+// 打开的 #projectDetailBody 不会动 → 步骤下卡片永远不更新。必须连详情一起刷。
+function syncTodoProjectUI() {
+  try { if (typeof render === 'function') render(); } catch (e) {}
+  try {
+    if (typeof _pjDetailId !== 'undefined' && _pjDetailId && typeof pjRerenderDetail === 'function') {
+      var dO = document.getElementById('projectDetailOverlay');
+      if (dO && dO.classList.contains('active')) pjRerenderDetail(_pjDetailId);
+    }
+  } catch (e) {}
+}
+
 function cycleTodoStatus(id) {
   var t = todoList.find(function(x){ return x.id === id; });
-  if (!t) return;
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  // 未拿到服务端 id 时禁止 PUT，避免用 tmp id 写库失败后把界面状态改乱
+  if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
   var oldStatus = t.status;
   var nextStatus = oldStatus === '待办' ? '进行中' : oldStatus === '进行中' ? '已完成' : '待办';
   var completedAt = nextStatus === '已完成' ? Date.now() : null;
   t.status = nextStatus;
   if (completedAt) t.completedAt = completedAt;
-  render();
+  syncTodoProjectUI();
   var detailOverlay = document.getElementById('todoDetailOverlay');
   if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
   (async function() {
     try {
       var r = await todoApi('PUT', { id: id, status: nextStatus, completedAt: completedAt });
-      if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; render(); return; }
-      if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){renderTodo();}); }
+      if (r && r.error) { toast('操作失败: ' + r.error); t.status = oldStatus; syncTodoProjectUI(); return; }
+      if (r.renewed) { toast('✅ 已完成，已自动创建下一期'); loadTodos().then(function(){ syncTodoProjectUI(); if (typeof renderTodo === 'function') renderTodo(); }); }
       else toast(nextStatus === '已完成' ? '✅ 已完成' : nextStatus === '进行中' ? '▶ 进行中' : '↩ 已恢复待办');
-      if (t.projectId) checkProjectAutoStatus(t.projectId);
       if (nextStatus === '已完成' || nextStatus === '已取消') cancelLocalNotification(t);
       else if (t.reminders) scheduleLocalNotification(t);
-    } catch(e) { t.status = oldStatus; render(); toast('操作失败: ' + e.message); }
+    } catch(e) { t.status = oldStatus; syncTodoProjectUI(); toast('操作失败: ' + e.message); }
   })();
 }
 
 async function deleteTodo(id) {
+  if (String(id).indexOf('tmp') === 0) { toast('保存完成后再删除'); return; }
   if (!confirm('确定删除？')) return;
   closeTodoDetail();
   var t = todoList.find(function(x){ return x.id === id; });
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
   var oldStatus = t ? t.status : null;
   if (t) { t.status = '已删除'; }
-  render();
+  syncTodoProjectUI();
   var r = await todoApi('DELETE', null, id);
-  if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; render(); return; }
+  if (r && r.error) { toast('删除失败: ' + r.error); if(t) t.status = oldStatus; syncTodoProjectUI(); return; }
   toast('已移入回收站');
 }
 async function toggleTodoSubtask(todoId, index) {
@@ -1128,7 +1333,7 @@ async function toggleTodoSubtask(todoId, index) {
       t.status = '进行中';
       t.completedAt = null;
     }
-    render();
+    syncTodoProjectUI();
     await todoApi('PUT', { id: todoId, subtasks: newSubs });
     if (allDone) {
       await todoApi('PUT', { id: todoId, status: '已完成', completedAt: t.completedAt });
@@ -1141,8 +1346,9 @@ async function toggleTodoSubtask(todoId, index) {
   } catch(e) {}
 }
 // Project auto-status check
+// 已按 PROJECT-PHASE-DESIGN 废除：Todo 完成度不再驱动项目状态（阶段说了算）
 function checkProjectAutoStatus(projectId) {
-  if (!projectId || typeof projectList === 'undefined') return;
+  return; // no-op
   var linked = todoList.filter(function(t){ return t.projectId === projectId; });
   if (linked.length === 0) return;
   var allDone = linked.every(function(t){ return t.status === '已完成'; });
@@ -1201,6 +1407,7 @@ function getAllTags() {
 function renderTagChips() {
   var el = document.getElementById('todoTagChips');
   if (!el) return;
+  if (!Array.isArray(todoTags)) todoTags = [];
   var html = '';
   todoTags.forEach(function(tag, i) {
     var c = stringHashColor(tag);
@@ -1244,8 +1451,9 @@ function showFullImage(src) {
 function renderReminderUI() {
   var el = document.getElementById('todoReminderChips');
   if (!el) return;
+  if (!Array.isArray(todoReminders)) todoReminders = [];
   var html = '';
-  var options = [{v:'10',l:'提前10分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
+  var options = [{v:'10',l:'提前10分钟'},{v:'20',l:'提前20分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
   todoReminders.forEach(function(r, i) {
     var opt = options.find(function(o){ return o.v === String(r); });
     html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:color-mix(in srgb,var(--pri) 12%,var(--card));color:var(--pri);margin:2px">' + (opt ? opt.l : r + '分钟') + '<span onclick="todoReminders.splice(' + i + ',1);renderReminderUI()" style="cursor:pointer;font-weight:700">×</span></span>';
@@ -1258,7 +1466,24 @@ function renderReminderUI() {
     });
     html += '</div>';
   }
+  // 空选不是必填：设了具体时间时默认提前 10/20 分钟（与服务端 notify-todos 一致）
+  html += '<div style="margin-top:6px;font-size:10px;line-height:1.4;color:var(--muted)">不选也可以保存 · 设了具体时间默认提前 10/20 分钟推送</div>';
   el.innerHTML = html;
+}
+
+/** 项目待办通知前缀/正文：与服务端 notify-todos 一致 */
+function todoNotifyStyle(todo) {
+  var isPj = !!(todo && todo.projectId);
+  var pjName = '';
+  if (isPj && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
+    var p = projectList.find(function(x){ return x.id === todo.projectId; });
+    if (p) pjName = p.name || '';
+  }
+  return {
+    isProject: isPj,
+    titlePrefix: isPj ? '📁 项目' : '⏰ 待办',
+    bodyPrefix: isPj && pjName ? ('📁 ' + pjName) : '',
+  };
 }
 
 function scheduleLocalNotification(todo) {
@@ -1266,17 +1491,24 @@ function scheduleLocalNotification(todo) {
   if (typeof Capacitor === 'undefined' || !Capacitor.Plugins || !Capacitor.Plugins.LocalNotifications) return;
   try {
     var reminders = JSON.parse(todo.reminders || '[]');
+    if (!Array.isArray(reminders) || !reminders.length) reminders = [10, 20];
+    reminders = reminders.map(Number).filter(function(n){ return isFinite(n) && n > 0; });
     var dueTime = new Date(todo.dueDate).getTime();
+    var style = todoNotifyStyle(todo);
     var ids = [];
     reminders.forEach(function(minutesBefore, i) {
       var fireTime = dueTime - minutesBefore * 60000;
       if (fireTime > Date.now()) {
         var notifId = parseInt(todo.id.replace(/\D/g,'').slice(-8)) * 10 + i;
         ids.push(notifId);
+        var when = minutesBefore >= 60 ? ('还有' + Math.round(minutesBefore/60) + '小时到截止') : ('还有' + minutesBefore + '分钟到截止');
+        var body = style.isProject
+          ? ((style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + todo.title + ' · ' + when)
+          : (todo.title + ' · ' + when);
         Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{
           id: notifId,
-          title: '\ud83d\udcc5 ' + todo.title,
-          body: minutesBefore >= 60 ? '\u8fd8有' + Math.round(minutesBefore/60) + '\u5c0f\u65f6\u5230\u622a\u6b62\u65e5\u671f' : '\u8fd8\u6709' + minutesBefore + '\u5206\u949f\u5230\u622a\u6b62\u65e5\u671f',
+          title: style.titlePrefix,
+          body: body,
           schedule: { at: new Date(fireTime) }
         }]});
       }
@@ -1415,25 +1647,44 @@ function checkTodoNotifications() {
   var now = Date.now();
   todoList.forEach(function(t) {
     if (t.status === '已完成' || t.status === '已取消' || t.status === '已删除') return;
+    var style = todoNotifyStyle(t);
     // Check overdue
     if (t.dueDate) {
       var due = new Date(t.dueDate).getTime();
       if (due < now && !t._notifiedOverdue) {
         t._notifiedOverdue = true;
-        showTodoNotification('⚠️ 待办已过期', t.title);
+        if (style.isProject) {
+          showTodoNotification('📁 项目待办已过期', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title);
+        } else {
+          showTodoNotification('⚠️ 待办已过期', t.title);
+        }
       }
     }
-    // Check reminders
-    if (t.reminders) {
+    // Check reminders — 分钟数组逐档各触发一次（如 [20,10] → 14:40 与 14:50）
+    if (t.dueDate) {
       try {
-        var rems = typeof t.reminders === 'string' ? JSON.parse(t.reminders) : t.reminders;
-        if (Array.isArray(rems)) {
-          rems.forEach(function(r) {
-            if (r.time && !r.notified) {
-              var rt = new Date(r.time).getTime();
-              if (Math.abs(rt - now) < 60000) {
-                r.notified = true;
-                showTodoNotification('🔔 待办提醒', t.title);
+        var rems = [];
+        if (t.reminders) {
+          var _r0 = typeof t.reminders === 'string' ? JSON.parse(t.reminders) : t.reminders;
+          if (Array.isArray(_r0)) rems = _r0.map(Number).filter(function(n){ return isFinite(n) && n > 0; });
+        }
+        if (!rems.length) {
+          var _dd = new Date(t.dueDate);
+          if (isFinite(_dd.getTime()) && (_dd.getHours() || _dd.getMinutes())) rems = [10, 20];
+        }
+        if (!Array.isArray(t._notifiedRems)) t._notifiedRems = [];
+        if (rems.length) {
+          var dueMs2 = new Date(t.dueDate).getTime();
+          rems.forEach(function(min) {
+            if (t._notifiedRems.indexOf(min) >= 0) return;
+            var fire = dueMs2 - min * 60000;
+            if (now >= fire && now < dueMs2 + 25 * 60000) {
+              t._notifiedRems.push(min);
+              var when = min >= 60 ? ('还有' + Math.round(min/60) + '小时') : ('还有' + min + '分钟');
+              if (style.isProject) {
+                showTodoNotification('📁 项目待办提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title + ' · ' + when);
+              } else {
+                showTodoNotification('🔔 待办提醒', t.title + ' · ' + when);
               }
             }
           });
@@ -1459,3 +1710,33 @@ function requestNotificationPermission() {
     }
   } catch(e) {}
 }
+
+// ===== iOS 待办弹层 helpers（v4.0.49）=====
+function syncTodoPriSeg(){
+  var s=document.getElementById('todoPriority');
+  var bs=document.querySelectorAll('#tsPriSeg button');
+  for(var i=0;i<bs.length;i++){
+    bs[i].classList.toggle('on', !!(s && bs[i].getAttribute('data-v')===s.value));
+  }
+}
+function setTodoPriority(v){
+  var s=document.getElementById('todoPriority');
+  if(s)s.value=v;
+  syncTodoPriSeg();
+}
+(function(){
+  var _open=openTodoModal;
+  openTodoModal=function(id){
+    _open.apply(this,arguments);
+    try{
+      var tt=document.getElementById('todoModalTitle');
+      if(tt)tt.textContent=id?'编辑待办':'新建待办';
+      setTimeout(function(){
+        syncTodoPriSeg();
+        try{renderReminderUI()}catch(e){}
+      },0);
+      var d=document.getElementById('todoDueDate');
+      if(d&&!d._tsBound){d._tsBound=1;d.addEventListener('change',function(){try{renderReminderUI()}catch(e){}});}
+    }catch(e){}
+  };
+})();

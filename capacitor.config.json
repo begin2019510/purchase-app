@@ -11,12 +11,12 @@
                                          "showSpinner":  false,
                                          "splashFullScreen":  true,
                                          "launchAutoHide":  true,
-                                         "backgroundColor":  "#f8fafc",
+                                         "backgroundColor":  "#f5f6fa",
                                          "splashImmersive":  true
                                      },
                     "StatusBar":  {
                                       "style":  "DARK",
-                                      "backgroundColor":  "#6366f1"
+                                      "backgroundColor":  "#f5f6fa"
                                   }
                 },
     "appName":  "个人管家",
