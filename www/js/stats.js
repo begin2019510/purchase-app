@@ -5,7 +5,7 @@ function barChart(entries, maxVal, colorFn) {
   return entries.map(([label, val]) => {
     const pct = max > 0 ? (val / max * 100) : 0;
     const color = colorFn ? colorFn(label) : 'var(--pri)';
-    return `<div class="chart-row"><span class="chart-label">${label}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
+    return `<div class="chart-row"><span class="chart-label">${esc(label)}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="chart-val">¥${val.toFixed(0)}</span></div>`;
   }).join('');
 }
 function donutChart(entries, size, label) {
@@ -20,7 +20,7 @@ function donutChart(entries, size, label) {
     if (v <= 0) return;
     const pct = v / total;
     const L = pct * C;
-    const color = CAT_COLORS[l] || '#94a3b8';
+    const color = catColor(l);
     segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${t}"
       stroke-dasharray="${L} ${C - L}" stroke-dashoffset="${-cum}"
       transform="rotate(-90 ${cx} ${cy})" class="donut-seg"/>`;
@@ -30,13 +30,13 @@ function donutChart(entries, size, label) {
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="${t}"/>
     ${segs}
     <text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="${size*0.12}" font-weight="800" fill="var(--text)">¥${total.toFixed(0)}</text>
-    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${label||'总计'}</text>
+    <text x="${cx}" y="${cy + 14}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(label||'总计')}</text>
   </svg></div>`;
 }
 function donutLegend(entries, total) {
   return `<div class="donut-legend">${entries.map(([l, v]) => {
     const pct = total ? (v / total * 100).toFixed(1) : 0;
-    return `<div class="dl-item"><span class="dl-dot" style="background:${CAT_COLORS[l]||'#94a3b8'}"></span><span class="dl-label">${l}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
+    return `<div class="dl-item"><span class="dl-dot" style="background:${catColor(l)}"></span><span class="dl-label">${esc(l)}</span><span class="dl-bar"><span class="dl-fill" style="width:${pct}%;background:${catColor(l)}"></span></span><span class="dl-val">¥${v.toFixed(0)}</span><span class="dl-pct">${pct}%</span></div>`;
   }).join('')}</div>`;
 }
 function miniCards(items) {
@@ -187,7 +187,7 @@ function animateNumber(el, target, duration) {
 }
 
 function renderStats() { console.log('renderStats START');
-  const thisMonth = getThisMonth();
+  const thisMonth = getViewMonth();
   const pool = getBudgetPool(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
@@ -209,18 +209,72 @@ function renderStats() { console.log('renderStats START');
     return true;
   }).reduce((s, e) => s + Number(e['金额'] || 0), 0);
 
-  // 分类/平台数据
+  // 分类/平台按「本月实际采购消耗」汇总：分期商品只计本月分期金额，与 hero 的 直接+分期 同口径
   const pCatMap = {};
-  monthItems.forEach(i => { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + v; } });
   const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
   const pPlatMap = {};
-  monthItems.forEach(i => { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + (i['单价'] || 0) * (i['数量'] || 1); });
+  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + v; } });
   const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const eCatMap = {};
   monthExpenses.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['金额'] || 0); });
   const eCatEntries = Object.entries(eCatMap).sort((a, b) => b[1] - a[1]);
 
   let html = '';
+  // 最新周报/月报各一张卡片（点击进入专属界面；数据由 fetchMyReport 缓存）
+  if(window._myReports===undefined){
+    window._myReports={weekly:null,monthly:null};
+    if(typeof fetchMyReport==='function'){fetchMyReport().then(function(){if(currentTab==='stats'){try{renderStats()}catch(e){}}});}
+  }
+  var _reps=[];
+  if(window._myReports){ if(window._myReports.weekly)_reps.push(window._myReports.weekly); if(window._myReports.monthly)_reps.push(window._myReports.monthly); }
+  if(!_reps.length&&window._myReport&&window._myReport.data)_reps.push(window._myReport); // 兼容旧缓存
+  if(!_reps.length){
+    html += '<div class="stats-section" style="margin-bottom:12px;opacity:.75">'
+      + '<div style="font-size:13px;font-weight:700">📊 周报 / 月报</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:6px">每段周结束及每月1日晚8点后生成，生成后此处可查看并自动弹窗</div></div>';
+  }
+  _reps.forEach(function(rep){
+    var _d=rep&&rep.data;
+    if(!_d)return;
+    var _period=_d.period==='monthly'?'monthly':'weekly';
+    var _dc=_d.deltaGood===true?'var(--green)':_d.deltaGood===false?'var(--red)':'var(--muted)';
+    html += '<div class="stats-section" style="margin-bottom:12px;cursor:pointer" data-period="'+_period+'" onclick="openReportModal(this.dataset.period)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center">'
+      + '<div style="font-size:13px;font-weight:700">📊 '+(_period==='weekly'?'周报':'月报')
+      + ' <span style="font-weight:400;font-size:11px;color:var(--muted);margin-left:4px">'+esc(_d.rangeText||'')+'</span></div>'
+      + '<span style="font-size:12px;color:var(--pri);font-weight:700">查看详情 ›</span></div>'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">'
+      + '<span class="a-num" style="font-size:26px;font-weight:900;letter-spacing:-.8px">¥'+Number(_d.total||0).toLocaleString('zh-CN')+'</span>'
+      + '<span style="font-size:13px;font-weight:700;color:'+_dc+'">较'+esc(_d.prevLabel||'')+' '+esc(_d.deltaText||'')+'</span>'
+      + '</div></div>';
+  });
+  const _isCur = thisMonth===getThisMonth();
+  html += '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">'
+    + '<div class="chip" onclick="shiftViewMonth(-1)" style="padding:6px 12px">‹</div>'
+    + '<div class="chip active" style="min-width:100px;text-align:center">'+monthLabel(thisMonth)+'</div>'
+    + '<div class="chip" onclick="shiftViewMonth(1)" style="padding:6px 12px'+(_isCur?';opacity:.35;pointer-events:none':'')+'">›</div>'
+    + '</div>';
+
+  // ===== 自定义日期区间小结 =====
+  (function () {
+    const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+    const first = thisMonth + '-01';
+    let s = (window._rangeFrom || first);
+    let e = (window._rangeTo || today);
+    if (s > today) s = first;
+    if (e > today) e = today;
+    if (s > e) { s = e; }
+    html += '<div class="stats-section" style="margin-bottom:12px">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:8px">📅 自定义区间小结</div>'
+      + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">'
+      + '<div class="form-group" style="flex:1;min-width:120px;margin:0"><label>从</label>'
+      + '<input type="date" id="rangeFrom" value="' + esc(s) + '" max="' + today + '"></div>'
+      + '<div class="form-group" style="flex:1;min-width:120px;margin:0"><label>到</label>'
+      + '<input type="date" id="rangeTo" value="' + esc(e) + '" max="' + today + '"></div>'
+      + '<button class="chip active" style="padding:11px 16px;border:none;cursor:pointer;font-weight:700" onclick="openRangeSummary()">生成小结</button>'
+      + '</div></div>';
+  })();
 
   // ===== 预算池瀑布流 =====
   if (pool.totalBudget > 0) {
@@ -283,28 +337,30 @@ function renderStats() { console.log('renderStats START');
     <div class="stats-hero-sub">${monthItems.length}件商品${pool.directPurchaseSpend > 0 ? ' · 直接 ¥' + pool.directPurchaseSpend.toFixed(0) : ''}${pool.installmentDeduction > 0 ? ' · 分期 ¥' + pool.installmentDeduction.toFixed(0) : ''}</div>
   </div>`;
 
-  // 分期概况
-  const installmentItems = monthItems.filter(i => (Number(i['分期期数']) || 0) > 1);
+  // 分期概况：列出「本月计入消耗」的分期（含更早购买、本月仍在还款的），与分类/hero 同口径
+  const installmentItems = items.filter(i => getItemMonthInstallmentAmount(i, thisMonth) > 0);
   if (installmentItems.length > 0) {
     const instTotalPrice = installmentItems.reduce((s, i) => s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1), 0);
-    const instMonthly = installmentItems.reduce((s, i) => {
-      var tp = Number(i['分期期数']) || 1;
-      return s + (Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp));
-    }, 0);
+    const instMonthAmt = installmentItems.reduce((s, i) => s + getItemMonthInstallmentAmount(i, thisMonth), 0);
     html += '<div class="stats-section" style="margin-bottom:12px"><div class="stats-section-title">📦 分期采购</div>';
     html += '<div style="display:flex;gap:12px;margin-bottom:10px">';
-    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">分期商品</div><div style="font-size:20px;font-weight:800;margin-top:4px">' + installmentItems.length + '件</div></div>';
-    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">总价</div><div style="font-size:20px;font-weight:800;margin-top:4px">¥' + instTotalPrice.toFixed(0) + '</div></div>';
-    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">每月还款</div><div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--pri)">¥' + instMonthly.toFixed(0) + '</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">本月还款商品</div><div style="font-size:20px;font-weight:800;margin-top:4px">' + installmentItems.length + '件</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">商品总价</div><div style="font-size:20px;font-weight:800;margin-top:4px">¥' + instTotalPrice.toFixed(0) + '</div></div>';
+    html += '<div style="flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px"><div style="font-size:11px;color:var(--muted)">本月分期</div><div style="font-size:20px;font-weight:800;margin-top:4px;color:var(--pri)">¥' + instMonthAmt.toFixed(0) + '</div></div>';
     html += '</div>';
     installmentItems.forEach(function(i) {
       var tp = Number(i['分期期数']) || 1;
       var pd = getEffectivePaid(i);
-      var ia = Number(i['分期金额']) || Math.round(((Number(i['单价']) || 0) * (Number(i['数量']) || 1)) / tp);
+      var ia = getItemInstallmentAmount(i);
+      var mo = getItemMonthInstallmentAmount(i, thisMonth);
+      var sm = getItemInstallmentStartMonth(i) || '';
+      var parts = sm.split('-').map(Number);
+      var tm = thisMonth.split('-').map(Number);
+      var k = (parts.length >= 2) ? ((tm[0] - parts[0]) * 12 + (tm[1] - parts[1]) + 1) : pd;
       var pct = tp > 0 ? (pd / tp * 100) : 0;
       html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)">';
-      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + (i['商品名称'] || '未命名') + '</div>';
-      html += '<div style="font-size:11px;color:var(--muted)">' + pd + '/' + tp + '期 · ¥' + ia + '/期</div></div>';
+      html += '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + esc(i['商品名称'] || '未命名') + '</div>';
+      html += '<div style="font-size:11px;color:var(--muted)">第' + k + '/' + tp + '期 · 本月 ¥' + mo.toFixed(2) + ' · 期供 ¥' + ia + '</div></div>';
       html += '<div style="width:80px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:var(--pri);border-radius:3px"></div></div>';
       html += '</div>';
     });
@@ -319,7 +375,7 @@ function renderStats() { console.log('renderStats START');
       const maxVal = pCatEntries[0][1];
       pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" onclick="openStatsCatDetail('${escAttr(l)}','${thisMonth}')" onkeydown="if(event.key==='Enter')openStatsCatDetail('${escAttr(l)}','${thisMonth}')"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
       });
       html += `</div>`;
     }
@@ -328,7 +384,7 @@ function renderStats() { console.log('renderStats START');
       const maxVal = pPlatEntries[0][1];
       pPlatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:var(--pri)"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -382,7 +438,7 @@ function renderStats() { console.log('renderStats START');
       const maxCat = eCatEntries[0][1];
       eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div class="stats-bar-row"><span class="stats-bar-label">${l}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${CAT_COLORS[l]||'#94a3b8'}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span></div>`;
+        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" onclick="openStatsCatDetail('${escAttr(l)}','${thisMonth}')" onkeydown="if(event.key==='Enter')openStatsCatDetail('${escAttr(l)}','${thisMonth}')"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
       });
       html += `</div>`;
     }
@@ -421,6 +477,324 @@ function switchStatsTab(tab) {
 }
 
 
+// 分类下钻：本月该门类「花了哪些、怎么花的」——采购（直接/分期第N期）+ 记账逐笔
+function openStatsCatDetail(cat, monthStr) {
+  try {
+    cat = String(cat || '其他');
+    const ym = String(monthStr || getViewMonth() || getThisMonth());
+    const rows = [];
+    let buySum = 0, expSum = 0;
+    (items || []).forEach(function(i) {
+      const v = getItemMonthPurchaseAmount(i, ym);
+      if (!(v > 0)) return;
+      if ((i['分类'] || '其他') !== cat) return;
+      buySum += v;
+      const tp = Number(i['分期期数']) || 0;
+      let how, howSub;
+      if (tp > 1) {
+        const sm = getItemInstallmentStartMonth(i) || '';
+        const parts = sm.split('-').map(Number);
+        const tm = ym.split('-').map(Number);
+        const k = (parts.length >= 2) ? ((tm[0] - parts[0]) * 12 + (tm[1] - parts[1]) + 1) : 1;
+        const ia = getItemInstallmentAmount(i);
+        how = '分期 · 第' + k + '/' + tp + '期';
+        howSub = '期供 ¥' + ia.toFixed(2) + ' · 全价 ¥' + ((Number(i['单价']) || 0) * (Number(i['数量']) || 1)).toFixed(2) + (i['平台'] ? ' · ' + i['平台'] : '');
+      } else {
+        how = '直接购买';
+        howSub = '¥' + (Number(i['单价']) || 0).toFixed(2) + ' × ' + (Number(i['数量']) || 1) + (i['平台'] ? ' · ' + i['平台'] : '') + (i['状态'] ? ' · ' + i['状态'] : '');
+      }
+      rows.push({ kind: 'buy', name: i['商品名称'] || '未命名', amount: v, how: how, howSub: howSub, when: (function (d) {
+        if (d == null) return '';
+        const dt = new Date(typeof d === 'number' ? d + 8 * 3600000 : d);
+        if (isNaN(dt.getTime())) return String(d).slice(0, 10);
+        return (dt.getUTCMonth() + 1) + '月' + dt.getUTCDate() + '日';
+      })(i['日期']) });
+    });
+    (expenses || []).forEach(function(e) {
+      if ((e['类型'] || '支出') !== '支出') return;
+      if ((e['分类'] || '其他') !== cat) return;
+      let dstr = '';
+      try { dstr = getMonth(e['日期']); } catch (x) { dstr = ''; }
+      if (dstr !== ym) return;
+      const note = String(e['备注'] || '');
+      if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) return;
+      const amt = Number(e['金额']) || 0;
+      if (!(amt > 0)) return;
+      expSum += amt;
+      const isFix = note.includes('[固定]');
+      const dd = (function () {
+        const s = e['日期'];
+        if (!s) return '';
+        try {
+          const dt = new Date(String(s).length > 10 ? s : (s + 'T12:00:00'));
+          if (isNaN(dt.getTime())) return String(s).slice(5, 10);
+          return (dt.getMonth() + 1) + '月' + dt.getDate() + '日';
+        } catch (x) { return ''; }
+      })();
+      rows.push({ kind: 'exp', name: note.replace(/\[固定\]/g, '').trim() || (cat + '支出'), amount: amt, how: isFix ? '固定支出' : '记账', howSub: (dd ? dd + ' · ' : '') + cat, when: dd });
+    });
+    rows.sort(function (a, b) { return b.amount - a.amount; });
+    const total = buySum + expSum;
+    const ymLabel = ym.slice(5).replace(/^0/, '') + '月';
+    let html = '';
+    html += '<div style="text-align:center;padding:14px 0 4px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px">' + ymLabel + ' · ' + esc(cat) + ' 明细</div>';
+    html += '<div class="report-hero-num" style="margin-top:8px;font-size:40px">¥' + total.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) + '</div>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-top:6px">采购 ¥' + buySum.toFixed(2) + ' · 记账 ¥' + expSum.toFixed(2) + ' · ' + rows.length + ' 笔</div>';
+    html += '</div>';
+    if (!rows.length) {
+      html += '<div style="text-align:center;color:var(--muted);padding:24px 0;font-size:13px">本月该门类没有计入消耗的流水</div>';
+    } else {
+      html += '<div style="background:var(--card);border-radius:14px;padding:4px 14px;box-shadow:var(--shadow-1);margin:8px 0 12px">';
+      rows.forEach(function(r) {
+        const badge = r.kind === 'buy'
+          ? (r.how.indexOf('分期') === 0 ? '<span class="a-badge a-badge-purple" style="margin-left:6px">分期</span>' : '<span class="a-badge a-badge-green" style="margin-left:6px">采购</span>')
+          : '<span class="a-badge a-badge-orange" style="margin-left:6px">记账</span>';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;word-break:break-all">' + esc(r.name) + badge + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(r.how) + '</div>';
+        if (r.howSub) html += '<div style="font-size:11px;color:var(--muted);opacity:.85">' + esc(r.howSub) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:14px;font-weight:800">¥' + r.amount.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) + '</div>';
+        if (r.when) html += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(r.when) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      if (buySum > 0) {
+        html += '<div style="font-size:11px;color:var(--muted);line-height:1.5;padding:0 4px 8px">说明：分期商品只计「本月该还的期供」，不按全价整笔计入；更早月份买的分期，若本月仍在还款也会出现在这里。</div>';
+      }
+    }
+    html += '<button class="a-btn a-btn-primary a-btn-block" style="min-height:48px;font-size:16px;margin-top:4px" onclick="closeStatsCatDetail()">返回</button>';
+    const box = document.getElementById('reportBody');
+    if (!box) return;
+    box.innerHTML = html;
+    const ov = document.getElementById('reportOverlay');
+    if (ov) ov.classList.add('active');
+  } catch (e) {
+    console.error('openStatsCatDetail', e);
+    if (typeof toast === 'function') toast('打开明细失败');
+  }
+}
+function closeStatsCatDetail() {
+  if (typeof closeReportModal === 'function') closeReportModal();
+  else {
+    const ov = document.getElementById('reportOverlay');
+    if (ov) ov.classList.remove('active');
+  }
+}
+
+// ===== 自定义日期区间小结（口径对齐 report.js：直接采购 + 分期事件；支出排除 [固定]/[采购]/[采购分期]）=====
+const RANGE_ACTIVE_BUY = ['已下单', '已到', '已归档'];
+
+function rangeDayStartMs(dayStr) {
+  // dayStr: YYYY-MM-DD（北京日）
+  const p = String(dayStr || '').split('-').map(Number);
+  if (p.length < 3 || !p[0] || !p[1] || !p[2]) return 0;
+  return Date.UTC(p[0], p[1] - 1, p[2]) - 8 * 3600000;
+}
+
+function rangeItemDayMs(d) {
+  if (typeof d === 'number' && isFinite(d)) return d;
+  const s = String(d || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return rangeDayStartMs(s.slice(0, 10));
+  const t = Date.parse(d);
+  return isFinite(t) ? t : 0;
+}
+
+function rangeExpDayMs(d) {
+  // expenses['日期'] = 'YYYY-MM-DDTHH:mm'
+  const s = String(d || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return rangeDayStartMs(s.slice(0, 10));
+  const t = Date.parse(d);
+  return isFinite(t) ? t : 0;
+}
+
+// 分期事件：只产出 [start,end) 内的月供（与服务端 installmentEvents 同口径）
+function rangeInstallmentEvents(start, end) {
+  const out = [];
+  const nowBj = new Date(Date.now() + 8 * 3600000);
+  const nowIdx = nowBj.getUTCFullYear() * 12 + nowBj.getUTCMonth();
+  const endBj = new Date(end - 1 + 8 * 3600000); // 区间最后一天所在月
+  // 枚举区间覆盖到的所有年月
+  const sBj = new Date(start + 8 * 3600000);
+  const y0 = sBj.getUTCFullYear(), m0 = sBj.getUTCMonth();
+  const y1 = endBj.getUTCFullYear(), m1 = endBj.getUTCMonth();
+  for (const i of (items || [])) {
+    const tp = Number(i['分期期数']) || 0;
+    if (tp <= 1) continue;
+    if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
+    const dateMs = rangeItemDayMs(i['日期']);
+    if (!dateMs) continue;
+    const pd = new Date(dateMs + 8 * 3600000);
+    let sm = String(i['分期开始月'] || '');
+    if (!/^\d{4}-\d{2}$/.test(sm)) sm = pd.getUTCFullYear() + '-' + String(pd.getUTCMonth() + 1).padStart(2, '0');
+    const parts = sm.split('-').map(Number);
+    const sy = parts[0], sMo = parts[1];
+    if (!sy || !sMo || sMo < 1 || sMo > 12) continue;
+    const amount = getItemInstallmentAmount(i);
+    if (!(amount > 0)) continue;
+    const payDay = pd.getUTCDate() || 1;
+    const cat = i['分类'] || '其他';
+    const name = i['商品名称'] || '分期';
+    for (let k = 0; k < tp; k++) {
+      const yy = sy + Math.floor((sMo - 1 + k) / 12);
+      const mm0 = (sMo - 1 + k) % 12;
+      const idx = yy * 12 + mm0;
+      if (idx > nowIdx) continue;
+      // 只关心落在区间内的月
+      if (idx < y0 * 12 + m0 || idx > y1 * 12 + m1) continue;
+      const dim = new Date(Date.UTC(yy, mm0 + 1, 0)).getUTCDate();
+      const evTs = Date.UTC(yy, mm0, Math.min(payDay, dim)) - 8 * 3600000;
+      if (evTs < start || evTs >= end) continue;
+      out.push({
+        kind: 'buy', name, amount, cat, ts: evTs,
+        how: '分期 · 第' + (k + 1) + '/' + tp + '期',
+        howSub: '期供 ¥' + amount + (i['平台'] ? ' · ' + i['平台'] : ''),
+      });
+    }
+  }
+  return out;
+}
+
+function computeRangeSummary(fromStr, toStr) {
+  const start = rangeDayStartMs(fromStr);
+  const end = rangeDayStartMs(toStr) + 86400000; // 含 toStr 当天
+  if (!start || !end || end <= start) return null;
+
+  const rows = [];
+  let buySum = 0, buyN = 0, expSum = 0, expN = 0;
+  const catMap = {};
+
+  for (const i of (items || [])) {
+    if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
+    const tp = Number(i['分期期数']) || 0;
+    if (tp > 1) continue; // 分期走事件
+    const ts = rangeItemDayMs(i['日期']);
+    if (ts < start || ts >= end) continue;
+    const amt = (Number(i['单价']) || 0) * (Number(i['数量']) || 1);
+    if (!(amt > 0)) continue;
+    buySum += amt; buyN++;
+    const cat = i['分类'] || '其他';
+    catMap[cat] = (catMap[cat] || 0) + amt;
+    const when = new Date(ts + 8 * 3600000);
+    const whenStr = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push({
+      kind: 'buy', name: i['商品名称'] || '未命名', amount: amt, cat, ts,
+      how: '直接购买',
+      howSub: '¥' + (Number(i['单价']) || 0) + ' × ' + (Number(i['数量']) || 1) + (i['平台'] ? ' · ' + i['平台'] : '') + (i['状态'] ? ' · ' + i['状态'] : ''),
+      when: whenStr,
+    });
+  }
+
+  for (const ev of rangeInstallmentEvents(start, end)) {
+    buySum += ev.amount; buyN++;
+    catMap[ev.cat] = (catMap[ev.cat] || 0) + ev.amount;
+    const when = new Date(ev.ts + 8 * 3600000);
+    ev.when = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push(ev);
+  }
+
+  for (const e of (expenses || [])) {
+    if ((e['类型'] || '支出') !== '支出') continue;
+    const note = String(e['备注'] || '');
+    if (note.includes('[固定]') || note.includes('[采购]') || note.includes('[采购分期]')) continue;
+    const ts = rangeExpDayMs(e['日期']);
+    if (ts < start || ts >= end) continue;
+    const amt = Number(e['金额']) || 0;
+    if (!(amt > 0)) continue;
+    expSum += amt; expN++;
+    const cat = e['分类'] || '其他';
+    catMap[cat] = (catMap[cat] || 0) + amt;
+    const when = new Date(ts + 8 * 3600000);
+    const whenStr = (when.getUTCMonth() + 1) + '月' + when.getUTCDate() + '日';
+    rows.push({
+      kind: 'exp', name: note.trim() || (cat + '支出'), amount: amt, cat, ts,
+      how: '记账', howSub: whenStr + ' · ' + cat, when: whenStr,
+    });
+  }
+
+  rows.sort((a, b) => b.ts - a.ts || b.amount - a.amount);
+  const topCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return {
+    from: fromStr, to: toStr,
+    total: buySum + expSum,
+    buySum, buyN, expSum, expN,
+    count: buyN + expN,
+    rows, topCats,
+  };
+}
+
+function openRangeSummary() {
+  try {
+    const fromEl = document.getElementById('rangeFrom');
+    const toEl = document.getElementById('rangeTo');
+    const fromStr = fromEl && fromEl.value;
+    const toStr = toEl && toEl.value;
+    if (!fromStr || !toStr) { if (typeof toast === 'function') toast('请选择起止日期'); return; }
+    if (fromStr > toStr) { if (typeof toast === 'function') toast('起始日期不能晚于结束日期'); return; }
+    window._rangeFrom = fromStr;
+    window._rangeTo = toStr;
+    const d = computeRangeSummary(fromStr, toStr);
+    if (!d) { if (typeof toast === 'function') toast('日期区间无效'); return; }
+
+    const box = document.getElementById('reportBody');
+    if (!box) return;
+    const yuan = n => '¥' + Number(n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+    let html = '';
+    html += '<div style="text-align:center;padding:14px 0 4px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:2px">📅 区间小结</div>';
+    html += '<div style="font-size:13px;color:var(--muted);margin-top:6px">' + esc(d.from) + ' ~ ' + esc(d.to) + '</div>';
+    html += '<div style="font-size:14px;color:var(--muted);margin-top:16px">总支出</div>';
+    html += '<div class="report-hero-num" style="margin-top:4px">' + yuan(d.total) + '</div>';
+    html += '</div>';
+    html += '<div class="report-cells" style="margin:14px 0">';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">🛒 采购</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + yuan(d.buySum) + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + d.buyN + ' 笔</div></div>';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">💰 日常记账</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + yuan(d.expSum) + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + d.expN + ' 笔</div></div>';
+    html += '<div class="report-cell"><div style="font-size:11px;color:var(--muted)">🧾 合计</div><div class="a-num" style="font-size:18px;font-weight:800;margin-top:2px">' + d.count + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">含采购 ' + d.buyN + ' 笔</div></div>';
+    html += '</div>';
+
+    if (d.topCats.length) {
+      const maxCat = Math.max.apply(null, d.topCats.map(c => c[1]).concat([1]));
+      html += '<div style="background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+      html += '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">分类构成</div>';
+      d.topCats.forEach(function (c) {
+        const w = Math.max(Math.round(c[1] / maxCat * 100), 4);
+        html += '<div class="report-cat-row"><span class="report-cat-name">' + esc(c[0]) + '</span><div class="report-cat-track"><div class="report-cat-fill" style="width:' + w + '%"></div></div><span class="report-cat-val">' + yuan(c[1]) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div style="font-size:13px;color:var(--muted);margin:4px 0 8px">花钱明细 · ' + d.rows.length + ' 条</div>';
+    if (!d.rows.length) {
+      html += '<div style="text-align:center;color:var(--muted);padding:24px 0;font-size:13px">该区间没有计入消耗的流水</div>';
+    } else {
+      html += '<div style="background:var(--card);border-radius:14px;padding:4px 14px;box-shadow:var(--shadow-1);margin-bottom:12px">';
+      d.rows.forEach(function (r) {
+        const badge = r.kind === 'buy'
+          ? (String(r.how).indexOf('分期') === 0 ? '<span class="a-badge a-badge-purple" style="margin-left:6px">分期</span>' : '<span class="a-badge a-badge-green" style="margin-left:6px">采购</span>')
+          : '<span class="a-badge a-badge-orange" style="margin-left:6px">记账</span>';
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border)">';
+        html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;word-break:break-all">' + esc(r.name) + badge + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(r.how) + '</div>';
+        if (r.howSub) html += '<div style="font-size:11px;color:var(--muted);opacity:.85">' + esc(r.howSub) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:14px;font-weight:800">' + yuan(r.amount) + '</div>';
+        if (r.when) html += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc(r.when) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      html += '<div style="font-size:11px;color:var(--muted);line-height:1.5;padding:0 4px 8px">口径：采购含直接购买与区间内到期的分期期供；日常记账不含 [固定]/[采购]/[采购分期] 标记。</div>';
+    }
+    html += '<button class="a-btn a-btn-primary a-btn-block" style="min-height:48px;font-size:16px;margin-top:4px" onclick="closeStatsCatDetail()">返回</button>';
+    box.innerHTML = html;
+    const ov = document.getElementById('reportOverlay');
+    if (ov) ov.classList.add('active');
+  } catch (e) {
+    console.error('openRangeSummary', e);
+    if (typeof toast === 'function') toast('生成小结失败');
+  }
+}
+
 // === App.stats namespace exports ===
 App.stats.barChart = barChart;
 App.stats.donutChart = donutChart;
@@ -432,3 +806,12 @@ App.stats.getMonthDailyData = getMonthDailyData;
 App.stats.getWeekData = getWeekData;
 App.stats.renderStats = renderStats;
 App.stats.switchStatsTab = switchStatsTab;
+App.stats.openStatsCatDetail = openStatsCatDetail;
+App.stats.closeStatsCatDetail = closeStatsCatDetail;
+App.stats.openRangeSummary = openRangeSummary;
+// onclick 内联需要全局
+if (typeof window !== 'undefined') {
+  window.openRangeSummary = openRangeSummary;
+  window.openStatsCatDetail = openStatsCatDetail;
+  window.closeStatsCatDetail = closeStatsCatDetail;
+}

@@ -5,7 +5,13 @@
 import { verifyJWT, jsonResponse } from './_auth.js';
 
 export function mysqlMode(env) {
-  return env.DATA_BACKEND === 'mysql' && env.SERVER_API_BASE && env.SERVICE_TOKEN;
+  if (env.DATA_BACKEND !== 'mysql') return false;
+  // Once MySQL is selected, fail closed if proxy credentials are incomplete.
+  // Falling through to the legacy Feishu handlers can silently split writes.
+  if (!env.SERVER_API_BASE || !env.SERVICE_TOKEN) {
+    throw new Error('DATA_BACKEND=mysql requires SERVER_API_BASE and SERVICE_TOKEN');
+  }
+  return true;
 }
 
 // CF 侧验 token（支持 Header 与 ?token=，后者用于 <img src>）

@@ -1,64 +1,37 @@
-# 采购管理工具 - 图片存储架构说明
+# 图片存储架构
 
-## 存储位置
+## 生产存储
 
-**Cloudflare KV**（namespace: `IMAGE_STORE`）
+生产图片文件保存在服务器配置的 `IMG_DIR`，默认 `/var/lib/purchase-app/images/{username}/`；MySQL `images` 表记录 `user_id`、文件 key、MIME 和大小。业务记录的 `image_ref` 仍使用 `kv:<file_key>` 兼容既有前端与历史数据格式，这个前缀不是生产新图存入 Cloudflare KV 的意思。
 
-- KV 只存 base64 字符串，key 格式：`img_{timestamp}_{random}.{ext}`
-- 飞书 Bitable 的「图片」字段只存引用，格式：`kv:img_xxx.jpg`
-- 旧数据（直接存 base64 的）没有 `kv:` 前缀，向前兼容
+Cloudflare Pages Functions 认证请求后，将授权用户名和服务令牌转发到 Express。Express 通过用户名目录隔离图片；读取和删除时校验安全字符、限制在用户目录内，删除元数据时同时要求匹配 `user_id`。
 
-## 数据流
-
-```
-拍照/选图
-  ↓
-前端压缩（max 800px, quality 0.7, 上限 500KB）
-  ↓
-POST /api/images  { image: "data:image/jpeg;base64,..." }
-  ↓
-Cloudflare Worker 解析 data URL → 提取 base64 → 存入 KV
-  ↓
-返回 { key: "img_xxx.jpg" }
-  ↓
-前端保存记录 → Bitable「图片」字段 = "kv:img_xxx.jpg"
+```text
+拍照/选图 → 前端缩小图片 → Pages Functions 验证 JWT
+          → Express 校验服务令牌/用户身份 → 写入 IMG_DIR
+          → MySQL images 元数据 + 业务记录中的 kv:<key>
 ```
 
-## 读取流程
+服务端图片上限为 5 MiB。前端上传请求经过 Express JSON body parser；需保证代理层允许的请求体大小与应用限制相容。生产磁盘和数据库是两种独立介质，备份时应同时纳入并验证恢复点一致。
 
-```
-加载记账列表
-  ↓
-读 Bitable「图片」字段
-  ↓
-以 "kv:" 开头？ → 构造 URL: /api/images?key=xxx&pin=密码
-  ↓
-Worker 从 KV 取 base64 → 解码为二进制 → 返回图片数据（Content-Type: image/jpeg）
-  ↓
-<img src 直接显示
+## 兼容路径
 
-不以 "kv:" 开头？ → 旧数据，直接当 base64 显示
-```
+Functions 中保留旧版 Feishu/Cloudflare KV 图片处理代码。只有在相应后端配置选择旧路径时才会走该实现；生产基准是 MySQL + 服务器磁盘。`kv:` 引用的旧文件可能仍需通过兼容读取逻辑访问，切换后端前应核对用户数据和图片的同步状态。
 
-## 关键文件
+## 关键代码
 
 | 文件 | 作用 |
 |------|------|
-| `functions/api/images.js` | POST 上传图片到 KV / GET 取图返回二进制 / DELETE 删除 |
-| `functions/api/expenses.js` | POST/PUT 写 Bitable 时，图片字段加 `kv:` 前缀 |
-| `index.html` | 前端：压缩、上传、显示、编辑回显 |
+| `functions/api/_proxy.js` | 验证用户 JWT 后将业务请求送到 Express |
+| `server/src/routes/images.js` | 图片上传、读取、删除 HTTP 路由 |
+| `server/src/lib/images.js` | 用户目录路径校验和磁盘 I/O |
+| `schema.sql` | MySQL 图片元数据表 |
+| `functions/api/images.js` | Feishu/Cloudflare KV 兼容图片处理路径 |
 
-## 认证
+## 运维事项
 
-- 所有 API 需要 `X-API-Key` 头或 `?pin=xxx` 查询参数
-- `img.src` 无法发送自定义 HTTP 头，所以图片 GET 必须用 `?pin=` 参数
-- API Key 存在 Cloudflare Pages 环境变量 `API_KEY` 中
-
-## 注意事项
-
-1. **不要新建 Bitable 字段**：图片引用存在已有的「图片」字段，用 `kv:` 前缀区分新旧数据
-2. **edit 工具不可靠**：修改含中文的 JS 文件时，edit 工具可能损坏编码，用 Python 脚本处理
-3. **Cloudflare KV 限制**：单个 value 最大 25MB（base64），足够存压缩后的图片
-4. **SW 缓存**：修改后如果页面不更新，可能是 Service Worker 缓存了旧版本，需要 Unregister SW 后刷新
-5. **POST/PUT/DELETE 后必须清除缓存**：expenses API 使用 Cache API 缓存 GET 数据，写操作后需 `caches.default.delete()` 避免返回旧数据
-6. **POST fallback 防重复**：只有当第一次 POST 真正失败（`!d.data?.record?.record_id`）时才重试，避免创建重复记录
+1. 保护 `/etc/purchase-app/server.env`、`db.env` 中的密钥；不要提交生产值。
+2. 备份 MySQL 与 `IMG_DIR`，并定期演练联合恢复。
+3. 监控磁盘容量，并对比 `IMG_DIR` 文件与 MySQL `images` 元数据，清理失败写入留下的孤儿文件。
+4. 图片 URL 使用 JWT 查询参数以兼容 `<img src>`；避免把完整图片 URL 或 token 写入可公开日志。
+5. Feishu/KV 回退不是项目阶段等功能的完全等价副本，回切前先验证数据与功能范围。

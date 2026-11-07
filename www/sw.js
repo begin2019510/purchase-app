@@ -1,53 +1,86 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v61';
-var STATIC_ASSETS = ['/manifest.json', '/icon-192.png', '/icon-512.png', '/help'];
+var CACHE = 'purchase-cache-v159';
+// 首页用 '/'（/index.html 在 CF 上会 308，addAll 会让整次安装失败）
+var STATIC_ASSETS = ['/', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.0.37'];
 
 self.addEventListener('install', function(e) {
-  e.waitUntil(caches.open(CACHE).then(function(c) { return c.addAll(STATIC_ASSETS); }));
+  e.waitUntil(
+    caches.open(CACHE).then(function(c) {
+      // 单资源失败不让整个 SW 安装失败（否则永远升不上来）
+      return Promise.all(STATIC_ASSETS.map(function(u) {
+        return c.add(u).catch(function() {});
+      }));
+    })
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return true; }).map(function(k) { return caches.delete(k); }));
-    }).then(function() { return clients.claim(); }).then(function() {
-      return clients.matchAll({ type: 'window' }).then(function(ws) {
-        ws.forEach(function(c) { c.postMessage({ type: 'SW_RELOAD' }); });
-      });
-    })
+      // 只清理其它版本的缓存，保留当前 CACHE 命名空间
+      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+    }).then(function() { return clients.claim(); })
+    // 静默接管：不强制刷新当前页面，新内容下次打开生效（避免黑屏重载）
   );
 });
 
 self.addEventListener('fetch', function(e) {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
-  var url = new URL(e.request.url);
-  var isHTML = url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
-  if (isHTML) {
-    e.respondWith(fetch(e.request, { cache: 'no-store' }));
-  } else {
+
+  // 页面导航：网络优先（2.5s 超时回退缓存）——保证每次打开都能拿到最新界面；
+  // JS/CSS 用版本号 URL，随新 HTML 自动走网络，不会拿到旧文件。
+  if (e.request.mode === 'navigate') {
     e.respondWith(
-      caches.match(e.request).then(function(cached) {
-        if (cached) return cached;
-        return fetch(e.request).then(function(res) {
-          if (res.ok) { var cl = res.clone(); caches.open(CACHE).then(function(c) { c.put(e.request, cl); }); }
+      caches.open(CACHE).then(function(c) {
+        var net = fetch(e.request, { cache: 'no-store' }).then(function(res) {
+          if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
           return res;
+        });
+        var timeout = new Promise(function(resolve) {
+          setTimeout(function() { resolve(null); }, 5000);
+        });
+        return Promise.race([net, timeout]).then(function(r) {
+          return r || c.match(e.request) || c.match('/') || net;
+        }).catch(function() {
+          return c.match(e.request) || c.match('/');
         });
       })
     );
+    return;
   }
+
+  // 静态资源（带版本号 URL）：缓存优先 + 后台刷新（SWR）
+  e.respondWith(
+    caches.open(CACHE).then(function(c) {
+      return c.match(e.request).then(function(cached) {
+        var network = fetch(e.request, { cache: 'no-store' }).then(function(res) {
+          if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
+          return res;
+        }).catch(function() { return cached; });
+        return cached || network;
+      });
+    })
+  );
 });
 
 self.addEventListener('push', function(e) {
   var data = {};
   if (e.data) { try { data = e.data.json(); } catch(ex) { data = { body: e.data.text() }; } }
   var title = data.title || '采购管家';
+  var isTodo = data.kind === 'todo' || data.kind === 'project-todo' ||
+    /待办|到期|今日/.test(title) || /📁|⏰|📋/.test(title);
+  var actions = Array.isArray(data.actions) && data.actions.length
+    ? data.actions
+    : (isTodo
+      ? [{ action: 'open', title: '去查看' }, { action: 'dismiss', title: '知道了' }]
+      : [{ action: 'open', title: '去记账' }, { action: 'dismiss', title: '知道了' }]);
   e.waitUntil(self.registration.showNotification(title, {
-    body: data.body || '该记账了',
+    body: data.body || (isTodo ? '有新的待办提醒' : '该记账了'),
     icon: '/icon-192.png', badge: '/icon-192.png',
-    vibrate: [200,100,200,100,200], tag: data.tag || 'reminder',
-    requireInteraction: true, data: { url: data.url || '/' },
-    actions: [{ action: 'open', title: '去记账' }, { action: 'dismiss', title: '知道了' }]
+    vibrate: [200,100,200,100,200], tag: data.tag || (isTodo ? 'todo' : 'reminder'),
+    requireInteraction: true, data: { url: data.url || '/', kind: data.kind || (isTodo ? 'todo' : 'expense') },
+    actions: actions
   }));
 });
 

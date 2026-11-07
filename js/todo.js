@@ -407,6 +407,3 @@ async function toggleTodoSubtask(todoId, index) {
 }
 
 function onTodoFab() { openTodoModal(); }
-
-
-

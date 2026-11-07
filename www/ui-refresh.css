@@ -1,0 +1,183 @@
+/* Purchase App visual system refresh. Keep this as the final stylesheet so the
+   legacy feature-specific rules stay intact while the shared surface is unified. */
+:root {
+  --ui-bg: #f5f6fa;
+  --ui-surface: #fff;
+  --ui-surface-2: #f1f2f7;
+  --ui-ink: #20212a;
+  --ui-secondary: #555866;
+  --ui-muted: #858896;
+  --ui-line: rgba(38, 40, 52, .09);
+  --ui-accent: #5865d9;
+  --ui-accent-soft: rgba(88, 101, 217, .10);
+  --ui-green: #258354;
+  --ui-red: #d94d54;
+  --ui-shadow: 0 2px 8px rgba(25, 30, 55, .035), 0 12px 32px rgba(25, 30, 55, .035);
+  --ui-radius-sm: 12px;
+  --ui-radius-md: 17px;
+  --ui-radius-lg: 22px;
+  --ui-ease: cubic-bezier(.2,.75,.25,1);
+  --ui-fast: 150ms;
+  --ui-medium: 230ms;
+  --bg: var(--ui-bg);
+  --card: var(--ui-surface);
+  --text: var(--ui-ink);
+  --text-2: var(--ui-secondary);
+  --muted: var(--ui-muted);
+  --border: var(--ui-line);
+  --pri: var(--ui-accent);
+  --pri-dark: #4654c3;
+  --pri-light: var(--ui-accent-soft);
+  --radius: var(--ui-radius-md);
+  --shadow: var(--ui-shadow);
+  color-scheme: light;
+}
+
+html { background: var(--ui-bg); scroll-behavior: smooth; }
+body { background: var(--ui-bg); color: var(--ui-ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; letter-spacing: -.01em; }
+body::before { background: var(--ui-bg) !important; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 3px solid rgba(88,101,217,.28); outline-offset: 2px; }
+
+/* App shell and five destinations */
+.header { color: var(--ui-ink); background: var(--ui-bg) !important; border-bottom: 1px solid transparent; padding-bottom: 10px; }
+.header h1 { color: var(--ui-ink); font-size: 21px; font-weight: 720; letter-spacing: -.45px; }
+.header .logo-icon { filter: saturate(.72); }
+.header-version { background: var(--ui-surface-2); color: var(--ui-muted); }
+.header-actions button { color: var(--ui-secondary); background: var(--ui-surface) !important; border: 1px solid var(--ui-line); box-shadow: 0 1px 2px rgba(20,24,45,.04); }
+.header-actions button:active { transform: scale(.96); background: var(--ui-surface-2) !important; }
+.tabs { background: transparent; border: 0; gap: 5px; padding: 6px max(16px,calc((100vw - 1020px)/2)); }
+.tab { border: 0; border-radius: 11px; color: var(--ui-muted); padding: 10px 12px; font-size: 13px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
+.tab.active { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.bottom-nav { background: rgba(255,255,255,.97); border-top: 1px solid var(--ui-line); box-shadow: 0 -5px 22px rgba(25,30,55,.035); padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+.nav-item { color: #868996; border-radius: 14px; min-height: 48px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) var(--ui-ease); }
+.nav-item.active { background: var(--ui-accent-soft); color: var(--ui-accent); }
+.nav-item.active .nav-icon { transform: none; filter: none; }
+.nav-item.active .nav-label { color: var(--ui-accent); font-weight: 700; }
+.nav-item:active { transform: scale(.96); }
+
+/* Grouped content, purchase/todo/project cards and finance surfaces */
+.container { max-width: 760px; padding-left: 18px; padding-right: 18px; }
+.section-title { color: var(--ui-muted); font-size: 12px; font-weight: 680; letter-spacing: .035em; padding-top: 18px; }
+.card, .stat-card, .ex-section, .ex-total-card, .week-card, .pj2-card, .project-card,
+.todo-card, .todo-item, .ai-analysis, .ai-suggestion-card {
+  background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow); transition: border-color var(--ui-fast) ease, box-shadow var(--ui-fast) ease, transform var(--ui-fast) var(--ui-ease);
+}
+.card { padding-top: 16px; padding-bottom: 16px; margin-bottom: 10px; }
+.card:active, .project-card:active, .todo-card:active { transform: scale(.992); }
+@media (hover:hover) {
+  .card:hover, .project-card:hover, .todo-card:hover { border-color: rgba(88,101,217,.19); box-shadow: 0 5px 18px rgba(25,30,55,.07); }
+}
+.card .name, .todo-title, .pj2-card-title { color: var(--ui-ink); letter-spacing: -.02em; }
+.card .price, .detail-price { font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
+.section-title + .card { margin-top: 3px; }
+.chips { gap: 8px; padding: 8px 18px; }
+.chip { border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-secondary); padding: 8px 14px; transition: color var(--ui-fast) ease, background var(--ui-fast) ease, transform var(--ui-fast) ease; }
+.chip.active { background: var(--ui-accent) !important; border-color: var(--ui-accent) !important; box-shadow: none !important; }
+.search-bar { background: transparent; padding: 12px 18px 5px; }
+.search-input { min-height: 44px; border: 1px solid var(--ui-line); border-radius: 14px; background-color: var(--ui-surface); color: var(--ui-ink); }
+.search-input:focus { border-color: rgba(88,101,217,.48); box-shadow: 0 0 0 4px var(--ui-accent-soft); }
+.ex-view-toggle, .a-seg { background: var(--ui-surface-2); border: 1px solid var(--ui-line); border-radius: 14px; padding: 4px; }
+.ex-view-btn { border-radius: 10px; transition: background var(--ui-fast) ease, color var(--ui-fast) ease, box-shadow var(--ui-fast) ease; }
+.ex-view-btn.active { background: var(--ui-surface); box-shadow: 0 1px 4px rgba(25,30,55,.09); }
+.ex-entry { border-bottom-color: var(--ui-line); }
+.ex-budget, .mini-card, .cal-day-detail, .ai-result, .ai-input { border-radius: var(--ui-radius-sm); }
+.stat-card, .ex-total-card { padding: 18px; }
+.pj2-card, .todo-card { margin: 10px 14px; overflow: hidden; }
+.pj2-card { border-radius: var(--ui-radius-md); }
+.gantt-view-btn, .pj-btn, .btn, .a-btn, .ai-confirm-btn { border-radius: 12px; transition: transform var(--ui-fast) var(--ui-ease), background var(--ui-fast) ease, opacity var(--ui-fast) ease; }
+.pj-btn:active, .btn:active, .a-btn:active, .ai-confirm-btn:active { transform: scale(.98); }
+.fab { box-shadow: 0 5px 18px rgba(88,101,217,.25); transition: transform var(--ui-fast) var(--ui-ease), box-shadow var(--ui-fast) ease; }
+.fab:active { transform: scale(.94); }
+
+/* Forms and settings */
+input:not([type=checkbox]):not([type=radio]), select, textarea { accent-color: var(--ui-accent); }
+.modal input, .modal select, .modal textarea, .settings-panel input, .settings-panel select, .settings-panel textarea,
+.pj2-modal input, .pj2-modal select, .pj2-modal textarea { border-radius: 12px; }
+.settings-overlay { background: rgba(20,22,32,.34); }
+.settings-panel { background: var(--ui-bg); border: 1px solid var(--ui-line); }
+.settings-group { background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: var(--ui-radius-md); box-shadow: 0 1px 3px rgba(25,30,55,.025); overflow: hidden; }
+.settings-item { min-height: 54px; border-bottom-color: var(--ui-line); }
+.settings-item:active { background: var(--ui-surface-2); }
+.auth-card { border: 1px solid var(--ui-line); border-radius: 24px; box-shadow: var(--ui-shadow); }
+.auth-title, .auth-card h1, .auth-card h2 { letter-spacing: -.035em; }
+.auth-input { border: 1px solid var(--ui-line) !important; border-radius: 13px !important; }
+body[data-bg="default"]:not(.dark) { --ui-bg: #f2f2f7; }
+body[data-bg="white"]:not(.dark) { --ui-bg: #fff; }
+body[data-bg="paper"]:not(.dark) { --ui-bg: #faf9f6; }
+body[data-bg="mist"]:not(.dark) { --ui-bg: #eef2f7; }
+body[data-bg="lavender"]:not(.dark) { --ui-bg: #f3f0ff; }
+body[data-bg="mint"]:not(.dark) { --ui-bg: #eefaf3; }
+body[data-bg="peach"]:not(.dark) { --ui-bg: #fff5ee; }
+body[data-bg="slate"]:not(.dark) { --ui-bg: #e8eaf0; }
+
+/* Sheets and dialogs: restrained opacity + short transform; never animate blur. */
+.modal-overlay, .overlay { background: rgba(20,22,32,.34); }
+.modal-overlay.active { animation: uiOverlayIn var(--ui-medium) ease both; }
+.modal-overlay.active .modal, .overlay.active .modal, #projectDetailOverlay.active .pj2-modal {
+  animation: uiSheetIn var(--ui-medium) var(--ui-ease) both;
+}
+.modal, .pj2-modal, .todo-detail-modal { border: 1px solid var(--ui-line); box-shadow: 0 18px 55px rgba(20,24,45,.17); }
+@keyframes uiOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes uiSheetIn { from { opacity: .7; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes uiCheck { 0% { transform: scale(.82); } 65% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.pj2-todo-check.on, .gantt-check.on, .checkbox.checked { animation: uiCheck 220ms var(--ui-ease) both; }
+.toast { border-radius: 14px; box-shadow: 0 8px 28px rgba(20,24,45,.15); }
+
+/* Dark mode follows the existing explicit/system setting with matching surfaces. */
+body.dark, :root[data-theme="dark"] {
+  --ui-bg: #111216; --ui-surface: #1c1d23; --ui-surface-2: #272830;
+  --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7;
+  --ui-line: rgba(220,222,240,.10); --ui-accent: #929aff; --ui-accent-soft: rgba(146,154,255,.14);
+  --ui-shadow: 0 2px 10px rgba(0,0,0,.13), 0 12px 30px rgba(0,0,0,.08);
+  --bg: var(--ui-bg); --card: var(--ui-surface); --text: var(--ui-ink); --text-2: var(--ui-secondary);
+  --muted: var(--ui-muted); --border: var(--ui-line); --pri: var(--ui-accent); --pri-light: var(--ui-accent-soft);
+  color-scheme: dark;
+}
+body.dark .header { color: var(--ui-ink); background: var(--ui-bg) !important; }
+body.dark .header h1, body.dark .header-actions button { color: var(--ui-ink); }
+body.dark .bottom-nav { background: rgba(28,29,35,.97); }
+body.dark .search-input, body.dark .settings-group, body.dark .settings-panel { background: var(--ui-surface); }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme="light"]):not(.dark) {
+    --ui-bg: #111216; --ui-surface: #1c1d23; --ui-surface-2: #272830;
+    --ui-ink: #f2f2f6; --ui-secondary: #d1d2da; --ui-muted: #989aa7;
+    --ui-line: rgba(220,222,240,.10); --ui-accent: #929aff; --ui-accent-soft: rgba(146,154,255,.14);
+    --ui-shadow: 0 2px 10px rgba(0,0,0,.13), 0 12px 30px rgba(0,0,0,.08);
+    --bg: var(--ui-bg); --card: var(--ui-surface); --text: var(--ui-ink); --text-2: var(--ui-secondary);
+    --muted: var(--ui-muted); --border: var(--ui-line); --pri: var(--ui-accent); --pri-light: var(--ui-accent-soft);
+    color-scheme: dark;
+  }
+  :root:not(.light):not([data-theme="light"]):not(.dark) .header { color: var(--ui-ink); background: var(--ui-bg) !important; }
+  :root:not(.light):not([data-theme="light"]):not(.dark) .header h1 { color: var(--ui-ink); }
+  :root:not(.light):not([data-theme="light"]):not(.dark) .bottom-nav { background: rgba(28,29,35,.97); }
+}
+
+/* Narrow phones, tablet and desktop */
+@media (max-width: 767px) {
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .header { position: sticky; top: 0; }
+  .container { padding-left: 14px; padding-right: 14px; }
+  .search-bar { padding-left: 14px; padding-right: 14px; }
+  .chips { padding-left: 14px; padding-right: 14px; }
+  .bottom-nav { padding-left: max(8px,env(safe-area-inset-left)); padding-right: max(8px,env(safe-area-inset-right)); }
+  .nav-item { min-width: 0; flex: 1 1 20%; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-overlay .modal { width: 100%; max-width: 620px; max-height: min(92dvh, 900px); margin: 0 auto; border-radius: 22px 22px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  #projectDetailOverlay { align-items: flex-end; padding: 0; }
+  #projectDetailOverlay .pj2-modal { max-height: 94dvh; border-radius: 22px 22px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .todo-detail-modal { width: min(100% - 24px, 500px); }
+}
+@media (min-width: 768px) {
+  body { padding-bottom: 32px; }
+  .header { padding-left: max(24px,calc((100vw - 1020px)/2)); padding-right: max(24px,calc((100vw - 1020px)/2)); }
+  #tab-todo, #tab-project { max-width: 1020px; margin: 0 auto; }
+  #tab-todo #todoContent, #tab-project #projectContent { padding: 4px 12px 24px; }
+  .pj2-card, .todo-card { margin-left: 0; margin-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
