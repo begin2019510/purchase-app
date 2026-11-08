@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.38";
+const APP_VERSION = "3.0.39";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.39',date:'2026-11-08',items:['记账支持多附件上传：相册可多选、每张可单独移除，最多 9 张','列表缩略图最多显示 3 张并显示 +N；编辑/删除全部图片走 imageKeys']},
 {v:'3.0.38',date:'2026-11-07',items:['采购筛选改为可访问的按钮并修复分类筛选未响应','采购、待办、项目与统计卡片统一语义结构和键盘交互；记账列表改用共享组件样式','浅色模式图标/标题/chip/间距按设计规范生效，auth 输入框聚焦显示强调色描边','MySQL 后端缺配置时失败关闭并返回 JSON 错误，不再静默回退飞书/KV','同步脚本补齐帮助/隐私/Agent 页，新增 check:sync 校验防止 www 漂移','待办箭头可点开详情，本月/全月筛选补 aria-pressed']},
 {v:'3.0.37',date:'2026-11-07',items:['全站 iOS 轻盈视觉规范：统一背景、卡片、导航、表单与弹层层级','统一 PWA 与 Android 前端资源，改善暗色模式、安全区和减少动态效果适配']},
 {v:'3.0.36',date:'2026-11-04',items:['待办甘特图重写：天/周/月视图、过期顶栏、粘性标签、修正条定位与筛选','编辑子任务保留截止日期；续期待办保留优先级']},
