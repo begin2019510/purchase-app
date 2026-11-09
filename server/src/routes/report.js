@@ -96,8 +96,12 @@ function range(period, now) {
 }
 
 async function computeForUser(u, period) {
+  // 数据源=子采购单（唯一记账单元）；金额=price_paid×qty；口径 ACTIVE_BUY 在代码里再滤一遍
   const [pRecs, eRecs] = await Promise.all([
-    db.query('SELECT * FROM purchases WHERE user_id = ?', [u.id]),
+    db.query(
+      `SELECT o.*, o.price_paid AS price, n.name, n.category
+       FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id
+       WHERE o.user_id = ?`, [u.id]),
     db.query('SELECT * FROM expenses WHERE user_id = ?', [u.id]),
   ]);
   const instEvents = installmentEvents(pRecs);
@@ -200,6 +204,41 @@ async function computeForUser(u, period) {
   } catch (e) { console.error('report store:', e.message); }
   return report;
 }
+
+// "YYYY-MM-DD HH:mm"（北京时间，H.bjNow / 旧 purchases.arrived_at 同格式）→ epoch ms
+function parseBjTime(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(String(s || ''));
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) - 8 * 3600 * 1000;
+}
+
+// 归档检查（CF cron → /api/push/archive-check?token=CRON_SECRET 反代而来，已过 X-Service-Token 闸）
+// 口径：子单状态 ∈ 已到/已退 且到货超 3 天未归档；卡片组装与飞书 webhook 仍在 CF 侧
+router.get('/push/archive-check', async (req, res, next) => {
+  try {
+    const rows = await db.query(
+      `SELECT o.status, o.arrived_at, n.name
+         FROM purchase_orders o
+         JOIN purchase_needs n ON n.id = o.need_id
+        WHERE o.status IN ('已到','已退')
+          AND o.arrived_at IS NOT NULL AND o.arrived_at <> ''`);
+    const now = Date.now(), THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+    const items = [];
+    for (const r of rows) {
+      const ms = parseBjTime(r.arrived_at);
+      if (ms == null) continue;
+      const elapsed = now - ms;
+      if (elapsed <= THREE_DAYS_MS) continue;
+      items.push({
+        name: r.name || '未知商品',
+        status: r.status,
+        arriveTime: r.arrived_at,
+        days: Math.floor(elapsed / (24 * 60 * 60 * 1000)),
+      });
+    }
+    res.json({ ok: true, count: items.length, items });
+  } catch (e) { next(e); }
+});
 
 // 我的最新报告
 router.get('/push/report', async (req, res, next) => {

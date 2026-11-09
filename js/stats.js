@@ -191,13 +191,10 @@ function renderStats() { console.log('renderStats START');
   const pool = getBudgetPool(thisMonth);
   const monthName = thisMonth.slice(5).replace(/^0/, '') + '月';
 
-  // 数据
-  const monthItems = items.filter(i => getMonth(i['日期']) === thisMonth);
-  const monthReturned = monthItems.filter(i => i['状态'] === '已退');
-  const monthTotal = monthItems.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - monthReturned.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
-  const totalAll = items.reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0) - items.filter(i => i['状态'] === '已退').reduce((s, i) => s + (i['单价'] || 0) * (i['数量'] || 1), 0);
+  // 数据（口径：orderRows + ACTIVE_BUY；状态分布按需求）
+  const monthItems = orderRows().filter(i => isActiveBuy(i['状态']) && getMonth(i['日期']) === thisMonth);
   const statusMap = {};
-  items.forEach(i => { const s = i['状态'] || '待审批'; statusMap[s] = (statusMap[s] || 0) + 1; });
+  needsList.forEach(n => { const s = n['状态'] || '对比中'; statusMap[s] = (statusMap[s] || 0) + 1; });
   const monthExpenses = expenses.filter(e => {
     if (!e['日期']) return false;
     try { return getMonth(e['日期']) === thisMonth } catch { return false }
@@ -211,10 +208,10 @@ function renderStats() { console.log('renderStats START');
 
   // 分类/平台按「本月实际采购消耗」汇总：分期商品只计本月分期金额，与 hero 的 直接+分期 同口径
   const pCatMap = {};
-  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + v; } });
+  orderRows().forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const c = i['分类'] || '其他'; pCatMap[c] = (pCatMap[c] || 0) + v; } });
   const pCatEntries = Object.entries(pCatMap).sort((a, b) => b[1] - a[1]);
   const pPlatMap = {};
-  items.forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + v; } });
+  orderRows().forEach(i => { const v = getItemMonthPurchaseAmount(i, thisMonth); if (v > 0) { const p = i['平台'] || '其他'; pPlatMap[p] = (pPlatMap[p] || 0) + v; } });
   const pPlatEntries = Object.entries(pPlatMap).sort((a, b) => b[1] - a[1]);
   const eCatMap = {};
   monthExpenses.filter(e => e['类型'] === '支出').forEach(e => { const c = e['分类'] || '其他'; eCatMap[c] = (eCatMap[c] || 0) + Number(e['金额'] || 0); });
@@ -338,7 +335,7 @@ function renderStats() { console.log('renderStats START');
   </div>`;
 
   // 分期概况：列出「本月计入消耗」的分期（含更早购买、本月仍在还款的），与分类/hero 同口径
-  const installmentItems = items.filter(i => getItemMonthInstallmentAmount(i, thisMonth) > 0);
+  const installmentItems = orderRows().filter(i => getItemMonthInstallmentAmount(i, thisMonth) > 0);
   if (installmentItems.length > 0) {
     const instTotalPrice = installmentItems.reduce((s, i) => s + (Number(i['单价']) || 0) * (Number(i['数量']) || 1), 0);
     const instMonthAmt = installmentItems.reduce((s, i) => s + getItemMonthInstallmentAmount(i, thisMonth), 0);
@@ -391,10 +388,10 @@ function renderStats() { console.log('renderStats START');
     html += `</div>`;
   }
 
-  // 状态分布
-  if (items.length) {
-    const colors = { '待审批': 'var(--orange)', '已审批': 'var(--blue)', '已下单': '#8b5cf6', '已到': 'var(--green)', '已退': 'var(--red)', '已归档': '#6b7280' };
-    const totalItems = items.length;
+  // 状态分布（按需求四态）
+  if (needsList.length) {
+    const colors = { '对比中': 'var(--blue)', '已定点': '#8b5cf6', '已完成': 'var(--green)', '已取消': '#6b7280' };
+    const totalItems = needsList.length;
     html += `<div class="stats-section"><div class="stats-section-title">📋 状态分布</div>`;
     html += `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:10px">`;
     Object.entries(statusMap).forEach(([s, n]) => {
@@ -484,7 +481,7 @@ function openStatsCatDetail(cat, monthStr) {
     const ym = String(monthStr || getViewMonth() || getThisMonth());
     const rows = [];
     let buySum = 0, expSum = 0;
-    (items || []).forEach(function(i) {
+    orderRows().forEach(function(i) {
       const v = getItemMonthPurchaseAmount(i, ym);
       if (!(v > 0)) return;
       if ((i['分类'] || '其他') !== cat) return;
@@ -619,7 +616,7 @@ function rangeInstallmentEvents(start, end) {
   const sBj = new Date(start + 8 * 3600000);
   const y0 = sBj.getUTCFullYear(), m0 = sBj.getUTCMonth();
   const y1 = endBj.getUTCFullYear(), m1 = endBj.getUTCMonth();
-  for (const i of (items || [])) {
+  for (const i of orderRows()) {
     const tp = Number(i['分期期数']) || 0;
     if (tp <= 1) continue;
     if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
@@ -665,7 +662,7 @@ function computeRangeSummary(fromStr, toStr) {
   let buySum = 0, buyN = 0, expSum = 0, expN = 0;
   const catMap = {};
 
-  for (const i of (items || [])) {
+  for (const i of orderRows()) {
     if (!RANGE_ACTIVE_BUY.includes(i['状态'] || '')) continue;
     const tp = Number(i['分期期数']) || 0;
     if (tp > 1) continue; // 分期走事件

@@ -213,13 +213,15 @@ function eveningBody(todayExp, todayPur, inst, tomTodos) {
              WHERE user_id = ? AND type = '支出' AND date_ms >= ? AND date_ms < ?`,
             [u.id, dayStart, dayStart + MS]),
           db.query(
-            `SELECT name, price, qty, category, status, installments
-             FROM purchases WHERE user_id = ? AND date_ms >= ? AND date_ms < ?`,
+            `SELECT n.name, o.price_paid AS price, o.qty, n.category, o.status, o.installments
+             FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id
+             WHERE o.user_id = ? AND o.date_ms >= ? AND o.date_ms < ?`,
             [u.id, dayStart, dayStart + MS]),
           db.query(
-            `SELECT name, price, qty, category, status, installments, installment_amount,
-                    installment_start, installment_paid, date_ms
-             FROM purchases WHERE user_id = ?`,
+            `SELECT n.name, o.price_paid AS price, o.qty, n.category, o.status, o.installments,
+                    o.installment_amount, o.installment_start, o.installment_paid, o.date_ms
+             FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id
+             WHERE o.user_id = ?`,
             [u.id]),
         ]);
 

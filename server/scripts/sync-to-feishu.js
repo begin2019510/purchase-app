@@ -5,6 +5,7 @@
 const fs = require('fs');
 const cfg = require('../src/config');
 const db = require('../src/db');
+const N = require('../src/lib/needs');
 
 const CF = process.env.CF_BASE || 'https://121212121.top';
 const DRY = process.argv.includes('--dry');
@@ -92,14 +93,14 @@ function projectFields(r, prMap) {
 
     // 库侧数据
     const rows = {
-      purchases: await db.query('SELECT * FROM purchases WHERE user_id = ? ORDER BY id', [u.id]),
+      purchases: await N.synthLegacyRows(u.id),
       expenses: await db.query('SELECT * FROM expenses WHERE user_id = ? ORDER BY id', [u.id]),
       todos: await db.query('SELECT * FROM todos WHERE user_id = ? ORDER BY id', [u.id]),
       projects: await db.query('SELECT * FROM projects WHERE user_id = ? ORDER BY id', [u.id]),
     };
     // 反向映射：rec_<n> → ext_id（飞书 record_id）
     const pMap = {}, prMap = {};
-    for (const r of rows.purchases) pMap['rec_' + r.id] = r.ext_id;
+    for (const r of rows.purchases) pMap[r.id] = r.ext_id; // synth 行 id 已是 rec_<needId>
     for (const r of rows.projects) prMap['rec_' + r.id] = r.ext_id;
 
     // 逐表差异
@@ -124,10 +125,14 @@ function projectFields(r, prMap) {
       log(u.username, t, 'upd', updates.length, 'new', creates.length, 'del', deletes.length,
         res.failed ? ('FAILED ' + res.failed + ' ' + JSON.stringify((res.errors || []).slice(0, 2))) : '');
 
-      // 新增记录回填 ext_id（下次同步转为更新）
+      // 新增记录回填 ext_id（下次同步转为更新）；purchases 的 ext_id 存在 purchase_needs 上
       if (!DRY && res.newIds && res.newIds.length) {
         for (let i = 0; i < res.newIds.length && i < pendingNew.length; i++) {
-          await db.exec(`UPDATE ${t} SET ext_id = ? WHERE id = ?`, [res.newIds[i], pendingNew[i].id]);
+          if (t === 'purchases') {
+            await db.exec('UPDATE purchase_needs SET ext_id = ? WHERE id = ?', [res.newIds[i], pendingNew[i].legacy_id]);
+          } else {
+            await db.exec(`UPDATE ${t} SET ext_id = ? WHERE id = ?`, [res.newIds[i], pendingNew[i].id]);
+          }
         }
       }
     }

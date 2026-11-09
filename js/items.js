@@ -1,195 +1,5 @@
-﻿// items.js - Purchase CRUD, Batch, Approval, Detail Modal
-const STEPPER_STEPS=['待评估','待审批','已审批','已下单'];
-const STEPPER_ICONS={'待评估':'🤔','待审批':'📋','已审批':'✅','已下单':'🛒','已到':'📦','已退':'↩️','已归档':'🗄️'};
-const STEP_TIME_FIELDS={'待评估':'创建时间','待审批':'创建时间','已审批':'审批时间','已下单':'下单时间','已到':'到货时间','已退':'到货时间','已归档':'归档时间'};
-const STEP_BTN_CONFIG={
-  '待评估':{color:'var(--green)',label:'📋 提交审批',next:'待审批'},
-  '待审批':{color:'var(--green)',label:'✅ 审批通过',next:'已审批'},
-  '已审批':{color:'var(--blue)',label:'🛒 确认下单',next:'已下单'}
-};
-var currentDetailId='';
-const CANCELABLE_STATUSES = ['待评估','待审批','已审批'];
-function openDetailModal(id){
-  currentDetailId=id;
-  const item=items.find(x=>x.id===id);
-  if(!item)return;
-  const qty=Number(item['数量'])||1;
-  const price=Number(item['单价'])||0;
-  const total=price*qty;
-  const status=item['状态']||'待审批';
-  const statusIdx=STEPPER_STEPS.indexOf(status);
-  let ds='';
-  if(item['日期']){try{ds=new Date(item['日期']).toISOString().slice(0,10)}catch{}}
-
-  let html=`<div class="detail-header">
-    <div class="detail-title">${item['极速']==='1'?'<span class="quick-badge" style="position:static;display:inline-block;margin-right:6px;vertical-align:2px">极速免审</span>':''}${item['虚拟']==='1'?'<span class="virtual-badge" style="position:static;display:inline-block;margin-right:6px;vertical-align:2px">虚拟商品</span>':''}${esc(item['商品名称']||'')}</div>
-    <div class="detail-price">¥${price.toFixed(2)}${qty>1?` × ${qty} = ¥${total.toFixed(2)}`:''}</div>
-    <div class="detail-meta">
-      <span>🏪 ${esc(item['平台']||'')}</span>
-      <span class="a-badge ${status=='已到'||status=='已完成'||status=='已归档'?'a-badge-green':status=='已退'?'a-badge-red':status=='待审批'?'a-badge-blue':'a-badge-orange'}">${status}</span>
-      <span class="cat-badge">${esc(item['分类']||'其他')}</span>
-      ${ds?`<span>📅 ${ds}</span>`:''}
-    </div>
-    ${item['备注']?`<div style="font-size:13px;color:var(--muted);margin-top:8px">💬 ${esc(item['备注'])}</div>`:''}
-  ${item['图片']&&!item['图片'].startsWith('{')?`<div style="margin-top:8px"><img src="${escAttr(item['图片'].startsWith('kv:')?API_BASE + '/api/images?key='+encodeURIComponent(item['图片'].slice(3))+'&token='+encodeURIComponent(getPin()):item['图片'])}" style="max-width:100%;max-height:300px;border-radius:10px;cursor:pointer" onclick="showFullscreenImg(this.src)"></div>`:''}
-  ${item['评估摘要']?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:13px;line-height:1.7;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:4px">🤖 AI评估摘要</div><div style="color:var(--muted)">${stripMd(esc(item['评估摘要']))}</div></div>`:''}
-  ${item['购买理由']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--orange)"><div style="font-weight:600;margin-bottom:2px">💡 购买理由</div><div style="color:var(--muted)">${esc(item['购买理由'])}</div></div>`:''}
-  ${item['预算区间']?`<div style="font-size:12px;color:var(--muted);margin-top:6px">💰 预算: ¥${esc(item['预算区间'])}</div>`:''}
-  ${item['取消原因']?`<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">❌ 取消理由</div><div style="color:var(--muted)">${esc(item['取消原因'])}</div></div>`:''}
-  ${(function(){var tp=Number(item['分期期数'])||0;if(tp<=0)return'';var pd=getEffectivePaid(item);var ia=Number(item['分期金额'])||Math.round((Number(item['单价']||0)*Number(item['数量']||1))/tp);var pa=ia*pd;var tt=Number(item['单价']||0)*Number(item['数量']||1);var pct=Math.min(pa/tt*100,100);var bc=pct>90?'var(--red)':pct>60?'var(--orange)':'var(--green)';return '<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:8px;font-size:13px;border-left:3px solid var(--pri)"><div style="font-weight:600;margin-bottom:6px">📦 分期购买</div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>¥'+ia+'/期 · 共'+tp+'期</span><span>已付'+pd+'期</span></div><div style="font-size:18px;font-weight:700;margin-bottom:8px">¥'+pa+' <span style="font-size:12px;color:var(--muted);font-weight:400">/ ¥'+tt+'</span></div><div style="height:6px;background:var(--card);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:3px;transition:width .5s"></div></div></div>'})()}
-  </div>`
-
-  // Stepper: always show full flow 待审批→已审批→已下单→已到/已退→已归档
-  const branchLabel = status==='已退' ? '已退' : '已到';
-  const mainSteps = ['待审批','已审批','已下单'];
-  const branchDone = status==='已到' || status==='已退' || status==='已归档';
-  const archiveDone = status==='已归档';
-
-  // Build full step list
-  const allSteps = [];
-  mainSteps.forEach(s => {
-    const isDone = status==='已到'||status==='已退'||status==='已归档' || mainSteps.indexOf(s) < mainSteps.indexOf(status);
-    const isCur = s===status;
-    allSteps.push({ key:s, done:isDone, active:isCur });
-  });
-  // Branch step
-  allSteps.push({ key:branchLabel, done:branchDone, active:status===branchLabel });
-  // Archive step
-  allSteps.push({ key:'已归档', done:archiveDone, active:status==='已归档' });
-
-  html+=`<div class="detail-section-title">📋 审批流程</div><div class="stepper">`;
-  allSteps.forEach((s, idx) => {
-    const isLast = idx === allSteps.length - 1;
-    let stepClass = 'step-pending';
-    let dotContent = '⚪';
-    let timeText = '—';
-    if (s.done) {
-      stepClass = 'step-done';
-      dotContent = '✓';
-      const tf = STEP_TIME_FIELDS[s.key];
-      if (tf && item[tf]) timeText = item[tf];
-      else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
-    } else if (s.active) {
-      stepClass = 'step-active';
-      dotContent = STEPPER_ICONS[s.key] || '🔵';
-      const tf = STEP_TIME_FIELDS[s.key];
-      if (tf && item[tf]) timeText = item[tf];
-      else if (s.key==='待审批' && item['创建时间']) timeText = item['创建时间'];
-      else timeText = '进行中...';
-    }
-    html+=`<div class="step-item ${stepClass}">
-      <div class="step-dot-wrap">
-        <div class="step-dot">${dotContent}</div>
-        ${!isLast?'<div class="step-line"></div>':''}
-      </div>
-      <div class="step-info">
-        <div class="step-name">${s.key}</div>
-        <div class="step-time">${timeText}</div>
-      </div>
-    </div>`;
-  });
-  html+='</div>';
-
-  // 阶段附件
-  var attachments = item['附件'] || {};
-  if (typeof attachments === 'string') { try { attachments = JSON.parse(attachments); } catch(e) { attachments = {}; } }
-  var allStages = ['待审批','已审批','已下单','已到','已退','已归档'];
-  var currentStage = status;
-  html += '<div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:12px">';
-  html += '<div style="font-size:14px;font-weight:700;margin-bottom:10px">📎 阶段附件</div>';
-  var hasAnyImg = false;
-  allStages.forEach(function(stage) {
-    var stageImg = attachments[stage] || '';
-    var isCurrent = stage === currentStage;
-    if (stageImg || isCurrent) {
-      hasAnyImg = true;
-      var stageLabel = stage;
-      var imgHtml = '';
-      if (stageImg && stageImg.startsWith('kv:')) {
-        imgHtml = '<img src="' + escAttr(API_BASE + '/api/images?key=' + encodeURIComponent(stageImg.slice(3)) + '&token=' + encodeURIComponent(getPin())) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
-      } else if (stageImg) {
-        imgHtml = '<img src="' + escAttr(stageImg) + '" style="max-width:100%;max-height:150px;border-radius:8px;cursor:pointer;margin-top:6px" onclick="showFullscreenImg(this.src)">';
-      }
-      var borderColor = isCurrent ? 'var(--pri)' : 'var(--border)';
-      var bg = isCurrent ? 'var(--card)' : 'transparent';
-      html += '<div style="padding:10px;margin-bottom:8px;border:1px solid ' + borderColor + ';border-radius:10px;background:' + bg + '">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-size:12px;font-weight:' + (isCurrent?'700':'400') + '">' + (isCurrent ? '🔵 ' : '⚫ ') + stageLabel + '</span>';
-      if (isCurrent) {
-        html += '<span style="display:flex;gap:6px">';
-        html += '<button onclick="document.getElementById(\'stageCameraInput\').click()" style="padding:4px 10px;background:var(--pri);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">📷</button>';
-        html += '<button onclick="document.getElementById(\'stageGalleryInput\').click()" style="padding:4px 10px;background:var(--pri);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer">🖼️</button>';
-        if (stageImg) {
-          html += '<button onclick="deleteStageImage(\'' + id + '\',\'' + stage + '\')" style="padding:4px 10px;background:var(--card);border:1px solid #f87171;color:#f87171;border:none;border-radius:6px;font-size:11px;cursor:pointer">🗑️</button>';
-        }
-        html += '</span>';
-      }
-      html += '</div>';
-      if (imgHtml) {
-        html += imgHtml;
-        if (!isCurrent && stageImg) html += '<div style="text-align:right;margin-top:4px"><button onclick="deleteStageImage(\'' + id + '\',\'' + stage + '\')" style="padding:3px 8px;background:none;border:1px solid #f87171;color:#f87171;border-radius:6px;font-size:10px;cursor:pointer">🗑️ 删除</button></div>';
-      }
-      if (!stageImg && isCurrent) html += '<div style="font-size:11px;color:var(--muted);margin-top:6px">未上传附件</div>';
-      html += '</div>';
-    }
-  });
-  if (!hasAnyImg) html += '<div style="font-size:12px;color:var(--muted);text-align:center;padding:10px">暂无附件</div>';
-  html += '</div>';
-
-  // 操作按钮
-  if(CANCELABLE_STATUSES.includes(status)){
-    const btnCfg=STEP_BTN_CONFIG[status];
-    html+=`<div style="margin-top:16px;display:flex;gap:10px"><button class="detail-action-btn" style="background:${btnCfg.color};flex:1" onclick="doDetailModalAction(\x27${id}\x27,\x27${btnCfg.next}\x27)">${btnCfg.label}</button><button class="detail-action-btn" style="background:var(--muted);flex:0 0 auto" onclick="cancelPurchase('${id}')">❌ 取消</button></div>`;
-  }else if(status==='已下单'){
-    html+=`<div style="margin-top:16px;display:flex;gap:10px">
-      <button class="detail-action-btn" style="background:var(--green);flex:1" onclick="doDetailModalAction('${id}','已到')">📦 确认收货</button>
-      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货归档</button>
-    </div>`;
-  }else if(status==='已到'){
-    html+=`<div style="margin-top:16px;display:flex;gap:10px">
-      <button class="detail-action-btn" style="background:var(--pri);flex:1" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button>
-      <button class="detail-action-btn" style="background:var(--red);flex:1" onclick="doDetailModalAction('${id}','已退')">↩️ 退货</button>
-    </div>`;
-  }else if(status==='已退'){
-    html+=`<div style="margin-top:16px"><button class="detail-action-btn" style="background:var(--pri)" onclick="doDetailModalAction('${id}','已归档')">🗄️ 确认归档</button></div>`;
-  }
-
-  document.getElementById('detailContent').innerHTML=html;
-  document.getElementById('detailOverlay').classList.add('active');
-}
-function uploadDetailImage(input){var file=input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var canvas=document.createElement("canvas");var MAX=1600;var w=img.width,h=img.height;if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX}else{w=Math.round(w*MAX/h);h=MAX}}canvas.width=w;canvas.height=h;canvas.getContext("2d").drawImage(img,0,0,w,h);var dataUrl=canvas.toDataURL("image/jpeg",0.92);var id=currentDetailId;if(!id){toast("无法识别采购ID");return;}
-var currentItem=items.find(function(x){return x.id===id});var stage=currentItem?(currentItem['状态']||'待审批'):'待审批';toast("上传中...");api("PUT",{id:id,image:dataUrl,stageImage:true,stageName:stage}).then(function(r){if(r&&!r.error){toast("附件已保存到"+stage+"阶段");loadAll().then(function(){openDetailModal(id)})}else{toast("保存失败: "+(r.error||""))}}).catch(function(){toast("网络错误")})};img.src=e.target.result};reader.readAsDataURL(file)}
-function saveDetailImage(id){if(typeof purchaseImageData==='undefined'||!purchaseImageData['d'])return;api('PUT',{id:id,image:purchaseImageData['d']}).then(function(r){if(r&&!r.error){toast('图片已保存');purchaseImageData['d']='';loadAll()}else{toast('保存失败')}}).catch(function(){toast('网络错误')})}
-function deleteDetailImage(id){if(!confirm('确认删除图片？'))return;api('PUT',{id:id,image:''}).then(function(r){if(r&&!r.error){toast('图片已删除');loadAll().then(function(){openDetailModal(id)})}else{toast('删除失败')}}).catch(function(){toast('网络错误')})}
-function deleteStageImage(id,stage){if(!confirm('确认删除'+stage+'阶段的附件？'))return;api('PUT',{id:id,image:'',stageImage:true,stageName:stage}).then(function(r){if(r&&!r.error){toast('附件已删除');loadAll().then(function(){openDetailModal(id)})}else{toast('删除失败')}}).catch(function(){toast('网络错误')})}
-function closeDetailModal(){document.getElementById('detailOverlay').classList.remove('active')}
-// Purchases no longer create expense records - budget pool tracks them independently
-async function createPurchaseExpense(item) { /* disabled: shared budget pool model */ }
-function doDetailModalAction(id,nextStatus){
-  if(!confirm('确认执行此操作？'))return;
-  // Optimistic update: update local state immediately
-  const item=items.find(x=>x.id===id);
-  if(item){
-    item['状态']=nextStatus;
-    const now=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Shanghai'}).slice(0,16).replace('T',' ');
-    if(nextStatus==='已审批')item['审批时间']=now;
-    else if(nextStatus==='已下单')item['下单时间']=now;
-    else if(nextStatus==='已到'||nextStatus==='已退')item['到货时间']=now;
-    else if(nextStatus==='已归档')item['归档时间']=now;
-    // Purchase expense no longer auto-created (shared budget pool model)
-    toast(`已更新为"${nextStatus}"`);
-    closeDetailModal();
-    render();
-}
-  // Fire PATCH in background, don't block UI
-  api('PATCH',{ids:[id],status:nextStatus}).then(r=>{
-    if(r&&r.error){toast('同步失败，请刷新');loadAll();}
-    else{loadTodos().then(function(){renderTodo()}).catch(function(){});
-      if(item&&item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')refreshProjectsAfterLinkedMoney();}
-  }).catch(()=>{toast('网络错误，请刷新');loadAll();});
-}
-
-
+// items.js - 采购页壳：tab 切换 / 需求表单 / 极速采购 / 兼容导出
+// 新采购模型（需求/供应商/子单）见 js/needs.js；本文件不再含详情渲染与审批流。
 
 // ============================================================
 function switchTab(t){
@@ -239,45 +49,76 @@ function switchTab(t){
   }
 }
 
-// ===== 采购操作 =====
-function toggleBatch(){batchMode=!batchMode;selectedIds.clear();document.getElementById('batchBar').classList.toggle('show',batchMode);document.getElementById('batchInfo').textContent='已选 0 项';render()}
-function toggleSelect(id){if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);document.getElementById('batchInfo').textContent=`已选 ${selectedIds.size} 项`;render()}
-async function batchUpdate(){if(!selectedIds.size)return toast('请先选择商品');const status=document.getElementById('batchStatus').value;const ids=[...selectedIds];const _linked=ids.some(function(id){var _i=items.find(function(x){return x.id===id});return !!(_i&&_i['项目ID'])});toast('正在更新 '+ids.length+' 项...');ids.forEach(function(id){var _i=items.find(function(x){return x.id===id});if(_i)_i['状态']=status;});selectedIds.clear();toggleBatch();render();var r=await api('PATCH',{ids,status});if(r&&r.error){toast('批量更新失败');await loadAll();return}toast('已更新 '+ids.length+' 项');if(_linked&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
-async function batchDelete(){if(!selectedIds.size)return;if(!confirm('确定删除选中的 '+selectedIds.size+' 项？'))return;const ids=[...selectedIds];const _linked=ids.some(function(id){var _i=items.find(function(x){return x.id===id});return !!(_i&&_i['项目ID'])});for(const id of ids){var item=items.find(x=>x.id===id);if(item)await deletePurchaseExpenses(item['商品名称']||'')}items=items.filter(x=>!ids.includes(x.id));selectedIds.clear();toggleBatch();render();let ok=0;for(const id of ids){try{await api('DELETE',null,id);ok++}catch{}}toast('已删除 '+ok+' 项');if(_linked&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
+// ===== 采购操作（新版无批量；保留入口避免旧快捷键/调用报错）=====
+function toggleBatch(){toast('新版采购无批量模式，可在需求详情内操作子单')}
 
 // ============================================================
-// 采购 Modal
+// 需求表单（#overlay）：提交需求 / 编辑需求
 // ============================================================
 function openModal(projectId, phaseIdx){
   document.getElementById('editId').value='';
-  document.getElementById('modalTitle').textContent='新增采购';
+  document.getElementById('modalTitle').textContent='提交需求';
   document.getElementById('fName').value='';
-  document.getElementById('fReason').value='';
-  document.getElementById('fName').style.display='';
-  document.getElementById('aiEvalResult').style.display='none';
-  document.getElementById('aiEvalResult').textContent='';
-  document.getElementById('chatArea').style.display='none';
-  document.getElementById('chatMessages').innerHTML='';
-  purchaseChatHistory=[];
-  purchaseEvalContext='';
-  if(typeof purchaseImageData!=='undefined'){
-    purchaseImageData={};
-    var evW=document.getElementById('evImageWrap');
-    if(evW)evW.style.display='none';
-  }
-  document.getElementById('evalPhase').style.display='';
-  document.getElementById('detailPhase').style.display='none';
-  document.getElementById('editPhase').style.display='none';
-  var peW=document.getElementById('peImageWrap');
-  if(peW)peW.style.display='none';
+  document.getElementById('fBudgetMin').value='';
+  document.getElementById('fBudgetMax').value='';
+  var catSel=document.getElementById('fCategory');
+  if(catSel)catSel.value='日用';
+  var fv=document.getElementById('fVirtual');if(fv)fv.checked=false;
   // 从项目详情进入时预选项目/阶段；普通新建则清空
   if(typeof fillProjectPhaseSelects==='function' && document.getElementById('fProject')){
     try{ fillProjectPhaseSelects('fProject','fPhase',projectId||'',(phaseIdx===undefined?null:phaseIdx)); }catch(e){}
   }
   document.getElementById('overlay').classList.add('active');
+  setTimeout(function(){var el=document.getElementById('fName');if(el)el.focus()},60);
+}
+function openNeedEdit(id){
+  const n=typeof findNeed==='function'?findNeed(id):null;
+  if(!n){toast('未找到该需求');return}
+  document.getElementById('editId').value=id;
+  document.getElementById('modalTitle').textContent='编辑需求';
+  document.getElementById('fName').value=n['名称']||'';
+  const catSel=document.getElementById('fCategory');
+  if(catSel){
+    const c=n['分类']||'其他';
+    catSel.value=c;
+    if(catSel.value!==c){const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);catSel.value=c}
+  }
+  document.getElementById('fBudgetMin').value=n['预算下限']!=null?n['预算下限']:'';
+  document.getElementById('fBudgetMax').value=n['预算上限']!=null?n['预算上限']:'';
+  var fv=document.getElementById('fVirtual');if(fv)fv.checked=(n['虚拟']==='1');
+  try{if(typeof fillProjectPhaseSelects==='function')fillProjectPhaseSelects('fProject','fPhase',n['项目ID']||'',n['阶段'])}catch(e){}
+  document.getElementById('overlay').classList.add('active');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('active')}
+async function saveNeed(){
+  const name=(document.getElementById('fName').value||'').trim();
+  if(!name){alert('请输入需求名称');return}
+  const minRaw=document.getElementById('fBudgetMin').value.trim();
+  const maxRaw=document.getElementById('fBudgetMax').value.trim();
+  const budgetMin=minRaw===''?null:(isFinite(parseFloat(minRaw))?parseFloat(minRaw):null);
+  const budgetMax=maxRaw===''?null:(isFinite(parseFloat(maxRaw))?parseFloat(maxRaw):null);
+  if(budgetMin==null&&minRaw!==''){alert('预算下限格式不对');return}
+  if(budgetMax==null&&maxRaw!==''){alert('预算上限格式不对');return}
+  if(budgetMin!=null&&budgetMax!=null&&budgetMin>budgetMax){alert('预算下限不能大于上限');return}
+  const data={
+    name:name,
+    category:document.getElementById('fCategory').value||'其他',
+    budgetMin:budgetMin, budgetMax:budgetMax,
+    virtual:!!(document.getElementById('fVirtual')&&document.getElementById('fVirtual').checked),
+    projectId:(document.getElementById('fProject')||{}).value||'',
+    phaseIdx:(function(){var ph=document.getElementById('fPhase');return ph&&ph.value!==''?Number(ph.value):null})()
+  };
+  const editId=document.getElementById('editId').value;
+  closeModal();
+  const r=editId?await needsApi('PUT','/needs/'+editId,data):await needsApi('POST','/needs',data);
+  if(r&&r.error){toast((editId?'更新':'提交')+'失败: '+r.error);return}
+  toast(editId?'已更新':'需求已提交');
+  await needRefresh();
 }
 
-// ===== 极速采购（免审直通，状态直接=已到）=====
+// ============================================================
+// 极速采购（免审直通，走 /api/needs/quick；旧 server 时回退 /api/items）
+// ============================================================
 function getQuickPrefs(){try{return JSON.parse(localStorage.getItem('quick_purchase_prefs')||'{}')}catch(e){return{}}}
 function saveQuickPrefs(p){try{localStorage.setItem('quick_purchase_prefs',JSON.stringify(p))}catch(e){}}
 function openQuickPurchaseModal(){
@@ -327,23 +168,28 @@ async function saveQuickPurchase(){
     name:name, price:price, qty:qty,
     platform:el('qPlatform').value, category:el('qCategory').value,
     note:(el('qNote').value||'').trim()||null, date:el('qDate').value||null,
-    status:'已到', quick:true,
     virtual:!!(el('qVirtual')&&el('qVirtual').checked),
     projectId:(el('qProject')||{}).value||'',
     phaseIdx:(function(){var ph=el('qPhase');return ph&&ph.value!==''?Number(ph.value):null})()
   };
   saveQuickPrefs({platform:data.platform,category:data.category});
   closeQuickPurchase();
-  const r=await api('POST',data);
-  if(r&&r.error){toast('添加失败: '+r.error);return}
+  const r=await needsApi('POST','/needs/quick',data);
+  if(needEndpointMissing(r)){
+    // 旧 server / 飞书后端：回退旧 /api/items 快速路径（status=已到 + quick）
+    const legacy=await api('POST',Object.assign({},data,{status:'已到',quick:true}));
+    if(legacy&&legacy.error){toast('添加失败: '+legacy.error);return}
+  }else if(r&&r.error){toast('添加失败: '+r.error);return}
   toast('已记入采购（免审）');
   if(el('qVirtual'))el('qVirtual').checked=false;
   await loadAll();
 }
 
-function editItem(id){const i=items.find(x=>x.id===id);if(!i)return;document.getElementById('editId').value=id;document.getElementById('modalTitle').textContent='编辑采购';document.getElementById('evalPhase').style.display='none';document.getElementById('detailPhase').style.display='none';document.getElementById('editPhase').style.display='';document.getElementById('fNameEdit').value=i['商品名称']||'';document.getElementById('fPlatformEdit').value=i['平台']||'拼多多';document.getElementById('fCategoryEdit').value=i['分类']||'日用';document.getElementById('fPriceEdit').value=i['单价']||'';document.getElementById('fQtyEdit').value=i['数量']||1;document.getElementById('fStatusEdit').value=i['状态']||'待审批';const d=i['日期'];document.getElementById('fDateEdit').value=d?new Date(d).toISOString().slice(0,10):'';document.getElementById('fNoteEdit').value=i['备注']||'';var _fv=document.getElementById('fVirtualEdit');if(_fv)_fv.checked=(i['虚拟']==='1');try{if(typeof fillProjectPhaseSelects==='function')fillProjectPhaseSelects('fProjectEdit','fPhaseEdit',i['项目ID']||'',i['阶段'])}catch(e){}var ig=document.getElementById('installmentGroup');var ii=document.getElementById('fInstallments');var ip=document.getElementById('installmentPreview');var iv=i['分期期数']||0;if(ig)ig.style.display='block';if(ii){ii.value=iv||'';ii.oninput=function(){var p=parseInt(this.value)||0;var pr=parseFloat(document.getElementById('fPriceEdit').value)||0;var q=parseInt(document.getElementById('fQtyEdit').value)||1;var t=pr*q;if(ip)ip.textContent=p>0?'每期 \u00a5'+(t/p).toFixed(2):'';if(ig)ig.style.display=p>0?'block':'none';}}if(ip)ip.textContent=iv>0?'每期 \u00a5'+(((i['单价']||0)*(i['数量']||1))/iv).toFixed(2):'';var peW=document.getElementById('peImageWrap');var peP=document.getElementById('peImagePreview');if(typeof purchaseImageData!=='undefined')purchaseImageData['pe']='';if(peW)peW.style.display='none';if(i['图片']&&i['图片'].startsWith('kv:')){if(peP)peP.src=API_BASE + '/api/images?key='+encodeURIComponent(i['图片'].slice(3))+'&token='+encodeURIComponent(getPin());if(peW)peW.style.display='block'}else if(i['图片']){if(peP)peP.src=i['图片'];if(peW)peW.style.display='block'}document.getElementById('overlay').classList.add('active')}
-function closeModal(){document.getElementById('overlay').classList.remove('active')}
-async function save(){const name=document.getElementById('fNameEdit').value.trim();if(!name){alert('请输入商品名称');return}const editId=document.getElementById('editId').value;const data={name,platform:document.getElementById('fPlatformEdit').value,category:document.getElementById('fCategoryEdit').value,price:parseFloat(document.getElementById('fPriceEdit').value)||0,qty:parseInt(document.getElementById('fQtyEdit').value)||1,status:document.getElementById('fStatusEdit').value,date:document.getElementById('fDateEdit').value||null,note:document.getElementById('fNoteEdit').value.trim()||null,virtual:!!(document.getElementById('fVirtualEdit')&&document.getElementById('fVirtualEdit').checked),projectId:(document.getElementById('fProjectEdit')||{}).value||'',phaseIdx:(function(){var el=document.getElementById('fPhaseEdit');return el&&el.value!==''?Number(el.value):null})(),image:typeof purchaseImageData!=='undefined'?(purchaseImageData['pe']||''):null,installments:parseInt(document.getElementById('fInstallments')&&document.getElementById('fInstallments').value)||0,installmentAmount:0,installmentStart:getThisMonth()};if(editId){var _idx=items.findIndex(function(x){return x.id===editId});if(_idx>=0){var _it=items[_idx];_it['商品名称']=name;_it['平台']=data.platform;_it['分类']=data.category;_it['单价']=data.price;_it['数量']=data.qty;_it['状态']=data.status;_it['备注']=data.note||'';}}closeModal();render();if(editId){const r=await api('PUT',{id:editId,...data});if(r&&r.error){toast('更新失败');await loadAll();return}toast('已更新')}else{var _tmp={id:'tmp_'+Date.now(),'商品名称':name,'平台':data.platform||'拼多多','单价':data.price,'数量':data.qty,'状态':data.status||'待审批','分类':data.category||'其他','备注':data.note||'','日期':Date.now(),'创建时间':'加载中...','分期期数':data.installments||0,'分期金额':0};items.unshift(_tmp);render();const r=await api('POST',data);if(r&&r.error){toast('添加失败');items=items.filter(function(x){return x.id!==_tmp.id});render();return}_tmp.id=r.id||_tmp.id;toast('已添加')}if(typeof refreshProjectsAfterLinkedMoney==='function') await refreshProjectsAfterLinkedMoney();}
+// ============================================================
+// 兼容导出 / 旧调用点
+// ============================================================
+// 采购不再产生记账行（预算池独立口径）；保留函数供删除流程清理旧数据
+async function createPurchaseExpense(item) { /* disabled: shared budget pool model */ }
 
 async function deletePurchaseExpenses(itemName) {
   try {
@@ -359,72 +205,20 @@ async function deletePurchaseExpenses(itemName) {
   } catch(e) { console.error('deletePurchaseExpenses error:', e); }
 }
 
-async function delItem(id){if(!confirm('确定删除？'))return;var item=items.find(x=>x.id===id);var itemName=item?item['商品名称']||'':'';if(itemName)await deletePurchaseExpenses(itemName);items=items.filter(x=>x.id!==id);render();const r=await api('DELETE',null,id);if(r&&r.error){alert('删除失败: '+r.error);await loadAll();return}toast('已删除');if(item&&item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')await refreshProjectsAfterLinkedMoney()}
-
-// ===== 审批流操作 =====
-const NEXT_STATUS={'待评估':'待审批','待审批':'已审批','已审批':'已下单','已下单':'已到'};
-const APPROVAL_TITLES={'待审批':'✅ 审批确认','已审批':'🛒 确认下单','已下单':'📦 确认收货'};
-const APPROVAL_TEXTS={'待审批':'确认审批通过？通过后状态变为“已审批”','已审批':'确认下单？通过后状态变为“已下单”','已下单':'确认收货？通过后状态变为“已到”'};
-function showApprovalModal(id){
-  const item=items.find(x=>x.id===id);
-  if(!item)return;
-  const status=item['状态']||'待审批';
-  const next=NEXT_STATUS[status];
-  if(!next)return;
-  const qty=Number(item['数量'])||1;
-  const price=Number(item['单价'])||0;
-  const total=price*qty;
-  document.getElementById('approvalTitle').textContent=APPROVAL_TITLES[status]||'确认操作';
-  document.getElementById('approvalContent').innerHTML=`
-    <div class="apv-card">
-      <div class="apv-name">${esc(item['商品名称']||'')}</div>
-      <div class="apv-price-line">单价 ¥${price.toFixed(2)} × ${qty}</div>
-      <div class="apv-total">¥${total.toFixed(2)}</div>
-      <div class="apv-flow"><b>${esc(status)}</b><span class="ar">→</span><b class="to">${esc(next)}</b></div>
-      <div class="apv-hint">${APPROVAL_TEXTS[status]}</div>
-    </div>
-  `;
-  const btn=document.getElementById('approvalConfirmBtn');
-  btn.onclick=async function(){
-    var _item=items.find(function(x){return x.id===id});if(_item)_item['状态']=next;
-    closeApprovalModal();render();
-    var r=await api('PATCH',{ids:[id],status:next});
-    if(r&&r.error){toast('更新失败');await loadAll();}else{loadTodos().then(function(){renderTodo()}).catch(function(){})}if(next==='已取消'||next==='已退'){if(typeof todoList!=='undefined'){todoList=todoList.filter(function(t){return t.linkId!==id});renderTodo()}}if(_item&&_item['项目ID']&&typeof refreshProjectsAfterLinkedMoney==='function')refreshProjectsAfterLinkedMoney();
-  };
-  document.getElementById('approvalOverlay').classList.add('active');
-}
-function closeApprovalModal(){document.getElementById('approvalOverlay').classList.remove('active')}
-
-// ===== 记账操作 =====
-
-// ============================================================
-// 记账 Modal
-// ============================================================
+// app.js 键盘快捷键 → 需求删除
+function delItem(id){deleteNeed(id)}
 
 // === App.items namespace exports ===
-App.items.openDetailModal = openDetailModal;
-App.items.closeDetailModal = closeDetailModal;
-App.items.createPurchaseExpense = createPurchaseExpense;
-App.items.doDetailModalAction = doDetailModalAction;
+App.items.openModal = openModal;
+App.items.openNeedEdit = openNeedEdit;
+App.items.closeModal = closeModal;
+App.items.saveNeed = saveNeed;
 App.items.switchTab = switchTab;
 App.items.toggleBatch = toggleBatch;
-App.items.toggleSelect = toggleSelect;
-App.items.batchUpdate = batchUpdate;
-App.items.batchDelete = batchDelete;
-function clearEvImage(){if(typeof purchaseImageData!=="undefined")purchaseImageData["ev"]="";var w=document.getElementById("evImageWrap");if(w)w.style.display="none"}
-function clearDetailPhaseImage(){if(typeof purchaseImageData!=="undefined")purchaseImageData["p"]="";var w=document.getElementById("pImageWrap");if(w)w.style.display="none"}
-function clearPurchaseEditImage(){if(typeof purchaseImageData!=='undefined')purchaseImageData['pe']='';var w=document.getElementById('peImageWrap');if(w)w.style.display='none'}
-App.items.openModal = openModal;
-App.items.editItem = editItem;
-App.items.closeModal = closeModal;
-App.items.save = save;
+App.items.createPurchaseExpense = createPurchaseExpense;
 App.items.deletePurchaseExpenses = deletePurchaseExpenses;
-App.items.clearEvImage = clearEvImage;
-App.items.clearDetailPhaseImage = clearDetailPhaseImage;
-App.items.clearPurchaseEditImage = clearPurchaseEditImage;
-App.items.uploadDetailImage = uploadDetailImage;
-App.items.deleteStageImage = deleteStageImage;
-App.items.saveDetailImage = saveDetailImage;
+App.items.openQuickPurchaseModal = openQuickPurchaseModal;
+App.items.closeQuickPurchase = closeQuickPurchase;
+App.items.qPlatformChanged = qPlatformChanged;
+App.items.saveQuickPurchase = saveQuickPurchase;
 App.items.delItem = delItem;
-App.items.showApprovalModal = showApprovalModal;
-App.items.closeApprovalModal = closeApprovalModal;

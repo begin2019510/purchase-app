@@ -1,8 +1,11 @@
 // GET /api/push/archive-check?token=***
 // 检查已到/已退超过3天未归档的记录，飞书提醒
+// DATA_BACKEND=mysql → 反代到服务器查 purchase_orders（单一数据源，不再有飞书副本滞后）；
+// feishu 回退分支原样保留（DATA_BACKEND 非 mysql 时走旧 KV→bitable 逻辑）
 import { corsHeaders, json, getAllRecords } from './_common.js';
+import { mysqlMode, toServer } from '../_proxy.js';
 
-// 获取所有用户的采购记录（多用户支持 + 旧版兼容）
+// 获取所有用户的采购记录（多用户支持 + 旧版兼容，仅 DATA_BACKEND=feishu 回退用）
 async function getAllArchiveRecords(env) {
   const kv = env.IMAGE_STORE;
   const allRecords = [];
@@ -54,32 +57,41 @@ export async function onRequest(context) {
   if (!env.FEISHU_BOT_WEBHOOK) return json({ error: 'FEISHU_BOT_WEBHOOK 未配置' }, 500, headers);
 
   try {
-    const now = new Date();
     const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+    let needArchive = [];
 
-    // 读取采购数据
-    const records = await getAllArchiveRecords(env);
+    if (mysqlMode(env)) {
+      // 服务器端已完成筛选（状态∈{已到,已退} 且 arrived_at 超 3 天），直接取清单
+      const sr = await toServer(request, env);
+      const data = await sr.json().catch(() => null);
+      if (!sr.ok || !data || data.ok !== true) {
+        return json({ error: (data && data.error) || ('server HTTP ' + sr.status) },
+          sr.status >= 400 && sr.status < 600 ? sr.status : 502, headers);
+      }
+      needArchive = Array.isArray(data.items) ? data.items : [];
+    } else {
+      // feishu 回退：读 KV 用户配置 → 飞书 bitable
+      const now = new Date();
+      const records = await getAllArchiveRecords(env);
+      for (const r of records) {
+        const f = r.fields;
+        const status = f['状态'] || '';
+        if (status !== '已到' && status !== '已退') continue;
 
-    const needArchive = [];
+        // 用到货时间判断
+        const timeField = f['到货时间'] || '';
+        const arriveTime = parseTimeStr(timeField);
+        if (!arriveTime) continue;
 
-    for (const r of records) {
-      const f = r.fields;
-      const status = f['状态'] || '';
-      if (status !== '已到' && status !== '已退') continue;
-
-      // 用到货时间判断
-      const timeField = f['到货时间'] || '';
-      const arriveTime = parseTimeStr(timeField);
-      if (!arriveTime) continue;
-
-      const elapsed = now.getTime() - arriveTime.getTime();
-      if (elapsed > THREE_DAYS_MS) {
-        needArchive.push({
-          name: f['商品名称'] || '未知商品',
-          status,
-          arriveTime: timeField,
-          days: Math.floor(elapsed / (24 * 60 * 60 * 1000)),
-        });
+        const elapsed = now.getTime() - arriveTime.getTime();
+        if (elapsed > THREE_DAYS_MS) {
+          needArchive.push({
+            name: f['商品名称'] || '未知商品',
+            status,
+            arriveTime: timeField,
+            days: Math.floor(elapsed / (24 * 60 * 60 * 1000)),
+          });
+        }
       }
     }
 

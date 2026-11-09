@@ -1,4 +1,4 @@
-# 个人管家 v3.0.37
+# 个人管家 v3.0.40
 
 多用户采购、记账、待办与项目管理应用。线上前端部署在 Cloudflare Pages；生产业务 API 经 Pages Functions 代理到 Express 服务，MySQL 保存业务数据，服务器磁盘保存图片。飞书 Bitable 代码保留为兼容/回退路径，不能代表当前生产主存储。
 
@@ -19,13 +19,14 @@ Nginx HTTPS → Express (127.0.0.1) → MySQL
 
 ## 功能
 
-### 采购管理
-- 增删改查采购记录（商品、平台、单价、数量、分类、备注）
-- 审批流：待评估 → 待审批 → 已审批 → 已下单 → 已到/已退 → 已归档
-- 批量操作：批量改状态、批量删除
+### 采购管理（两级模型，v3.0.40 重构）
+- 五步主流程：提交需求（名称/分类/预算区间）→ 选择供应商 → 下单试用（可选）→ 定点供应商 → 正式采购
+- 两级结构：`purchase_needs`（决策容器）→ `purchase_suppliers`（对比层，打分/排序，不入账）→ `purchase_orders`（执行层，唯一记账单元，试用单+正式单）
+- 多供应商横向对比：对比维度可增删，逐家打分、加权排序、试用结果对比
+- 快速采购：单弹窗一步下单（≤¥50 免审），底层自动生成需求+供应商+已到正式单
+- 记账口径：仅子单 已下单/已到/已归档 计入预算、周报月报、项目花费与分类统计
+- 旧 `/api/items` 为完全兼容层（旧状态 8 态 ⇄ 新 6 态映射），外部集成（MCP 等）零改动可用
 - 搜索过滤：按状态、分类筛选
-- 卡片左滑删除、右滑改状态
-- 详情弹窗 Stepper 流程展示
 
 ### 记账
 - 收支记录（类型、分类、金额、备注、时间）
@@ -91,8 +92,9 @@ purchase-app/
 │   ├── api.js              # API 封装（采购/记账/预算/固定支出/图片）
 │   ├── stats.js            # 统计图表（饼图/折线/柱状/排行）
 │   ├── expense.js          # 记账渲染（列表/日历/周视图/CRUD）
-│   ├── items.js            # 采购渲染（卡片/批量/审批/详情弹窗）
-│   ├── ai.js               # AI 助手（记账/分类/分析/评估/查询）
+│   ├── needs.js            # 新采购模块（需求/供应商对比/子单流转/需求详情）
+│   ├── items.js            # 采购入口（快速采购弹窗/新旧接口回退/导出）
+│   ├── ai.js               # AI 助手（记账/分类/分析/查询）
 │   ├── budget.js           # 预算弹窗/导出
 │   └── app.js              # 初始化/核心渲染/事件/离线检测/设置
 ├── theme.css               # 样式（主题+暗色模式+响应式）
@@ -104,8 +106,12 @@ purchase-app/
 ├── functions/              # Cloudflare Pages Functions（API）
 │   └── api/
 │       ├── _auth.js        # 公共认证模块（JWT/PBKDF2/Refresh Token/CORS）
+│       ├── _proxy.js       # MySQL 反代（mysqlMode fail-closed / toServer 转发）
 │       ├── auth.js         # 多用户认证（注册/登录/邀请码/管理员）
-│       ├── items.js        # 采购 CRUD + 缓存
+│       ├── items.js        # 旧采购 API：mysql 模式代理到 Express 兼容层，feishu 旧 CRUD
+│       ├── needs/[[route]].js     # 新采购需求 API catch-all（mysql 模式代理）
+│       ├── suppliers/[[route]].js # 供应商 API catch-all（mysql 模式代理）
+│       ├── orders/[[route]].js    # 子采购单 API catch-all（mysql 模式代理）
 │       ├── expenses.js     # 记账 CRUD
 │       ├── images.js       # 图片 API（MySQL 模式代理到 Express）
 │       ├── ai.js           # AI 代理（解析/分类/分析/画像/查询/评估）
@@ -115,7 +121,7 @@ purchase-app/
 │       └── push/
 │           ├── trigger.js  # 每日记账提醒
 │           ├── summary.js  # 周度/月度汇总
-│           └── archive-check.js # 归档检查
+│           └── archive-check.js # 归档检查（mysql 模式读子单，feishu 回退保留）
 ├── cron-worker/            # Cloudflare Worker Cron
 │   ├── index.js            # 定时任务调度
 │   └── wrangler.toml       # Worker 配置
@@ -229,6 +235,7 @@ npx wrangler deploy
 
 | 版本 | 日期 | 主要变更 |
 |------|------|----------|
+| v3.0.40 | 2026-11-09 | 采购两级模型重构：需求→供应商对比（打分/试用）→定点→正式采购五步流程；快速采购保留（≤¥50 免审，自动生成需求+供应商+正式单）；旧 /api/items 兼容层（8 态⇄6 态映射）；记账口径统一为子单 已下单/已到/已归档 |
 | v3.0.1 | 2026-10-29 | 设置 → 连接 Agent（MCP）：生成一次性安装链接，任意 agent 运行 install 即可自动注册 MCP、安装 skill 并换取独立凭据；链接 10 分钟内有效、只能使用一次，票据只放在 URL 片段中，不需要 App 密码 |
 | v3.0.0（新版本线） | 2026-10-29 | 版本线重置为 3.0.0；全面安全与稳定性评审：登录限流按真实 IP、邀请码原子消费、图片跨账号隔离（含历史 KV 图回退授权）、字段/状态校验、待办月度续期原子领取、报告区间与跨年边界修正 |
 | v4.0.61 | 2026-10-28 | 统计页同时展示最新周报与月报两张卡片，可分别查看；报告接口支持按周期读取，自动弹窗只弹最新生成的一份 |

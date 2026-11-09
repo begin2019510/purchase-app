@@ -61,9 +61,11 @@ async function legacyKeyOwnedBy(uid, key) {
     const rows = await db.query('SELECT image_ref FROM ' + table + ' WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
     for (const row of rows) if (_refInImageRef(row.image_ref, ref)) return true;
   }
-  // purchases.image_ref 可能是 'kv:xxx' 或阶段图片 JSON
-  const rows = await db.query('SELECT image_ref FROM purchases WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
-  for (const row of rows) if (_refInImageRef(row.image_ref, ref)) return true;
+  // 两级模型：供应商图 / 子单阶段图（旧 purchases 冻结备份也查，回滚窗口内不误删）
+  for (const table of ['purchase_suppliers', 'purchase_orders', 'purchases']) {
+    const rows = await db.query('SELECT image_ref FROM ' + table + ' WHERE user_id = ? AND image_ref LIKE ?', [uid, '%' + ref + '%']);
+    for (const row of rows) if (_refInImageRef(row.image_ref, ref)) return true;
+  }
   return false;
 }
 

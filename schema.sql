@@ -77,11 +77,91 @@ CREATE TABLE IF NOT EXISTS purchases (
   is_virtual         TINYINT NOT NULL DEFAULT 0,  -- 虚拟商品（API/服务器/会员等，无需物流）
   project_id         BIGINT UNSIGNED NULL,        -- 关联项目（项目花费聚合）
   phase_idx          TINYINT NULL,                -- 关联项目阶段 P0~P5
+  ext_id             VARCHAR(40) NULL,            -- 飞书 record_id（灾备同步；生产库已有此列）
   created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user_date (user_id, date_ms),
   KEY idx_user_status (user_id, status)
 ) ENGINE=InnoDB;
+-- ↑ 旧单层采购表：迁移（migrate-purchase-needs.js）后冻结为只读备份，新写入走下方三表
+
+-- ===== 采购需求（父 · 决策容器）PURCHASE-REDESIGN §2.1 =====
+CREATE TABLE IF NOT EXISTS purchase_needs (
+  id                    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id               INT UNSIGNED NOT NULL,
+  name                  VARCHAR(200) NOT NULL,           -- 想买什么
+  category              VARCHAR(30) NULL,                -- 分类
+  budget_min            DECIMAL(10,2) NULL,              -- 预算区间下限
+  budget_max            DECIMAL(10,2) NULL,              -- 预算区间上限
+  status                VARCHAR(10) NOT NULL DEFAULT '对比中', -- 对比中|已定点|已完成|已取消
+  dimensions            JSON NULL,                       -- [{key,label,weight}] 默认五维
+  selected_supplier_id  BIGINT UNSIGNED NULL,            -- 定点的供应商
+  project_id            BIGINT UNSIGNED NULL,            -- 项目关联（上移到需求级）
+  phase_idx             TINYINT NULL,                    -- P0~P5
+  is_virtual            TINYINT NOT NULL DEFAULT 0,      -- 虚拟商品
+  is_quick              TINYINT NOT NULL DEFAULT 0,      -- 快速采购生成
+  buy_reason            TEXT NULL,                       -- 迁移留存（不进新流程）
+  eval_summary          TEXT NULL,                       -- 迁移留存（不进新流程）
+  cancel_reason         VARCHAR(200) NULL,
+  decided_at            DATETIME NULL,                   -- 定点时间
+  ext_id                VARCHAR(40) NULL,                -- 飞书 record_id（迁移时继承旧 purchases.ext_id）
+  legacy_purchase_id    BIGINT UNSIGNED NULL,            -- 迁移来源旧 id（幂等/反向脚本用）
+  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_legacy (legacy_purchase_id),
+  KEY idx_user_status (user_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ===== 供应商（对比层 · 永不入账）PURCHASE-REDESIGN §2.2 =====
+CREATE TABLE IF NOT EXISTS purchase_suppliers (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT UNSIGNED NOT NULL,
+  need_id     BIGINT UNSIGNED NOT NULL,
+  name        VARCHAR(120) NOT NULL,             -- 谁：品牌/店家
+  platform    VARCHAR(20) NULL,                  -- 拼多多|淘宝|京东|抖音|其他
+  price       DECIMAL(10,2) NULL,                -- 报价（对比显示；与实付分离）
+  image_ref   TEXT NULL,                         -- 供应商图片
+  pros        TEXT NULL,                         -- 优点
+  cons        TEXT NULL,                         -- 缺点
+  note        TEXT NULL,                         -- 备注
+  scores      JSON NULL,                         -- {dimKey: 1..5}
+  sort_order  INT NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_need (need_id),
+  CONSTRAINT fk_supplier_need FOREIGN KEY (need_id) REFERENCES purchase_needs(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ===== 子采购单（执行层 · 唯一记账单元）PURCHASE-REDESIGN §2.3 =====
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id                 BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id            INT UNSIGNED NOT NULL,
+  need_id            BIGINT UNSIGNED NOT NULL,
+  supplier_id        BIGINT UNSIGNED NULL,        -- 关联供应商（转正/试用回溯）
+  role               VARCHAR(8) NOT NULL DEFAULT 'formal', -- trial|formal
+  qty                INT NOT NULL DEFAULT 1,
+  price_paid         DECIMAL(10,2) NOT NULL DEFAULT 0,     -- 实付（默认继承报价）
+  status             VARCHAR(10) NOT NULL DEFAULT '待下单',
+       -- 待下单|已下单|已到|已退|已归档|已取消（无待评估/待审批/已审批）
+  installments       INT NOT NULL DEFAULT 0,
+  installment_amount DECIMAL(10,2) NULL,
+  installment_start  VARCHAR(10) NULL,            -- YYYY-MM
+  installment_paid   INT NOT NULL DEFAULT 0,
+  date_ms            BIGINT NULL,                 -- 购买日期（毫秒）
+  image_ref          TEXT NULL,                   -- 阶段图 JSON {状态:kv:key}
+  note               TEXT NULL,
+  is_quick           TINYINT NOT NULL DEFAULT 0,
+  created_at_text    VARCHAR(30) NULL,            -- 创建时间（沿用文本）
+  approved_at        VARCHAR(30) NULL,            -- 兼容层审批时间（旧前端 stepper 用）
+  ordered_at         VARCHAR(30) NULL,
+  arrived_at         VARCHAR(30) NULL,
+  archived_at        VARCHAR(30) NULL,
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_need (need_id),
+  KEY idx_user_status (user_id, status),
+  CONSTRAINT fk_order_need FOREIGN KEY (need_id) REFERENCES purchase_needs(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===== 记账记录 =====  ← 类型/金额/分类/日期/备注/图片/分摊周数/分摊开始周
 CREATE TABLE IF NOT EXISTS expenses (

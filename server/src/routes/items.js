@@ -1,15 +1,22 @@
 'use strict';
-// /api/items 镜像 CF items.js：中文键 JSON、状态联动 Todo、阶段图片、分期字段
+// /api/items 兼容层（PURCHASE-REDESIGN §7）：读写全部映射到两级模型
+// GET    → 一 need 一行合成旧形态（供旧前端缓存/回滚窗口）
+// POST   → need + supplier + formal order（quick 走 ¥50 原子逻辑）
+// PUT    → 单条更新（字段分流到 need/supplier/order）
+// PATCH  → 批量状态/备注（旧 8 状态 → 新模型，宽松映射）
+// DELETE → 级联删 need；入账中的拒绝
+// 新前端请直接用 /api/needs。状态映射见 lib/needs.js。
 const express = require('express');
 const db = require('../db');
 const H = require('../lib/helpers');
 const IMG = require('../lib/images');
-const { requireAuth, guard, clientIP } = require('../middleware');
+const N = require('../lib/needs');
+const { guard, clientIP } = require('../middleware');
 const { logOp } = require('../lib/helpers');
 
 const router = express.Router();
 
-const ITEM_STATUS = new Set(['待评估', '待审批', '已审批', '已下单', '已到', '已退', '已归档', '已取消']);
+const ITEM_STATUS = N.LEGACY_STATUS; // 旧 8 状态白名单（兼容层输入）
 const MAX_MONEY = 9999999;
 
 function _projId(b){var s=String(b.projectId||'').trim();var m=/^(?:rec_)?(\d+)$/.exec(s);return m?Number(m[1]):null;}
@@ -19,7 +26,7 @@ function _int(v,def){if(v===undefined||v===null||v==='')return def;var n=Number(
 function _dateMs(v){if(v===undefined||v===null||v==='')return null;var t=new Date(v).getTime();return Number.isFinite(t)?t:NaN;}
 async function _ownedProject(uid,pid){if(!pid)return true;return !!(await db.one('SELECT id FROM projects WHERE id=? AND user_id=?',[pid,uid]));}
 
-// 表单校验：只允许有限的金额/数量/状态，防止负值、NaN 和超长文本写库
+// 表单校验（沿用旧规则，防负值/NaN/超长）
 function validateItem(b, old) {
   const o = old || {};
   const creating = !old;
@@ -56,9 +63,10 @@ function validateItem(b, old) {
   return { name, price, qty, status, installments, instAmount, instStart };
 }
 
+// 旧形态行 → 中文键 JSON（与旧 rowToItem 完全一致的键集合）
 function rowToItem(r) {
   return {
-    id: 'rec_' + r.id,
+    id: 'rec_' + r.legacy_id,
     '商品名称': r.name || '',
     '平台': r.platform || '',
     '单价': Number(r.price) || 0,
@@ -89,24 +97,105 @@ function rowToItem(r) {
   };
 }
 
-async function getOwnedItem(userId, id) {
+// id(rec_) → {need, suppliers, orders} 或 null
+async function getOwnedGraph(uid, id) {
   const n = H.numFromId(id);
   if (!n) return null;
-  return db.one('SELECT * FROM purchases WHERE id = ? AND user_id = ?', [n, userId]);
+  const need = await db.one('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ?', [n, uid]);
+  if (!need) return null;
+  const [suppliers, orders] = await Promise.all([
+    db.query('SELECT * FROM purchase_suppliers WHERE need_id = ? ORDER BY sort_order, id', [n]),
+    db.query('SELECT * FROM purchase_orders WHERE need_id = ? ORDER BY id', [n]),
+  ]);
+  return { need, suppliers, orders };
+}
+
+function formalOf(orders) { return orders.find(o => o.role === 'formal') || null; }
+
+// 旧状态写入 → needCols / orderPatch / deleteFormal（兼容层宽松，保持旧 UI 批量行为）
+function legacyStatusWrite(legacy, curNeed, curOrder) {
+  const needCols = {};
+  const orderPatch = {};
+  let deleteFormal = false;
+  switch (legacy) {
+    case '待评估':
+      needCols.status = '对比中';
+      needCols.selected_supplier_id = null;
+      needCols.decided_at = null;
+      if (curOrder && curOrder.status === '待下单') deleteFormal = true;
+      break;
+    case '待审批':
+      needCols.status = '已定点';
+      if (curOrder) { orderPatch.status = '待下单'; orderPatch.approved_at = null; }
+      break;
+    case '已审批':
+      needCols.status = '已定点';
+      if (curOrder) { orderPatch.status = '待下单'; orderPatch.approved_at = H.bjNow(); }
+      break;
+    case '已下单':
+      needCols.status = '已定点';
+      if (curOrder) {
+        orderPatch.status = '已下单'; orderPatch.ordered_at = H.bjNow();
+        if (!curOrder.approved_at) orderPatch.approved_at = H.bjNow();
+      }
+      break;
+    case '已到':
+      needCols.status = '已定点';
+      if (curOrder) { orderPatch.status = '已到'; orderPatch.arrived_at = H.bjNow(); }
+      break;
+    case '已退':
+      needCols.status = '已定点';
+      if (curOrder) { orderPatch.status = '已退'; orderPatch.arrived_at = curOrder.arrived_at || H.bjNow(); }
+      break;
+    case '已归档':
+      needCols.status = '已完成';
+      if (curOrder) { orderPatch.status = '已归档'; orderPatch.archived_at = H.bjNow(); }
+      break;
+    case '已取消':
+      needCols.status = '已取消';
+      if (curOrder) { orderPatch.status = '已取消'; orderPatch.archived_at = curOrder.archived_at || H.bjNow(); }
+      break;
+  }
+  return { needCols, orderPatch, deleteFormal };
+}
+
+async function applyPatchCols(conn, table, id, cols) {
+  const keys = Object.keys(cols);
+  if (!keys.length) return;
+  await conn.query('UPDATE ' + table + ' SET ' + keys.map(k => '`' + k + '` = ?').join(', ') + ' WHERE id = ?', [...keys.map(k => cols[k]), id]);
+}
+
+async function saveImageRef(req, uid, b, oldImgRef) {
+  let ref = '';
+  if (typeof b.image === 'string' && b.image.startsWith('data:')) {
+    if (b.image.length > 12 * 1024 * 1024) { const e = new Error('图片过大'); e.status = 413; throw e; }
+    ref = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
+  } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) ref = b.image;
+  if (b.stageImage && b.stageName) {
+    let ex = {};
+    try { ex = JSON.parse(oldImgRef && String(oldImgRef).startsWith('{') ? oldImgRef : '{}'); } catch (e) { ex = {}; }
+    if (typeof ex !== 'object') ex = {};
+    if (!b.image) delete ex[b.stageName]; else ex[b.stageName] = ref;
+    return JSON.stringify(ex);
+  }
+  return ref;
 }
 
 router.use(guard(['items']));
 
+// ===== GET：合成旧形态（一 need 一行）=====
 router.get('/items', async (req, res, next) => {
   try {
     const uid = await H.resolveUserId(req.username);
     if (!uid) return res.json([]);
-    const rows = await db.query('SELECT * FROM purchases WHERE user_id = ? ORDER BY id', [uid]);
+    const rows = await N.synthLegacyRows(uid);
     res.json(rows.map(rowToItem));
   } catch (e) { next(e); }
 });
 
+// ===== POST：创建（need + supplier [+ formal]）=====
 router.post('/items', async (req, res, next) => {
+  const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
     if (!uid) return res.status(401).json({ error: '用户不存在' });
@@ -116,97 +205,217 @@ router.post('/items', async (req, res, next) => {
     if (v.error) return res.status(400).json({ error: v.error });
     const pid = _projId(b), pidx = _phaseIdx(b);
     if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
-    let imageRef = '';
-    if (typeof b.image === 'string' && b.image.startsWith('data:')) {
-      if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
-      imageRef = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
-    } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) imageRef = b.image;
 
-    let imageVal = imageRef;
-    if (b.stageImage && b.stageName) {
-      let existing = {};
-      try { if (imageRef.startsWith('{')) existing = JSON.parse(imageRef); } catch (e) { existing = {}; }
-      if (typeof existing !== 'object') existing = {};
-      existing[b.stageName] = imageRef;
-      imageVal = JSON.stringify(existing);
+    // 快速采购：单事务原子生成（与 /needs/quick 同语义）
+    if (b.quick) {
+      const price = v.price, qty = v.qty;
+      if (price * qty > 50) return res.status(400).json({ error: '快速采购仅支持 ¥50 以内' });
+      let imageVal = '';
+      if (typeof b.image === 'string' && b.image.startsWith('data:')) {
+        if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
+        imageVal = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
+      } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) imageVal = b.image;
+      const [bmin, bmax] = b.budgetRange ? (N.parseBudgetRange(b.budgetRange) || [price, price]) : [price, price];
+      await conn.beginTransaction();
+      const [nins] = await conn.query(
+        `INSERT INTO purchase_needs (user_id,name,category,budget_min,budget_max,status,dimensions,
+           project_id,phase_idx,is_virtual,is_quick,buy_reason,eval_summary)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [uid, v.name, b.category || '其他', bmin, bmax, '已定点', JSON.stringify(N.DEFAULT_DIMENSIONS),
+          pid, pidx, b.virtual ? 1 : 0, 1, b.buyReason || '', b.evalSummary || '']);
+      const needId = nins.insertId;
+      const [sins] = await conn.query(
+        'INSERT INTO purchase_suppliers (user_id,need_id,name,platform,price,scores,sort_order) VALUES (?,?,?,?,?,\'{}\',0)',
+        [uid, needId, v.name, b.platform || '拼多多', price]);
+      const supplierId = sins.insertId;
+      await conn.query('UPDATE purchase_needs SET selected_supplier_id = ?, decided_at = ? WHERE id = ?', [supplierId, H.bjNow(), needId]);
+      const [oins] = await conn.query(
+        `INSERT INTO purchase_orders (user_id,need_id,supplier_id,role,qty,price_paid,status,date_ms,image_ref,note,
+           installments,installment_amount,installment_start,installment_paid,is_quick,created_at_text,arrived_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [uid, needId, supplierId, 'formal', qty, price, '已到', b.date ? _dateMs(b.date) : Date.now(),
+          imageVal, b.note || '', v.installments, v.instAmount, v.instStart, Number(b.installmentPaid) || 0,
+          1, H.bjNow(), H.bjNow()]);
+      await conn.commit();
+      return res.json({ id: 'rec_' + needId, orderId: 'rec_' + oins.insertId });
     }
-    const [ins] = await db.pool.query(
-      `INSERT INTO purchases (user_id,name,platform,category,price,qty,status,date_ms,note,created_at_text,
-        eval_summary,buy_reason,budget_range,installments,installment_amount,installment_start,installment_paid,is_quick,is_virtual,image_ref,project_id,phase_idx)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [uid, v.name, b.platform || '拼多多', b.category || '其他', v.price, v.qty,
-        v.status || (b.quick ? '已到' : '待审批'),
-        b.date ? _dateMs(b.date) : Date.now(), b.note || '', H.bjNow(),
-        b.evalSummary || '', b.buyReason || '', b.budgetRange || '',
-        String(v.installments), String(v.instAmount), v.instStart, String(Number(b.installmentPaid) || 0),
-        b.quick ? 1 : 0, b.virtual ? 1 : 0, imageVal, pid, pidx]);
-    if (b.quick) await db.exec('UPDATE purchases SET arrived_at = ? WHERE id = ?', [H.bjNow(), ins.insertId]);
-    res.json({ id: 'rec_' + ins.insertId });
-  } catch (e) { next(e); }
+
+    // 普通创建
+    let imageVal = '';
+    if (typeof b.image === 'string' && b.image) {
+      if (b.image.startsWith('data:')) {
+        if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
+        imageVal = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
+      } else if (b.image.startsWith('kv:')) imageVal = b.image;
+      if (b.stageImage && b.stageName) {
+        let existing = {};
+        try { if (imageVal.startsWith('{')) existing = JSON.parse(imageVal); } catch (e) { existing = {}; }
+        if (typeof existing !== 'object') existing = {};
+        existing[b.stageName] = imageVal;
+        imageVal = JSON.stringify(existing);
+      }
+    }
+
+    const legacyStatus = v.status || '待审批';
+    const mappedOrder = N.legacyToOrderStatus(legacyStatus); // 待评估 → null
+    const needStatus = N.legacyToNeedStatus(legacyStatus);
+    const [bmin, bmax] = b.budgetRange ? (N.parseBudgetRange(b.budgetRange) || [null, null]) : [null, null];
+    const dims = JSON.stringify(N.DEFAULT_DIMENSIONS);
+
+    await conn.beginTransaction();
+    const [nins] = await conn.query(
+      `INSERT INTO purchase_needs (user_id,name,category,budget_min,budget_max,status,dimensions,
+         project_id,phase_idx,is_virtual,is_quick,buy_reason,eval_summary)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [uid, v.name, b.category || '其他', bmin, bmax, needStatus, dims,
+        pid, pidx, b.virtual ? 1 : 0, 0, b.buyReason || '', b.evalSummary || '']);
+    const needId = nins.insertId;
+    const [sins] = await conn.query(
+      'INSERT INTO purchase_suppliers (user_id,need_id,name,platform,price,scores,sort_order) VALUES (?,?,?,?,?,\'{}\',0)',
+      [uid, needId, v.name, b.platform || '拼多多', v.price]);
+    const supplierId = sins.insertId;
+
+    let orderId = null;
+    if (mappedOrder) {
+      const approvedAt = legacyStatus === '已审批' || ['已下单', '已到', '已退', '已归档'].includes(legacyStatus)
+        ? H.bjNow() : null;
+      const [oins] = await conn.query(
+        `INSERT INTO purchase_orders (user_id,need_id,supplier_id,role,qty,price_paid,status,date_ms,image_ref,note,
+           installments,installment_amount,installment_start,installment_paid,created_at_text,approved_at,
+           ordered_at,arrived_at,archived_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [uid, needId, supplierId, 'formal', v.qty, v.price, mappedOrder,
+          b.date ? _dateMs(b.date) : Date.now(), imageVal, b.note || '',
+          v.installments, v.instAmount, v.instStart, Number(b.installmentPaid) || 0,
+          H.bjNow(), approvedAt,
+          legacyStatus === '已下单' ? H.bjNow() : null,
+          ['已到', '已退'].includes(legacyStatus) ? H.bjNow() : null,
+          ['已归档', '已取消'].includes(legacyStatus) ? H.bjNow() : null]);
+      orderId = oins.insertId;
+    }
+    if (needStatus === '已定点') {
+      await conn.query('UPDATE purchase_needs SET selected_supplier_id = ?, decided_at = ? WHERE id = ?', [supplierId, H.bjNow(), needId]);
+    }
+    await conn.commit();
+    res.json({ id: 'rec_' + needId, orderId: orderId ? 'rec_' + orderId : undefined });
+  } catch (e) {
+    try { await conn.rollback(); } catch (x) {}
+    next(e);
+  } finally { conn.release(); }
 });
 
+// ===== PUT：单条更新（字段分流）=====
 router.put('/items', async (req, res, next) => {
+  const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
     const b = req.body || {};
     if (!b.id) return res.status(400).json({ error: 'id required' });
-    const old = await getOwnedItem(uid, b.id);
-    if (!old) return res.status(404).json({ error: 'not found' });
+    const g = await getOwnedGraph(uid, b.id);
+    if (!g) return res.status(404).json({ error: 'not found' });
+    const { need, suppliers, orders } = g;
+    const formal = formalOf(orders);
 
-    const v = validateItem(b, old);
+    // 用合成旧形态做校验（price/qty/status 取自正式单）
+    const synth = N.synthLegacyRow(need, suppliers, orders);
+    const v = validateItem(b, synth);
     if (v.error) return res.status(400).json({ error: v.error });
-    const npid = b.projectId !== undefined ? _projId(b) : old.project_id;
-    const npidx = b.phaseIdx !== undefined ? _phaseIdx(b) : old.phase_idx;
-    if (!(await _ownedProject(uid, npid))) return res.status(404).json({ error: '项目不存在' });
-    const cols = {};
-    const map = {
-      name: 'name', platform: 'platform', price: 'price', qty: 'qty', status: 'status',
-      category: 'category', note: 'note', evalSummary: 'eval_summary', buyReason: 'buy_reason',
-      budgetRange: 'budget_range', cancelReason: 'cancel_reason', installmentStart: 'installment_start',
-    };
-    for (const [k, col] of Object.entries(map)) if (b[k] !== undefined) cols[col] = b[k];
-    if (b.name !== undefined) cols.name = v.name;
-    if (b.price !== undefined) cols.price = v.price;
-    if (b.qty !== undefined) cols.qty = v.qty;
-    if (b.status !== undefined) cols.status = v.status;
-    if (b.installmentStart !== undefined) cols.installment_start = v.instStart;
-    if (b.date !== undefined) cols.date_ms = b.date ? _dateMs(b.date) : null;
-    if (b.installments !== undefined) cols.installments = String(v.installments);
-    if (b.installmentAmount !== undefined) cols.installment_amount = String(v.instAmount);
-    if (b.installmentPaid !== undefined) cols.installment_paid = String(Number(b.installmentPaid) || 0);
-    if (b.virtual !== undefined) cols.is_virtual = b.virtual ? 1 : 0;
-    if (b.projectId !== undefined) cols.project_id = npid;
-    if (b.phaseIdx !== undefined) cols.phase_idx = npidx;
-    if (b.setDate && cols.date_ms === undefined) cols.date_ms = Date.now();
 
-    // 图片（阶段语义与 CF PUT 一致）
-    if (b.image !== undefined) {
-      let ref = '';
-      if (typeof b.image === 'string' && b.image.startsWith('data:')) {
-        if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
-        ref = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
-      } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) ref = b.image;
-      if (b.stageImage && b.stageName) {
-        let ex = {};
-        try { ex = JSON.parse(old.image_ref && old.image_ref.startsWith('{') ? old.image_ref : (b.image && b.image.startsWith('{') ? b.image : '{}')); } catch (e) { ex = {}; }
-        if (typeof ex !== 'object') ex = {};
-        if (!b.image) delete ex[b.stageName]; else ex[b.stageName] = ref;
-        cols.image_ref = JSON.stringify(ex);
+    const npid = b.projectId !== undefined ? _projId(b) : need.project_id;
+    const npidx = b.phaseIdx !== undefined ? _phaseIdx(b) : need.phase_idx;
+    if (!(await _ownedProject(uid, npid))) return res.status(404).json({ error: '项目不存在' });
+
+    await conn.beginTransaction();
+
+    // need 侧
+    const needCols = {};
+    if (b.name !== undefined) needCols.name = v.name;
+    if (b.category !== undefined) needCols.category = String(b.category || '其他').slice(0, 30);
+    if (b.budgetRange !== undefined) {
+      const r = N.parseBudgetRange(b.budgetRange);
+      needCols.budget_min = r ? r.min : null;
+      needCols.budget_max = r ? r.max : null;
+    }
+    if (b.buyReason !== undefined) needCols.buy_reason = String(b.buyReason || '');
+    if (b.evalSummary !== undefined) needCols.eval_summary = String(b.evalSummary || '');
+    if (b.cancelReason !== undefined) needCols.cancel_reason = String(b.cancelReason || '').slice(0, 200);
+    if (b.virtual !== undefined) needCols.is_virtual = b.virtual ? 1 : 0;
+    if (b.projectId !== undefined) needCols.project_id = npid;
+    if (b.phaseIdx !== undefined) needCols.phase_idx = npidx;
+
+    // 供应商侧（平台/报价/图：单供应商需求直接改；多供应商改被定点或第一家）
+    const sup = (need.selected_supplier_id && suppliers.find(s => Number(s.id) === Number(need.selected_supplier_id)))
+      || suppliers[0] || null;
+    const supCols = {};
+    if (b.platform !== undefined && sup) supCols.platform = String(b.platform || '').slice(0, 20);
+    if (b.price !== undefined && sup) supCols.price = v.price;
+
+    // order 侧
+    const orderCols = {};
+    if (formal) {
+      if (b.qty !== undefined) orderCols.qty = v.qty;
+      if (b.price !== undefined) orderCols.price_paid = v.price;
+      if (b.installments !== undefined) orderCols.installments = v.installments;
+      if (b.installmentAmount !== undefined) orderCols.installment_amount = v.instAmount;
+      if (b.installmentStart !== undefined) orderCols.installment_start = v.instStart;
+      if (b.installmentPaid !== undefined) orderCols.installment_paid = Number(b.installmentPaid) || 0;
+      if (b.date !== undefined) orderCols.date_ms = b.date ? _dateMs(b.date) : null;
+      if (b.note !== undefined) orderCols.note = String(b.note || '');
+      if (b.setDate && orderCols.date_ms === undefined) orderCols.date_ms = Date.now();
+      if (b.image !== undefined) orderCols.image_ref = await saveImageRef(req, uid, b, formal.image_ref);
+    } else if (b.image !== undefined && sup) {
+      // 无正式单：图落供应商
+      supCols.image_ref = await saveImageRef(req, uid, b, sup.image_ref);
+    }
+
+    // 状态（旧 8 状态 → 宽松映射）
+    let statusChanged = false;
+    const oldStatus = synth.status;
+    if (b.status !== undefined && b.status !== oldStatus) {
+      statusChanged = true;
+      const w = legacyStatusWrite(String(b.status), need, formal);
+      Object.assign(needCols, w.needCols);
+      if (w.deleteFormal) {
+        await conn.query('DELETE FROM purchase_orders WHERE id = ? AND status = ?', [formal.id, '待下单']);
       } else {
-        cols.image_ref = ref;
+        Object.assign(orderCols, w.orderPatch);
+      }
+      // 无正式单但新状态需要执行体（如 待审批 直接 POST 过来的反例）→ 补建
+      if (!formal && !w.deleteFormal && w.orderPatch.status) {
+        const [ins] = await conn.query(
+          `INSERT INTO purchase_orders (user_id,need_id,supplier_id,role,qty,price_paid,status,date_ms,note,
+             installments,installment_amount,installment_start,installment_paid,created_at_text,approved_at,
+             ordered_at,arrived_at,archived_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [uid, need.id, sup ? sup.id : null, 'formal', v.qty, v.price, w.orderPatch.status,
+            b.date ? _dateMs(b.date) : Date.now(), b.note || '',
+            v.installments, v.instAmount, v.instStart, Number(b.installmentPaid) || 0,
+            H.bjNow(), w.orderPatch.approved_at || null, w.orderPatch.ordered_at || null,
+            w.orderPatch.arrived_at || null, w.orderPatch.archived_at || null]);
+        void ins;
+      }
+      // 入账状态清理待办（旧语义）
+      if (b.status === '已退' || b.status === '已取消') {
+        await conn.query('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', 'rec_' + need.id]);
       }
     }
 
-    const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
-    if (sets) await db.exec('UPDATE purchases SET ' + sets + ' WHERE id = ?', [...Object.values(cols), old.id]);
+    await applyPatchCols(conn, 'purchase_needs', need.id, needCols);
+    if (sup && Object.keys(supCols).length) await applyPatchCols(conn, 'purchase_suppliers', sup.id, supCols);
+    if (formal && Object.keys(orderCols).length) await applyPatchCols(conn, 'purchase_orders', formal.id, orderCols);
+    await conn.commit();
 
-    if (b.status !== undefined && old.status && b.status !== old.status) {
-      await logOp(req.username, 'status_change', old.status + ' → ' + b.status + '（' + (b.name || old.name) + '）', clientIP(req));
+    if (statusChanged) {
+      await logOp(req.username, 'status_change', oldStatus + ' → ' + b.status + '（' + (b.name || need.name) + '）', clientIP(req));
     }
     res.json({ ok: true });
-  } catch (e) { next(e); }
+  } catch (e) {
+    try { await conn.rollback(); } catch (x) {}
+    next(e);
+  } finally { conn.release(); }
 });
 
+// ===== PATCH：批量状态/备注/取消原因（旧 UI 批量入口）=====
 router.patch('/items', async (req, res, next) => {
   try {
     const uid = await H.resolveUserId(req.username);
@@ -216,47 +425,86 @@ router.patch('/items', async (req, res, next) => {
     if (b.status !== undefined && !ITEM_STATUS.has(String(b.status))) return res.status(400).json({ error: '无效状态' });
     if (b.note !== undefined && String(b.note).length > 5000) return res.status(400).json({ error: '备注过长' });
     if (b.cancelReason !== undefined && String(b.cancelReason).length > 200) return res.status(400).json({ error: '取消原因过长' });
-    const timeMap = { '待评估': 'created_at_text', '待审批': 'created_at_text', '已审批': 'approved_at', '已下单': 'ordered_at', '已到': 'arrived_at', '已退': 'arrived_at', '已归档': 'archived_at', '已取消': 'archived_at' };
-    const timeCol = b.status ? timeMap[b.status] : null;
     const results = [];
     for (const id of b.ids) {
-      const item = await getOwnedItem(uid, id);
-      if (!item) { results.push({ id, ok: false }); continue; }
-      const statusChanged = b.status !== undefined && b.status !== item.status;
-      const cols = {}; const vals = [];
-      if (b.status) { cols['status'] = b.status; }
-      if (timeCol && statusChanged) { cols[timeCol] = H.bjNow(); }
-      if (b.note !== undefined) cols['note'] = b.note;
-      if (b.cancelReason !== undefined) cols['cancel_reason'] = b.cancelReason;
-      const sets = Object.keys(cols).map(k => '`' + k + '` = ?').join(', ');
-      if (sets) await db.exec('UPDATE purchases SET ' + sets + ' WHERE id = ?', [...Object.values(cols), item.id]);
-      results.push({ id, ok: true });
+      const g = await getOwnedGraph(uid, id);
+      if (!g) { results.push({ id, ok: false }); continue; }
+      const { need, suppliers, orders } = g;
+      const formal = formalOf(orders);
+      const synth = N.synthLegacyRow(need, suppliers, orders);
+      const conn = await db.pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        const needCols = {}, orderCols = {};
+        let deleteFormal = false;
+        if (b.status !== undefined && String(b.status) !== synth.status) {
+          const w = legacyStatusWrite(String(b.status), need, formal);
+          Object.assign(needCols, w.needCols);
+          if (w.deleteFormal) deleteFormal = true;
+          else Object.assign(orderCols, w.orderPatch);
+          if (!formal && !w.deleteFormal && w.orderPatch.status) {
+            const sup = suppliers[0] || null;
+            await conn.query(
+              `INSERT INTO purchase_orders (user_id,need_id,supplier_id,role,qty,price_paid,status,date_ms,
+                 created_at_text,approved_at,ordered_at,arrived_at,archived_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              [uid, need.id, sup ? sup.id : null, 'formal', synth.qty, synth.price, w.orderPatch.status,
+                synth.date_ms, H.bjNow(), w.orderPatch.approved_at || null, w.orderPatch.ordered_at || null,
+                w.orderPatch.arrived_at || null, w.orderPatch.archived_at || null]);
+          }
+        }
+        if (b.note !== undefined) orderCols.note = String(b.note || '');
+        if (b.cancelReason !== undefined) needCols.cancel_reason = String(b.cancelReason || '');
 
-      // 不再自动生成「下单/第N期还款」待办（2026-10-30）；已退/已取消仍清掉历史关联待办
-      if (!statusChanged) continue;
-      if (b.status === '已退' || b.status === '已取消') await deleteLinkedTodos(uid, 'rec_' + item.id);
+        if (deleteFormal && formal) await conn.query('DELETE FROM purchase_orders WHERE id = ? AND status = ?', [formal.id, '待下单']);
+        await applyPatchCols(conn, 'purchase_needs', need.id, needCols);
+        if (formal && !deleteFormal && Object.keys(orderCols).length) await applyPatchCols(conn, 'purchase_orders', formal.id, orderCols);
+        // 无正式单时 note 落供应商备注（避免丢数据）
+        if (!formal && b.note !== undefined && suppliers[0]) {
+          await applyPatchCols(conn, 'purchase_suppliers', suppliers[0].id, { note: String(b.note || '') });
+        }
+        await conn.commit();
+        results.push({ id, ok: true });
+
+        // 旧语义：已退/已取消清关联待办
+        if (b.status === '已退' || b.status === '已取消') {
+          await db.exec('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', 'rec_' + need.id]).catch(() => {});
+        }
+      } catch (e) {
+        try { await conn.rollback(); } catch (x) {}
+        results.push({ id, ok: false, error: e.message });
+      } finally { conn.release(); }
     }
     res.json({ results, updated: results.filter(r => r.ok).length });
   } catch (e) { next(e); }
 });
 
+// ===== DELETE：级联删（入账中拒绝）=====
 router.delete('/items', async (req, res, next) => {
+  const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
     const id = req.query.id;
     if (!id) return res.status(400).json({ error: 'id required' });
-    const item = await getOwnedItem(uid, id);
-    if (!item) return res.json({ ok: true });
-    await db.exec('DELETE FROM purchases WHERE id = ?', [item.id]);
-    await deleteLinkedTodos(uid, id).catch(() => {});
+    const n = H.numFromId(id);
+    if (!n) return res.json({ ok: true });
+    await conn.beginTransaction();
+    const [rows] = await conn.query('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [n, uid]);
+    if (!rows[0]) { await conn.rollback(); return res.json({ ok: true }); }
+    const [spent] = await conn.query(
+      "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND status IN ('已下单','已到','已归档')", [n]);
+    if (Number(spent[0].c) > 0) {
+      await conn.rollback();
+      return res.status(400).json({ error: '已有入账记录，请先退货或归档后再删除' });
+    }
+    await conn.query('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', 'rec_' + n]);
+    await conn.query('DELETE FROM purchase_needs WHERE id = ? AND user_id = ?', [n, uid]);
+    await conn.commit();
     res.json({ ok: true });
-  } catch (e) { next(e); }
+  } catch (e) {
+    try { await conn.rollback(); } catch (x) {}
+    next(e);
+  } finally { conn.release(); }
 });
-
-// ===== Todo 清理（不再自动生成联动待办；删除采购时清历史关联行）=====
-async function deleteLinkedTodos(uid, itemId) {
-  try { await db.exec('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', itemId]); }
-  catch (e) { console.error('deleteLinkedTodos:', e.message); }
-}
 
 module.exports = router;

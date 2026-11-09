@@ -77,24 +77,9 @@ function setupSwipe(){
         else await delItem(id);
       },250);
     }else if(swipeDelta>60){
-      // 右滑 → 改状态(采购)
+      // 右滑改状态是旧 items 模型；需求卡已不参与 swipe，这里仅兜底
       card.style.transform='translateX(0)';
-      if(type==='purchase'){
-        const item=items.find(x=>x.id===id);
-        if(item){
-          const status=item['状态']||'待审批';
-          const next=NEXT_STATUS[status];
-          if(next){
-            item['\u72b6\u6001']=next;
-            render();
-            const swipeR=await api('PATCH',{ids:[id],status:next});
-            if(swipeR&&swipeR.error){toast('\u66f4\u65b0\u5931\u8d25');await loadAll();}
-            else{loadTodos().then(function(){renderTodo()}).catch(function(){})}
-          }else{toast('已是终态')}
-        }
-      }else{
-        toast('右滑仅支持采购卡片');
-      }
+      toast('请进需求详情操作');
     }else{
       card.style.transform='translateX(0)';
     }
@@ -447,20 +432,24 @@ async function loadAll(){
   _log("Starting loadAll, pin="+(getPin()?"YES":"NO"));
 
   // Stale-while-revalidate: 缓存秒开（7天有效），后台校验，仅真首次冷启动见骨架
-  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos'),cp=getCachedData('projects');
+  var ci=getCachedData('items'),ce=getCachedData('expenses'),ct=getCachedData('todos'),cp=getCachedData('projects'),cn=getCachedData('needs');
   var renderedFromCache=false;
+  if(cn&&Array.isArray(cn)){needsList=cn;_log("Using cached needs: "+cn.length)}
   if(ci&&ce){items=ci;expenses=ce;if(ct)todoList=ct;if(cp&&typeof projectList!=='undefined')projectList=cp;_log("Using cached data: "+ci.length+" items, "+ce.length+" expenses");try{switchTab(currentTab)}catch(ex){} renderedFromCache=true}
   else if(!(items&&items.length)&&!(expenses&&expenses.length)){showSkeleton()}
   var preSnap=_snap();
 
   try{
-    _log("Fetching critical (items+expenses)...");
-    const results=await Promise.all([api("GET"),expenseApi("GET")]);
-    var r=results[0], e=results[1];
+    _log("Fetching critical (items+expenses+needs)...");
+    const results=await Promise.all([api("GET"),expenseApi("GET"),loadNeeds()]);
+    var r=results[0], e=results[1], nd=results[2];
     if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
     else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
     if(e && !e.error && Array.isArray(e)){expenses=e;setCachedData('expenses',e);_log("Expenses loaded: "+e.length)}
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
+    // needs 新模块；null=旧 server/飞书后端 → 兼容行伪需求（部署时序兜底）
+    if(nd&&Array.isArray(nd)){needsList=nd;setCachedData('needs',nd);_log("Needs loaded: "+nd.length)}
+    else{needsList=needsFromItems(r&&r.error?items:r);_log("Needs fallback from items: "+needsList.length)}
     isLoadingData=false;
     // 关键数据到齐即可首绘（骨架/缓存路径按需），不等待办/项目/预算
     var postCritical=_snap();
@@ -532,22 +521,24 @@ window.addEventListener('resize', function(){ try{ updateHeader(); }catch(e){} }
 // - 分期：分期窗口内每月按分期金额计入（与预算池的分期扣减同口径）
 function getItemInstallmentStartMonth(i){var sm=i['分期开始月']||'';if(!sm){var d=i['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);if(!isNaN(dd.getTime()))sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}return sm}
 function getItemInstallmentAmount(i){var tp=Number(i['分期期数'])||1;return Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp)}
-function getItemMonthInstallmentAmount(i,ym){var st=i['状态']||'';if(st!=='已下单'&&st!=='已到'&&st!=='已归档')return 0;var tp=Number(i['分期期数'])||0;var sm=getItemInstallmentStartMonth(i);if(tp<=0||!/^\d{4}-\d{2}$/.test(sm))return 0;var parts=sm.split('-').map(Number);var tm=ym.split('-').map(Number);if(tm.length<2||!tm[0]||!tm[1])return 0;var diff=(tm[0]-parts[0])*12+(tm[1]-parts[1]);var now=new Date(Date.now()+8*3600000);var curIdx=now.getUTCFullYear()*12+now.getUTCMonth();var targetIdx=tm[0]*12+(tm[1]-1);return diff>=0&&diff<tp&&targetIdx<=curIdx?getItemInstallmentAmount(i):0}
-function getItemMonthPurchaseAmount(i,ym){if((Number(i['分期期数'])||0)>1)return getItemMonthInstallmentAmount(i,ym);var s=i['状态']||'';if(s==='已退'||s==='已取消'||s==='待评估'||s==='待审批')return 0;if(getMonth(i['日期'])!==ym)return 0;return (Number(i['单价'])||0)*(Number(i['数量'])||1)}
-function getMonthInstallmentTotal(ym){return (items||[]).reduce(function(s,i){return s+getItemMonthInstallmentAmount(i,ym)},0)}
+function getItemMonthInstallmentAmount(i,ym){if(!isActiveBuy(i['状态']))return 0;var tp=Number(i['分期期数'])||0;var sm=getItemInstallmentStartMonth(i);if(tp<=0||!/^\d{4}-\d{2}$/.test(sm))return 0;var parts=sm.split('-').map(Number);var tm=ym.split('-').map(Number);if(tm.length<2||!tm[0]||!tm[1])return 0;var diff=(tm[0]-parts[0])*12+(tm[1]-parts[1]);var now=new Date(Date.now()+8*3600000);var curIdx=now.getUTCFullYear()*12+now.getUTCMonth();var targetIdx=tm[0]*12+(tm[1]-1);return diff>=0&&diff<tp&&targetIdx<=curIdx?getItemInstallmentAmount(i):0}
+function getItemMonthPurchaseAmount(i,ym){if((Number(i['分期期数'])||0)>1)return getItemMonthInstallmentAmount(i,ym);if(!isActiveBuy(i['状态']))return 0;if(getMonth(i['日期'])!==ym)return 0;return (Number(i['单价'])||0)*(Number(i['数量'])||1)}
+function getMonthInstallmentTotal(ym){return orderRows().reduce(function(s,i){return s+getItemMonthInstallmentAmount(i,ym)},0)}
 function getEffectivePaid(item){var tp=Number(item['分期期数'])||0;if(tp<=0)return 0;var pd=Number(item['分期已还'])||0;var sm=item['分期开始月']||'';if(!sm){var d=item['日期'];if(d){var dd=new Date(typeof d==='number'?d+8*3600000:d);sm=dd.getUTCFullYear()+'-'+String(dd.getUTCMonth()+1).padStart(2,'0')}}var timePaid=0;if(sm&&/^\d{4}-\d{2}$/.test(sm)){var now=new Date(Date.now()+8*3600000);var cy=now.getUTCFullYear();var cm=now.getUTCMonth()+1;var parts=sm.split('-').map(Number);var diff=(cy-parts[0])*12+(cm-parts[1]);if(diff>=0)timePaid=diff+1}return Math.min(Math.max(pd,timePaid),tp)}
-function getMonthPurchaseTotal(ym){return items.filter(function(i){var s=i['状态']||'';return getMonth(i['日期'])===ym&&(s==='已下单'||s==='已到'||s==='已归档')&&s!=='已退'}).reduce(function(s,i){var tp=Number(i['分期期数'])||0;if(tp>0){var ia=Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp);return s+ia}return s+(Number(i['单价'])||0)*(Number(i['数量'])||1)},0)}
+function getMonthPurchaseTotal(ym){return orderRows().filter(function(i){return isActiveBuy(i['状态'])&&getMonth(i['日期'])===ym}).reduce(function(s,i){var tp=Number(i['分期期数'])||0;if(tp>0){var ia=Number(i['分期金额'])||Math.round((Number(i['单价']||0)*Number(i['数量']||1))/tp);return s+ia}return s+(Number(i['单价'])||0)*(Number(i['数量'])||1)},0)}
 function renderPurchase(){
+  const NEED_STATUSES=['全部','对比中','已定点','已完成','已取消'];
+  if(NEED_STATUSES.indexOf(currentStatusFilter)<0)currentStatusFilter='全部'; // 旧 8 状态 filter 值守卫
   const q=document.getElementById('searchInput').value.toLowerCase();
-  let f=items;
-  if(q)f=f.filter(i=>(i['商品名称']||'').toLowerCase().includes(q)||(i['备注']||'').toLowerCase().includes(q));
-  if(currentStatusFilter!=='全部')f=f.filter(i=>i['状态']===currentStatusFilter);
-  if(currentCatFilter!=='全部')f=f.filter(i=>i['分类']===currentCatFilter);
-  const sorted=[...f].sort((a,b)=>(b['日期']||0)-(a['日期']||0));
-  const statuses=['全部','待评估','待审批','已审批','已下单','已到','已退','已归档','已取消'];
-  const cats=['全部',...new Set(items.map(i=>i['分类']).filter(Boolean))];
+  const supHit=function(n,qq){return (n.suppliers||[]).some(s=>((s['谁']||'')+' '+(s['平台']||'')).toLowerCase().includes(qq))};
+  let f=needsList;
+  if(q)f=f.filter(n=>(n['名称']||'').toLowerCase().includes(q)||(n['分类']||'').toLowerCase().includes(q)||supHit(n,q));
+  if(currentStatusFilter!=='全部')f=f.filter(n=>n['状态']===currentStatusFilter);
+  if(currentCatFilter!=='全部')f=f.filter(n=>n['分类']===currentCatFilter);
+  const sorted=[...f].sort((a,b)=>String(b['创建时间']||'').localeCompare(String(a['创建时间']||'')));
+  const cats=['全部',...new Set(needsList.map(n=>n['分类']).filter(Boolean))];
   const filterEl=document.getElementById('statusChips');
-  filterEl.innerHTML=statuses.map(s=>{const active=s===currentStatusFilter;const n=s==='全部'?items.length:items.filter(i=>i['状态']===s).length;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="status" data-filter-value="${escAttr(s)}" aria-pressed="${active}">${esc(s)} <span>${n}</span></button>`}).join('')+'<span class="filter-separator" aria-hidden="true"></span>'+cats.map(c=>{const active=c===currentCatFilter;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="category" data-filter-value="${escAttr(c)}" aria-pressed="${active}">${esc(c)}</button>`}).join('');
+  filterEl.innerHTML=NEED_STATUSES.map(s=>{const active=s===currentStatusFilter;const n=s==='全部'?needsList.length:needsList.filter(x=>x['状态']===s).length;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="status" data-filter-value="${escAttr(s)}" aria-pressed="${active}">${esc(s)} <span>${n}</span></button>`}).join('')+'<span class="filter-separator" aria-hidden="true"></span>'+cats.map(c=>{const active=c===currentCatFilter;return`<button type="button" class="chip ${active?'active':''}" data-filter-kind="category" data-filter-value="${escAttr(c)}" aria-pressed="${active}">${esc(c)}</button>`}).join('');
   if(filterEl.dataset.bound!=='1'){
     filterEl.dataset.bound='1';
     filterEl.addEventListener('click',function(event){
@@ -560,13 +551,15 @@ function renderPurchase(){
   }
   const listEl=document.getElementById('list');
   if(batchMode)listEl.classList.add('batch-mode');else listEl.classList.remove('batch-mode');
-  if(!sorted.length){listEl.classList.remove('anim-stagger');listEl.dataset.enter='0';listEl.dataset.entered='1';listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购记录<br>点右下角 + 添加</div>';return}
-  const groups={};sorted.forEach(i=>{const isEval=i['状态']==='待评估';const m=isEval?'待评估':(getMonth(i['日期'])||'未设置日期');if(!groups[m])groups[m]=[];groups[m].push(i)});
+  if(!sorted.length){listEl.classList.remove('anim-stagger');listEl.dataset.enter='0';listEl.dataset.entered='1';listEl.innerHTML='<div class="empty"><div class="icon">📦</div>暂无采购需求<br>点右下角 + 提交需求</div>';return}
+  // 按创建月分组；分区 ¥ = 组内 ACTIVE_BUY 子单入账合计
+  const groups={};sorted.forEach(n=>{const m=(String(n['创建时间']||'').slice(0,7))||'未设置日期';if(!groups[m])groups[m]=[];groups[m].push(n)});
   let html='';
   for(const[month,list]of Object.entries(groups)){
-    const mt=totalCost(list);const dm=month==='待评估'?'待评估':(month==='未设置日期'?month:month.replace('-','年')+'月');
+    const mt=list.reduce((s,n)=>s+needSpend(n),0);
+    const dm=month==='未设置日期'?month:month.replace('-','年')+'月';
     html+=`<div class="section-title"><span>${dm}</span><span>¥${mt.toFixed(2)}</span></div>`;
-    list.forEach(i=>{html+=renderPurchaseCard(i)});
+    list.forEach(n=>{html+=renderPurchaseCard(n)});
   }
   listEl.innerHTML=html;
   // 入场 stagger 仅：切到采购 tab / 首屏播一次；状态更新等静默 render 不重放
@@ -586,49 +579,35 @@ function renderPurchase(){
     listEl.dataset.entered='1';
   }
 }
-function renderPurchaseCard(i){
-  const id=String(i.id||'');
-  const status=i['状态']||'待审批';
-  const category=i['分类']||'其他';
-  const quantity=Number(i['数量'])||1;
-  const price=Number(i['单价'])||0;
-  const isEvaluation=status==='待评估';
-  const selected=selectedIds.has(i.id);
+function renderPurchaseCard(n){
+  const id=String(n.id||'');
+  const status=n['状态']||'对比中';
+  const category=n['分类']||'其他';
+  const dims=needDims(n);
+  const sups=n.suppliers||[];
+  const trials=(n.orders||[]).filter(o=>o.role==='trial');
+  const buyCount=(n.orders||[]).filter(o=>isActiveBuy(o['状态'])).length;
   const colors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444','云服务':'#0ea5e9','API':'#8b5cf6','会员':'#f59e0b','软件':'#6366f1'};
   const icons={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','云服务':'☁️','API':'🔌','会员':'🎫','软件':'💿','其他':'📦'};
-  let date='';
-  if(i['日期']){try{date=new Date(i['日期']).toISOString().slice(0,10)}catch(e){date=''}}
-  const eventTime=i['到货时间']?'到货 '+i['到货时间']:i['下单时间']?'下单 '+i['下单时间']:i['审批时间']?'审批 '+i['审批时间']:i['创建时间']?'创建 '+i['创建时间']:'';
-  let installment='';
-  const terms=Number(i['分期期数'])||0;
-  if(terms>0){
-    const paid=getEffectivePaid(i);
-    if(paid>=terms)installment='<span class="meta-install settled">已结清</span>';
-    else{
-      const each=Number(i['分期金额'])||Math.round(price*quantity/terms);
-      installment='<span class="meta-install">¥'+each+'/期 · 已付¥'+(each*paid)+'/'+(price*quantity)+'</span>';
-    }
-  }
-  const openAction=batchMode?`toggleSelect('${id}')`:isEvaluation?`openEvalModal('${id}')`:`openDetailModal('${id}')`;
-  const mainPrice=isEvaluation?(i['预算区间']?'预算 ¥'+esc(i['预算区间']):'预算未知'):(price?'¥'+(price*quantity).toFixed(2):'');
+  const winnerId=n['定点供应商ID']||'';
+  const winner=winnerId?sups.find(s=>s.id===winnerId):null;
+  // 胜出者（已定点）或最高分（对比中）
+  let best=sups[0]||null,bestScore=-1;
+  sups.forEach(s=>{const t=supplierWeightedTotal(dims,s['打分']);if(t>bestScore){bestScore=t;best=s}});
+  const shown=winner||best;
+  const mainPrice=needBudgetText(n);
   let meta='<span class="badge badge-'+escAttr(status)+'">'+esc(status)+'</span><span class="cat-badge">'+esc(category)+'</span>';
-  if(!isEvaluation&&i['平台'])meta+='<span class="meta-sec">'+esc(i['平台'])+'</span>';
-  if(i['虚拟']==='1')meta+='<span class="virtual-chip">'+(isEvaluation?'💾 虚拟':'虚拟')+'</span>';
-  if(date)meta+='<span class="meta-sec">'+esc(date)+'</span>';
-  if(!isEvaluation&&quantity>1)meta+='<span class="meta-sec">×'+quantity+'</span>';
-  if(!isEvaluation)meta+=installment;
-  const note=isEvaluation?(i['评估摘要']?String(i['评估摘要']).slice(0,80)+(String(i['评估摘要']).length>80?'…':''):''):i['备注'];
-  const quick=i['极速']==='1'?'<span class="quick-badge">极速免审</span>':'';
-  return '<div class="swipe-container"><div class="swipe-actions swipe-actions-right"><span>→ 下一步</span></div><div class="swipe-actions swipe-actions-left"><span>🗑️ 删除</span></div>'
-    +'<article class="card swipe-card purchase-card'+(selected?' selected':'')+'" style="--purchase-accent:'+escAttr(colors[category]||'#64748b')+'" data-id="'+escAttr(id)+'" data-type="purchase">'
+  if(shown)meta+='<span class="meta-sec">'+esc(shown['谁']||'')+(shown['平台']?'·'+esc(shown['平台']):'')+' · '+fmtY(shown['报价'])+'</span>';
+  if(trials.length||buyCount)meta+='<span class="meta-sec">试用'+trials.length+'·入账'+buyCount+'单</span>';
+  if(n['虚拟']==='1')meta+='<span class="virtual-chip">💾 虚拟</span>';
+  const quick=n['极速']==='1'?'<span class="quick-badge">极速免审</span>':'';
+  // 需求卡不参与 swipe（左滑删除/右滑改状态是旧 items 模型），操作走卡上按钮
+  return '<article class="card purchase-card" style="--purchase-accent:'+escAttr(colors[category]||'#64748b')+'" data-id="'+escAttr(id)+'">'
     +quick
-    +'<button type="button" class="checkbox'+(selected?' checked':'')+'" onclick="event.stopPropagation();toggleSelect(\''+escAttr(id)+'\')" aria-label="'+(selected?'取消选择':'选择')+' '+escAttr(i['商品名称']||'采购记录')+'">'+(selected?'✓':'')+'</button>'
-    +'<button type="button" class="purchase-card-main" onclick="'+openAction+'" aria-label="打开 '+escAttr(i['商品名称']||'采购记录')+'">'
-    +'<span class="top"><span class="name">'+(icons[category]||'📦')+' '+esc(i['商品名称']||'')+'</span>'+(mainPrice?'<span class="price'+(isEvaluation?' budget-price':'')+'">'+mainPrice+'</span>':'')+'</span>'
+    +'<button type="button" class="purchase-card-main" onclick="openDetailModal(\''+escAttr(id)+'\')" aria-label="打开 '+escAttr(n['名称']||'需求')+'">'
+    +'<span class="top"><span class="name">'+(icons[category]||'📦')+' '+esc(n['名称']||'')+'</span>'+(mainPrice?'<span class="price budget-price">'+esc(mainPrice)+'</span>':'')+'</span>'
     +'<span class="meta">'+meta+'</span>'
-    +(note?'<span class="note">'+esc(note)+'</span>':'')
-    +(eventTime?'<span class="purchase-timestamp">'+esc(eventTime)+'</span>':'')
-    +'</button><div class="actions"><button type="button" onclick="event.stopPropagation();editItem(\''+escAttr(id)+'\')" title="编辑" aria-label="编辑 '+escAttr(i['商品名称']||'采购记录')+'">✏️</button><button type="button" onclick="event.stopPropagation();delItem(\''+escAttr(id)+'\')" title="删除" aria-label="删除 '+escAttr(i['商品名称']||'采购记录')+'">🗑️</button></div></article></div>';
+    +'</button><div class="actions"><button type="button" onclick="event.stopPropagation();openNeedEdit(\''+escAttr(id)+'\')" title="编辑" aria-label="编辑 '+escAttr(n['名称']||'需求')+'">✏️</button><button type="button" onclick="event.stopPropagation();deleteNeed(\''+escAttr(id)+'\')" title="删除" aria-label="删除 '+escAttr(n['名称']||'需求')+'">🗑️</button></div></article>';
 }
 function changeLogDate(delta) {
   const parts = logDateState.split('-').map(Number);

@@ -56,9 +56,9 @@ router.get('/projects', async (req, res, next) => {
     const [phases, items, pSpend, eSpend, pLedger, eLedger] = await Promise.all([
       db.query('SELECT * FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx', [uid]),
       db.query('SELECT * FROM phase_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx, sort_order, id', [uid]),
-      db.query("SELECT project_id, phase_idx, SUM(price*qty) AS amt FROM purchases WHERE user_id = ? AND project_id IS NOT NULL AND status NOT IN ('已退','已取消') GROUP BY project_id, phase_idx", [uid]),
+      db.query("SELECT n.project_id, n.phase_idx, SUM(o.price_paid*o.qty) AS amt FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id WHERE o.user_id = ? AND n.project_id IS NOT NULL AND o.status IN ('已下单','已到','已归档') GROUP BY n.project_id, n.phase_idx", [uid]),
       db.query("SELECT project_id, phase_idx, SUM(amount) AS amt FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' GROUP BY project_id, phase_idx", [uid]),
-      db.query("SELECT id, project_id, phase_idx, name AS title, price*qty AS amt, date_ms FROM purchases WHERE user_id = ? AND project_id IS NOT NULL AND status NOT IN ('已退','已取消') ORDER BY date_ms DESC, id DESC", [uid]),
+      db.query("SELECT o.id, n.id AS need_id, n.project_id, n.phase_idx, n.name AS title, o.price_paid*o.qty AS amt, o.date_ms FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id WHERE o.user_id = ? AND n.project_id IS NOT NULL AND o.status IN ('已下单','已到','已归档') ORDER BY o.date_ms DESC, o.id DESC", [uid]),
       db.query("SELECT id, project_id, phase_idx, note AS title, amount AS amt, date_ms FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' ORDER BY date_ms DESC, id DESC", [uid]),
     ]);
 
@@ -116,7 +116,8 @@ router.get('/projects', async (req, res, next) => {
     }
     for (const r of pLedger) {
       const o = byProject[r.project_id]; if (!o) continue;
-      o.ledger.push({ kind: 'purchase', id: 'rec_' + r.id, title: r.title || '采购', amount: Number(r.amt) || 0, phaseIdx: r.phase_idx == null ? -1 : Number(r.phase_idx), dateMs: r.date_ms == null ? null : Number(r.date_ms) });
+      // id 用 need_id：与 /api/items 兼容行、待办 link_id（rec_<needId>）对齐，点击可回查
+      o.ledger.push({ kind: 'purchase', id: 'rec_' + r.need_id, title: r.title || '采购', amount: Number(r.amt) || 0, phaseIdx: r.phase_idx == null ? -1 : Number(r.phase_idx), dateMs: r.date_ms == null ? null : Number(r.date_ms) });
     }
     for (const r of eLedger) {
       const o = byProject[r.project_id]; if (!o) continue;
@@ -571,7 +572,8 @@ router.delete('/projects', async (req, res, next) => {
     }
     await conn.query('DELETE FROM project_phases WHERE project_id = ?', [pid]);
     await conn.query('DELETE FROM phase_items WHERE project_id = ?', [pid]);
-    await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    await conn.query('UPDATE purchase_needs SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]); // 旧表冻结备份一并解绑
     await conn.query('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
     // todos.project_id 是字符串列（存 rec_<id>），与 purchases/expenses 的数字列不同；
     // 用数字比较会触发 MySQL 的 Truncated incorrect DOUBLE value 而整个删除事务失败。

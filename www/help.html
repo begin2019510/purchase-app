@@ -56,7 +56,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 <div class="container">
   <div class="hero">
     <h1>❓ 帮助文档</h1>
-    <p>个人管家 v3.7.0 使用指南</p>
+    <p>个人管家 v3.0.40 使用指南</p>
   </div>
 
   <div class="toc">
@@ -88,35 +88,39 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 采购管理 -->
   <div class="section" id="purchase">
     <h2><span class="icon">🛒</span> 采购管理</h2>
-    <h3>新增采购</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-text">点击右下角 <span class="tag tag-green">+</span> 按钮</div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-text">填写<b>商品名称</b>（必填）、平台、分类、单价、数量、日期、备注</div></div>
-    <div class="step"><div class="step-num">3</div><div class="step-text">可上传图片附件，支持分期购买设置</div></div>
-    <div class="step"><div class="step-num">4</div><div class="step-text">点击<b>保存</b></div></div>
+    <p>采购采用<b>两级模型</b>：<b>需求</b>（决策）→ <b>供应商对比</b>（横向比价/打分）→ <b>子采购单</b>（执行与记账）。一个需求下可挂多家供应商、多张子单（试用单 + 正式单）。</p>
 
-    <h3>审批流程</h3>
-    <p>采购记录支持完整的审批流程，右滑可快速改状态：</p>
+    <h3>五步主流程</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text"><b>提交需求</b>：只填名称、分类、预算区间（最低/最高），需求进入<span class="tag tag-orange">对比中</span></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text"><b>选择供应商</b>：录入多家供应商（谁、平台、价格、优缺点、图片、备注），自定义对比维度并逐家打分，加权排序</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text"><b>下单试用（可选）</b>：给意向供应商建<b>试用单</b>，先买回来看效果；不试用可跳过</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-text"><b>定点供应商</b>：结合打分与试用结果选定一家，需求转为<span class="tag tag-purple">已定点</span></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-text"><b>正式采购</b>：给定点供应商建<b>正式单</b>并流转状态，需求完成（<span class="tag tag-green">已完成</span>）</div></div>
+
+    <h3>快速采购</h3>
+    <p>想直接买、不想走流程？点击右下角 <span class="tag tag-orange">⚡</span> 极速采购按钮：填商品、平台、价格、数量即可一步下单（<b>总价 ≤ ¥50 免审</b>），系统自动生成需求 + 供应商 + 已到货的正式单，与新流程结果完全一致。</p>
+
+    <h3>需求状态</h3>
+    <table>
+      <tr><th>状态</th><th>说明</th></tr>
+      <tr><td><span class="tag tag-orange">对比中</span></td><td>已提交需求，正在选供应商 / 试用对比</td></tr>
+      <tr><td><span class="tag tag-purple">已定点</span></td><td>已选定供应商，准备（或正在）正式采购</td></tr>
+      <tr><td><span class="tag tag-green">已完成</span></td><td>正式采购走完，需求关闭</td></tr>
+      <tr><td><span class="tag tag-red">已取消</span></td><td>放弃该需求</td></tr>
+    </table>
+
+    <h3>子单状态流转</h3>
     <table>
       <tr><th>状态</th><th>说明</th><th>操作</th></tr>
-      <tr><td><span class="tag tag-orange">待评估</span></td><td>初始状态</td><td>右滑 → 提交审批</td></tr>
-      <tr><td><span class="tag tag-orange">待审批</span></td><td>等待审批</td><td>右滑 → 审批通过</td></tr>
-      <tr><td><span class="tag tag-blue">已审批</span></td><td>审批通过</td><td>右滑 → 确认下单</td></tr>
-      <tr><td><span class="tag tag-purple">已下单</span></td><td>已下单购买</td><td>确认收货 / 退货</td></tr>
-      <tr><td><span class="tag tag-green">已到</span></td><td>已收货</td><td>可归档</td></tr>
-      <tr><td><span class="tag tag-red">已退</span></td><td>已退货</td><td>可归档</td></tr>
+      <tr><td><span class="tag tag-orange">待下单</span></td><td>已创建（旧数据的“待审批/已审批”也显示为此）</td><td>→ 确认下单</td></tr>
+      <tr><td><span class="tag tag-blue">已下单</span></td><td>已下单购买</td><td>→ 确认收货 / 退货</td></tr>
+      <tr><td><span class="tag tag-green">已到</span></td><td>已收货</td><td>→ 归档 / 退货</td></tr>
+      <tr><td><span class="tag tag-purple">已归档</span></td><td>记录完结</td><td>—</td></tr>
+      <tr><td><span class="tag tag-red">已退</span></td><td>已退货，可归档</td><td>→ 归档</td></tr>
+      <tr><td><span class="tag tag-red">已取消</span></td><td>未完成即取消</td><td>—</td></tr>
     </table>
-    <div class="tip"><b>💡 状态联动：</b>审批通过后自动生成“下单”待办；分期采购自动生成每期还款待办；取消/退货自动清除关联待办。</div>
-
-    <h3>批量操作</h3>
-    <div class="step"><div class="step-num">1</div><div class="step-text">点击顶部 <b>☑ 批量</b> 按钮进入批量模式</div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-text">点击卡片选择/取消选择，可批量改状态或删除</div></div>
-
-    <h3>手势操作</h3>
-    <ul>
-      <li><b>左滑卡片</b> → 快速删除</li>
-      <li><b>右滑卡片</b> → 切换到下一状态</li>
-      <li><b>下拉列表</b> → 刷新数据</li>
-    </ul>
+    <div class="tip"><b>💡 记账口径：</b>只有子单 <b>已下单 / 已到 / 已归档</b> 计入预算、周报月报、项目花费和分类统计；需求、打分、待下单、已退、已取消一律不计入。</div>
+    <div class="tip"><b>💡 待办联动：</b>已退 / 已取消 / 删除需求时，会自动清除关联的采购待办。2026-10-30 起不再自动生成“下单 / 分期还款”待办。</div>
   </div>
 
   <!-- 记账功能 -->
@@ -188,9 +192,6 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
     <h3>智能记账</h3>
     <p>在记账弹窗中输入自然语言，如 “今天午餐花了35元”，AI 自动解析金额、分类、备注。</p>
 
-    <h3>购买评估</h3>
-    <p>新增采购时可请求 AI 评估，返回评分圆环、优缺点对比、历史价格对比、替代方案。</p>
-
     <h3>财务分析</h3>
     <p>统计页点击 AI 分析，返回结构化报告：摘要、高亮标签、分类条形图、建议卡片。</p>
 
@@ -234,11 +235,11 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
     <h3>Q: 忽略密码怎么办？</h3>
     <p>请联系管理员重置密码或创建新账号。</p>
     <h3>Q: 数据会丢失吗？</h3>
-    <p>数据存储在云端（飞书 Bitable），即使清除浏览器缓存也不会丢失。</p>
+    <p>数据存储在云端 MySQL 数据库，即使清除浏览器缓存也不会丢失。</p>
     <h3>Q: 支持离线使用吗？</h3>
     <p>支持。应用使用 Service Worker 缓存，离线时可查看已缓存页面。</p>
     <h3>Q: 图片存储在哪里？</h3>
-    <p>图片使用 Cloudflare KV 存储，自动压缩以节省空间。</p>
+    <p>图片保存在服务器磁盘，元数据存 MySQL，自动压缩以节省空间。</p>
     <h3>Q: 如何导出数据？</h3>
     <p>采购和记账页面均支持 CSV/TSV 导出。</p>
     <h3>Q: 预算怎么设置？</h3>
@@ -248,6 +249,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 版本历史 -->
   <div class="section" id="changelog">
     <h2><span class="icon">📋</span> 版本历史</h2>
+    <div class="changelog-item"><div class="changelog-ver">v3.0.40 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>采购全面重构为两级模型：需求 → 供应商对比（打分）→ 试用 → 定点 → 正式采购</li><li>快速采购保留：单弹窗一步下单（≤¥50 免审），底层自动生成需求 + 供应商 + 正式单</li><li>记账口径统一：仅子单 已下单/已到/已归档 计入预算与统计</li><li>旧审批流 / 批量模式 / 滑动手势移除；帮助文档同步更新</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.7.0 <span class="changelog-date">2026-06-09</span></div><ul class="changelog-list"><li>修复预算池计算：固定支出数据加载后自动重新渲染</li><li>修复周预算动态额度计算逻辑</li><li>全面修复文件编码问题，恢复正确 UTF-8</li><li>更新帮助文档和版本历史</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.6.0 <span class="changelog-date">2026-06-08</span></div><ul class="changelog-list"><li>原生 Android APP 支持（Capacitor打包）</li><li>极光推送通知（厂商通道 + 自建通道）</li><li>隐私政策页面</li><li>下拉刷新全局支持 + 刷新保持当前 Tab</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.5.0 <span class="changelog-date">2026-06-07</span></div><ul class="changelog-list"><li>AI 对话式助手（多轮上下文）</li><li>AI 结构化分析报告 + 条形图</li><li>AI 待办建议功能</li><li>采购评估增强（评分圆环 + 历史价格对比）</li></ul></div>
@@ -261,7 +263,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 
   <div style="text-align:center;margin-top:20px">
     <a href="/" class="back-btn">🏠 返回主页</a>
-    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.7.0 · 2026</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.0.40 · 2026</p>
     <p style="font-size:12px;margin-top:8px"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖ICP备2026035353号</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖公网安备34012202341289号</a></p>
   </div>
 </div>

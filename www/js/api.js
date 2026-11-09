@@ -357,11 +357,10 @@ App.api.loadRecurringData = loadRecurringData;
 App.api.saveRecurringData = saveRecurringData;
 App.api.getFixedExpenseTotal = getFixedExpenseTotal;
 
-// 计算当月非分期采购支出
+// 计算当月非分期采购支出（口径：orderRows + ACTIVE_BUY 白名单，与预算池一致）
 function getDirectPurchaseSpend(month) {
-  return (items || []).filter(function(i) {
-    var s = i['状态'] || '';
-    if (s === '已退' || s === '已取消' || s === '待评估' || s === '待审批') return false;
+  return orderRows().filter(function(i) {
+    if (!isActiveBuy(i['状态'])) return false;
     if (getMonth(i['日期']) !== month) return false;
     return (Number(i['分期期数']) || 0) <= 1;
   }).reduce(function(s, i) {

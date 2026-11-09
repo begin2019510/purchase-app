@@ -33,6 +33,7 @@ app.use('/api', (req, res, next) => {
 
 app.use(parseJWT);
 app.use('/api', require('./routes/auth'));
+app.use('/api', require('./routes/needs'));
 app.use('/api', require('./routes/items'));
 app.use('/api', require('./routes/expenses'));
 app.use('/api', require('./routes/todos'));
