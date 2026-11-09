@@ -1,7 +1,8 @@
 'use strict';
-// 待办提醒调度：晚间小结（21:00-21:15）+ 多档提前提醒（Web Push）
+// 待办提醒调度：晚间小结（21:00-21:15）+ 多档提前提醒（Web Push）+ 每日固定时刻（daily_times）
 // 按 reminders（分钟数组）逐档各发一次：如 3 点到期 + [10,20] → 14:50、14:40 各一条
 // 空 reminders 且设了具体时间 → 默认 [10,20]
+// daily_times = ["09:00","18:00"]：每天到点各推一次（与 due 无关）；幂等 notified_daily = YYYY-MM-DD|HH:MM,HH:MM
 // 项目/普通待办文案区分（📁 vs ⏰）
 // 建议每 5 分钟跑一次（systemd timer）；幂等：notified_rems 记录已发档位
 // 晚间：users.notify_evening_date（DATE 列，必须 DATE_FORMAT 比对，勿用 Date 对象 !== 字符串）
@@ -44,6 +45,40 @@ function parseSent(raw) {
     const a = JSON.parse(raw || '[]');
     return Array.isArray(a) ? a.map(Number).filter(Number.isFinite) : [];
   } catch (e) { return []; }
+}
+
+// daily_times 列：["09:00",...]
+function parseDailyTimes(raw) {
+  try {
+    const a = JSON.parse(raw || '[]');
+    if (!Array.isArray(a)) return [];
+    return a.map(t => String(t == null ? '' : t).trim())
+      .filter(s => /^([01]?\d|2[0-3]):[0-5]\d$/.test(s))
+      .map(s => { const [h, m] = s.split(':'); return String(Number(h)).padStart(2, '0') + ':' + m; });
+  } catch (e) { return []; }
+}
+
+// notified_daily = "2026-11-09|09:00,18:00"；跨日自动作废
+function parseNotifiedDaily(raw, todayStr) {
+  const s = String(raw || '');
+  if (!s) return { date: '', times: [] };
+  const i = s.indexOf('|');
+  if (i < 0) return { date: '', times: [] };
+  const date = s.slice(0, i);
+  if (date !== todayStr) return { date: todayStr, times: [] };
+  return { date, times: s.slice(i + 1).split(',').filter(Boolean) };
+}
+
+function markNotifiedDaily(id, dateStr, times) {
+  if (DRY || !times.length) return;
+  const val = dateStr + '|' + [...new Set(times)].sort().join(',');
+  return db.exec('UPDATE todos SET notified_daily = ? WHERE id = ?', [val, id]);
+}
+
+// 北京时区某天 HH:MM 的毫秒时间戳
+function dailyFireMs(y, m, d, hhmm) {
+  const [h, mi] = hhmm.split(':').map(Number);
+  return Date.UTC(y, m - 1, d, h, mi, 0, 0) - TZ;
 }
 
 function todoLabel(t) {
@@ -164,6 +199,14 @@ function eveningBody(todayExp, todayPur, inst, tomTodos) {
 }
 
 (async () => {
+  // 3.0.42：补列（幂等，缺了才加）
+  try {
+    const [c1] = await db.pool.query("SHOW COLUMNS FROM todos LIKE 'daily_times'");
+    if (!c1.length) await db.exec('ALTER TABLE todos ADD COLUMN daily_times VARCHAR(200) NULL AFTER reminders');
+    const [c2] = await db.pool.query("SHOW COLUMNS FROM todos LIKE 'notified_daily'");
+    if (!c2.length) await db.exec('ALTER TABLE todos ADD COLUMN notified_daily VARCHAR(200) NULL AFTER notified_rems');
+  } catch (e) { log('daily 列检查:', e.message); }
+
   const now = Date.now();
   const bj = bjParts(now);
   const todayStr = `${bj.y}-${pad(bj.m)}-${pad(bj.d)}`;
@@ -178,7 +221,7 @@ function eveningBody(todayExp, todayPur, inst, tomTodos) {
     const fuzzy = exact || allUsers.find(x => x.username.length > uname.length && x.username.endsWith(uname));
     if (fuzzy) users.push({ id: fuzzy.id, username: fuzzy.username, subKey: uname });
   }
-  let sentCount = 0, usersEvening = 0, usersDue = 0;
+  let sentCount = 0, usersEvening = 0, usersDue = 0, usersDaily = 0;
 
   // 晚间窗口与日期边界（BEIJING）
   const inEvening = bj.hh === 21 && bj.mm >= 0 && bj.mm <= 15;
@@ -316,8 +359,49 @@ function eveningBody(todayExp, todayPur, inst, tomTodos) {
         await db.exec('UPDATE todos SET notified_due_ms = NULL WHERE id = ? AND notified_due_ms = ?', [t.id, t.due_ms]);
       }
     }
+
+    // ---- C. 每日固定时刻（daily_times）：与 due 无关，未完成就每天到点各推一次 ----
+    const dailyRows = await db.query(
+      `SELECT t.id, t.title, t.daily_times, t.notified_daily,
+              t.project_id, t.phase_idx,
+              p.name AS project_name, ph.display_name AS phase_name
+       FROM todos t
+       LEFT JOIN projects p ON p.id = CAST(REPLACE(COALESCE(t.project_id, ''), 'rec_', '') AS UNSIGNED)
+       LEFT JOIN project_phases ph ON ph.project_id = p.id AND ph.phase_idx = t.phase_idx
+       WHERE t.user_id = ? AND t.status IN ('待办','进行中')
+         AND t.daily_times IS NOT NULL AND t.daily_times <> '' AND t.daily_times <> '[]'`,
+      [u.id]);
+    for (const t of dailyRows) {
+      const times = parseDailyTimes(t.daily_times);
+      if (!times.length) continue;
+      const nd = parseNotifiedDaily(t.notified_daily, todayStr);
+      const sentToday = nd.times.slice();
+      const justDaily = [];
+      // 窗口：到点后 0~6 分钟内发（覆盖 5 分钟 timer + 随机延迟）；错过则等明天
+      for (const hhmm of times) {
+        if (sentToday.includes(hhmm)) continue;
+        const fireAt = dailyFireMs(bj.y, bj.m, bj.d, hhmm);
+        if (now < fireAt || now > fireAt + 6 * 60000) continue;
+        const ok = await send(sub, {
+          title: t.project_id ? '📁 项目 · 每日提醒' : '⏰ 每日提醒',
+          body: todoLabel(t).body + ' · ' + hhmm,
+          url: '/',
+          tag: `daily-${t.id}-${hhmm.replace(':', '')}`,
+          kind: t.project_id ? 'project-todo' : 'todo',
+          projectId: t.project_id || null,
+          dailyAt: hhmm,
+          actions: [{ action: 'open', title: '去查看' }, { action: 'dismiss', title: '知道了' }],
+        });
+        if (ok) {
+          sentCount++; usersDaily++;
+          sentToday.push(hhmm);
+          justDaily.push(hhmm);
+        }
+      }
+      if (justDaily.length) await markNotifiedDaily(t.id, todayStr, sentToday);
+    }
   }
 
-  log(`done: sent=${sentCount} evening_users=${usersEvening} due_users=${usersDue}${DRY ? ' (dry)' : ''}`);
+  log(`done: sent=${sentCount} evening_users=${usersEvening} due_users=${usersDue} daily_users=${usersDaily}${DRY ? ' (dry)' : ''}`);
   process.exit(0);
 })().catch(e => { console.error('NOTIFY CRASH:', e.message); process.exit(1); });

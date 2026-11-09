@@ -202,9 +202,12 @@ CREATE TABLE IF NOT EXISTS todos (
   phase_idx    TINYINT NULL,                      -- 关联项目阶段 P0~P5
   tags         TEXT NULL,                         -- 标签（JSON 串）
   sort_no      INT NOT NULL DEFAULT 0,            -- 排序
-  reminders    TEXT NULL,                         -- 提醒（JSON 串）
+  reminders    TEXT NULL,                         -- 提醒（JSON 串，截止前分钟档）
+  daily_times  VARCHAR(200) NULL,                 -- 每日固定提醒时刻 JSON ["09:00","18:00"]
   due_iso      VARCHAR(60) NULL,                  -- 截止日期ISO
   notified_due_ms BIGINT NULL,                    -- 到期提醒已发送对应的 due_ms（去重）
+  notified_rems VARCHAR(200) NULL,                -- 多档提前提醒已发档位 JSON
+  notified_daily VARCHAR(200) NULL,               -- 每日固定提醒已发 YYYY-MM-DD|HH:MM,HH:MM
   notify_morning_date DATE NULL,                  -- 早间摘要已发送日期
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

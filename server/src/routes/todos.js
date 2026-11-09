@@ -30,6 +30,26 @@ const STATUSES = new Set(['待办', '进行中', '已完成', '已取消', '已�
 const PRIORITIES = new Set(['高', '中', '低']);
 const REPEATS = new Set(['无', '每天', '每周', '每月']);
 
+// 每日固定提醒时刻：HH:MM，最多 8 个；与截止前提醒档位互不影响
+function parseDailyTimes(raw) {
+  let arr = [];
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw;
+    if (Array.isArray(v)) arr = v;
+  } catch (e) { return '[]'; }
+  const out = [];
+  for (const t of arr) {
+    const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(t == null ? '' : t).trim());
+    if (!m) continue;
+    const hh = String(Number(m[1])).padStart(2, '0');
+    const mm = m[2];
+    const s = hh + ':' + mm;
+    if (!out.includes(s)) out.push(s);
+    if (out.length >= 8) break;
+  }
+  return JSON.stringify(out);
+}
+
 // 兼容前端传的 ISO 时间与只写日期的 YYYY-MM-DD（按北京时间零点）
 function dueToMs(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -62,11 +82,11 @@ async function insertRenewed(uid, old) {
   let resetSubs = '[]';
   try { const subs = JSON.parse(old.subtasks || '[]'); resetSubs = JSON.stringify(subs.map(s => ({ text: s.text, done: false, priority: s.priority || '中' }))); } catch (e) {}
   await db.exec(
-    `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders,daily_times)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [uid, old.title, old.description || '', ms, new Date(ms).toISOString(), old.priority, old.category,
       '待办', old.repeat, resetSubs, old.link_type || '无', old.link_id || '', old.project_id || '', old.phase_idx, old.tags || '[]', Number(old.sort_no) || 0,
-      old.reminders || '[]']);
+      old.reminders || '[]', old.daily_times || '[]']);
   return true;
 }
 
@@ -90,6 +110,7 @@ function rowToTodo(r) {
     tags: r.tags || '',
     order: Number(r.sort_no) || 0,
     reminders: r.reminders || '',
+    dailyTimes: r.daily_times || '[]',
   };
 }
 
@@ -135,13 +156,14 @@ router.post('/todos', async (req, res, next) => {
       if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
       imageRef = await IMG.saveDataImage(req.username, uid, b.image, 'todo');
     } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) imageRef = b.image;
+    const dailyTimes = parseDailyTimes(b.dailyTimes !== undefined ? b.dailyTimes : b.daily_times);
     const [ins] = await db.pool.query(
-      `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders,daily_times)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, title, String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
         b.priority || '中', category, b.status || '待办', b.repeat || '无', String(b.subtasks || '[]').slice(0, 20000),
         imageRef, b.linkType || '无', String(b.linkId || '').slice(0, 40), projectId === null ? '' : 'rec_' + projectId, _phaseIdx(b.phaseIdx),
-        String(b.tags || '[]').slice(0, 10000), Number(b.order) || 0, rems]);
+        String(b.tags || '[]').slice(0, 10000), Number(b.order) || 0, rems, dailyTimes]);
     res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
   } catch (e) { next(e); }
 });
@@ -213,6 +235,10 @@ router.put('/todos', async (req, res, next) => {
         const arr = Array.isArray(raw) ? raw.map(Number).filter(n => Number.isFinite(n) && n > 0) : [];
         cols.reminders = JSON.stringify([...new Set(arr)]);
       } catch (e) { cols.reminders = String(b.reminders || '').slice(0, 5000); }
+    }
+    if (b.dailyTimes !== undefined || b.daily_times !== undefined) {
+      cols.daily_times = parseDailyTimes(b.dailyTimes !== undefined ? b.dailyTimes : b.daily_times);
+      cols.notified_daily = null; // 时刻集合变了 → 当天已发标记作废
     }
     if (b.image !== undefined) {
       if (typeof b.image === 'string' && b.image.startsWith('data:')) {

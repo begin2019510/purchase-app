@@ -764,6 +764,8 @@ var todoSubtaskRows = [];
 // 此前只「用」不「声明」，iOS Safari 直接 ReferenceError: Can't find variable: todoTags
 var todoTags = [];
 var todoReminders = [];
+// 每日固定提醒时刻 ["09:00","18:00"]（3.0.42）：与截止提醒并存，完成/删除即停
+var todoDailyTimes = [];
 var todoImage = '';
 
 // Populate link dropdown based on selected link type
@@ -812,6 +814,7 @@ function openTodoModal(id) {
     // \u6253\u5f00\u65f6\u91cd\u7f6e\u8349\u7a3f\u6001\uff0c\u907f\u514d\u4e0a\u4e00\u6b21\u7684 tags/reminders \u4e32\u5230\u8fd9\u4e00\u6761
     todoTags = [];
     todoReminders = [];
+    todoDailyTimes = [];
     todoImage = '';
     if (t) {
       try {
@@ -821,6 +824,10 @@ function openTodoModal(id) {
       try {
         var _rem0 = JSON.parse(t.reminders || '[]');
         if (Array.isArray(_rem0)) todoReminders = _rem0.map(Number).filter(function(n){ return isFinite(n); });
+      } catch (e) {}
+      try {
+        var _dt0 = JSON.parse(t.dailyTimes || t.daily_times || '[]');
+        if (Array.isArray(_dt0)) todoDailyTimes = _dt0.map(String).filter(function(s){ return /^([01]?\d|2[0-3]):[0-5]\d$/.test(s); });
       } catch (e) {}
       todoImage = t.image || '';
     }
@@ -897,6 +904,7 @@ function closeTodoModal() {
   window._pendingQuickInputId = "";
   todoTags = [];
   todoReminders = [];
+  todoDailyTimes = [];
   todoImage = '';
 }
 
@@ -1035,6 +1043,9 @@ async function saveTodo() {
       var _dR = new Date(dueDateIso);
       if (isFinite(_dR.getTime()) && (_dR.getHours() || _dR.getMinutes())) remsArr = [10, 20];
     }
+    var dailyArr = Array.isArray(todoDailyTimes)
+      ? todoDailyTimes.map(String).filter(function(s){ return /^([01]?\d|2[0-3]):[0-5]\d$/.test(s); })
+      : [];
     var body = {
       title: title,
       description: document.getElementById('todoDesc').value.trim(),
@@ -1049,6 +1060,7 @@ async function saveTodo() {
       subtasks: JSON.stringify(todoSubtaskRows.filter(function(s){ return s && s.text && s.text.trim(); })),
       tags: JSON.stringify(Array.isArray(todoTags) ? todoTags : []),
       reminders: JSON.stringify(remsArr),
+      dailyTimes: JSON.stringify(dailyArr),
       image: (typeof todoImage !== 'undefined' && todoImage) || ''
     };
     try {
@@ -1064,7 +1076,7 @@ async function saveTodo() {
     // Optimistic: close modal and render first
     if (_editId) {
       var _ti = todoList.findIndex(function(t){return t.id===_editId});
-      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; todoList[_ti].phaseIdx = body.phaseIdx; }
+      if (_ti >= 0) { todoList[_ti].title = body.title; todoList[_ti].description = body.description; todoList[_ti].dueDate = body.dueDate; todoList[_ti].priority = body.priority; todoList[_ti].category = body.category; todoList[_ti].repeat = body.repeat; todoList[_ti].subtasks = body.subtasks; todoList[_ti].linkType = body.linkType; todoList[_ti].linkId = body.linkId; todoList[_ti].projectId = body.projectId; todoList[_ti].phaseIdx = body.phaseIdx; todoList[_ti].dailyTimes = body.dailyTimes; todoList[_ti].reminders = body.reminders; }
     }
     closeTodoModal();
     render();
@@ -1150,6 +1162,19 @@ function openTodoDetail(id) {
   }
   if (t.dueDate) html += '<div class="detail-row"><span class="detail-label">截止日期</span><span class="detail-value ' + getDueClass(t.dueDate, t.status) + '">📅 ' + formatDueDate(t.dueDate) + '</span></div>';
   if (t.repeat && t.repeat !== '无') html += '<div class="detail-row"><span class="detail-label">重复</span><span class="detail-value">🔄 ' + t.repeat + '</span></div>';
+  try {
+    var _dd = JSON.parse(t.dailyTimes || t.daily_times || '[]');
+    if (Array.isArray(_dd) && _dd.length) {
+      html += '<div class="detail-row"><span class="detail-label">每日提醒</span><span class="detail-value">⏰ ' + _dd.join('、') + '</span></div>';
+    }
+  } catch (e) {}
+  try {
+    var _rr = JSON.parse(t.reminders || '[]');
+    if (Array.isArray(_rr) && _rr.length) {
+      var _rl = _rr.map(function(n){ return n >= 60 ? (n / 60) + ' 小时' : n + ' 分钟'; }).join('、');
+      html += '<div class="detail-row"><span class="detail-label">截止前提醒</span><span class="detail-value">🔔 ' + _rl + '</span></div>';
+    }
+  } catch (e) {}
 
   if (t.description) html += '<div class="detail-desc">' + esc(t.description) + '</div>';
   // Tags display (Bug #7)
@@ -1452,7 +1477,9 @@ function renderReminderUI() {
   var el = document.getElementById('todoReminderChips');
   if (!el) return;
   if (!Array.isArray(todoReminders)) todoReminders = [];
+  if (!Array.isArray(todoDailyTimes)) todoDailyTimes = [];
   var html = '';
+  // —— 截止前提醒档位 ——
   var options = [{v:'10',l:'提前10分钟'},{v:'20',l:'提前20分钟'},{v:'30',l:'提前30分钟'},{v:'60',l:'提前1小时'},{v:'1440',l:'提前1天'}];
   todoReminders.forEach(function(r, i) {
     var opt = options.find(function(o){ return o.v === String(r); });
@@ -1468,7 +1495,45 @@ function renderReminderUI() {
   }
   // 空选不是必填：设了具体时间时默认提前 10/20 分钟（与服务端 notify-todos 一致）
   html += '<div style="margin-top:6px;font-size:10px;line-height:1.4;color:var(--muted)">不选也可以保存 · 设了具体时间默认提前 10/20 分钟推送</div>';
+
+  // —— 每日固定提醒时刻（3.0.42，与截止提醒并存）——
+  html += '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed color-mix(in srgb,var(--muted) 30%,transparent)">';
+  html += '<div style="font-size:11px;font-weight:600;margin-bottom:2px">⏰ 每日固定提醒</div>';
+  var dayOpts = ['09:00','12:00','18:00','21:00'];
+  todoDailyTimes.forEach(function(s, i) {
+    html += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;background:color-mix(in srgb,#f59e0b 18%,var(--card));color:#b45309;margin:2px">' + s + '<span onclick="todoDailyTimes.splice(' + i + ',1);renderReminderUI()" style="cursor:pointer;font-weight:700">×</span></span>';
+  });
+  var dayUnused = dayOpts.filter(function(o){ return todoDailyTimes.indexOf(o) < 0; });
+  if (dayUnused.length) {
+    html += '<div style="margin-top:4px">';
+    dayUnused.forEach(function(o) {
+      html += '<span onclick="todoDailyTimes.push(\'' + o + '\');renderReminderUI()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + o + '</span>';
+    });
+    html += '</div>';
+  }
+  html += '<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+  html += '<input type="time" id="todoDailyCustom" style="font-size:11px;padding:2px 4px;border-radius:6px;border:1px solid color-mix(in srgb,var(--muted) 40%,transparent);background:var(--bg);color:var(--text,#111)">';
+  html += '<button type="button" onclick="todoAddDailyTime()" style="padding:2px 8px;border-radius:10px;font-size:10px;border:none;background:var(--pri);color:#fff;cursor:pointer">＋ 自定义</button>';
+  html += '</div>';
+  html += '<div style="margin-top:4px;font-size:10px;line-height:1.4;color:var(--muted)">每天到点各推一次（不依赖截止/重复）；完成或删除即停</div>';
+  html += '</div>';
   el.innerHTML = html;
+}
+
+function todoAddDailyTime() {
+  var inp = document.getElementById('todoDailyCustom');
+  if (!inp || !inp.value) { toast('先选一个时刻'); return; }
+  var v = String(inp.value);
+  if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) { toast('时刻格式不正确'); return; }
+  var hh = String(Number(v.split(':')[0])).padStart(2, '0');
+  var mm = v.split(':')[1];
+  var s = hh + ':' + mm;
+  if (!Array.isArray(todoDailyTimes)) todoDailyTimes = [];
+  if (todoDailyTimes.indexOf(s) >= 0) { toast('已有该时刻'); return; }
+  if (todoDailyTimes.length >= 8) { toast('最多 8 个每日时刻'); return; }
+  todoDailyTimes.push(s);
+  todoDailyTimes.sort();
+  renderReminderUI();
 }
 
 /** 项目待办通知前缀/正文：与服务端 notify-todos 一致 */
@@ -1691,6 +1756,36 @@ function checkTodoNotifications() {
         }
       } catch(e) {}
     }
+    // 每日固定时刻：页面开着时本地补一条（服务端 Web Push 是主通道）
+    try {
+      var _dts = [];
+      var _dtRaw = t.dailyTimes || t.daily_times;
+      if (_dtRaw) {
+        var _dta = typeof _dtRaw === 'string' ? JSON.parse(_dtRaw) : _dtRaw;
+        if (Array.isArray(_dta)) _dts = _dta.map(String);
+      }
+      if (_dts.length) {
+        if (!t._notifiedDaily) t._notifiedDaily = { date: '', times: [] };
+        var _now = new Date();
+        var _today = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
+        if (t._notifiedDaily.date !== _today) t._notifiedDaily = { date: _today, times: [] };
+        var _hh = String(_now.getHours()).padStart(2,'0');
+        var _mm = String(_now.getMinutes()).padStart(2,'0');
+        _dts.forEach(function(hhmm) {
+          if (t._notifiedDaily.times.indexOf(hhmm) >= 0) return;
+          var _p = hhmm.split(':');
+          var _target = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), Number(_p[0]), Number(_p[1]), 0, 0).getTime();
+          if (now >= _target && now < _target + 6 * 60000) {
+            t._notifiedDaily.times.push(hhmm);
+            if (style.isProject) {
+              showTodoNotification('📁 项目 · 每日提醒', (style.bodyPrefix ? style.bodyPrefix + ' · ' : '') + t.title + ' · ' + hhmm);
+            } else {
+              showTodoNotification('⏰ 每日提醒', t.title + ' · ' + hhmm);
+            }
+          }
+        });
+      }
+    } catch(e) {}
   });
 }
 

@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.41";
+const APP_VERSION = "3.0.42";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.42',date:'2026-11-09',items:['待办支持每日固定提醒时刻（09:00/12:00/18:00/21:00+自定义，可多选），与截止提醒并存，完成/删除即停','服务端 notify-todos 每 5 分钟按「日期+时刻」幂等推送 Web Push']},
 {v:'3.0.41',date:'2026-11-09',items:['AI 拆步不再自动生成子待办：拆步只建阶段结构，待办用「AI 建议下一步」或快捷添加逐条补','服务端忽略 steps[].todos（旧客户端字段兼容），清理项目47 误生成的 15 条待办']},
 {v:'3.0.40',date:'2026-11-09',items:['采购全面重构为两级模型：需求 → 供应商对比（矩阵/打分）→ 试用子单 → 定点 → 正式采购','提交需求只需名称/分类/预算区间；快速采购保留（¥50 免审，走新接口旧版自动回退）','预算/统计/周报月报统一口径：仅子单 已下单/已到/已归档 入账，金额=实付×数量','旧采购页废弃：审批流/批量/stepper 移除，详情改为需求详情（对比+试用+定点+正式）']},
 {v:'3.0.39',date:'2026-11-08',items:['记账支持多附件上传：相册可多选、每张可单独移除，最多 9 张','列表缩略图最多显示 3 张并显示 +N；编辑/删除全部图片走 imageKeys']},
