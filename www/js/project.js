@@ -522,7 +522,7 @@ function pickColor(c) {
 }
 
 // ===== 步骤规划：自然语言 → 结构（可编辑预览）=====
-var _pjStructuredSteps = []; // [{name, budget, plannedDays, todos}]，新建时由 AI 拆解或手动维护
+var _pjStructuredSteps = []; // [{name, budget, plannedDays}]，新建时由 AI 拆解或手动维护
 
 function pjRenderStepsPreview() {
   var box = document.getElementById('pjStepsPreview');
@@ -537,7 +537,6 @@ function pjRenderStepsPreview() {
   _pjStructuredSteps.forEach(function(s, i) {
     var b = s.budget == null ? '' : s.budget;
     var d = s.plannedDays == null ? '' : s.plannedDays;
-    var todos = Array.isArray(s.todos) ? s.todos : [];
     html += '<div class="pjf-step-row">'
       + '<span class="pjf-step-idx">' + (i + 1) + '</span>'
       + '<input class="pjf-input" maxlength="50" placeholder="步骤名称" data-pj-step-i="' + i + '" data-pj-step-k="name" value="' + escAttr(s.name || '') + '" oninput="App.project.stepField(this)">'
@@ -545,11 +544,6 @@ function pjRenderStepsPreview() {
       + '<input class="pjf-input pjf-step-days" type="number" step="1" min="1" max="30" placeholder="天" title="计划天数" data-pj-step-i="' + i + '" data-pj-step-k="plannedDays" value="' + escAttr(d) + '" oninput="App.project.stepField(this)">'
       + '<button type="button" class="pjf-step-del" title="删除" onclick="App.project.removeStepRow(' + i + ')">×</button>'
       + '</div>';
-    if (todos.length) {
-      html += '<div class="pjf-step-todos">' + todos.map(function(t) {
-        return '<span class="pjf-step-todo-chip">' + esc(t) + '</span>';
-      }).join('') + '</div>';
-    }
   });
   html += '<div class="pjf-step-actions">'
     + '<button type="button" class="btn btn-secondary pjf-step-btn" onclick="App.project.addStepRow()">＋ 加一步</button>'
@@ -639,7 +633,7 @@ function pjConfirmStepBudgetOver(steps, total) {
 
 function pjAddStepRow() {
   if (_pjStructuredSteps.length >= 6) { toast('最多 6 步'); return; }
-  _pjStructuredSteps.push({ name: '', budget: null, plannedDays: null, todos: [] });
+  _pjStructuredSteps.push({ name: '', budget: null, plannedDays: null });
   pjRenderStepsPreview();
 }
 
@@ -672,14 +666,10 @@ async function pjParseSteps(opts) {
       var pd = s.plannedDays;
       if (pd == null || pd === '' || !isFinite(Number(pd)) || Number(pd) < 1) pd = null;
       else pd = Math.min(30, Math.max(1, Math.round(Number(pd))));
-      var todos = Array.isArray(s.todos)
-        ? s.todos.map(function(t) { return String(t || '').trim().slice(0, 80); }).filter(Boolean).slice(0, 4)
-        : [];
       return {
         name: String(s.name || '').trim().slice(0, 50),
         budget: (s.budget == null || s.budget === '' || !isFinite(Number(s.budget)) || Number(s.budget) < 0) ? null : Number(s.budget),
         plannedDays: pd,
-        todos: todos,
       };
     }).filter(function(s) { return !!s.name; });
     if (!_pjStructuredSteps.length) throw new Error('没能拆出步骤');
@@ -715,10 +705,7 @@ function pjCollectSteps() {
     } else if (s.plannedDays != null) {
       plannedDays = s.plannedDays;
     }
-    var todos = Array.isArray(s.todos)
-      ? s.todos.map(function(t) { return String(t || '').trim().slice(0, 80); }).filter(Boolean).slice(0, 4)
-      : [];
-    if (name) out.push({ name: name, budget: budget, plannedDays: plannedDays, todos: todos });
+    if (name) out.push({ name: name, budget: budget, plannedDays: plannedDays });
   });
   return out.slice(0, 6);
 }
@@ -804,7 +791,7 @@ async function saveProject() {
   if (!editing && steps.length && !pjConfirmStepBudgetOver(steps, data.budget)) return;
   if (editing) data.id = id;
   else if (steps.length) data.steps = steps.map(function(s) {
-    return { name: s.name, budget: s.budget, plannedDays: s.plannedDays, todos: s.todos || [] };
+    return { name: s.name, budget: s.budget, plannedDays: s.plannedDays };
   });
   try {
     var r = editing ? await projectApi('PUT', data) : await projectApi('POST', data);

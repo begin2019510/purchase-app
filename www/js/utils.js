@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.40";
+const APP_VERSION = "3.0.41";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.41',date:'2026-11-09',items:['AI 拆步不再自动生成子待办：拆步只建阶段结构，待办用「AI 建议下一步」或快捷添加逐条补','服务端忽略 steps[].todos（旧客户端字段兼容），清理项目47 误生成的 15 条待办']},
 {v:'3.0.40',date:'2026-11-09',items:['采购全面重构为两级模型：需求 → 供应商对比（矩阵/打分）→ 试用子单 → 定点 → 正式采购','提交需求只需名称/分类/预算区间；快速采购保留（¥50 免审，走新接口旧版自动回退）','预算/统计/周报月报统一口径：仅子单 已下单/已到/已归档 入账，金额=实付×数量','旧采购页废弃：审批流/批量/stepper 移除，详情改为需求详情（对比+试用+定点+正式）']},
 {v:'3.0.39',date:'2026-11-08',items:['记账支持多附件上传：相册可多选、每张可单独移除，最多 9 张','列表缩略图最多显示 3 张并显示 +N；编辑/删除全部图片走 imageKeys']},
 {v:'3.0.38',date:'2026-11-07',items:['采购筛选改为可访问的按钮并修复分类筛选未响应','采购、待办、项目与统计卡片统一语义结构和键盘交互；记账列表改用共享组件样式','浅色模式图标/标题/chip/间距按设计规范生效，auth 输入框聚焦显示强调色描边','MySQL 后端缺配置时失败关闭并返回 JSON 错误，不再静默回退飞书/KV','同步脚本补齐帮助/隐私/Agent 页，新增 check:sync 校验防止 www 漂移','待办箭头可点开详情，本月/全月筛选补 aria-pressed']},

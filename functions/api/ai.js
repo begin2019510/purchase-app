@@ -520,13 +520,13 @@ async function handleParseSteps(apiKey, data, corsHeaders) {
 
   const systemPrompt = `你是项目规划助手。用户会用自然语言描述一个项目怎么推进。
 把描述拆成结构化步骤（阶段），输出严格 JSON（不要 markdown 代码块）:
-{"steps":[{"name":"短名称(2~12字)","budget":数字或null,"plannedDays":整数或null,"todos":["短待办1","短待办2"]}],"projectTotal":数字或null}
+{"steps":[{"name":"短名称(2~12字)","budget":数字或null,"plannedDays":整数或null}],"projectTotal":数字或null}
 规则:
 - steps 最少 1 步、最多 6 步，按推进先后排列
 - name 要具体可执行，不要「第一步」「阶段1」「规划」这类空占位
 - 只在描述里提到金额、或能明确合理估出时才写 budget 数字；不确定必须 null，禁止编造精确预算
 - plannedDays 是这一步大致需要的天数（1~30 的整数）；描述里没线索时给一个合理默认，不要 null 成片
-- todos 是这一步里 0~4 条可执行待办（短、具体、可勾选）；没有就给 []，禁止编造夸张任务
+- 不要输出 todos 字段（拆步只建步骤结构，不生成子待办）
 - projectTotal 是各步 budget 之和；若没有任何预算则为 null
 - 忽略描述中的格式噪音（换顿号、语气词），只提炼真正步骤`;
 
@@ -553,13 +553,7 @@ async function handleParseSteps(apiKey, data, corsHeaders) {
             if (!isFinite(plannedDays) || plannedDays < 1) plannedDays = null;
             else if (plannedDays > 30) plannedDays = 30;
           }
-          var todos = Array.isArray(s.todos)
-            ? s.todos
-              .map(function(t) { return String(t == null ? '' : t).trim().slice(0, 80); })
-              .filter(Boolean)
-              .slice(0, 4)
-            : [];
-          return { name: String(s.name).trim().slice(0, 50), budget: budget, plannedDays: plannedDays, todos: todos };
+          return { name: String(s.name).trim().slice(0, 50), budget: budget, plannedDays: plannedDays };
         })
         .filter(function(s) { return !!s.name; })
         .slice(0, 6);

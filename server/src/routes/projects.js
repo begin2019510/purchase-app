@@ -160,7 +160,8 @@ router.post('/projects', async (req, res, next) => {
     }
 
     // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
-    // 每步可以是字符串，也可以是 {name, budget, plannedDays, todos}。
+    // 每步可以是字符串，也可以是 {name, budget, plannedDays}。
+    // 旧客户端可能还带 steps[].todos：字段兼容接受，但不再写入待办（2026-11-09 起停止自动生成）。
     // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
     let steps = [];
     if (b.steps !== undefined && b.steps !== null) {
@@ -169,7 +170,6 @@ router.post('/projects', async (req, res, next) => {
         let name = '';
         let stepBudget = null;
         let plannedDays = null;
-        let todos = [];
         if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
           name = String(raw.name == null ? '' : raw.name).trim().slice(0, 50);
           if (raw.budget !== undefined && raw.budget !== null && raw.budget !== '') {
@@ -183,17 +183,11 @@ router.post('/projects', async (req, res, next) => {
             if (!Number.isFinite(plannedDays) || plannedDays < 1) plannedDays = null;
             else if (plannedDays > 30) plannedDays = 30;
           }
-          if (Array.isArray(raw.todos)) {
-            todos = raw.todos
-              .map(t => String(t == null ? '' : t).trim().slice(0, 80))
-              .filter(Boolean)
-              .slice(0, 4);
-          }
         } else {
           name = String(raw == null ? '' : raw).trim().slice(0, 50);
         }
         if (!name) continue;
-        steps.push({ name, budget: stepBudget, plannedDays, todos });
+        steps.push({ name, budget: stepBudget, plannedDays });
       }
       if (steps.length > PHASE_COUNT) return res.status(400).json({ error: '最多规划 6 步' });
     }
@@ -202,20 +196,17 @@ router.post('/projects', async (req, res, next) => {
     const slotNames = new Array(PHASE_COUNT).fill(null);
     const slotBudgets = new Array(PHASE_COUNT).fill(null);
     const slotDays = new Array(PHASE_COUNT).fill(null);
-    const slotTodos = new Array(PHASE_COUNT).fill([]);
     const usedSlotIdxs = [];
     if (steps.length > 0) {
       for (let i = 0; i < steps.length - 1; i++) {
         slotNames[i] = steps[i].name;
         slotBudgets[i] = steps[i].budget;
         slotDays[i] = steps[i].plannedDays;
-        slotTodos[i] = steps[i].todos || [];
         usedSlotIdxs.push(i);
       }
       slotNames[PHASE_COUNT - 1] = steps[steps.length - 1].name;
       slotBudgets[PHASE_COUNT - 1] = steps[steps.length - 1].budget;
       slotDays[PHASE_COUNT - 1] = steps[steps.length - 1].plannedDays;
-      slotTodos[PHASE_COUNT - 1] = steps[steps.length - 1].todos || [];
       usedSlotIdxs.push(PHASE_COUNT - 1);
     }
     const startPhase = steps.length === 1 ? PHASE_COUNT - 1 : 0;
@@ -255,17 +246,9 @@ router.post('/projects', async (req, res, next) => {
         [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i],
           plan ? plan.start : null, plan ? plan.end : null]);
     }
-    // AI 拆出的本步待办直接落到 todos（project_id=rec_N + phase_idx）
+    // 2026-11-09 起不再把拆步结果写入待办模块（steps 只建阶段结构）。
+    // 待办在阶段页用「AI 建议下一步」或快捷添加逐条补。
     const recId = 'rec_' + ins.insertId;
-    for (const i of usedSlotIdxs) {
-      const list = slotTodos[i] || [];
-      for (let k = 0; k < list.length; k++) {
-        await conn.query(
-          `INSERT INTO todos (user_id,title,description,due_ms,due_iso,priority,category,status,\`repeat\`,subtasks,image_ref,link_type,link_id,project_id,phase_idx,tags,sort_no,reminders)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [uid, list[k], '', null, '', '中', '其他', '待办', '无', '[]', '', '无', '', recId, i, '[]', k, '[]']);
-      }
-    }
     await conn.commit();
     res.json({ id: recId, ok: true, steps: steps.length });
   } catch (e) {
