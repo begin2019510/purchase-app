@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.43";
+const APP_VERSION = "3.0.44";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.0.44',date:'2026-11-14',items:['待办可取消：详情页新增「🚫 取消」，原因选填；取消后停止所有提醒，详情/列表显示原因，可一键恢复待办']},
 {v:'3.0.43',date:'2026-11-09',items:['迁移前的老采购记录不再显示「预算待定」，改为「历史记录」+「历史」标签；预算跟踪从 3.0.40 重构后新需求开始']},
 {v:'3.0.42',date:'2026-11-09',items:['待办支持每日固定提醒时刻（09:00/12:00/18:00/21:00+自定义，可多选），与截止提醒并存，完成/删除即停','服务端 notify-todos 每 5 分钟按「日期+时刻」幂等推送 Web Push']},
 {v:'3.0.41',date:'2026-11-09',items:['AI 拆步不再自动生成子待办：拆步只建阶段结构，待办用「AI 建议下一步」或快捷添加逐条补','服务端忽略 steps[].todos（旧客户端字段兼容），清理项目47 误生成的 15 条待办']},

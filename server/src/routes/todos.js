@@ -111,6 +111,7 @@ function rowToTodo(r) {
     order: Number(r.sort_no) || 0,
     reminders: r.reminders || '',
     dailyTimes: r.daily_times || '[]',
+    cancelReason: r.cancel_reason || '',
   };
 }
 
@@ -206,7 +207,10 @@ router.put('/todos', async (req, res, next) => {
       if (!STATUSES.has(String(b.status))) return res.status(400).json({ error: '无效状态' });
       cols.status = b.status;
       cols.completed_ms = b.status === '已完成' ? Date.now() : null;
+      // 离开「已取消」状态时清空原因；恢复时前端可不传 cancelReason
+      if (b.status !== '已取消' && b.cancelReason === undefined) cols.cancel_reason = null;
     }
+    if (b.cancelReason !== undefined) cols.cancel_reason = String(b.cancelReason || '').slice(0, 500);
     if (b.repeat !== undefined) {
       if (!REPEATS.has(String(b.repeat))) return res.status(400).json({ error: '无效重复规则' });
       cols.repeat = b.repeat;
@@ -300,6 +304,7 @@ router.patch('/todos', async (req, res, next) => {
       if (b.status) {
         cols.push('status = ?'); vals.push(b.status);
         cols.push('completed_ms = ?'); vals.push(b.status === '已完成' ? Date.now() : null);
+        if (b.status !== '已取消') cols.push('cancel_reason = NULL');
       }
       let claimed = true;
       if (cols.length) {

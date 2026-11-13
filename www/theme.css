@@ -1240,12 +1240,13 @@ body.dark .week-card{border-color:var(--border)}
 .todo-detail-modal .detail-desc{padding:14px;font-size:14px;line-height:1.6;color:var(--text);background:var(--bg);border-radius:12px;margin:10px 0}
 .todo-detail-modal .detail-subtasks{padding:10px 0}
 .todo-detail-modal .detail-subtasks-title{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
-.todo-detail-modal .detail-actions{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+.todo-detail-modal .detail-actions{display:flex;flex-wrap:wrap;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
 .btn-action{flex:1;padding:12px;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;min-width:80px;transition:transform .15s}
 .btn-action:active{transform:scale(.96)}
 .btn-complete{background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#15803d}
 .btn-edit{background:var(--bg);color:var(--text);border:1px solid var(--border)}
 .btn-delete{background:linear-gradient(135deg,#fef2f2,#fee2e2);color:#dc2626}
+.btn-cancel{background:linear-gradient(135deg,#f3f4f6,#e5e7eb);color:#4b5563}
 .todo-tag.status-待办{background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#2563eb}
 .todo-tag.status-进行中{background:linear-gradient(135deg,#fffbeb,#fef3c7);color:#d97706}
 .todo-tag.status-已完成{background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#15803d}

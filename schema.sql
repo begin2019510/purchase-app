@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS todos (
   sort_no      INT NOT NULL DEFAULT 0,            -- 排序
   reminders    TEXT NULL,                         -- 提醒（JSON 串，截止前分钟档）
   daily_times  VARCHAR(200) NULL,                 -- 每日固定提醒时刻 JSON ["09:00","18:00"]
+  cancel_reason VARCHAR(500) NULL,                -- 取消原因（选填，仅 status=已取消 时有意义）
   due_iso      VARCHAR(60) NULL,                  -- 截止日期ISO
   notified_due_ms BIGINT NULL,                    -- 到期提醒已发送对应的 due_ms（去重）
   notified_rems VARCHAR(200) NULL,                -- 多档提前提醒已发档位 JSON

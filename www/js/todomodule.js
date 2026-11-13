@@ -265,6 +265,10 @@ function renderTodoCard(t) {
     } catch(e) {}
   }
   if (t.image) h += '<span class="td2-chip">🖼</span>';
+  if (isCancel && t.cancelReason) {
+    var _cr = String(t.cancelReason);
+    h += '<span class="td2-chip" title="' + escAttr(_cr) + '">🚫 ' + esc(_cr.length > 16 ? _cr.slice(0, 16) + '…' : _cr) + '</span>';
+  }
   h += '</div></button>';
   h += '<div class="td3-right">';
   if (t.status === '已删除') {
@@ -1148,6 +1152,9 @@ function openTodoDetail(id) {
   html += '<div class="detail-body">';
 
   html += '<div class="detail-row"><span class="detail-label">状态</span><span class="todo-tag status-' + t.status + '">' + t.status + '</span></div>';
+  if (t.status === '已取消' && t.cancelReason) {
+    html += '<div class="detail-row"><span class="detail-label">取消原因</span><span class="detail-value">🚫 ' + esc(t.cancelReason) + '</span></div>';
+  }
   html += '<div class="detail-row"><span class="detail-label">优先级</span><span class="detail-value" style="color:' + priColor + '">' + t.priority + '</span></div>';
   html += '<div class="detail-row"><span class="detail-label">分类</span><span class="detail-value">' + (catIcon[t.category]||'📌') + ' ' + esc(t.category) + '</span></div>';
   if (t.projectId && typeof projectList !== 'undefined' && Array.isArray(projectList)) {
@@ -1227,6 +1234,10 @@ function openTodoDetail(id) {
   if (t.status !== '已完成' && t.status !== '已取消') {
     html += '<button class="btn-action btn-complete" onclick="cycleTodoStatus(' + "'" + id + "'" + ')">✅ 完成</button>';
     html += '<button class="btn-action btn-edit" onclick="closeTodoDetail();openTodoModal(' + "'" + id + "'" + ')">✏️ 编辑</button>';
+    html += '<button class="btn-action btn-cancel" onclick="cancelTodo(' + "'" + id + "'" + ')">🚫 取消</button>';
+  }
+  if (t.status === '已取消') {
+    html += '<button class="btn-action btn-complete" onclick="restoreCancelledTodo(' + "'" + id + "'" + ')">↩️ 恢复待办</button>';
   }
   html += '<button class="btn-action btn-delete" onclick="deleteTodo(' + "'" + id + "'" + ')">🗑️ 删除</button>';
   html += '</div>';
@@ -1302,6 +1313,61 @@ function syncTodoProjectUI() {
   } catch (e) {}
 }
 
+// 3.0.44：待办创建后可取消，原因选填；取消后自动停止提醒，可随时恢复
+async function cancelTodo(id) {
+  var t = todoList.find(function(x){ return x.id === id; });
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
+  var reason = prompt('取消原因（选填，可直接确定）：', '');
+  if (reason === null) return; // 点了弹窗的「取消」，放弃本次操作
+  reason = String(reason).slice(0, 500);
+  var oldStatus = t.status, oldReason = t.cancelReason || '';
+  t.status = '已取消';
+  t.cancelReason = reason;
+  syncTodoProjectUI();
+  var detailOverlay = document.getElementById('todoDetailOverlay');
+  if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+  try {
+    var r = await todoApi('PUT', { id: id, status: '已取消', cancelReason: reason });
+    if (r && r.error) {
+      t.status = oldStatus; t.cancelReason = oldReason; syncTodoProjectUI();
+      if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+      toast('取消失败: ' + r.error); return;
+    }
+    cancelLocalNotification(t);
+    toast('🚫 已取消');
+  } catch(e) {
+    t.status = oldStatus; t.cancelReason = oldReason; syncTodoProjectUI();
+    if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+    toast('取消失败: ' + e.message);
+  }
+}
+
+async function restoreCancelledTodo(id) {
+  var t = todoList.find(function(x){ return x.id === id; });
+  if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+  if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
+  var oldStatus = t.status, oldReason = t.cancelReason || '';
+  t.status = '待办'; t.cancelReason = '';
+  syncTodoProjectUI();
+  var detailOverlay = document.getElementById('todoDetailOverlay');
+  if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+  try {
+    var r = await todoApi('PUT', { id: id, status: '待办', cancelReason: '' });
+    if (r && r.error) {
+      t.status = oldStatus; t.cancelReason = oldReason; syncTodoProjectUI();
+      if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+      toast('恢复失败: ' + r.error); return;
+    }
+    if (t.reminders) scheduleLocalNotification(t);
+    toast('↩ 已恢复待办');
+  } catch(e) {
+    t.status = oldStatus; t.cancelReason = oldReason; syncTodoProjectUI();
+    if (detailOverlay && detailOverlay.classList.contains('active')) openTodoDetail(id);
+    toast('恢复失败: ' + e.message);
+  }
+}
+
 function cycleTodoStatus(id) {
   var t = todoList.find(function(x){ return x.id === id; });
   if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
@@ -1311,6 +1377,7 @@ function cycleTodoStatus(id) {
   var nextStatus = oldStatus === '待办' ? '进行中' : oldStatus === '进行中' ? '已完成' : '待办';
   var completedAt = nextStatus === '已完成' ? Date.now() : null;
   t.status = nextStatus;
+  if (nextStatus !== '已取消') t.cancelReason = '';
   if (completedAt) t.completedAt = completedAt;
   syncTodoProjectUI();
   var detailOverlay = document.getElementById('todoDetailOverlay');
