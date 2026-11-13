@@ -5,6 +5,14 @@ var selectedPhase = {}; // projectId -> phaseIdx
 var projectDetailTab = 'phases'; // phases | money
 var _pjDetailId = null;
 var _pjSettingsOpen = {}; // "projectId:phaseIdx" -> true（本步设置折叠态）
+// 项目总览：列表 / 看板；类型筛选与搜索为两个视图共用
+var projectViewMode = 'list';
+var projectTypeFilter = '全部'; // 全部 | plan | track
+var projectSearch = '';
+var projectOverdueOnly = false;
+var projectBoardGroup = 'status'; // status | type
+var _pjEditType = 'plan';
+var _pjIsEditingProject = false;
 
 function pjErrorText(e) {
   return (e && e.message) ? e.message : '网络错误';
@@ -417,6 +425,60 @@ function pjRenderFocusBar() {
 }
 
 // ===== 列表 =====
+function pjTypeOf(p) {
+  return p && p.projectType === 'track' ? 'track' : 'plan';
+}
+function pjIsProjectOverdue(p) {
+  if (pjTypeOf(p) === 'track') return !!(p.trackStats && p.trackStats.overdueDays > 0);
+  if (p.status === '已完成' || p.status === '已归档') return false;
+  if (p.dueDate && Number(p.dueDate) > 0 && Number(p.dueDate) < Date.now()) return true;
+  return pjOverduePhases(p).length > 0;
+}
+function pjMatchesType(p) {
+  return projectTypeFilter === '全部' || pjTypeOf(p) === projectTypeFilter;
+}
+function pjMatchesSearch(p) {
+  if (!projectSearch) return true;
+  var q = projectSearch.toLowerCase();
+  var goal = p.trackConfig && p.trackConfig.goal ? p.trackConfig.goal.text : '';
+  return (String(p.name || '') + ' ' + String(p.description || '') + ' ' + String(goal || '')).toLowerCase().indexOf(q) >= 0;
+}
+function pjFilteredProjects() {
+  return projectList.filter(function(p) {
+    if (projectFilter !== '全部' && p.status !== projectFilter) return false;
+    if (!pjMatchesType(p)) return false;
+    if (!pjMatchesSearch(p)) return false;
+    if (projectOverdueOnly && !pjIsProjectOverdue(p)) return false;
+    return true;
+  });
+}
+function pjSetView(mode) {
+  projectViewMode = mode === 'board' ? 'board' : 'list';
+  renderProject();
+}
+function pjSetTypeFilter(t) {
+  projectTypeFilter = t === 'track' ? 'track' : t === 'plan' ? 'plan' : '全部';
+  renderProject();
+}
+function pjToggleOverdue() {
+  projectOverdueOnly = !projectOverdueOnly;
+  renderProject();
+}
+function pjSetBoardGroup(g) {
+  projectBoardGroup = g === 'type' ? 'type' : 'status';
+  renderProject();
+}
+function pjSearchInput(v) {
+  projectSearch = String(v || '').trim();
+  pjRenderProjectArea();
+}
+function pjClearSearch() {
+  projectSearch = '';
+  var inp = document.getElementById('pjSearchInput');
+  if (inp) inp.value = '';
+  pjRenderProjectArea();
+}
+
 function renderProject() {
   var el = document.getElementById('projectContent');
   if (!el) return;
@@ -432,6 +494,20 @@ function renderProject() {
   html += '<button class="pj2-newbtn" onclick="openProjectModal()">＋ 新建</button>';
   html += '</div>';
 
+  // 列表 / 看板切换
+  html += '<div class="pj2-viewbar">';
+  html += '<div class="pj2-seg" role="group" aria-label="项目视图">';
+  html += '<button type="button" class="' + (projectViewMode === 'list' ? 'active' : '') + '" onclick="App.project.setView(\'list\')">☰ 列表</button>';
+  html += '<button type="button" class="' + (projectViewMode === 'board' ? 'active' : '') + '" onclick="App.project.setView(\'board\')">▦ 看板</button>';
+  html += '</div>';
+  if (projectViewMode === 'board') {
+    html += '<div class="pj2-seg pj2-seg-sm" role="group" aria-label="看板分组">';
+    html += '<button type="button" class="' + (projectBoardGroup === 'status' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'status\')">按状态</button>';
+    html += '<button type="button" class="' + (projectBoardGroup === 'type' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'type\')">按类型</button>';
+    html += '</div>';
+  }
+  html += '</div>';
+
   html += '<div class="pj2-filters">';
   [['全部', total], ['进行中', active], ['已完成', done], ['已归档', archived]].forEach(function(x) {
     var selected = projectFilter === x[0];
@@ -439,19 +515,45 @@ function renderProject() {
   });
   html += '</div>';
 
-  html += pjRenderFocusBar();
+  html += '<div class="pj2-filterbar2">';
+  html += '<div class="pj2-typechips">';
+  [['全部', '全部类型'], ['plan', '📋 阶段'], ['track', '🎯 跟踪']].forEach(function(x) {
+    html += '<button type="button" class="pj2-typechip' + (projectTypeFilter === x[0] ? ' active' : '') + '" onclick="App.project.setTypeFilter(\'' + x[0] + '\')">' + x[1] + '</button>';
+  });
+  html += '</div>';
+  html += '<div class="pj2-search"><input id="pjSearchInput" value="' + escAttr(projectSearch) + '" placeholder="搜索项目名 / 目标" oninput="App.project.searchInput(this.value)" aria-label="搜索项目">';
+  if (projectSearch) html += '<button type="button" class="pj2-search-clear" onclick="App.project.clearSearch()" aria-label="清空搜索">✕</button>';
+  html += '</div>';
+  html += '<button type="button" class="pj2-overdue-chip' + (projectOverdueOnly ? ' active' : '') + '" onclick="App.project.toggleOverdue()">⚠️ 只看超期</button>';
+  html += '</div>';
 
-  var filtered = projectFilter === '全部' ? projectList : projectList.filter(function(p) { return p.status === projectFilter; });
+  html += '<div id="pjListArea"></div>';
+  el.innerHTML = html;
+  pjRenderProjectArea();
+}
+
+function pjRenderProjectArea() {
+  var el = document.getElementById('pjListArea');
+  if (!el) return;
+  var filtered = pjFilteredProjects();
+  var total = projectList.length;
 
   if (filtered.length === 0) {
-    html += '<div class="pj2-empty"><div class="ico">📁</div><div class="t">' + (total ? '没有' + projectFilter + '的项目' : '还没有项目') + '</div>';
-    html += '<div class="s">把出差、装修、学习这类事放进来，<br>待办、阶段和花费都能挂在一起</div>';
-    if (!total) html += '<button onclick="openProjectModal()">＋ 新建第一个项目</button>';
-    html += '</div>';
-    el.innerHTML = html;
+    var noMatch = total > 0;
+    var h = '<div class="pj2-empty"><div class="ico">📁</div><div class="t">' + (noMatch ? '没有符合条件的项目' : '还没有项目') + '</div>';
+    h += '<div class="s">' + (noMatch ? '换个筛选条件试试，或清空搜索' : '把出差、装修、学习这类事放进来，<br>阶段计划和长期跟踪都能挂在一起') + '</div>';
+    if (!noMatch) h += '<button onclick="openProjectModal()">＋ 新建第一个项目</button>';
+    h += '</div>';
+    el.innerHTML = h;
     return;
   }
 
+  if (projectViewMode === 'board') {
+    el.innerHTML = pjRenderBoard(filtered);
+    return;
+  }
+
+  var html = pjRenderFocusBar();
   var groups = { '进行中': [], '已完成': [], '已归档': [] };
   filtered.forEach(function(p) { (groups[p.status] || groups['进行中']).push(p); });
   var meta = { '进行中': 'var(--pri)', '已完成': 'var(--green)', '已归档': 'var(--muted)' };
@@ -461,11 +563,44 @@ function renderProject() {
     html += '<div class="pj2-sec"><span class="pj2-sec-dot" style="background:' + meta[g] + '"></span>' + g + '<span class="pj2-sec-n">' + arr.length + '</span></div>';
     arr.forEach(function(p) { html += renderProjectCard(p); });
   });
-
   el.innerHTML = html;
 }
 
+// 全局项目看板：顶部 KPI + 按状态/类型分列的卡片墙；v1 不拖拽
+function pjRenderBoard(list) {
+  var active = list.filter(function(p) { return p.status === '进行中'; }).length;
+  var done = list.filter(function(p) { return p.status === '已完成'; }).length;
+  var overdue = list.filter(pjIsProjectOverdue).length;
+  var weekMet = list.filter(function(p) { return pjTypeOf(p) === 'track' && p.trackStats && p.trackStats.week && p.trackStats.week.met; }).length;
+  var h = '<div class="pjboard-kpis">';
+  h += '<div class="pjboard-kpi"><span>项目</span><b>' + list.length + '</b><em>共 ' + projectList.length + ' 个</em></div>';
+  h += '<div class="pjboard-kpi"><span>进行中</span><b>' + active + '</b><em>已完成 ' + done + '</em></div>';
+  h += '<div class="pjboard-kpi"><span>本周达标</span><b>' + weekMet + '</b><em>跟踪项目</em></div>';
+  h += '<div class="pjboard-kpi' + (overdue ? ' warn' : '') + '"><span>超期</span><b>' + overdue + '</b><em>' + (overdue ? '需要处理' : '暂无') + '</em></div>';
+  h += '</div>';
+
+  var cols;
+  if (projectBoardGroup === 'type') {
+    cols = [['阶段计划', list.filter(function(p) { return pjTypeOf(p) === 'plan'; })], ['长期跟踪', list.filter(function(p) { return pjTypeOf(p) === 'track'; })]];
+  } else {
+    cols = ['进行中', '已完成', '已归档'].map(function(s) { return [s, list.filter(function(p) { return p.status === s; })]; });
+  }
+  h += '<div class="pjboard-cols' + (cols.length === 2 ? ' cols-2' : '') + '">';
+  cols.forEach(function(c) {
+    h += '<section class="pjboard-col">';
+    h += '<div class="pjboard-colhead"><span>' + c[0] + '</span><b>' + c[1].length + '</b></div>';
+    h += '<div class="pjboard-colbody">';
+    if (!c[1].length) h += '<div class="pjboard-empty">暂无项目</div>';
+    c[1].forEach(function(p) { h += pjTypeOf(p) === 'track' ? App.tracker.renderBoardCard(p) : renderProjectCard(p); });
+    h += '</div></section>';
+  });
+  h += '</div>';
+  h += '<div class="pjboard-hint">看板 v1 不支持拖拽；点卡片进入详情，跟踪项目可直接 ＋ 记一笔。</div>';
+  return h;
+}
+
 function renderProjectCard(p) {
+  if (pjTypeOf(p) === 'track') return App.tracker.renderListCard(p);
   var st = pjPhaseStats(p);
   var color = p.color || '#6366f1';
   var isDone = p.status === '已完成' || p.status === '已归档';
@@ -715,12 +850,12 @@ function openProjectModal(id) {
   var overlay = document.getElementById('projectModalOverlay');
   if (!overlay) return;
   var p = id ? projectList.find(function(x) { return x.id === id; }) : null;
+  _pjIsEditingProject = !!p;
+  _pjEditType = p ? pjTypeOf(p) : 'plan';
   document.getElementById('projectModalTitle').textContent = p ? '编辑项目' : '新建项目';
   document.getElementById('projectId').value = p ? p.id : '';
   document.getElementById('projectName').value = p ? p.name : '';
   document.getElementById('projectDesc').value = p ? p.description : '';
-  var _stepsGroup = document.getElementById('projectStepsGroup');
-  if (_stepsGroup) _stepsGroup.style.display = p ? 'none' : '';
   var _stepsEl = document.getElementById('projectSteps');
   if (_stepsEl) _stepsEl.value = '';
   _pjStructuredSteps = [];
@@ -733,12 +868,51 @@ function openProjectModal(id) {
   if (_bg) _bg.value = (p && p.budget != null) ? p.budget : '';
   pjUpdateBudgetSumWarn();
   document.getElementById('projectStatus').value = p ? p.status : '进行中';
-  var statusGroup = document.getElementById('projectStatusGroup');
-  if (statusGroup) statusGroup.style.display = p ? '' : 'none';
   var _c = p ? (p.color || '#6366f1') : '#6366f1';
   document.getElementById('projectColor').value = _c;
   renderProjColors(_c);
+  setProjectType(_pjEditType);
   overlay.classList.add('active');
+}
+
+// 新建时切换 阶段计划 / 长期跟踪；编辑时类型不可改
+function setProjectType(type) {
+  var seg = document.getElementById('projectTypeSeg');
+  var hint = document.getElementById('projectTypeHint');
+  var trackGroup = document.getElementById('projectTrackGroup');
+  var stepsGroup = document.getElementById('projectStepsGroup');
+  var budgetGroup = document.getElementById('projectBudgetGroup');
+  var dueGroup = document.getElementById('projectDueGroup');
+  var statusGroup = document.getElementById('projectStatusGroup');
+  var isTrack = type === 'track';
+  var editing = _pjIsEditingProject;
+  _pjEditType = isTrack ? 'track' : 'plan';
+
+  if (seg) seg.style.display = editing ? 'none' : '';
+  if (seg) {
+    Array.prototype.forEach.call(seg.querySelectorAll('button'), function(b) {
+      b.classList.toggle('active', b.getAttribute('data-type') === _pjEditType);
+    });
+  }
+
+  if (isTrack) {
+    if (trackGroup) trackGroup.style.display = editing ? 'none' : '';
+    if (stepsGroup) stepsGroup.style.display = 'none';
+    if (budgetGroup) budgetGroup.style.display = 'none';
+    if (dueGroup) dueGroup.style.display = 'none';
+    if (statusGroup) statusGroup.style.display = 'none';
+    if (hint) hint.textContent = editing
+      ? '长期跟踪：目标、字段、里程碑在详情「⚙️ 设置」里修改'
+      : '长期跟踪：先定目标，再用一条条记录推进；终点日期可以后补';
+    if (!editing && typeof App !== 'undefined' && App.tracker) App.tracker.setupCreateForm();
+  } else {
+    if (trackGroup) trackGroup.style.display = 'none';
+    if (stepsGroup) stepsGroup.style.display = (editing && _pjIsEditingProject) ? 'none' : '';
+    if (budgetGroup) budgetGroup.style.display = editing ? 'none' : '';
+    if (dueGroup) dueGroup.style.display = '';
+    if (statusGroup) statusGroup.style.display = editing ? '' : 'none';
+    if (hint) hint.textContent = '阶段计划：有明确步骤和预算，按 P0–P5 推进';
+  }
 }
 
 function closeProjectModal() {
@@ -758,6 +932,54 @@ async function saveProject() {
   var editing = !!id;
   var reopenId = _pjReopenAfterEdit;
   var reopenTab = _pjReopenTab || 'phases';
+  var color = document.getElementById('projectColor').value;
+
+  // 长期跟踪：创建时只收目标/模板/日期，字段与统计口径由模板生成，之后在详情设置里改
+  if (!editing && _pjEditType === 'track') {
+    var trackPayload;
+    try { trackPayload = App.tracker.buildCreatePayload(); }
+    catch (e) { toast(e.message || '请检查跟踪项目设置'); return; }
+    var tdata = {
+      name: name,
+      description: document.getElementById('projectDesc').value.trim(),
+      color: color,
+      projectType: 'track',
+      trackFields: trackPayload.trackFields,
+      trackConfig: trackPayload.trackConfig,
+    };
+    try {
+      var tr = await projectApi('POST', tdata);
+      if (!(tr && tr.ok && tr.id)) throw new Error('服务端未返回项目 ID');
+      closeProjectModal();
+      toast('✅ 跟踪项目已创建，开始记第一笔吧');
+      await loadProjects();
+      renderProject();
+      openProjectDetail(tr.id);
+    } catch (e) { toast('创建失败: ' + pjErrorText(e)); }
+    return;
+  }
+  // 编辑跟踪项目：这里只改基本信息；目标/字段/里程碑走详情「设置」
+  var editingTrack = editing && (function() {
+    var cur = projectList.find(function(x) { return x.id === id; });
+    return cur && pjTypeOf(cur) === 'track';
+  })();
+  if (editingTrack) {
+    try {
+      await projectApi('PUT', {
+        id: id, name: name,
+        description: document.getElementById('projectDesc').value.trim(),
+        color: color,
+      });
+      _pjReopenAfterEdit = null;
+      _pjReopenTab = 'phases';
+      closeProjectModal();
+      toast('✅ 已更新');
+      await loadProjects();
+      renderProject();
+      if (reopenId) openProjectDetail(reopenId);
+      return;
+    } catch (e) { toast('更新失败: ' + pjErrorText(e)); return; }
+  }
 
   // 步骤：优先用预览里的结构化结果；只写了自然语言则先 AI 拆成结构，拆不动不让静默丢掉。
   var steps = [];
@@ -862,6 +1084,12 @@ function openProjectDetail(id, opts) {
   var p = projectList.find(function(x) { return x.id === id; });
   if (!p) return;
   opts = opts || {};
+  // 长期跟踪：完全独立的 表格 / 看板 / 仪表盘 详情
+  if (pjTypeOf(p) === 'track') {
+    _pjDetailId = id;
+    App.tracker.openDetail(p);
+    return;
+  }
   if (_pjDetailId !== id && !opts.keepTab) projectDetailTab = 'phases';
   _pjDetailId = id;
   if (selectedPhase[id] === undefined) selectedPhase[id] = pjDefaultPhase(p);
@@ -908,6 +1136,7 @@ function closeProjectDetail() {
   var overlay = document.getElementById('projectDetailOverlay');
   if (overlay) overlay.classList.remove('active');
   _pjDetailId = null;
+  if (typeof App !== 'undefined' && App.tracker && App.tracker.onDetailClosed) App.tracker.onDetailClosed();
 }
 
 function setProjectTab(tab) {
@@ -1759,4 +1988,11 @@ App.project = {
   fillProjectPhaseSelects: fillProjectPhaseSelects,
   openFocus: pjOpenFocus,
   focusItems: pjFocusItems,
+  setProjectType: setProjectType,
+  setView: pjSetView,
+  setTypeFilter: pjSetTypeFilter,
+  toggleOverdue: pjToggleOverdue,
+  setBoardGroup: pjSetBoardGroup,
+  searchInput: pjSearchInput,
+  clearSearch: pjClearSearch,
 };

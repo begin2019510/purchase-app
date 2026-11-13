@@ -4,6 +4,7 @@
 const express = require('express');
 const db = require('../db');
 const H = require('../lib/helpers');
+const T = require('../lib/tracker');
 const { requireAuth, guard } = require('../middleware');
 
 const router = express.Router();
@@ -30,7 +31,18 @@ function projectIdNum(id) {
   return m ? Number(m[1]) : null;
 }
 
+// 跟踪项目的「本周」按北京时间周一 00:00 起算
+function bjDateStr(ms) {
+  return new Date(ms + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function bjWeekStartStr(ms) {
+  const bj = new Date(ms + 8 * 3600 * 1000);
+  const dow = (bj.getUTCDay() + 6) % 7; // 周一=0
+  return new Date(bj.getTime() - dow * 86400000).toISOString().slice(0, 10);
+}
+
 function rowToProject(r) {
+  const trackFields = T.normalizeFields(r.track_fields);
   return {
     id: 'rec_' + r.id,
     name: r.name || '',
@@ -42,6 +54,9 @@ function rowToProject(r) {
     currentPhase: Number(r.current_phase) || 0,
     legacy: !!r.legacy_flag,
     parentId: r.parent_id || '',
+    projectType: r.project_type === 'track' ? 'track' : 'plan',
+    trackFields: trackFields,
+    trackConfig: T.normalizeConfig(r.track_config, trackFields),
   };
 }
 
@@ -53,13 +68,17 @@ router.get('/projects', async (req, res, next) => {
     const projects = await db.query('SELECT * FROM projects WHERE user_id = ? ORDER BY id', [uid]);
     if (!projects.length) return res.json([]);
 
-    const [phases, items, pSpend, eSpend, pLedger, eLedger] = await Promise.all([
+    const weekStart = bjWeekStartStr(Date.now());
+    const [phases, items, pSpend, eSpend, pLedger, eLedger, recordStats, trackRows] = await Promise.all([
       db.query('SELECT * FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx', [uid]),
       db.query('SELECT * FROM phase_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?) ORDER BY project_id, phase_idx, sort_order, id', [uid]),
       db.query("SELECT n.project_id, n.phase_idx, SUM(o.price_paid*o.qty) AS amt FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id WHERE o.user_id = ? AND n.project_id IS NOT NULL AND o.status IN ('已下单','已到','已归档') GROUP BY n.project_id, n.phase_idx", [uid]),
       db.query("SELECT project_id, phase_idx, SUM(amount) AS amt FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' GROUP BY project_id, phase_idx", [uid]),
       db.query("SELECT o.id, n.id AS need_id, n.project_id, n.phase_idx, n.name AS title, o.price_paid*o.qty AS amt, o.date_ms FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id WHERE o.user_id = ? AND n.project_id IS NOT NULL AND o.status IN ('已下单','已到','已归档') ORDER BY o.date_ms DESC, o.id DESC", [uid]),
       db.query("SELECT id, project_id, phase_idx, note AS title, amount AS amt, date_ms FROM expenses WHERE user_id = ? AND project_id IS NOT NULL AND type <> '收入' ORDER BY date_ms DESC, id DESC", [uid]),
+      db.query("SELECT project_id, COUNT(*) AS cnt, MAX(record_date) AS last_date, SUM(CASE WHEN record_date >= ? THEN 1 ELSE 0 END) AS week_cnt FROM project_records WHERE user_id = ? GROUP BY project_id", [weekStart, uid]),
+      // 跟踪项目的目标进度/本周达标/连续周数需要完整记录；项目数量预期很少，整块拉一次
+      db.query("SELECT id, project_id, record_date, data FROM project_records WHERE user_id = ? AND project_id IN (SELECT id FROM projects WHERE user_id = ? AND project_type = 'track') ORDER BY project_id, record_date, id", [uid, uid]),
     ]);
 
     const spendMap = {}; // pid -> {buy, exp, phases:{idx:{buy,exp}}}
@@ -77,6 +96,21 @@ router.get('/projects', async (req, res, next) => {
     addSpend(pSpend, 'buy');
     addSpend(eSpend, 'exp');
 
+    const recMap = {};
+    for (const r of recordStats) {
+      recMap[r.project_id] = {
+        recordCount: Number(r.cnt) || 0,
+        weekCount: Number(r.week_cnt) || 0,
+        lastRecordDate: r.last_date ? String(r.last_date).slice(0, 10) : null,
+      };
+    }
+
+    const trackRecMap = {};
+    for (const r of trackRows) {
+      (trackRecMap[r.project_id] = trackRecMap[r.project_id] || []).push(T.rowToRecord(r));
+    }
+
+    const nowMs = Date.now();
     const byProject = {};
     for (const p of projects) {
       const o = rowToProject(p);
@@ -84,12 +118,19 @@ router.get('/projects', async (req, res, next) => {
       o.items = [];
       o.spend = spendMap[p.id] || { buy: 0, exp: 0, phases: {} };
       o.ledger = [];
+      o.recordCount = (recMap[p.id] && recMap[p.id].recordCount) || 0;
+      o.weekCount = (recMap[p.id] && recMap[p.id].weekCount) || 0;
+      o.lastRecordDate = (recMap[p.id] && recMap[p.id].lastRecordDate) || null;
+      if (o.projectType === 'track') {
+        o.trackStats = T.boardStats(o.trackFields, o.trackConfig, trackRecMap[p.id] || [], nowMs);
+      }
       byProject[p.id] = o;
     }
-    // 自愈：缺阶段的旧项目补齐 P0~P5
+    // 自愈：缺阶段的旧计划项目补齐 P0~P5；跟踪项目没有阶段，跳过
     const have = {};
     phases.forEach(ph => { (have[ph.project_id] = have[ph.project_id] || new Set()).add(Number(ph.phase_idx)); });
     for (const p of projects) {
+      if (p.project_type === 'track') continue;
       for (let i = 0; i < PHASE_COUNT; i++) {
         if (!have[p.id] || !have[p.id].has(i)) {
           try {
@@ -158,13 +199,25 @@ router.post('/projects', async (req, res, next) => {
       if (typeof b.color !== 'string' || !COLOR_RE.test(b.color)) return res.status(400).json({ error: 'bad color' });
       color = b.color;
     }
+    // 项目类型：默认沿用老的阶段计划；跟踪项目必须带字段定义，且不复用 P0~P5 阶段
+    const projectType = b.projectType === 'track' ? 'track' : 'plan';
+    let trackFields = [];
+    let trackConfig = null;
+    if (projectType === 'track') {
+      trackFields = T.normalizeFields(b.trackFields);
+      if (!trackFields.length) return res.status(400).json({ error: '跟踪项目至少需要一个字段' });
+      trackConfig = T.normalizeConfig(b.trackConfig, trackFields);
+      // 跟踪项目必须有一个明确目标；终点日期可以先不填，但项目不能只有起点
+      if (!trackConfig.goal.text) return res.status(400).json({ error: '请填写项目目标' });
+      if (!trackConfig.startDate) trackConfig.startDate = T.bjToday();
+    }
 
     // 步骤规划是粗粒度的：只写现在知道的，最多 6 步；空行忽略。
     // 每步可以是字符串，也可以是 {name, budget, plannedDays}。
     // 旧客户端可能还带 steps[].todos：字段兼容接受，但不再写入待办（2026-11-09 起停止自动生成）。
     // 不填步骤 → 6 个槽位都保留待规划；填了 N 步 → 最后一步固定放 P5，中间空槽标记 skipped（未使用）。
     let steps = [];
-    if (b.steps !== undefined && b.steps !== null) {
+    if (projectType === 'plan' && b.steps !== undefined && b.steps !== null) {
       if (!Array.isArray(b.steps)) return res.status(400).json({ error: 'bad steps' });
       for (const raw of b.steps) {
         let name = '';
@@ -235,22 +288,26 @@ router.post('/projects', async (req, res, next) => {
 
     await conn.beginTransaction();
     const [ins] = await conn.query(
-      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase) VALUES (?,?,?,?,?,?,?,?,0,?)',
+      'INSERT INTO projects (user_id,name,description,due_ms,due_iso,status,color,budget,progress,current_phase,project_type,track_fields,track_config) VALUES (?,?,?,?,?,?,?,?,0,?,?,?,?)',
       [uid, name, String(b.description || '').slice(0, 2000), dueMs, b.dueDate || '',
-        status, color, budget, startPhase]);
-    for (let i = 0; i < PHASE_COUNT; i++) {
-      const unused = steps.length > 0 && slotNames[i] === null;
-      const plan = unused ? null : slotPlan[i];
-      await conn.query(
-        'INSERT INTO project_phases (project_id, phase_idx, display_name, status, budget, planned_start_ms, planned_end_ms) VALUES (?,?,?,?,?,?,?)',
-        [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i],
-          plan ? plan.start : null, plan ? plan.end : null]);
+        status, color, budget, startPhase, projectType,
+        projectType === 'track' ? JSON.stringify(trackFields) : null,
+        projectType === 'track' ? JSON.stringify(trackConfig) : null]);
+    if (projectType === 'plan') {
+      for (let i = 0; i < PHASE_COUNT; i++) {
+        const unused = steps.length > 0 && slotNames[i] === null;
+        const plan = unused ? null : slotPlan[i];
+        await conn.query(
+          'INSERT INTO project_phases (project_id, phase_idx, display_name, status, budget, planned_start_ms, planned_end_ms) VALUES (?,?,?,?,?,?,?)',
+          [ins.insertId, i, slotNames[i], unused ? 'skipped' : 'todo', unused ? null : slotBudgets[i],
+            plan ? plan.start : null, plan ? plan.end : null]);
+      }
     }
     // 2026-11-09 起不再把拆步结果写入待办模块（steps 只建阶段结构）。
     // 待办在阶段页用「AI 建议下一步」或快捷添加逐条补。
     const recId = 'rec_' + ins.insertId;
     await conn.commit();
-    res.json({ id: recId, ok: true, steps: steps.length });
+    res.json({ id: recId, ok: true, steps: steps.length, projectType: projectType });
   } catch (e) {
     try { await conn.rollback(); } catch (x) {}
     next(e);
@@ -264,7 +321,7 @@ router.put('/projects', async (req, res, next) => {
     const b = req.body || {};
     const pid = projectIdNum(b.id);
     if (!pid) return res.status(400).json({ error: 'Missing id' });
-    const own = await db.one('SELECT id FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
+    const own = await db.one('SELECT id, project_type, track_config, status FROM projects WHERE id = ? AND user_id = ?', [pid, uid]);
     if (!own) return res.status(404).json({ error: 'not found' });
     const cols = {};
     if (b.name !== undefined) {
@@ -281,6 +338,13 @@ router.put('/projects', async (req, res, next) => {
     }
     if (b.status !== undefined) {
       if (!PROJECT_STATUSES.includes(b.status)) return res.status(400).json({ error: 'bad status' });
+      if (own.project_type === 'track') {
+        // 跟踪项目的「已完成」必须走结项流程，带结果/复盘；重开也必须走 reopen
+        const oldCfg = T.normalizeConfig(own.track_config, T.normalizeFields(null));
+        const closed = !!(oldCfg && oldCfg.closed);
+        if (b.status === '已完成') return res.status(400).json({ error: '请使用「结项」完成跟踪项目' });
+        if (b.status === '进行中' && closed) return res.status(400).json({ error: '项目已结项，请使用「重新打开」' });
+      }
       cols.status = b.status;
     }
     if (b.color !== undefined) {
@@ -555,6 +619,7 @@ router.delete('/projects', async (req, res, next) => {
     }
     await conn.query('DELETE FROM project_phases WHERE project_id = ?', [pid]);
     await conn.query('DELETE FROM phase_items WHERE project_id = ?', [pid]);
+    await conn.query('DELETE FROM project_records WHERE project_id = ? AND user_id = ?', [pid, uid]);
     await conn.query('UPDATE purchase_needs SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
     await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]); // 旧表冻结备份一并解绑
     await conn.query('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);

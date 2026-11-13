@@ -231,6 +231,9 @@ CREATE TABLE IF NOT EXISTS projects (
   due_iso     VARCHAR(60) NULL,                  -- 截止日期ISO
   current_phase TINYINT NOT NULL DEFAULT 0,      -- 阶段指针 0~5
   legacy_flag   TINYINT NOT NULL DEFAULT 0,      -- 旧层级项目只读标记
+  project_type  VARCHAR(10) NOT NULL DEFAULT 'plan', -- plan=阶段计划 | track=长期跟踪
+  track_fields  MEDIUMTEXT NULL,                 -- 跟踪项目字段定义 JSON
+  track_config  MEDIUMTEXT NULL,                 -- 跟踪项目统计/看板配置 JSON
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_user (user_id, status)
@@ -329,6 +332,19 @@ CREATE TABLE IF NOT EXISTS project_phases (
   started_at_ms BIGINT NULL,                   -- 实际开始
   finished_at_ms BIGINT NULL,                  -- 实际完成
   UNIQUE KEY uq_project_phase (project_id, phase_idx),
+  KEY idx_project (project_id)
+) ENGINE=InnoDB;
+
+-- 长期跟踪项目的表格行；record_date 存 CHAR(10) 的 YYYY-MM-DD，避免 DATE 驱动的时区换算
+CREATE TABLE IF NOT EXISTS project_records (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT UNSIGNED NOT NULL,
+  project_id  BIGINT UNSIGNED NOT NULL,
+  record_date CHAR(10) NULL,
+  data        MEDIUMTEXT NULL,                 -- JSON：{字段key: 值}
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_user_project_date (user_id, project_id, record_date),
   KEY idx_project (project_id)
 ) ENGINE=InnoDB;
 

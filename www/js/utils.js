@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.0.44";
+const APP_VERSION = "3.1.0";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.0',date:'2026-11-14',items:['项目模块新增「长期跟踪」项目：目标 → 里程碑 → 记录 → 周/月汇总 → 结项，与阶段计划并存','跟踪项目支持求职/健身减重/读书/学习备考/习惯养成/自定义模板，字段、统计口径、周目标与里程碑可随时修改','项目详情新增表格/看板/仪表盘三视图：目标进度环、周目标、连续达标、活跃度与指标趋势、状态分布、里程碑时间线、自动汇总与结项报告','全局项目看板：KPI 概览 + 按状态/类型分栏，支持类型/搜索/只看超期筛选；跟踪卡片可直接「＋」记一笔','记录按一次事件一行、同日可多条；周汇总按北京时间周一至周日；结项可填写复盘并生成报告，也可重新打开']},
 {v:'3.0.44',date:'2026-11-14',items:['待办可取消：详情页新增「🚫 取消」，原因选填；取消后停止所有提醒，详情/列表显示原因，可一键恢复待办']},
 {v:'3.0.43',date:'2026-11-09',items:['迁移前的老采购记录不再显示「预算待定」，改为「历史记录」+「历史」标签；预算跟踪从 3.0.40 重构后新需求开始']},
 {v:'3.0.42',date:'2026-11-09',items:['待办支持每日固定提醒时刻（09:00/12:00/18:00/21:00+自定义，可多选），与截止提醒并存，完成/删除即停','服务端 notify-todos 每 5 分钟按「日期+时刻」幂等推送 Web Push']},

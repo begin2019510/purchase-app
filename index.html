@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-<meta name="app-version" content="3.0.44">
+<meta name="app-version" content="3.1.0">
 <title>个人管家</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f5f6fa">
@@ -13,17 +13,17 @@
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <link rel="apple-touch-icon" href="icon-180.png" sizes="180x180">
 <style>html,body{background:#f5f6fa}body.dark{background:#000}@media(prefers-color-scheme:dark){html:not(.light){background:#000}}</style>
-<link rel="stylesheet" href="theme.css?v=3.0.44">
-<link rel="stylesheet" href="ui-refresh.css?v=3.0.44">
+<link rel="stylesheet" href="theme.css?v=3.1.0">
+<link rel="stylesheet" href="ui-refresh.css?v=3.1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="3.0.44">
-<script src="js/sortable.min.js?v=3.0.44" defer></script>
+<meta http-equiv="Expires" content="3.1.0">
+<script src="js/sortable.min.js?v=3.1.0" defer></script>
 </head>
 <body>
 <script>
 (function(){
-  var V='3.0.44';
+  var V='3.1.0';
   try{
     // 版本更新交给 Service Worker 静默接管：本次会话继续用，下次打开自动是新版
     sessionStorage.setItem('app_ver',V);
@@ -594,19 +594,20 @@
       <div id="todoDetailBody"></div>
     </div>
   </div>
-<script src="js/utils.js?v=3.0.44"></script>
-<script src="js/auth.js?v=3.0.44"></script>
-<script src="js/api.js?v=3.0.44"></script>
-<script src="js/stats.js?v=3.0.44"></script>
-<script src="js/expense.js?v=3.0.44"></script>
-<script src="js/needs.js?v=3.0.44"></script>
-<script src="js/items.js?v=3.0.44"></script>
-<script src="js/ai.js?v=3.0.44"></script>
-<script src="js/claude.js?v=3.0.44"></script>
-<script src="js/budget.js?v=3.0.44"></script>
-<script src="js/todomodule.js?v=3.0.44"></script>
-  <script src="js/project.js?v=3.0.44"></script>
-<script src="js/app.js?v=3.0.44"></script>
+<script src="js/utils.js?v=3.1.0"></script>
+<script src="js/auth.js?v=3.1.0"></script>
+<script src="js/api.js?v=3.1.0"></script>
+<script src="js/stats.js?v=3.1.0"></script>
+<script src="js/expense.js?v=3.1.0"></script>
+<script src="js/needs.js?v=3.1.0"></script>
+<script src="js/items.js?v=3.1.0"></script>
+<script src="js/ai.js?v=3.1.0"></script>
+<script src="js/claude.js?v=3.1.0"></script>
+<script src="js/budget.js?v=3.1.0"></script>
+<script src="js/todomodule.js?v=3.1.0"></script>
+  <script src="js/project.js?v=3.1.0"></script>
+  <script src="js/tracker.js?v=3.1.0"></script>
+<script src="js/app.js?v=3.1.0"></script>
 
 
 
@@ -836,7 +837,15 @@
       <input type="hidden" id="projectId">
       <div class="pjf-hero">
         <div class="pjf-icon">📁</div>
-        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>待办挂在每一步；阶段管节奏和花费</span></div>
+        <div class="pjf-hero-text">把一件事的待办、花费和进展放在一起<span>阶段计划管步骤和预算；长期跟踪管目标和过程记录</span></div>
+      </div>
+      <div class="pjf-group">
+        <label>项目类型</label>
+        <div class="pjf-seg" id="projectTypeSeg">
+          <button type="button" data-type="plan" onclick="App.project.setProjectType('plan')">📋 阶段计划</button>
+          <button type="button" data-type="track" onclick="App.project.setProjectType('track')">🎯 长期跟踪</button>
+        </div>
+        <div class="pjf-hint" id="projectTypeHint">阶段计划：有明确步骤和预算，按 P0–P5 推进</div>
       </div>
       <div class="pjf-group">
         <label>项目名称 *</label>
@@ -845,6 +854,56 @@
       <div class="pjf-group">
         <label>描述（可选）</label>
         <textarea id="projectDesc" class="pjf-input" rows="2" placeholder="目标、范围或备注"></textarea>
+      </div>
+      <div id="projectTrackGroup" style="display:none">
+        <div class="pjf-group">
+          <label>跟踪模板</label>
+          <div class="trk-tpl-chips" id="pjTemplateChips"></div>
+          <div class="pjf-hint" id="pjTemplateHint">选一个最接近的模板，字段创建后还能在详情「设置」里改</div>
+        </div>
+        <div class="trk-fields-preview" id="pjTrackFieldsPreview"></div>
+        <div class="pjf-group">
+          <label>项目目标 *</label>
+          <input id="projectGoalText" class="pjf-input" maxlength="200" placeholder="例如：减到 65kg / 读完 12 本书 / 拿到 Offer">
+        </div>
+        <div class="pjf-row">
+          <div class="pjf-group">
+            <label>目标值（可选）</label>
+            <input type="number" id="projectGoalTarget" class="pjf-input" step="any" placeholder="例如：65 / 12">
+          </div>
+          <div class="pjf-group">
+            <label>单位</label>
+            <input id="projectGoalUnit" class="pjf-input" maxlength="8" placeholder="kg / 本 / 个">
+          </div>
+        </div>
+        <div class="pjf-row">
+          <div class="pjf-group">
+            <label>方向</label>
+            <select id="projectGoalDirection" class="pjf-input">
+              <option value="up">增加 / 正向完成</option>
+              <option value="down">减少 / 反向完成</option>
+            </select>
+          </div>
+          <div class="pjf-group">
+            <label>开始日期 *</label>
+            <input type="date" id="projectStartDate" class="pjf-input">
+          </div>
+        </div>
+        <div class="pjf-row">
+          <div class="pjf-group">
+            <label>目标日期（可后补）</label>
+            <input type="date" id="projectTargetDate" class="pjf-input">
+          </div>
+          <div class="pjf-group">
+            <label>每周目标</label>
+            <div class="trk-inline">
+              <input type="number" id="projectWeekTarget" class="pjf-input" step="any" placeholder="例如：3">
+              <input id="projectWeekUnit" class="pjf-input" maxlength="8" placeholder="次">
+            </div>
+          </div>
+        </div>
+        <div class="pjf-hint" id="pjTrackMetricHint"></div>
+        <div class="pjf-hint" id="pjTrackEditHint" style="display:none">目标、字段、里程碑、目标日期在项目详情「⚙️ 设置」里修改。</div>
       </div>
       <div class="pjf-group" id="projectStepsGroup">
         <label>步骤规划（可选）</label>
@@ -856,13 +915,13 @@
         <div id="pjStepsPreview" class="pj-steps-struct" style="display:none"></div>
         <div class="pjf-hint">写一段话点「AI 拆成步骤」，App 会整理成 1–6 步结构（名称+预算），生成后可改；也可手动加。最后一步固定排到第 6 槽，中间空位标未使用、不占进度。</div>
       </div>
-      <div class="pjf-group">
+      <div class="pjf-group" id="projectBudgetGroup">
         <label>目标预算（可选）</label>
         <input type="number" id="projectBudget" class="pjf-input" step="1" min="0" placeholder="例如：5000（用于跟踪这个项目花多少钱）" oninput="App.project.updateBudgetSumWarn()">
         <div id="pjBudgetSumWarn" class="pjf-budget-sum" style="display:none" hidden></div>
       </div>
       <div class="pjf-row">
-        <div class="pjf-group">
+        <div class="pjf-group" id="projectDueGroup">
           <label>截止日期</label>
           <input type="datetime-local" id="projectDueDate" class="pjf-input">
         </div>
