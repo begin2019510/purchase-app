@@ -600,6 +600,7 @@ function renderPurchaseCard(n){
   if(shown)meta+='<span class="meta-sec">'+esc(shown['谁']||'')+(shown['平台']?'·'+esc(shown['平台']):'')+' · '+fmtY(shown['报价'])+'</span>';
   if(trials.length||buyCount)meta+='<span class="meta-sec">试用'+trials.length+'·入账'+buyCount+'单</span>';
   if(n['虚拟']==='1')meta+='<span class="virtual-chip">💾 虚拟</span>';
+  if(n['历史']==='1')meta+='<span class="cat-badge">历史</span>';
   const quick=n['极速']==='1'?'<span class="quick-badge">极速免审</span>':'';
   // 需求卡不参与 swipe（左滑删除/右滑改状态是旧 items 模型），操作走卡上按钮
   return '<article class="card purchase-card" style="--purchase-accent:'+escAttr(colors[category]||'#64748b')+'" data-id="'+escAttr(id)+'">'

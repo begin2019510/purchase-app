@@ -33,7 +33,8 @@ function needImgSrc(ref) {
 }
 function needBudgetText(n) {
   const a = n['预算下限'], b = n['预算上限'];
-  if (a == null && b == null) return '预算待定';
+  // 3.0.43：迁移前的老记录本来就没有预算字段，不显示「预算待定」以免像出问题
+  if (a == null && b == null) return n && n['历史'] === '1' ? '历史记录' : '预算待定';
   if (a != null && b != null) return a === b ? '¥' + Number(a) : '¥' + Number(a) + '-' + Number(b);
   return '¥' + Number(a != null ? a : b);
 }
@@ -221,6 +222,7 @@ function openDetailModal(id) {
   html += '<div class="detail-price">' + esc(needBudgetText(n)) + (formal && isActiveBuy(formal['状态']) ? ' <span style="font-size:13px;color:var(--muted);font-weight:400">已入账 ' + fmtY((Number(formal['实付']) || 0) * (Number(formal['数量']) || 1)) + '</span>' : '') + '</div>';
   html += '<div class="detail-meta"><span class="badge badge-' + escAttr(st) + '">' + esc(st) + '</span>'
     + '<span class="cat-badge">' + esc(n['分类'] || '其他') + '</span>'
+    + (n['历史'] === '1' ? '<span class="cat-badge">历史</span>' : '')
     + (n['创建时间'] ? '<span>📅 ' + esc(n['创建时间']) + '</span>' : '')
     + (n['项目ID'] ? '<span>📁 已关联项目</span>' : '') + '</div>';
   if (st === '已取消' && n['取消原因']) {

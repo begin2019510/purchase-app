@@ -56,7 +56,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 <div class="container">
   <div class="hero">
     <h1>❓ 帮助文档</h1>
-    <p>个人管家 v3.0.42 使用指南</p>
+    <p>个人管家 v3.0.43 使用指南</p>
   </div>
 
   <div class="toc">
@@ -249,7 +249,8 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 版本历史 -->
   <div class="section" id="changelog">
     <h2><span class="icon">📋</span> 版本历史</h2>
-    <div class="changelog-item"><div class="changelog-ver">v3.0.42 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>待办支持「每日固定提醒时刻」：多选 09:00/12:00/18:00/21:00 或自定义，与截止前提醒并存</li><li>每天到点 Web Push 各推一次（不依赖截止/重复）；任务完成或删除即停</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v3.0.43 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>迁移前的老采购记录不再显示「预算待定」，改为「历史记录」+「历史」标签</li><li>预算跟踪以 3.0.40 采购重构为新起点，老数据保持原样不补预算</li></ul></div>
+<div class="changelog-item"><div class="changelog-ver">v3.0.42 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>待办支持「每日固定提醒时刻」：多选 09:00/12:00/18:00/21:00 或自定义，与截止前提醒并存</li><li>每天到点 Web Push 各推一次（不依赖截止/重复）；任务完成或删除即停</li></ul></div>
 <div class="changelog-item"><div class="changelog-ver">v3.0.41 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>AI 拆步不再自动生成子待办：拆步只建阶段结构；待办用「AI 建议下一步」或阶段页快捷添加逐条补</li><li>服务端忽略 steps[].todos（旧客户端字段兼容），清理误生成的 15 条待办</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.0.40 <span class="changelog-date">2026-11-09</span></div><ul class="changelog-list"><li>采购全面重构为两级模型：需求 → 供应商对比（打分）→ 试用 → 定点 → 正式采购</li><li>快速采购保留：单弹窗一步下单（≤¥50 免审），底层自动生成需求 + 供应商 + 正式单</li><li>记账口径统一：仅子单 已下单/已到/已归档 计入预算与统计</li><li>旧审批流 / 批量模式 / 滑动手势移除；帮助文档同步更新</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.7.0 <span class="changelog-date">2026-06-09</span></div><ul class="changelog-list"><li>修复预算池计算：固定支出数据加载后自动重新渲染</li><li>修复周预算动态额度计算逻辑</li><li>全面修复文件编码问题，恢复正确 UTF-8</li><li>更新帮助文档和版本历史</li></ul></div>
@@ -265,7 +266,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 
   <div style="text-align:center;margin-top:20px">
     <a href="/" class="back-btn">🏠 返回主页</a>
-    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.0.42 · 2026</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.0.43 · 2026</p>
     <p style="font-size:12px;margin-top:8px"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖ICP备2026035353号</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖公网安备34012202341289号</a></p>
   </div>
 </div>

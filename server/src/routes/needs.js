@@ -59,6 +59,7 @@ function rowToNeed(n, suppliers, orders) {
     '阶段': n.phase_idx == null ? null : Number(n.phase_idx),
     '虚拟': n.is_virtual ? '1' : '',
     '极速': n.is_quick ? '1' : '',
+    '历史': n.legacy_purchase_id ? '1' : '',
     '取消原因': n.cancel_reason || '',
     '定点时间': n.decided_at || '',
     '创建时间': n.created_at ? formatDt(n.created_at) : '',
