@@ -1402,6 +1402,11 @@
   function openEditInfoSafe() {
     var pid = _detail && _detail.projectId;
     if (!pid) return;
+    // 走项目详情的「编辑」入口，保存后会自动回到本详情（否则关掉表单就回列表）
+    if (typeof App !== 'undefined' && App.project && App.project.editFromDetail) {
+      App.project.editFromDetail(pid);
+      return;
+    }
     if (typeof closeProjectDetail === 'function') closeProjectDetail();
     if (typeof openProjectModal === 'function') openProjectModal(pid);
   }

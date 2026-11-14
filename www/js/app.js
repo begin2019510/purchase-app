@@ -226,6 +226,7 @@ function setupPullToRefresh(){
 // ===== 静默刷新：无变动零打扰，有变动自动更新（手机/电脑通用）=====
 var _silentBusy=false,_lastSilentAt=0;
 function _snap(){return JSON.stringify([items||[],expenses||[],
+  (typeof needsList!=='undefined'?needsList:[]),
   (typeof todoList!=='undefined'?todoList:[]),(typeof projectList!=='undefined'?projectList:[]),
   (typeof getBudgets==='function'?getBudgets():{})])}
 async function silentRefresh(force){
@@ -235,9 +236,14 @@ async function silentRefresh(force){
   _silentBusy=true;_lastSilentAt=Date.now();
   try{
     var snap=_snap();
-    await Promise.all([
+    // allSettled：单个接口超时/失败不拖累其它模块刷新
+    await Promise.allSettled([
       api('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))items=r}),
       expenseApi('GET').then(function(r){if(r&&!r.error&&Array.isArray(r))expenses=r}),
+      // 采购主数据也参与静默刷新：否则另一台设备/MCP 改完，本机列表和统计一直显示旧值
+      (typeof loadNeeds==='function'?loadNeeds().then(function(r){
+        if(Array.isArray(r)){needsList=r;try{setCachedData('needs',r)}catch(e){}}
+      }):Promise.resolve()),
       (typeof loadTodos==='function'?loadTodos():Promise.resolve()),
       (typeof loadProjects==='function'?loadProjects():Promise.resolve())
     ]);
@@ -405,21 +411,10 @@ function maybeShowReportPopup(){
 }
 
 async function cleanupOrphanExpenses(){
-  try{
-    // Delete ALL purchase-related expense records (purchases tracked via items data now)
-    var toDelete=expenses.filter(function(e){
-      if(!e['备注'])return false;
-      var note=e['备注'];
-      return note.includes('[采购]')||note.includes('[采购分期]')||note.includes('[分期]');
-    });
-    if(toDelete.length>0){
-      console.log('CLEANUP: deleting '+toDelete.length+' purchase expense records (budget pool model)');
-      for(var i=0;i<toDelete.length;i++){
-        await expenseApi('DELETE',null,toDelete[i].id);
-      }
-      expenses=expenses.filter(function(e){return !toDelete.find(function(o){return o.id===e.id})});
-    }
-  }catch(e){console.error('cleanupOrphanExpenses error:',e)}
+  // 已停用：旧版「采购自动记账」早已停止生成新行，历史迁移也已完成。
+  // 继续按备注关键字删除会误删用户自己写的含「[采购]/[分期]」的账目（数据丢失），
+  // 因此不再自动清理；如确实有历史重复行，应由用户确认后手动删除。
+  return;
 }
 // Cache helpers
 function getCachedData(key){try{var s=localStorage.getItem('cache_'+key);if(!s)return null;var d=JSON.parse(s);return d.v}catch(e){return null}}  // 永不过期SWR：任何时间打开都秒开，后台静默校验新数据
@@ -441,15 +436,20 @@ async function loadAll(){
 
   try{
     _log("Fetching critical (items+expenses+needs)...");
-    const results=await Promise.all([api("GET"),expenseApi("GET"),loadNeeds()]);
-    var r=results[0], e=results[1], nd=results[2];
+    // allSettled：任一接口异常不影响其它模块使用已返回的数据
+    const settled=await Promise.allSettled([api("GET"),expenseApi("GET"),needsApi("GET","/needs")]);
+    var r=settled[0].status==='fulfilled'?settled[0].value:{error:'fetch_failed'},
+        e=settled[1].status==='fulfilled'?settled[1].value:{error:'fetch_failed'},
+        nd=settled[2].status==='fulfilled'?settled[2].value:{error:'fetch_failed'};
     if(r && !r.error && Array.isArray(r)){items=r;setCachedData('items',r);_log("Items loaded: "+r.length)}
     else{_log("Items result: "+JSON.stringify(r).substring(0,200))}
     if(e && !e.error && Array.isArray(e)){expenses=e;setCachedData('expenses',e);_log("Expenses loaded: "+e.length)}
     else{_log("Expenses result: "+JSON.stringify(e).substring(0,200))}
-    // needs 新模块；null=旧 server/飞书后端 → 兼容行伪需求（部署时序兜底）
+    // needs 新模块；仅「端点不存在」（旧 server/飞书后端）才用 items 合成伪需求兜底。
+    // 瞬时 5xx/超时保留缓存或现值，避免把降级数据当成真实采购写进 needsList。
     if(nd&&Array.isArray(nd)){needsList=nd;setCachedData('needs',nd);_log("Needs loaded: "+nd.length)}
-    else{needsList=needsFromItems(r&&r.error?items:r);_log("Needs fallback from items: "+needsList.length)}
+    else if(needEndpointMissing(nd)){needsList=needsFromItems(r&&r.error?items:r);_log("Needs fallback from items: "+needsList.length)}
+    else{_log("Needs load failed: "+JSON.stringify(nd).substring(0,200));if(!Array.isArray(needsList))needsList=[]}
     isLoadingData=false;
     // 关键数据到齐即可首绘（骨架/缓存路径按需），不等待办/项目/预算
     var postCritical=_snap();
@@ -458,7 +458,7 @@ async function loadAll(){
     if(!renderedFromCache){try{switchTab(currentTab)}catch(e2){}}}  // 离线兜底：展示空态而非卡在骨架
 
   try{
-    await Promise.all([
+    await Promise.allSettled([
       loadBudgetFromServer().catch(function(err){_log("budget error: "+err.message);return null}),
       loadTodos().catch(function(err){_log("todo err: "+err.message);return null}),
       (typeof loadProjects==='function'?loadProjects():Promise.resolve()).catch(function(e){_log("projects err: "+e.message)})
@@ -471,8 +471,8 @@ async function loadAll(){
   loadRecurringData().then(function(){
     if(currentTab==='expense'||currentTab==='stats') render();
   }).catch(function(ex){console.log("loadRecurringData error:",ex.message)});
-  Promise.all([checkRecurring(), cleanupOrphanExpenses()])
-    .catch(function(ex){console.log("background tasks error:",ex.message)});
+  Promise.allSettled([checkRecurring(), cleanupOrphanExpenses()])
+    .then(function(rs){rs.forEach(function(x){if(x.status==='rejected')console.log("background task error:",x.reason&&x.reason.message)})});
   _log("loadAll done, items="+items.length+", expenses="+expenses.length);
   if(getPin&&getPin())setTimeout(maybeShowReportPopup,800);
   if(getPin&&getPin())setTimeout(autoPromptNotification,1500);

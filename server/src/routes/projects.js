@@ -47,7 +47,9 @@ function rowToProject(r) {
     id: 'rec_' + r.id,
     name: r.name || '',
     description: r.description || '',
-    dueDate: r.due_iso || (r.due_ms != null ? Number(r.due_ms) : null),
+    // 前端一律按毫秒时间戳消费（Number/Date 均可用）；旧行无 due_ms 时才回退解析 ISO
+    dueDate: r.due_ms != null ? Number(r.due_ms)
+      : (r.due_iso ? (Number.isFinite(Date.parse(r.due_iso)) ? Date.parse(r.due_iso) : null) : null),
     status: r.status || '进行中',
     color: r.color || '#6366f1',
     budget: r.budget == null ? null : Number(r.budget),

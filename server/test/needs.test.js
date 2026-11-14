@@ -16,13 +16,14 @@ t('合法流转', () => {
   assert.ok(N.canTransition('已下单', '已到'));
   assert.ok(N.canTransition('已下单', '已退'));
   assert.ok(N.canTransition('已到', '已归档'));
-  assert.ok(N.canTransition('已退', '已归档'));
+  assert.ok(N.canTransition('已退', '已取消'));
   assert.ok(N.canTransition('待下单', '已取消'));
 });
 t('非法流转', () => {
   assert.ok(!N.canTransition('待下单', '已到'), '跳过已下单');
   assert.ok(!N.canTransition('已到', '已下单'), '回退');
   assert.ok(!N.canTransition('已归档', '已取消'), '终态');
+  assert.ok(!N.canTransition('已退', '已归档'), '退货后不能再归档（避免退款重新计入预算）');
   assert.ok(!N.canTransition('已取消', '已下单'), '终态');
   assert.ok(!N.canTransition('待下单', '已审批'), '旧状态不再合法');
 });

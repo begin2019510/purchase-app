@@ -12,7 +12,9 @@ const router = express.Router();
 const MAX_MONEY = 9999999;
 
 function _numId(id) { return H.numFromId(id); }
-function _projId(b) { var s = String(b && b.projectId || '').trim(); var m = /^(?:rec_)?(\d+)$/.exec(s); return m ? Number(m[1]) : null; }
+function _projId(b) { var s = String(b && b.projectId || '').trim(); var m = /^(?:rec_)?(\d+)$/.exec(s); if (!m) return null; var n = Number(m[1]); return n > 0 ? n : null; }
+// 传了非空 projectId 但解析失败（含 '0' / 'rec_0'）→ 拒绝，避免把金额挂到不存在的项目 0
+function _badProjectId(b) { return !!(b && b.projectId !== undefined && b.projectId !== null && String(b.projectId).trim() !== '' && !_projId(b)); }
 function _phaseIdx(b) { if (!b || b.phaseIdx === null || b.phaseIdx === undefined || b.phaseIdx === '') return null; var n = Number(b.phaseIdx); return Number.isInteger(n) && n >= 0 && n <= 5 ? n : null; }
 function _money(v) { if (v === undefined || v === null || v === '') return null; var n = Number(v); return Number.isFinite(n) ? n : NaN; }
 function _int(v, def) { if (v === undefined || v === null || v === '') return def; var n = Number(v); return Number.isInteger(n) ? n : NaN; }
@@ -24,7 +26,8 @@ async function _saveImage(req, uid, val, prefix) {
     if (val.length > 12 * 1024 * 1024) { const e = new Error('图片过大'); e.status = 413; throw e; }
     return await IMG.saveDataImage(req.username, uid, val, prefix);
   }
-  if (typeof val === 'string' && val.startsWith('kv:')) return val;
+  // kv 引用只接受图片模块实际生成的 key 形态，挡住超长串/任意字符串写库
+  if (typeof val === 'string' && val.startsWith('kv:')) return /^kv:[\w.-]{1,200}$/.test(val) ? val : null;
   if (val === '' || val == null) return '';
   return null; // 非法
 }
@@ -167,11 +170,11 @@ function validateOrderInput(b, old) {
   let qty = creating ? 1 : Number(o.qty) || 1;
   if (b.qty !== undefined) { qty = _int(b.qty, 1); if (Number.isNaN(qty) || qty < 1 || qty > 9999) return { error: '数量格式不正确' }; }
   let pricePaid = creating ? 0 : Number(o.price_paid) || 0;
-  if (b.pricePaid !== undefined) { pricePaid = _money(b.pricePaid); if (Number.isNaN(pricePaid) || pricePaid < 0 || pricePaid > MAX_MONEY) return { error: '实付格式不正确' }; }
+  if (b.pricePaid !== undefined) { pricePaid = _money(b.pricePaid); if (pricePaid == null || Number.isNaN(pricePaid) || pricePaid < 0 || pricePaid > MAX_MONEY) return { error: '实付格式不正确' }; }
   let installments = creating ? 0 : Number(o.installments) || 0;
   if (b.installments !== undefined) { installments = _int(b.installments, 0); if (Number.isNaN(installments) || installments < 0 || installments > 120) return { error: '分期期数需在 0~120 之间' }; }
   let instAmount = creating ? 0 : (o.installment_amount == null ? 0 : Number(o.installment_amount) || 0);
-  if (b.installmentAmount !== undefined) { instAmount = _money(b.installmentAmount); if (Number.isNaN(instAmount) || instAmount < 0 || instAmount > MAX_MONEY) return { error: '分期金额格式不正确' }; }
+  if (b.installmentAmount !== undefined) { instAmount = _money(b.installmentAmount); if (instAmount == null || Number.isNaN(instAmount) || instAmount < 0 || instAmount > MAX_MONEY) return { error: '分期金额格式不正确' }; }
   let instStart = creating ? '' : (o.installment_start || '');
   if (b.installmentStart !== undefined) {
     instStart = String(b.installmentStart || '');
@@ -180,8 +183,10 @@ function validateOrderInput(b, old) {
   let instPaid = creating ? 0 : Number(o.installment_paid) || 0;
   if (b.installmentPaid !== undefined) {
     instPaid = _int(b.installmentPaid, 0);
-    if (Number.isNaN(instPaid) || instPaid < 0 || instPaid > installments) return { error: '已还期数不正确' };
+    if (Number.isNaN(instPaid) || instPaid < 0) return { error: '已还期数不正确' };
   }
+  // 期数调小但没传已还期数时，也要用「更新后」的期数复核，避免出现已还 8/共 2 期
+  if (instPaid > installments) return { error: '已还期数不能大于分期期数' };
   let dateMs = creating ? null : (o.date_ms == null ? null : Number(o.date_ms));
   if (b.date !== undefined) { const t = _dateMs(b.date); if (Number.isNaN(t)) return { error: '日期格式不正确' }; dateMs = t; }
   if (b.note !== undefined && String(b.note || '').length > 5000) return { error: '备注过长' };
@@ -210,6 +215,7 @@ router.post('/needs', async (req, res, next) => {
     if (v.error) return res.status(400).json({ error: v.error });
     const dv = N.validateDimensions(b.dimensions);
     if (dv.error) return res.status(400).json({ error: dv.error });
+    if (_badProjectId(b)) return res.status(400).json({ error: '项目ID格式不正确' });
     const pid = _projId(b), pidx = _phaseIdx(b);
     if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
     const dims = dv.value || N.DEFAULT_DIMENSIONS;
@@ -227,6 +233,8 @@ router.put('/needs/:id', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const need = await getOwnedNeed(uid, req.params.id);
     if (!need) return res.status(404).json({ error: 'not found' });
+    // 终态需求不可再改字段，否则历史花费可能被迁到别的项目/分类
+    if (need.status === '已完成' || need.status === '已取消') return res.status(400).json({ error: '需求已结束，不可修改' });
     const b = req.body || {};
     const v = validateNeedInput(b, need);
     if (v.error) return res.status(400).json({ error: v.error });
@@ -238,22 +246,40 @@ router.put('/needs/:id', async (req, res, next) => {
     if (b.budgetMax !== undefined) set('budget_max', v.bmax);
     if (b.virtual !== undefined) set('is_virtual', b.virtual ? 1 : 0);
     if (b.projectId !== undefined) {
+      if (_badProjectId(b)) return res.status(400).json({ error: '项目ID格式不正确' });
       const pid = _projId(b);
       if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
       set('project_id', pid);
     }
     if (b.phaseIdx !== undefined) set('phase_idx', _phaseIdx(b));
+    let newDims = null;
     if (b.dimensions !== undefined) {
       if (need.status !== '对比中') return res.status(400).json({ error: '已定点后不可修改对比维度' });
       const dv = N.validateDimensions(b.dimensions);
       if (dv.error) return res.status(400).json({ error: dv.error });
-      set('dimensions', JSON.stringify(dv.value || N.DEFAULT_DIMENSIONS));
+      newDims = dv.value || N.DEFAULT_DIMENSIONS.map(d => ({ ...d }));
+      set('dimensions', JSON.stringify(newDims));
     }
     if (b.cancelReason !== undefined) set('cancel_reason', String(b.cancelReason || '').slice(0, 200));
     const keys = Object.keys(cols);
     if (keys.length) {
       await db.exec('UPDATE purchase_needs SET ' + keys.map(k => k + ' = ?').join(', ') + ' WHERE id = ? AND user_id = ?',
         [...keys.map(k => cols[k]), need.id, uid]);
+    }
+    // 删维度时同步修剪供应商打分里的旧 key，否则之后任一打分都会因「未知维度」永久失败
+    if (newDims) {
+      const allowed = new Set(newDims.map(d => d.key));
+      const sups = await db.query('SELECT id, scores FROM purchase_suppliers WHERE need_id = ? AND user_id = ?', [need.id, uid]);
+      for (const s of sups) {
+        let sc = N.safeJson(s.scores);
+        if (!sc || typeof sc !== 'object') sc = {};
+        let changed = false;
+        const kept = {};
+        for (const k of Object.keys(sc)) {
+          if (allowed.has(k)) kept[k] = sc[k]; else changed = true;
+        }
+        if (changed) await db.exec('UPDATE purchase_suppliers SET scores = ? WHERE id = ? AND user_id = ?', [JSON.stringify(kept), s.id, uid]);
+      }
     }
     res.json({ ok: true });
   } catch (e) { next(e); }
@@ -292,6 +318,8 @@ router.post('/needs/:id/suppliers', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const need = await getOwnedNeed(uid, req.params.id);
     if (!need) return res.status(404).json({ error: '需求不存在' });
+    // 只有对比中才能新增供应商；已定点/终态加供应商没有业务意义
+    if (need.status !== '对比中') return res.status(400).json({ error: '当前状态不可添加供应商' });
     const b = req.body || {};
     const v = validateSupplierInput(b, null);
     if (v.error) return res.status(400).json({ error: v.error });
@@ -317,6 +345,10 @@ router.put('/suppliers/:id', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const sup = await getOwnedSupplier(uid, req.params.id);
     if (!sup) return res.status(404).json({ error: 'not found' });
+    const supNeed = await db.one('SELECT status FROM purchase_needs WHERE id = ? AND user_id = ?', [sup.need_id, uid]);
+    if (supNeed && (supNeed.status === '已完成' || supNeed.status === '已取消')) {
+      return res.status(400).json({ error: '需求已结束，不可修改供应商' });
+    }
     const b = req.body || {};
     const v = validateSupplierInput(b, sup);
     if (v.error) return res.status(400).json({ error: v.error });
@@ -370,13 +402,17 @@ router.delete('/suppliers/:id', async (req, res, next) => {
     const sup = await getOwnedSupplier(uid, req.params.id);
     if (!sup) return res.json({ ok: true });
     const need = await db.one('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ?', [sup.need_id, uid]);
+    if (need && (need.status === '已完成' || need.status === '已取消')) {
+      return res.status(400).json({ error: '需求已结束，不可删除供应商' });
+    }
     if (need && Number(need.selected_supplier_id) === Number(sup.id)) {
       return res.status(400).json({ error: '该供应商已定点，先回退定点再删除' });
     }
     // 关联过入账子单的供应商不可删（保留账目回溯）
-    const [spent] = await db.query(
+    // 注意 db.query 直接返回 rows（不是 [rows, fields]），不能再解构
+    const spentRows = await db.query(
       "SELECT COUNT(*) AS c FROM purchase_orders WHERE supplier_id = ? AND status IN ('已下单','已到','已归档')", [sup.id]);
-    if (Number(spent[0].c) > 0) return res.status(400).json({ error: '该供应商已有入账子单，不可删除' });
+    if (Number(spentRows[0] && spentRows[0].c) > 0) return res.status(400).json({ error: '该供应商已有入账子单，不可删除' });
     await db.exec('DELETE FROM purchase_suppliers WHERE id = ? AND user_id = ?', [sup.id, uid]);
     res.json({ ok: true });
   } catch (e) { next(e); }
@@ -393,6 +429,19 @@ router.post('/needs/:id/orders', async (req, res, next) => {
     const need = nrows[0];
     if (!need) { await conn.rollback(); return res.status(404).json({ error: '需求不存在' }); }
     const role = b.role === 'trial' ? 'trial' : 'formal';
+    // 需求状态机是子单的前置条件：正式单只能从「已定点」创建，试用单只能在「对比中」创建
+    if (need.status === '已完成' || need.status === '已取消') {
+      await conn.rollback();
+      return res.status(400).json({ error: '需求已结束，不能创建子单' });
+    }
+    if (role === 'formal' && need.status !== '已定点') {
+      await conn.rollback();
+      return res.status(400).json({ error: '只有已定点的需求才能创建正式单' });
+    }
+    if (role === 'trial' && need.status !== '对比中') {
+      await conn.rollback();
+      return res.status(400).json({ error: '只有对比中的需求才能创建试用单' });
+    }
     if (role === 'formal') {
       const [ex] = await conn.query("SELECT id FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [need.id]);
       if (ex.length) { await conn.rollback(); return res.status(400).json({ error: '正式单已存在（可更新或走转正）' }); }
@@ -437,7 +486,15 @@ router.put('/orders/:id', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const order = await getOwnedOrder(uid, req.params.id);
     if (!order) return res.status(404).json({ error: 'not found' });
+    // 终态子单是历史账目，任何字段都不能再改；已退子单只允许改备注/图片
+    if (order.status === '已归档' || order.status === '已取消') {
+      return res.status(400).json({ error: '已归档/已取消的子单不可修改' });
+    }
     const b = req.body || {};
+    if (order.status === '已退' && ['qty', 'pricePaid', 'date', 'installments', 'installmentAmount', 'installmentStart', 'installmentPaid', 'supplierId']
+      .some(k => b[k] !== undefined)) {
+      return res.status(400).json({ error: '已退货的子单只能修改备注/图片' });
+    }
     const v = validateOrderInput(b, order);
     if (v.error) return res.status(400).json({ error: v.error });
     const cols = {}, vals = [];
@@ -456,7 +513,10 @@ router.put('/orders/:id', async (req, res, next) => {
       if (typeof b.image === 'string' && b.image.startsWith('data:')) {
         if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
         ref = await IMG.saveDataImage(req.username, uid, b.image, 'order');
-      } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) ref = b.image;
+      } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) {
+        if (!/^kv:[\w.-]{1,200}$/.test(b.image)) return res.status(400).json({ error: '图片格式不正确' });
+        ref = b.image;
+      }
       if (b.stageImage && b.stageName) {
         let ex = {};
         try { ex = JSON.parse(order.image_ref && String(order.image_ref).startsWith('{') ? order.image_ref : '{}'); } catch (e) { ex = {}; }
@@ -470,8 +530,9 @@ router.put('/orders/:id', async (req, res, next) => {
     if (b.supplierId !== undefined) {
       const sid = b.supplierId ? _numId(b.supplierId) : null;
       if (sid) {
-        const [s] = await db.query('SELECT id FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?', [sid, order.need_id, uid]);
-        if (!s.length) return res.status(404).json({ error: '供应商不存在' });
+        // db.query 返回 rows 本身，不能解构为 [rows, fields]
+        const srows = await db.query('SELECT id FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?', [sid, order.need_id, uid]);
+        if (!srows.length) return res.status(404).json({ error: '供应商不存在' });
       }
       cols.supplier_id = sid;
     }
@@ -496,6 +557,17 @@ router.post('/orders/:id/transition', async (req, res, next) => {
     const [rows] = await conn.query('SELECT * FROM purchase_orders WHERE id = ? AND user_id = ? FOR UPDATE', [_numId(req.params.id) || 0, uid]);
     const order = rows[0];
     if (!order) { await conn.rollback(); return res.status(404).json({ error: 'not found' }); }
+    if (b.note !== undefined && String(b.note || '').length > 5000) {
+      await conn.rollback();
+      return res.status(400).json({ error: '备注过长' });
+    }
+    // 已完成/已取消的需求不允许再把子单推进到「计入口径」，但允许清理（退货/取消/归档）
+    const [nrows] = await conn.query('SELECT status FROM purchase_needs WHERE id = ? AND user_id = ?', [order.need_id, uid]);
+    const nst = nrows[0] && nrows[0].status;
+    if ((nst === '已完成' || nst === '已取消') && (to === '已下单' || to === '已到')) {
+      await conn.rollback();
+      return res.status(400).json({ error: '需求已结束，不能再产生入账子单' });
+    }
     const r = await N.applyOrderTransition(conn, uid, order, to, { note: b.note });
     if (r.error) { await conn.rollback(); return res.status(400).json({ error: r.error }); }
     await conn.commit();
@@ -582,9 +654,22 @@ router.post('/needs/:id/decide', async (req, res, next) => {
     } else {
       // 新建/复用正式单
       if (formal) {
-        await conn.query('UPDATE purchase_orders SET supplier_id = ?, price_paid = ?, qty = ?, status = ? WHERE id = ?',
-          [supplierId, b.pricePaid != null ? _money(b.pricePaid) : (sup.price != null ? Number(sup.price) : 0),
-            b.qty != null ? Math.max(1, Number(b.qty) || 1) : 1, formal.status, formal.id]);
+        // 复用分支也必须走同一套入参校验，避免负金额/NaN/超大数量直接落库
+        const v = validateOrderInput(b, formal);
+        if (v.error) { await conn.rollback(); return res.status(400).json({ error: v.error }); }
+        const sets = ['supplier_id = ?', 'price_paid = ?', 'qty = ?'], vals = [
+          supplierId,
+          b.pricePaid !== undefined ? v.pricePaid : (sup.price != null ? Number(sup.price) : Number(formal.price_paid) || 0),
+          b.qty !== undefined ? v.qty : (Number(formal.qty) || 1),
+        ];
+        if (b.installments !== undefined) { sets.push('installments = ?'); vals.push(v.installments); }
+        if (b.installmentAmount !== undefined) { sets.push('installment_amount = ?'); vals.push(v.instAmount); }
+        if (b.installmentStart !== undefined) { sets.push('installment_start = ?'); vals.push(v.instStart); }
+        if (b.installmentPaid !== undefined) { sets.push('installment_paid = ?'); vals.push(v.instPaid); }
+        if (b.date !== undefined) { sets.push('date_ms = ?'); vals.push(v.dateMs); }
+        if (b.note !== undefined) { sets.push('note = ?'); vals.push(String(b.note || '')); }
+        vals.push(formal.id);
+        await conn.query('UPDATE purchase_orders SET ' + sets.join(', ') + ' WHERE id = ?', vals);
       } else {
         const v = validateOrderInput(b, null);
         if (v.error) { await conn.rollback(); return res.status(400).json({ error: v.error }); }
@@ -665,12 +750,12 @@ router.post('/needs/:id/cancel', async (req, res, next) => {
     if (need.status === '已完成') { await conn.rollback(); return res.status(400).json({ error: '需求已完成，不可取消' }); }
     if (need.status === '已取消') { await conn.rollback(); return res.json({ ok: true }); }
     const reason = String(b.reason || b.cancelReason || '').slice(0, 200);
-    // 正式单已下单起 → 拒绝（先退货/归档）
+    // 任一子单（试用或正式）已入账 → 拒绝取消，避免金额凭空消失
     const [spent] = await conn.query(
-      "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND role = 'formal' AND status IN ('已下单','已到','已归档')", [needId]);
-    if (Number(spent[0].c) > 0 && need.status === '已定点') {
+      "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND status IN ('已下单','已到','已归档')", [needId]);
+    if (Number(spent[0].c) > 0) {
       await conn.rollback();
-      return res.status(400).json({ error: '正式单已下单，不可取消需求' });
+      return res.status(400).json({ error: '已有入账子单，不可取消需求（请先退货或归档）' });
     }
     await conn.query(
       "UPDATE purchase_orders SET status = '已取消', archived_at = COALESCE(archived_at, ?) WHERE need_id = ? AND status NOT IN ('已归档','已取消')",
@@ -698,13 +783,16 @@ router.post('/needs/quick', async (req, res, next) => {
     if (!name) return res.status(400).json({ error: 'name required' });
     if (name.length > 200) return res.status(400).json({ error: '名称过长' });
     const price = _money(b.price != null ? b.price : b.amount);
-    if (Number.isNaN(price) || price < 0 || price > MAX_MONEY) return res.status(400).json({ error: '金额格式不正确' });
+    if (Number.isNaN(price) || price <= 0 || price > MAX_MONEY) return res.status(400).json({ error: '金额需大于 0' });
     const qty = _int(b.qty, 1);
     if (Number.isNaN(qty) || qty < 1 || qty > 9999) return res.status(400).json({ error: '数量格式不正确' });
+    // 先按分位取整再比较，避免 0.1*500=50.00000000000001 被误拒
+    const total = Math.round(price * qty * 100) / 100;
     // ¥50 免审语义（与旧前端一致）：超出拒绝极速通道
-    if (price * qty > 50) return res.status(400).json({ error: '快速采购仅支持 ¥50 以内，请走普通需求流程' });
+    if (total > 50) return res.status(400).json({ error: '快速采购仅支持 ¥50 以内，请走普通需求流程' });
     const category = String(b.category || '其他').trim().slice(0, 30);
     const platform = String(b.platform || '拼多多').trim().slice(0, 20);
+    if (_badProjectId(b)) return res.status(400).json({ error: '项目ID格式不正确' });
     const pid = _projId(b), pidx = _phaseIdx(b);
     if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
     const dateMs = b.date ? _dateMs(b.date) : Date.now();
@@ -721,7 +809,7 @@ router.post('/needs/quick', async (req, res, next) => {
     const [nins] = await conn.query(
       `INSERT INTO purchase_needs (user_id,name,category,budget_min,budget_max,status,dimensions,project_id,phase_idx,is_virtual,is_quick)
        VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [uid, name, category, price, price, '已定点', dims, pid, pidx, b.virtual ? 1 : 0, 1]);
+      [uid, name, category, total, total, '已定点', dims, pid, pidx, b.virtual ? 1 : 0, 1]);
     const needId = nins.insertId;
     const [sins] = await conn.query(
       'INSERT INTO purchase_suppliers (user_id,need_id,name,platform,price,scores,sort_order) VALUES (?,?,?,?,?,?,0)',

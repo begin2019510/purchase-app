@@ -297,7 +297,9 @@ router.all('/auth', async (req, res, next) => {
       const user = await getUser(username);
       if (!user) return res.status(404).json({ error: '用户不存在' });
       // 表名来自固定白名单，不拼接任何用户输入
-      const TABLES = ['purchases', 'expenses', 'todos', 'reports', 'images', 'budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens', 'agent_tickets'];
+      const TABLES = ['purchases', 'expenses', 'todos', 'reports', 'images', 'budgets', 'recurring', 'cats', 'push_subs', 'refresh_tokens', 'agent_tickets',
+        // 采购两级模型 + 长期跟踪记录（子表先删，避免外键/孤儿行）
+        'purchase_orders', 'purchase_suppliers', 'purchase_needs', 'project_records'];
       const conn = await db.pool.getConnection();
       try {
         await conn.beginTransaction();

@@ -908,7 +908,8 @@ function setProjectType(type) {
   } else {
     if (trackGroup) trackGroup.style.display = 'none';
     if (stepsGroup) stepsGroup.style.display = (editing && _pjIsEditingProject) ? 'none' : '';
-    if (budgetGroup) budgetGroup.style.display = editing ? 'none' : '';
+    // 编辑阶段项目仍要能改总预算（详情页「调整/设置预算」复用本表单）
+    if (budgetGroup) budgetGroup.style.display = '';
     if (dueGroup) dueGroup.style.display = '';
     if (statusGroup) statusGroup.style.display = editing ? '' : 'none';
     if (hint) hint.textContent = '阶段计划：有明确步骤和预算，按 P0–P5 推进';
@@ -1056,6 +1057,7 @@ async function deleteProject(id) {
     // 服务端已解除关联，本地同样清掉，避免待办/采购/记账的编辑表单短暂显示旧项目
     if (typeof todoList !== 'undefined') todoList.forEach(function(t) { if (t.projectId === id) t.projectId = ''; });
     if (typeof items !== 'undefined') items.forEach(function(i) { if (i['项目ID'] === id) { i['项目ID'] = ''; i['阶段'] = null; } });
+    if (typeof needsList !== 'undefined' && Array.isArray(needsList)) needsList.forEach(function(n) { if (n['项目ID'] === id) { n['项目ID'] = ''; n['阶段'] = null; } });
     if (typeof expenses !== 'undefined') expenses.forEach(function(e) { if (e['项目ID'] === id) { e['项目ID'] = ''; e['阶段'] = null; } });
     toast('已删除');
     await loadProjects();

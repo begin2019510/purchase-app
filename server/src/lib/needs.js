@@ -23,12 +23,13 @@ const DEFAULT_DIMENSIONS = Object.freeze([
 ]);
 
 // ===== 子单流转合法性（本表第一次有流转校验）=====
-// 待下单 →(已下单|已取消)；已下单 →(已到|已退|已取消)；已到 →(已归档|已退|已取消)；已退 →(已归档|已取消)；终态无出边
+// 待下单 →(已下单|已取消)；已下单 →(已到|已退|已取消)；已到 →(已归档|已退|已取消)；
+// 已退 →(已取消)；退货后不允许再归档（归档属于已入账口径，会把退款重新算进预算/统计）
 const ORDER_TRANSITIONS = {
   '待下单': ['已下单', '已取消'],
   '已下单': ['已到', '已退', '已取消'],
   '已到': ['已归档', '已退', '已取消'],
-  '已退': ['已归档', '已取消'],
+  '已退': ['已取消'],
   '已归档': [],
   '已取消': [],
 };
@@ -103,7 +104,8 @@ function validateDimensions(dims) {
     const key = String((d && d.key) || '').trim();
     const label = String((d && d.label) || '').trim();
     const weight = Number(d && d.weight);
-    if (!key || key.length > 30) return { error: '维度 key 不合法' };
+    // key 会被拼进前端内联 onclick 的 JS 字符串，必须是安全字符集
+    if (!key || key.length > 30 || !/^[A-Za-z0-9_-]+$/.test(key)) return { error: '维度 key 不合法' };
     if (!label || label.length > 30) return { error: '维度名称过长' };
     if (!Number.isInteger(weight) || weight < 1 || weight > 9) return { error: '维度权重需为 1~9 的整数' };
     if (keys.has(key)) return { error: '维度 key 重复：' + key };
@@ -263,9 +265,15 @@ async function applyOrderTransition(conn, uid, order, to, opts = {}) {
   if (order.role === 'formal' && to === '已归档') {
     await conn.query('UPDATE purchase_needs SET status = ?, updated_at = NOW() WHERE id = ? AND user_id = ?', ['已完成', order.need_id, uid]);
   }
-  // 试用/正式单终态清理：已退/已取消删除关联待办（沿用旧语义）
+  // 试用/正式单终态清理：只有该需求已无其它在途子单时才删关联待办。
+  // 旧模型一单一条待办；两级模型下退掉一张落选试用单不应删掉正式单的待办。
   if (to === '已退' || to === '已取消') {
-    await conn.query('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', 'rec_' + order.need_id]);
+    const [act] = await conn.query(
+      "SELECT COUNT(*) AS c FROM purchase_orders WHERE user_id = ? AND need_id = ? AND id <> ? AND status IN ('待下单','已下单','已到')",
+      [uid, order.need_id, order.id]);
+    if (Number(act[0].c) === 0) {
+      await conn.query('DELETE FROM todos WHERE user_id = ? AND link_type = ? AND link_id = ?', [uid, '采购', 'rec_' + order.need_id]);
+    }
   }
   return { ok: true };
 }

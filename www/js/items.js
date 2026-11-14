@@ -109,11 +109,12 @@ async function saveNeed(){
     phaseIdx:(function(){var ph=document.getElementById('fPhase');return ph&&ph.value!==''?Number(ph.value):null})()
   };
   const editId=document.getElementById('editId').value;
-  closeModal();
   const r=editId?await needsApi('PUT','/needs/'+editId,data):await needsApi('POST','/needs',data);
-  if(r&&r.error){toast((editId?'更新':'提交')+'失败: '+r.error);return}
+  if(r&&r.error){toast((editId?'更新':'提交')+'失败: '+r.error);return} // 失败保留表单，便于修正
+  closeModal();
   toast(editId?'已更新':'需求已提交');
-  await needRefresh();
+  // 新建后直接进详情继续加供应商；编辑后回到详情
+  await needRefresh((r&&r.id)||editId||null, true);
 }
 
 // ============================================================
@@ -132,6 +133,7 @@ function openQuickPurchaseModal(){
   el('qCategory').value=prefs.category||'日用';
   el('qNote').value='';
   el('qDate').value=d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());
+  if(el('qVirtual'))el('qVirtual').checked=false;
   try{ if(typeof fillProjectPhaseSelects==='function') fillProjectPhaseSelects('qProject','qPhase','',null); }catch(e){}
   el('quickOverlay').classList.add('active');
   // 移动端：自动聚焦 + 回车即保存

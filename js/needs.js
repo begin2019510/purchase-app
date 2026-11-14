@@ -16,7 +16,8 @@ const NEED_ORDER_FLOW = {
   '待下单': [{ to: '已下单', label: '🛒 提交下单', cls: 'g' }, { to: '已取消', label: '✗ 取消单', cls: 'r' }],
   '已下单': [{ to: '已到', label: '📦 确认收货', cls: 'g' }, { to: '已退', label: '↩️ 退货', cls: 'r' }, { to: '已取消', label: '✗ 取消', cls: 'm' }],
   '已到': [{ to: '已归档', label: '🗄️ 归档', cls: 'p' }, { to: '已退', label: '↩️ 退货', cls: 'r' }, { to: '已取消', label: '✗ 取消', cls: 'm' }],
-  '已退': [{ to: '已归档', label: '🗄️ 归档', cls: 'p' }],
+  // 退货后不能再归档：归档属于「已入账」口径，会把退货金额重新算进预算/统计
+  '已退': [{ to: '已取消', label: '✗ 取消/关闭', cls: 'm' }],
   '已归档': [], '已取消': [],
 };
 
@@ -25,6 +26,14 @@ function findNeed(id) { id = String(id || ''); return (needsList || []).find(n =
 function fmtY(n) { return '¥' + (Number(n) || 0).toFixed(2); }
 function todayBJ() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
 function thisMonthBJ() { try { return getThisMonth(); } catch (e) { return todayBJ().slice(0, 7); } }
+// 购买日期 → 分期开始月（YYYY-MM，东八区）；缺省回落到当前月
+function needMonthOf(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    try { return new Date(v + 8 * 3600000).toISOString().slice(0, 7); } catch (e) { return thisMonthBJ(); }
+  }
+  const m = /^(\d{4}-\d{2})/.exec(String(v || ''));
+  return m ? m[1] : thisMonthBJ();
+}
 // kv: 引用 → 可展示 URL
 function needImgSrc(ref) {
   if (!ref || String(ref).startsWith('{')) return '';
@@ -179,7 +188,11 @@ function orderRows() {
 }
 
 // 刷新 needs+items（+待办/项目账），可选重开需求详情
-async function needRefresh(detailId) {
+// forceOpen=true 用于「新建需求后进详情」；否则仅在操作发起时详情本来就开着才重开，
+// 避免用户等待请求期间主动关掉详情后被强制弹回。
+async function needRefresh(detailId, forceOpen) {
+  const wasOpen = !!(document.getElementById('detailOverlay') || {}).classList
+    && document.getElementById('detailOverlay').classList.contains('active');
   try {
     const r = await loadNeeds();
     if (Array.isArray(r)) { needsList = r; setCachedData('needs', r); }
@@ -193,7 +206,7 @@ async function needRefresh(detailId) {
   try { render(); } catch (e) {}
   if (detailId) {
     const n = findNeed(detailId);
-    if (n) openDetailModal(detailId);
+    if (n) { if (wasOpen || forceOpen) openDetailModal(detailId); }
     else { closeDetailModal(); toast('需求已删除'); }
   }
 }
@@ -283,28 +296,28 @@ function openDetailModal(id) {
       }
       html += '</div>';
     });
-    // 添加供应商 / 维度编辑（仅对比中）
-    if (isCompare) {
-      html += '<div class="nd-actions" style="margin-top:10px">'
-        + '<button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">＋ 添加供应商</button>'
-        + '<button type="button" class="nd-btn m" onclick="needDimsFormToggle()">⚙️ 对比维度</button></div>';
-      html += '<div class="nd-form" id="ndSupForm" style="display:none">'
-        + '<div class="form-row"><div class="form-group" style="flex:1"><label>谁 *</label><input id="ndSupName" placeholder="如：官方旗舰店"></div>'
-        + '<div class="form-group" style="flex:1"><label>平台</label><input id="ndSupPlatform" placeholder="如：京东"></div></div>'
-        + '<div class="form-row"><div class="form-group" style="flex:1"><label>报价（元）</label><input id="ndSupPrice" type="number" step="0.01" min="0"></div>'
-        + '<div class="form-group" style="flex:1"><label>图片</label><div style="display:flex;gap:8px">'
-        + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupCam\').click()">📷 拍照</button>'
-        + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupGal\').click()">🖼️ 相册</button></div>'
-        + '<input type="file" id="ndSupCam" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
-        + '<input type="file" id="ndSupGal" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
-        + '<div id="nsImageWrap" style="display:none;margin-top:6px"><img id="nsImagePreview" style="max-width:100%;max-height:140px;border-radius:8px"></div></div></div>'
-        + '<div class="form-group"><label>优点</label><textarea id="ndSupPros" rows="2" style="resize:none"></textarea></div>'
-        + '<div class="form-group"><label>缺点</label><textarea id="ndSupCons" rows="2" style="resize:none"></textarea></div>'
-        + '<div class="form-group"><label>备注</label><textarea id="ndSupNote" rows="1" style="resize:none"></textarea></div>'
-        + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">收起</button>'
-        + '<button type="button" class="nd-btn p" onclick="needSupplierAdd(\'' + escAttr(needId) + '\')">✅ 添加</button></div></div>';
-      html += buildDimsForm(needId, dims);
-    }
+  }
+  // 添加供应商 / 维度编辑（仅对比中；供应商为 0 家时也必须保留入口）
+  if (isCompare) {
+    html += '<div class="nd-actions" style="margin-top:10px">'
+      + '<button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">＋ 添加供应商</button>'
+      + '<button type="button" class="nd-btn m" onclick="needDimsFormToggle()">⚙️ 对比维度</button></div>';
+    html += '<div class="nd-form" id="ndSupForm" style="display:none">'
+      + '<div class="form-row"><div class="form-group" style="flex:1"><label>谁 *</label><input id="ndSupName" placeholder="如：官方旗舰店"></div>'
+      + '<div class="form-group" style="flex:1"><label>平台</label><input id="ndSupPlatform" placeholder="如：京东"></div></div>'
+      + '<div class="form-row"><div class="form-group" style="flex:1"><label>报价（元）</label><input id="ndSupPrice" type="number" step="0.01" min="0"></div>'
+      + '<div class="form-group" style="flex:1"><label>图片</label><div style="display:flex;gap:8px">'
+      + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupCam\').click()">📷 拍照</button>'
+      + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupGal\').click()">🖼️ 相册</button></div>'
+      + '<input type="file" id="ndSupCam" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
+      + '<input type="file" id="ndSupGal" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
+      + '<div id="nsImageWrap" style="display:none;margin-top:6px"><img id="nsImagePreview" style="max-width:100%;max-height:140px;border-radius:8px"></div></div></div>'
+      + '<div class="form-group"><label>优点</label><textarea id="ndSupPros" rows="2" style="resize:none"></textarea></div>'
+      + '<div class="form-group"><label>缺点</label><textarea id="ndSupCons" rows="2" style="resize:none"></textarea></div>'
+      + '<div class="form-group"><label>备注</label><textarea id="ndSupNote" rows="1" style="resize:none"></textarea></div>'
+      + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">收起</button>'
+      + '<button type="button" class="nd-btn p" onclick="needSupplierAdd(\'' + escAttr(needId) + '\')">✅ 添加</button></div></div>';
+    html += buildDimsForm(needId, dims);
   }
 
   // ===== ② 试用子单 =====
@@ -352,6 +365,10 @@ function openDetailModal(id) {
     }
     if (formal) {
       html += buildOrderCard(n, formal, sups, true);
+      // 正式单还没下单时可以回退定点换供应商（服务端 undecided 同样要求待下单）
+      if (formal['状态'] === '待下单') {
+        html += '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needUndecided(\'' + escAttr(needId) + '\')">↩️ 回退定点</button></div>';
+      }
     } else {
       // 正式单缺失（回退定点边缘态）→ 补建
       html += '<div class="nd-form">'
@@ -380,6 +397,8 @@ function openDetailModal(id) {
 
   document.getElementById('detailContent').innerHTML = html;
   document.getElementById('detailOverlay').classList.add('active');
+  // 定点方式默认可能是「试用转正」，首渲染即隐藏新建正式单字段，避免填写后被忽略
+  try { needDecideModeChanged(); } catch (e) {}
 }
 function closeDetailModal() { const el = document.getElementById('detailOverlay'); if (el) el.classList.remove('active'); }
 
@@ -494,18 +513,35 @@ function needDimsFormToggle() {
 async function needSetScore(needId, supId, key, val) {
   const n = findNeed(needId); if (!n) return;
   const s = (n.suppliers || []).find(x => x.id === supId); if (!s) return;
-  const scores = Object.assign({}, s['打分'] || {});
+  // 只提交当前维度内的分数：删过维度后旧 scores 里可能残留 key，全量提交会被服务端判为未知维度
+  const allowed = {};
+  needDims(n).forEach(function (d) { allowed[d.key] = 1; });
+  const scores = {};
+  Object.keys(s['打分'] || {}).forEach(function (k) {
+    if (allowed[k]) scores[k] = s['打分'][k];
+  });
   scores[key] = val;
   s['打分'] = scores; // 乐观更新
+  const scroller = document.getElementById('detailContent');
+  const keepTop = scroller ? scroller.scrollTop : 0;
   openDetailModal(needId);
+  if (scroller) scroller.scrollTop = keepTop;
   const r = await needsApi('PUT', '/suppliers/' + supId + '/scores', { scores: scores });
   if (r && r.error) { toast('打分保存失败: ' + r.error); needRefresh(needId); }
 }
 
+let _needCreateBusy = false;
 async function needSupplierAdd(needId) {
+  if (_needCreateBusy) return;
   const el = id => document.getElementById(id);
   const name = (el('ndSupName').value || '').trim();
   if (!name) { toast('请填写供应商名称'); return; }
+  _needCreateBusy = true;
+  try {
+    return await _needSupplierAdd(needId, el, name);
+  } finally { _needCreateBusy = false; }
+}
+async function _needSupplierAdd(needId, el, name) {
   const body = {
     name: name,
     platform: (el('ndSupPlatform').value || '').trim(),
@@ -557,16 +593,20 @@ async function needDimsSave(needId) {
 }
 
 async function needTrialCreate(needId, supId) {
+  if (_needCreateBusy) return;
   const n = findNeed(needId); if (!n) return;
   const s = (n.suppliers || []).find(x => x.id === supId);
   const price = s && s['报价'] != null ? Number(s['报价']) : 0;
   if (!confirm('以 ' + fmtY(price) + ' × 1 下单试用「' + (s ? s['谁'] : '') + '」？')) return;
-  const r = await needsApi('POST', '/needs/' + needId + '/orders', {
-    role: 'trial', supplierId: supId, qty: 1, pricePaid: price, date: todayBJ(),
-  });
-  if (r && r.error) { toast('创建失败: ' + r.error); return; }
-  toast('试用单已创建（待下单）');
-  await needRefresh(needId);
+  _needCreateBusy = true;
+  try {
+    const r = await needsApi('POST', '/needs/' + needId + '/orders', {
+      role: 'trial', supplierId: supId, qty: 1, pricePaid: price, date: todayBJ(),
+    });
+    if (r && r.error) { toast('创建失败: ' + r.error); return; }
+    toast('试用单已创建（待下单）');
+    await needRefresh(needId);
+  } finally { _needCreateBusy = false; }
 }
 
 async function needOrderTransition(orderId, needId, to) {
@@ -595,7 +635,9 @@ async function needOrderSave(orderId, needId) {
       const o = n && (n.orders || []).find(x => x.id === orderId);
       const total = (body.pricePaid != null ? body.pricePaid : (o ? Number(o['实付']) : 0)) * (body.qty || (o ? Number(o['数量']) : 1));
       body.installmentAmount = Math.round(total / tp * 100) / 100;
-      body.installmentStart = thisMonthBJ();
+      // 已有开始月保持不变；新建时按购买日期所在月份，而不是每次保存都改成当月
+      const start0 = o ? String(o['分期开始月'] || '') : '';
+      body.installmentStart = start0 || needMonthOf(body.date);
     } else { body.installmentAmount = 0; body.installmentStart = ''; }
   }
   const r = await needsApi('PUT', '/orders/' + orderId, body);
@@ -619,7 +661,7 @@ async function needDecide(needId) {
     if (tp > 0) {
       body.installments = tp;
       body.installmentAmount = Math.round(body.pricePaid * body.qty / tp * 100) / 100;
-      body.installmentStart = thisMonthBJ();
+      body.installmentStart = needMonthOf(body.date);
     }
   }
   const r = await needsApi('POST', '/needs/' + needId + '/decide', body);
@@ -652,8 +694,10 @@ async function needFormalCreate(needId) {
 
 async function needCancel(needId) {
   const n = findNeed(needId); if (!n) return;
-  const reason = prompt('取消原因（可空）：', '') || '';
-  if (reason === null) return;
+  // prompt 点「取消」返回 null；不能先 || '' 再判 null（那会让用户放弃操作也真的取消需求）
+  const reasonRaw = prompt('取消原因（可空）：', '');
+  if (reasonRaw === null) return;
+  const reason = String(reasonRaw).trim().slice(0, 200);
   const r = await needsApi('POST', '/needs/' + needId + '/cancel', { reason: reason });
   if (r && r.error) { toast('取消失败: ' + r.error); return; }
   toast('需求已取消');
@@ -664,9 +708,12 @@ async function deleteNeed(id) {
   const n = findNeed(id);
   if (!n) return;
   if (!confirm('确定删除需求「' + (n['名称'] || '') + '」及其供应商/子单？')) return;
-  if (typeof deletePurchaseExpenses === 'function' && n['名称']) await deletePurchaseExpenses(n['名称']);
+  // 先删服务端需求：失败时不要提前清掉本地关联账目
   const r = await needsApi('DELETE', '/needs/' + id);
   if (r && r.error) { toast('删除失败: ' + r.error); return; }
+  if (typeof deletePurchaseExpenses === 'function' && n['名称']) {
+    try { await deletePurchaseExpenses(n['名称']); } catch (e) { console.error('deletePurchaseExpenses:', e); }
+  }
   toast('已删除');
   closeDetailModal();
   await needRefresh();

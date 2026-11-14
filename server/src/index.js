@@ -56,8 +56,11 @@ app.get('/api/db/health', async (req, res) => {
 
 app.use((req, res) => res.status(404).json({ error: 'not_found' }));
 app.use((err, req, res, next) => {
-  console.error('unhandled:', err.message);
-  res.status(500).json({ error: 'internal_error' });
+  // 保留路由层主动标注的 4xx（如图片过大 413、参数错误 400），其余一律 500
+  const status = Number(err && (err.status || err.statusCode));
+  const known = status >= 400 && status < 500;
+  if (!known) console.error('unhandled:', err && err.message);
+  res.status(known ? status : 500).json({ error: known ? (err.message || 'bad_request') : 'internal_error' });
 });
 
 app.listen(cfg.PORT, cfg.HOST, () => {

@@ -19,11 +19,13 @@ const router = express.Router();
 const ITEM_STATUS = N.LEGACY_STATUS; // 旧 8 状态白名单（兼容层输入）
 const MAX_MONEY = 9999999;
 
-function _projId(b){var s=String(b.projectId||'').trim();var m=/^(?:rec_)?(\d+)$/.exec(s);return m?Number(m[1]):null;}
+function _projId(b){var s=String(b.projectId||'').trim();var m=/^(?:rec_)?(\d+)$/.exec(s);if(!m)return null;var n=Number(m[1]);return n>0?n:null;}
 function _phaseIdx(b){if(b.phaseIdx===null||b.phaseIdx===undefined||b.phaseIdx==='')return null;var n=Number(b.phaseIdx);return Number.isInteger(n)&&n>=0&&n<=5?n:null;}
 function _money(v){if(v===undefined||v===null||v==='')return 0;var n=Number(v);return Number.isFinite(n)?n:NaN;}
 function _int(v,def){if(v===undefined||v===null||v==='')return def;var n=Number(v);return Number.isInteger(n)?n:NaN;}
 function _dateMs(v){if(v===undefined||v===null||v==='')return null;var t=new Date(v).getTime();return Number.isFinite(t)?t:NaN;}
+// kv: 引用会原样写入 image_ref，必须是安全字符集（不接受任意字符串）
+function _kvRef(s){return typeof s==='string'&&/^kv:[\w.-]{1,200}$/.test(s);}
 async function _ownedProject(uid,pid){if(!pid)return true;return !!(await db.one('SELECT id FROM projects WHERE id=? AND user_id=?',[pid,uid]));}
 
 // 表单校验（沿用旧规则，防负值/NaN/超长）
@@ -50,10 +52,13 @@ function validateItem(b, old) {
     instStart = String(b.installmentStart || '');
     if (instStart && !/^\d{4}-(0[1-9]|1[0-2])$/.test(instStart)) return { error: '分期开始月格式应为 YYYY-MM' };
   }
+  let paid = Number(o.installment_paid) || 0;
   if (b.installmentPaid !== undefined) {
-    const paid = _int(b.installmentPaid, 0);
-    if (Number.isNaN(paid) || paid < 0 || paid > installments) return { error: '已还期数不正确' };
+    paid = _int(b.installmentPaid, 0);
+    if (Number.isNaN(paid) || paid < 0) return { error: '已还期数不正确' };
   }
+  // 期数调小时，未传已还期数也要复核最终组合
+  if (paid > installments) return { error: '已还期数不能大于分期期数' };
   if (b.date !== undefined) { const t = _dateMs(b.date); if (Number.isNaN(t)) return { error: '日期格式不正确' }; }
   for (const [k, max] of [['platform', 20], ['category', 30], ['budgetRange', 50], ['cancelReason', 200], ['note', 5000], ['evalSummary', 5000], ['buyReason', 5000]]) {
     if (b[k] !== undefined && String(b[k] == null ? '' : b[k]).length > max) return { error: k + ' 过长' };
@@ -156,6 +161,14 @@ function legacyStatusWrite(legacy, curNeed, curOrder) {
       if (curOrder) { orderPatch.status = '已取消'; orderPatch.archived_at = curOrder.archived_at || H.bjNow(); }
       break;
   }
+  // 终态需求不能被兼容层改回进行中（否则退货/归档口径会被重新激活）
+  if ((curNeed.status === '已完成' || curNeed.status === '已取消') && needCols.status && needCols.status !== curNeed.status) {
+    return { error: '需求已结束，不能改回进行中' };
+  }
+  // 有正式单时按状态机校验，禁止任意回退（例如 已退 → 已归档 会把退款重新计入预算）
+  if (curOrder && orderPatch.status && orderPatch.status !== curOrder.status && !N.canTransition(curOrder.status, orderPatch.status)) {
+    return { error: `状态流转不合法：${curOrder.status} → ${orderPatch.status}` };
+  }
   return { needCols, orderPatch, deleteFormal };
 }
 
@@ -170,7 +183,7 @@ async function saveImageRef(req, uid, b, oldImgRef) {
   if (typeof b.image === 'string' && b.image.startsWith('data:')) {
     if (b.image.length > 12 * 1024 * 1024) { const e = new Error('图片过大'); e.status = 413; throw e; }
     ref = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
-  } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) ref = b.image;
+  } else if (_kvRef(b.image)) ref = b.image;
   if (b.stageImage && b.stageName) {
     let ex = {};
     try { ex = JSON.parse(oldImgRef && String(oldImgRef).startsWith('{') ? oldImgRef : '{}'); } catch (e) { ex = {}; }
@@ -209,13 +222,16 @@ router.post('/items', async (req, res, next) => {
     // 快速采购：单事务原子生成（与 /needs/quick 同语义）
     if (b.quick) {
       const price = v.price, qty = v.qty;
-      if (price * qty > 50) return res.status(400).json({ error: '快速采购仅支持 ¥50 以内' });
+      if (price <= 0) return res.status(400).json({ error: '金额需大于 0' });
+      const quickTotal = Math.round(price * qty * 100) / 100;
+      if (quickTotal > 50) return res.status(400).json({ error: '快速采购仅支持 ¥50 以内' });
       let imageVal = '';
       if (typeof b.image === 'string' && b.image.startsWith('data:')) {
         if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
         imageVal = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
-      } else if (typeof b.image === 'string' && b.image.startsWith('kv:')) imageVal = b.image;
-      const [bmin, bmax] = b.budgetRange ? (N.parseBudgetRange(b.budgetRange) || [price, price]) : [price, price];
+      } else if (_kvRef(b.image)) imageVal = b.image;
+      const br = b.budgetRange ? N.parseBudgetRange(b.budgetRange) : null;
+      const bmin = br ? br.min : quickTotal, bmax = br ? br.max : quickTotal;
       await conn.beginTransaction();
       const [nins] = await conn.query(
         `INSERT INTO purchase_needs (user_id,name,category,budget_min,budget_max,status,dimensions,
@@ -246,7 +262,7 @@ router.post('/items', async (req, res, next) => {
       if (b.image.startsWith('data:')) {
         if (b.image.length > 12 * 1024 * 1024) return res.status(413).json({ error: '图片过大' });
         imageVal = await IMG.saveDataImage(req.username, uid, b.image, 'purchase');
-      } else if (b.image.startsWith('kv:')) imageVal = b.image;
+      } else if (_kvRef(b.image)) imageVal = b.image;
       if (b.stageImage && b.stageName) {
         let existing = {};
         try { if (imageVal.startsWith('{')) existing = JSON.parse(imageVal); } catch (e) { existing = {}; }
@@ -259,7 +275,8 @@ router.post('/items', async (req, res, next) => {
     const legacyStatus = v.status || '待审批';
     const mappedOrder = N.legacyToOrderStatus(legacyStatus); // 待评估 → null
     const needStatus = N.legacyToNeedStatus(legacyStatus);
-    const [bmin, bmax] = b.budgetRange ? (N.parseBudgetRange(b.budgetRange) || [null, null]) : [null, null];
+    const br = b.budgetRange ? N.parseBudgetRange(b.budgetRange) : null;
+    const bmin = br ? br.min : null, bmax = br ? br.max : null;
     const dims = JSON.stringify(N.DEFAULT_DIMENSIONS);
 
     await conn.beginTransaction();
@@ -314,7 +331,7 @@ router.put('/items', async (req, res, next) => {
     const g = await getOwnedGraph(uid, b.id);
     if (!g) return res.status(404).json({ error: 'not found' });
     const { need, suppliers, orders } = g;
-    const formal = formalOf(orders);
+    let formal = formalOf(orders);
 
     // 用合成旧形态做校验（price/qty/status 取自正式单）
     const synth = N.synthLegacyRow(need, suppliers, orders);
@@ -326,6 +343,14 @@ router.put('/items', async (req, res, next) => {
     if (!(await _ownedProject(uid, npid))) return res.status(404).json({ error: '项目不存在' });
 
     await conn.beginTransaction();
+    // 锁 need 行并复核正式单：两个并发 PUT/PATCH 不得各建一张正式单
+    const [lockRows] = await conn.query('SELECT id, status FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [need.id, uid]);
+    if (!lockRows.length) { await conn.rollback(); return res.status(404).json({ error: 'not found' }); }
+    need.status = lockRows[0].status;
+    if (!formal) {
+      const [frows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal' ORDER BY id LIMIT 1", [need.id]);
+      if (frows[0]) { formal = frows[0]; orders.push(frows[0]); }
+    }
 
     // need 侧
     const needCols = {};
@@ -374,6 +399,7 @@ router.put('/items', async (req, res, next) => {
     if (b.status !== undefined && b.status !== oldStatus) {
       statusChanged = true;
       const w = legacyStatusWrite(String(b.status), need, formal);
+      if (w.error) { await conn.rollback(); return res.status(400).json({ error: w.error }); }
       Object.assign(needCols, w.needCols);
       if (w.deleteFormal) {
         await conn.query('DELETE FROM purchase_orders WHERE id = ? AND status = ?', [formal.id, '待下单']);
@@ -430,15 +456,23 @@ router.patch('/items', async (req, res, next) => {
       const g = await getOwnedGraph(uid, id);
       if (!g) { results.push({ id, ok: false }); continue; }
       const { need, suppliers, orders } = g;
-      const formal = formalOf(orders);
+      let formal = formalOf(orders);
       const synth = N.synthLegacyRow(need, suppliers, orders);
       const conn = await db.pool.getConnection();
       try {
         await conn.beginTransaction();
+        const [lockRows] = await conn.query('SELECT id, status FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [need.id, uid]);
+        if (!lockRows.length) throw new Error('not found');
+        need.status = lockRows[0].status;
+        if (!formal) {
+          const [frows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal' ORDER BY id LIMIT 1", [need.id]);
+          if (frows[0]) { formal = frows[0]; orders.push(frows[0]); }
+        }
         const needCols = {}, orderCols = {};
         let deleteFormal = false;
         if (b.status !== undefined && String(b.status) !== synth.status) {
           const w = legacyStatusWrite(String(b.status), need, formal);
+          if (w.error) throw new Error(w.error);
           Object.assign(needCols, w.needCols);
           if (w.deleteFormal) deleteFormal = true;
           else Object.assign(orderCols, w.orderPatch);
