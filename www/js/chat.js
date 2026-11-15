@@ -302,28 +302,75 @@ function ccAddMsg(role, text, bulk) {
 
 // 恢复任务时用于去重：历史接口可能已经存下了同一条回复，
 // 如果此时再为任务新建 live 气泡，同一条回复会出现两遍。
+// 只比较「最后一条用户消息之后」的 AI 行，避免误伤之前轮次的相同回答。
 function ccNormText(s) {
   return String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 }
-function ccThreadHasAiText(text, excludeRow) {
+function ccTrailingAiRows() {
+  var inner = $('ccThreadInner');
+  if (!inner) return [];
+  var rows = inner.querySelectorAll('.cc-row');
+  var lastUser = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].classList.contains('user')) lastUser = i;
+  }
+  var out = [];
+  for (var j = lastUser + 1; j < rows.length; j++) {
+    if (!rows[j].classList.contains('user')) out.push(rows[j]);
+  }
+  return out;
+}
+function ccRowRawText(row) {
+  // 优先用原始文本比较；渲染后的 textContent 会混入代码块语言标签和“复制”按钮。
+  if (row._ccText != null) return ccNormText(row._ccText);
+  var body = row.querySelector('.cc-body');
+  return ccNormText(body && body.textContent);
+}
+function ccTextContains(big, small) {
+  return big.length >= 40 && small.length >= 40 && big.indexOf(small) >= 0;
+}
+// 历史里是否已有完整的这段回复（相等，或历史文本更长且包含它）。
+function ccHistoryHasCompleteAi(text) {
   var target = ccNormText(text);
   if (!target) return false;
-  var rows = $('ccThreadInner').querySelectorAll('.cc-row:not(.user)');
+  var rows = ccTrailingAiRows();
   for (var i = 0; i < rows.length; i++) {
-    if (excludeRow && rows[i] === excludeRow) continue;
-    // 优先用原始文本比较；渲染后的 textContent 会混入代码块语言标签和“复制”按钮。
-    var raw = rows[i]._ccText;
-    var t = raw != null ? ccNormText(raw) : '';
-    if (!t) {
-      var body = rows[i].querySelector('.cc-body');
-      t = ccNormText(body && body.textContent);
-    }
+    var t = ccRowRawText(rows[i]);
     if (!t) continue;
-    if (t === target) return true;
-    // 取消/错误提示会在原文后追加标记，按包含关系识别同一条回复；
-    // 太短的文本容易误判，要求双方都有一定长度。
-    if (target.length >= 40 && t.length >= 40
-      && (t.indexOf(target) >= 0 || target.indexOf(t) >= 0)) return true;
+    if (t === target || ccTextContains(t, target)) return true;
+  }
+  return false;
+}
+// 历史里若只有这段回复的旧片段，补全前先移除片段，避免新回复旁边留着半截重复。
+function ccRemovePartialAiHistory(text) {
+  var target = ccNormText(text);
+  if (!target) return;
+  var rows = ccTrailingAiRows();
+  for (var i = 0; i < rows.length; i++) {
+    var t = ccRowRawText(rows[i]);
+    if (!t || t === target) continue;
+    if (ccTextContains(target, t)) rows[i].remove();
+  }
+}
+// 收尾时对齐历史与 live：历史已有完整/更长的回复则删掉 live；
+// 若历史只是片段而 live 更完整，则删片段、保留 live。
+function ccDedupeLive(bubble, text) {
+  var target = ccNormText(text);
+  if (!bubble || !bubble.row || !target) return false;
+  var rows = ccTrailingAiRows();
+  var i, t, partials = [];
+  for (i = 0; i < rows.length; i++) {
+    if (rows[i] === bubble.row) continue;
+    t = ccRowRawText(rows[i]);
+    if (!t) continue;
+    if (t === target || ccTextContains(t, target)) {
+      if (bubble.row.parentNode) bubble.row.parentNode.removeChild(bubble.row);
+      return true;
+    }
+    if (ccTextContains(target, t)) partials.push(rows[i]);
+  }
+  for (i = 0; i < partials.length; i++) {
+    if (partials[i].parentNode) partials[i].parentNode.removeChild(partials[i]);
   }
   return false;
 }
@@ -768,15 +815,11 @@ function ccStopTimers() {
 function ccFinish(text, withTools) {
   var bubble = CC.live;
   // 恢复任务时，历史里可能已经有同一条回复：此时不再保留 live 气泡。
-  var dup = !!(bubble && CC.resuming && ccThreadHasAiText(text, bubble.row));
+  var dup = !!(bubble && CC.resuming && ccDedupeLive(bubble, text));
   ccStopTimers();
-  if (bubble) {
-    if (dup) {
-      if (bubble.row && bubble.row.parentNode) bubble.row.parentNode.removeChild(bubble.row);
-    } else {
-      ccSetBubble(bubble, text, false);
-      if (withTools) ccAppendTools(bubble);
-    }
+  if (bubble && !dup) {
+    ccSetBubble(bubble, text, false);
+    if (withTools) ccAppendTools(bubble);
   }
   CC.live = null;
   CC.lastText = '';
@@ -787,11 +830,10 @@ function ccFinish(text, withTools) {
 function ccFinishError(msg) {
   var bubble = CC.live;
   var text = CC.lastText;
-  var dup = !!(bubble && CC.resuming && text && ccThreadHasAiText(text, bubble.row));
+  var dup = !!(bubble && CC.resuming && text && ccDedupeLive(bubble, text));
   ccStopTimers();
   if (bubble) {
     if (dup) {
-      if (bubble.row && bubble.row.parentNode) bubble.row.parentNode.removeChild(bubble.row);
       var eb = ccAddMsg('ai', '');
       eb.body.innerHTML = '<div class="cc-error">' + esc(msg) + '</div>';
     } else {
@@ -843,11 +885,18 @@ async function ccResumeTask(id) {
       localStorage.setItem('claude_sid', d.sessionId);
     }
     if (d.status === 'done') {
-      if (text && !ccThreadHasAiText(text)) ccAddMsg('ai', text, true);
+      if (text && !ccHistoryHasCompleteAi(text)) {
+        ccRemovePartialAiHistory(text);
+        ccAddMsg('ai', text, true);
+      }
     } else if (d.status === 'cancelled') {
-      if (text && !ccThreadHasAiText(text)) ccAddMsg('ai', text + '\n\n> 已停止生成', true);
+      if (text && !ccHistoryHasCompleteAi(text)) {
+        ccRemovePartialAiHistory(text);
+        ccAddMsg('ai', text + '\n\n> 已停止生成', true);
+      }
     } else if (text) {
-      if (!ccThreadHasAiText(text)) {
+      if (!ccHistoryHasCompleteAi(text)) {
+        ccRemovePartialAiHistory(text);
         var tb = ccAddMsg('ai', text, true);
         var te = document.createElement('div');
         te.className = 'cc-error';
