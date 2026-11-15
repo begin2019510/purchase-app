@@ -182,6 +182,15 @@ function startJob(message, sessionId) {
     if (runningTaskId === taskId) runningTaskId = '';
   };
 
+  // 停止任务：先落状态，再断开到 CloudCLI 的 SSE 连接（CloudCLI 会随连接中止 agent）。
+  // 已生成的部分文本保留在 t.texts/t.delta 里，前端停止后仍能显示。
+  t.cancel = () => {
+    if (finished) return false;
+    finish('cancelled');
+    try { if (req) req.destroy(); } catch (e) { /* ignore */ }
+    return true;
+  };
+
   const payload = JSON.stringify({
     projectPath: '/',
     message,
@@ -275,13 +284,14 @@ router.get('/claude', (req, res) => {
   return res.status(404).json({ error: 'not_found' });
 });
 
-// POST /api/claude?action=rename {id,title} | action=delete {id}
+// POST /api/claude?action=rename {id,title} | action=delete {id} | action=cancel {id}
 // （rename/delete 放 POST：CF toServer 对 DELETE 透传没问题，但统一走现有 POST 契约更简单）
 router.post('/claude', (req, res) => {
   const action = String(req.query.action || '');
   if (action === 'chat') return handleChat(req, res);
   if (action === 'rename') return handleRename(req, res);
   if (action === 'delete') return handleDelete(req, res);
+  if (action === 'cancel') return handleCancel(req, res);
   return res.status(404).json({ error: 'not_found' });
 });
 
@@ -377,6 +387,16 @@ async function handleHistory(req, res) {
   } catch (e) {
     return res.status(502).json({ error: e.message || 'CloudCLI 不可达' });
   }
+}
+
+function handleCancel(req, res) {
+  const id = String((req.body && req.body.id) || '').trim();
+  if (!id) return res.status(400).json({ error: 'id 必填' });
+  const t = tasks.get(id);
+  if (!t) return res.status(404).json({ error: 'task_not_found' });
+  if (t.status !== 'running') return res.json({ ok: true, status: t.status });
+  t.cancel();
+  return res.json({ ok: true, status: 'cancelled' });
 }
 
 async function handleRename(req, res) {
