@@ -9,7 +9,8 @@ var API_BASE = (window.Capacitor && window.Capacitor.isNativePlatform && window.
 var CC = {
   sid: '', historyFor: '', taskId: '', timer: null, pollBusy: false,
   live: null, lastText: '', lastTools: [], busy: false, stopping: false,
-  sessions: null, sessionsAt: 0, stick: true, pollFails: 0, booted: false
+  sessions: null, sessionsAt: 0, stick: true, pollFails: 0, booted: false,
+  resuming: false
 };
 
 function $(id) { return document.getElementById(id); }
@@ -255,6 +256,8 @@ function ccRenderMd(text) {
 
 function ccSetBubble(b, text, live) {
   if (!b || !b.body) return;
+  b.rawText = text == null ? '' : String(text);
+  if (b.row) b.row._ccText = b.rawText;
   if (!text) {
     b.body.innerHTML = live ? '<span class="cc-typing"><i></i><i></i><i></i></span>' : '';
   } else {
@@ -295,6 +298,34 @@ function ccAddMsg(role, text, bulk) {
   ccSetBubble(b, text, false);
   if (!bulk) ccScrollBottom(false, true);
   return b;
+}
+
+// 恢复任务时用于去重：历史接口可能已经存下了同一条回复，
+// 如果此时再为任务新建 live 气泡，同一条回复会出现两遍。
+function ccNormText(s) {
+  return String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+}
+function ccThreadHasAiText(text, excludeRow) {
+  var target = ccNormText(text);
+  if (!target) return false;
+  var rows = $('ccThreadInner').querySelectorAll('.cc-row:not(.user)');
+  for (var i = 0; i < rows.length; i++) {
+    if (excludeRow && rows[i] === excludeRow) continue;
+    // 优先用原始文本比较；渲染后的 textContent 会混入代码块语言标签和“复制”按钮。
+    var raw = rows[i]._ccText;
+    var t = raw != null ? ccNormText(raw) : '';
+    if (!t) {
+      var body = rows[i].querySelector('.cc-body');
+      t = ccNormText(body && body.textContent);
+    }
+    if (!t) continue;
+    if (t === target) return true;
+    // 取消/错误提示会在原文后追加标记，按包含关系识别同一条回复；
+    // 太短的文本容易误判，要求双方都有一定长度。
+    if (target.length >= 40 && t.length >= 40
+      && (t.indexOf(target) >= 0 || target.indexOf(t) >= 0)) return true;
+  }
+  return false;
 }
 
 function ccAppendTools(b) {
@@ -611,6 +642,7 @@ async function ccSend() {
 function ccUnlock() {
   CC.busy = false;
   CC.stopping = false;
+  CC.resuming = false;
   CC.live = null;
   CC.lastText = '';
   ccUpdateComposer();
@@ -726,6 +758,7 @@ function ccStopTimers() {
   CC.taskId = '';
   CC.busy = false;
   CC.stopping = false;
+  CC.resuming = false;
   CC.pollFails = 0;
   ccUpdateComposer();
   ccUpdateHeader();
@@ -734,10 +767,16 @@ function ccStopTimers() {
 
 function ccFinish(text, withTools) {
   var bubble = CC.live;
+  // 恢复任务时，历史里可能已经有同一条回复：此时不再保留 live 气泡。
+  var dup = !!(bubble && CC.resuming && ccThreadHasAiText(text, bubble.row));
   ccStopTimers();
   if (bubble) {
-    ccSetBubble(bubble, text, false);
-    if (withTools) ccAppendTools(bubble);
+    if (dup) {
+      if (bubble.row && bubble.row.parentNode) bubble.row.parentNode.removeChild(bubble.row);
+    } else {
+      ccSetBubble(bubble, text, false);
+      if (withTools) ccAppendTools(bubble);
+    }
   }
   CC.live = null;
   CC.lastText = '';
@@ -748,13 +787,20 @@ function ccFinish(text, withTools) {
 function ccFinishError(msg) {
   var bubble = CC.live;
   var text = CC.lastText;
+  var dup = !!(bubble && CC.resuming && text && ccThreadHasAiText(text, bubble.row));
   ccStopTimers();
   if (bubble) {
-    ccSetBubble(bubble, text, false);
-    var e = document.createElement('div');
-    e.className = 'cc-error';
-    e.textContent = msg;
-    bubble.body.appendChild(e);
+    if (dup) {
+      if (bubble.row && bubble.row.parentNode) bubble.row.parentNode.removeChild(bubble.row);
+      var eb = ccAddMsg('ai', '');
+      eb.body.innerHTML = '<div class="cc-error">' + esc(msg) + '</div>';
+    } else {
+      ccSetBubble(bubble, text, false);
+      var e = document.createElement('div');
+      e.className = 'cc-error';
+      e.textContent = msg;
+      bubble.body.appendChild(e);
+    }
   } else {
     var b = ccAddMsg('ai', '');
     b.body.innerHTML = '<div class="cc-error">' + esc(msg) + '</div>';
@@ -764,10 +810,69 @@ function ccFinishError(msg) {
   ccScrollBottom(false, CC.stick);
 }
 
-function ccResumeTask(id) {
+async function ccResumeTask(id) {
   if (!id) return;
   CC.taskId = id;
+  var r = null, d = {};
+  try {
+    r = await ccApi('task', '', '&id=' + encodeURIComponent(id));
+    d = await r.json().catch(function () { return {}; });
+  } catch (e) { /* 网络异常时退回原来的轮询恢复方式 */ }
+
+  if (r && ccHandleAuth(r, d)) {
+    CC.taskId = '';
+    localStorage.removeItem('claude_task');
+    return;
+  }
+  if (r && r.status === 404) {
+    // 服务重启或任务过期：历史已经加载过，清掉过期标记即可。
+    CC.taskId = '';
+    localStorage.removeItem('claude_task');
+    ccUpdateHeader();
+    return;
+  }
+  if (r && d && d.status && d.status !== 'running') {
+    // 任务在页面关闭期间已经结束。历史通常已包含回复，绝不能再新建 live 气泡，
+    // 否则同一段回复会显示两遍。只有历史确实缺这条回复时才补上。
+    var text = typeof d.text === 'string' ? d.text : '';
+    CC.taskId = '';
+    localStorage.removeItem('claude_task');
+    if (d.sessionId && d.sessionId !== CC.sid) {
+      CC.sid = d.sessionId;
+      CC.historyFor = d.sessionId;
+      localStorage.setItem('claude_sid', d.sessionId);
+    }
+    if (d.status === 'done') {
+      if (text && !ccThreadHasAiText(text)) ccAddMsg('ai', text, true);
+    } else if (d.status === 'cancelled') {
+      if (text && !ccThreadHasAiText(text)) ccAddMsg('ai', text + '\n\n> 已停止生成', true);
+    } else if (text) {
+      if (!ccThreadHasAiText(text)) {
+        var tb = ccAddMsg('ai', text, true);
+        var te = document.createElement('div');
+        te.className = 'cc-error';
+        te.textContent = '⚠️ ' + (d.error || '任务异常结束');
+        tb.body.appendChild(te);
+      }
+    } else {
+      var xb = ccAddMsg('ai', '');
+      xb.body.innerHTML = '<div class="cc-error">' + esc('⚠️ ' + (d.error || '任务异常结束')) + '</div>';
+    }
+    CC.busy = false;
+    CC.resuming = false;
+    CC.lastText = '';
+    ccUpdateComposer();
+    ccUpdateHeader();
+    ccSetActivity('');
+    CC.sessionsAt = 0;
+    ccRefreshSessions(true);
+    ccScrollBottom(false, true);
+    return;
+  }
+
+  // 任务仍在运行（或状态查询暂时失败）：恢复轮询。
   CC.busy = true;
+  CC.resuming = true;
   CC.live = ccAddMsg('ai', '');
   CC.lastText = '';
   CC.lastTools = [];
