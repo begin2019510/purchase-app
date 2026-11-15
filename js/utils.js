@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.5";
+const APP_VERSION = "3.1.6";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.6',date:'2026-11-16',items:['修复项目步骤可以同时出现多个「进行中」：开始某一步时，其它进行中的步骤会自动退回待开始','跳过步骤不再把下一步自动标为进行中，下一步保持待开始；完成步骤仍会照常自动开始下一步','重复提交同一步骤不会推进指针，也不会改写该步骤的开始/完成时间']},
 {v:'3.1.5',date:'2026-11-16',items:['补强 Claude 对话恢复去重：历史里只有半截回复时，补全后移除旧片段，避免半截与完整回复并列或只显示半截','只比较当前这一轮用户消息之后的回复，不会误删更早轮次的相同内容']},
 {v:'3.1.4',date:'2026-11-15',items:['修复「和 Claude 对话」在手机端重新打开页面时，同一条回复显示两遍：恢复任务前先确认任务状态，已结束的任务不再新建气泡，并清理残留的任务标记','重新打开时即使任务仍在生成，也会复用历史回复做去重，完成后只保留一份内容']},
 {v:'3.1.3',date:'2026-11-15',items:['「和 Claude 对话」改为独立整页：从设置进入单独页面，不再弹窗遮挡其他功能，浏览器/安卓返回键即可回到 App','聊天界面按 CloudCLI 习惯重做：桌面会话侧栏、手机抽屉会话列表、宽屏居中消息流、欢迎页快捷提问','回复轮询加快到约 0.8 秒，接近流式输出；新增「停止生成」，已输出的内容会保留','代码块带语言标签与一键复制，AI 消息可复制；Markdown 表格/列表/引用/链接完整渲染','手机键盘弹出时输入框自动跟随，长会话自动贴底并提供回到底部按钮']},

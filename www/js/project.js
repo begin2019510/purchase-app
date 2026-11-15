@@ -1739,7 +1739,15 @@ async function setPhase(projectId, idx, status) {
   if (status === 'skipped') {
     if (idx === 0) { toast('第 1 步必须完成，不能跳过'); return; }
     if (idx === 5) { toast('第 6 步必须完成，不能跳过'); return; }
-    if (!confirm('跳过第 ' + (idx + 1) + ' 步？\n该步未完成的待办会一并完成；之后可在同一位置恢复步骤（待办不会自动恢复）。')) return;
+    if (!confirm('跳过第 ' + (idx + 1) + ' 步？\n该步未完成的待办会一并完成；下一步不会自动开始，可在同一位置恢复步骤（待办不会自动恢复）。')) return;
+  }
+  if (status === 'doing') {
+    var otherDoing = -1;
+    for (var di = 0; di < phases.length; di++) {
+      var dph = phases[di];
+      if (dph && Number(dph.idx != null ? dph.idx : di) !== idx && (dph.status || 'todo') === 'doing') { otherDoing = Number(dph.idx != null ? dph.idx : di); break; }
+    }
+    if (otherDoing >= 0 && !confirm('第 ' + (otherDoing + 1) + ' 步正在进行中。\n开始本步会把第 ' + (otherDoing + 1) + ' 步退回「待开始」，继续？')) return;
   }
   if (status === 'done' && idx === 5) {
     var pending = [];
@@ -1765,7 +1773,7 @@ async function setPhase(projectId, idx, status) {
         var np = (p && p.phases) || [];
         msg = '✅ 已完成，下一步：' + (np[nextIdx] ? pjStepTitle(np[nextIdx], nextIdx) : ('第' + (nextIdx + 1) + '步'));
       } else msg = '✅ 已完成';
-    } else if (status === 'skipped') msg = '⏭ 已跳过';
+    } else if (status === 'skipped') msg = '⏭ 已跳过，下一步未自动开始';
     else if (status === 'doing') msg = '▶ 这一步已开始';
     else if (oldStatus === 'done') msg = '↩ 已撤销完成';
     else if (oldStatus === 'skipped') msg = '↩ 已恢复这一步';

@@ -438,7 +438,7 @@ router.put('/phases', async (req, res, next) => {
     const oldStatus = ph.status || 'todo';
     const oldFinished = ph.finished_at_ms == null ? null : Number(ph.finished_at_ms);
     const cols = {};
-    if (b.status !== undefined) {
+    if (b.status !== undefined && b.status !== oldStatus) {
       const st = b.status;
       cols.status = st;
       if (st === 'doing') {
@@ -483,6 +483,10 @@ router.put('/phases', async (req, res, next) => {
     const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
     if (sets) {
       await conn.query('UPDATE project_phases SET ' + sets + ' WHERE project_id = ? AND phase_idx = ?', [...Object.values(cols), pid, idx]);
+      // 同步内存快照，后续“同项目只保留一个进行中”的判断不能读到旧状态
+      if (cols.status !== undefined) ph.status = cols.status;
+      if (cols.started_at_ms !== undefined) ph.started_at_ms = cols.started_at_ms;
+      if (cols.finished_at_ms !== undefined) ph.finished_at_ms = cols.finished_at_ms;
     }
 
     // 阶段完成/跳过 → 该阶段未完成待办批量置为已完成（撤销阶段不恢复待办，避免误伤手标完成）
@@ -495,24 +499,47 @@ router.put('/phases', async (req, res, next) => {
     let pointer = Number(own.current_phase) || 0;
     let projectStatus = own.status || '进行中';
 
-    if (b.status !== undefined) {
+    // 全局不变量：同一项目最多只有一个步骤处于「进行中」。
+    // 开始某一步时，其它历史遗留的 doing 退回待开始。
+    async function demoteOtherDoing(keepIdx) {
+      for (let j = 0; j < PHASE_COUNT; j++) {
+        if (j === keepIdx || j === idx) continue;
+        const r = byIdx[j];
+        if (r && (r.status || 'todo') === 'doing') {
+          await conn.query(
+            "UPDATE project_phases SET status = 'todo', started_at_ms = NULL, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
+            [pid, j]);
+          r.status = 'todo';
+          r.started_at_ms = null;
+          r.finished_at_ms = null;
+          statusAfter[j] = 'todo';
+        }
+      }
+    }
+
+    if (b.status !== undefined && b.status !== oldStatus) {
       const st = b.status;
       if (st === 'done' || st === 'skipped') {
-        // 指针落到下一个仍在使用的步骤；若它还没开始则自动开始
+        // 指针落到下一个仍在使用的步骤；只有“完成”才自动开始下一步，
+        // “跳过”只移动指针，下一步保持待开始，避免用户没点开始就显示进行中。
         let next = idx + 1;
         while (next < PHASE_COUNT && (statusAfter[next] === 'done' || statusAfter[next] === 'skipped')) next++;
         if (next < PHASE_COUNT) {
           pointer = next;
-          if (statusAfter[next] === 'todo') {
-            await conn.query(
-              "UPDATE project_phases SET status = 'doing', started_at_ms = ?, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
-              [now, pid, next]);
-            statusAfter[next] = 'doing';
+          if (st === 'done') {
+            await demoteOtherDoing(next);
+            if (statusAfter[next] === 'todo') {
+              await conn.query(
+                "UPDATE project_phases SET status = 'doing', started_at_ms = ?, finished_at_ms = NULL WHERE project_id = ? AND phase_idx = ?",
+                [now, pid, next]);
+              statusAfter[next] = 'doing';
+            }
           }
         } else {
           pointer = lastActiveAfter != null ? lastActiveAfter : idx;
         }
       } else if (st === 'doing') {
+        await demoteOtherDoing(idx);
         pointer = idx;
       } else if (st === 'todo') {
         pointer = idx;
