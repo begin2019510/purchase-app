@@ -49,6 +49,7 @@ async function getOwnedOrder(uid, id) {
 }
 
 function rowToNeed(n, suppliers, orders) {
+  const pinnedIds = N.pinnedSupplierIds(orders).map(id => 'rec_' + id);
   return {
     id: 'rec_' + n.id,
     '名称': n.name || '',
@@ -57,7 +58,9 @@ function rowToNeed(n, suppliers, orders) {
     '预算上限': n.budget_max == null ? null : Number(n.budget_max),
     '状态': n.status || '对比中',
     '维度': N.parseDimsJson(n.dimensions),
-    '定点供应商ID': n.selected_supplier_id ? 'rec_' + n.selected_supplier_id : '',
+    // 单定点旧字段保留兼容；多定点用数组，主供应商仍是第一个
+    '定点供应商ID': n.selected_supplier_id ? 'rec_' + n.selected_supplier_id : (pinnedIds[0] || ''),
+    '定点供应商IDs': pinnedIds,
     '项目ID': n.project_id ? 'rec_' + n.project_id : '',
     '阶段': n.phase_idx == null ? null : Number(n.phase_idx),
     '虚拟': n.is_virtual ? '1' : '',
@@ -318,8 +321,10 @@ router.post('/needs/:id/suppliers', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const need = await getOwnedNeed(uid, req.params.id);
     if (!need) return res.status(404).json({ error: '需求不存在' });
-    // 只有对比中才能新增供应商；已定点/终态加供应商没有业务意义
-    if (need.status !== '对比中') return res.status(400).json({ error: '当前状态不可添加供应商' });
+    // 对比中可继续补供应商；已定点也允许补（用于追加定点另一家）；终态不可
+    if (need.status !== '对比中' && need.status !== '已定点') {
+      return res.status(400).json({ error: '当前状态不可添加供应商' });
+    }
     const b = req.body || {};
     const v = validateSupplierInput(b, null);
     if (v.error) return res.status(400).json({ error: v.error });
@@ -405,7 +410,9 @@ router.delete('/suppliers/:id', async (req, res, next) => {
     if (need && (need.status === '已完成' || need.status === '已取消')) {
       return res.status(400).json({ error: '需求已结束，不可删除供应商' });
     }
-    if (need && Number(need.selected_supplier_id) === Number(sup.id)) {
+    const formalRows = await db.query(
+      "SELECT id FROM purchase_orders WHERE supplier_id = ? AND role = 'formal' LIMIT 1", [sup.id]);
+    if (formalRows.length) {
       return res.status(400).json({ error: '该供应商已定点，先回退定点再删除' });
     }
     // 关联过入账子单的供应商不可删（保留账目回溯）
@@ -442,15 +449,21 @@ router.post('/needs/:id/orders', async (req, res, next) => {
       await conn.rollback();
       return res.status(400).json({ error: '只有对比中的需求才能创建试用单' });
     }
-    if (role === 'formal') {
-      const [ex] = await conn.query("SELECT id FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [need.id]);
-      if (ex.length) { await conn.rollback(); return res.status(400).json({ error: '正式单已存在（可更新或走转正）' }); }
-    }
     let supplierId = null;
     if (b.supplierId) {
       supplierId = _numId(b.supplierId);
       const [s] = await conn.query('SELECT id FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?', [supplierId, need.id, uid]);
       if (!s.length) { await conn.rollback(); return res.status(404).json({ error: '供应商不存在' }); }
+    }
+    // 多定点：每家供应商最多一张正式单；不指定供应商时沿用旧的「一需求一正式单」限制
+    if (role === 'formal') {
+      const [ex] = supplierId
+        ? await conn.query("SELECT id FROM purchase_orders WHERE need_id = ? AND role = 'formal' AND supplier_id = ?", [need.id, supplierId])
+        : await conn.query("SELECT id FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [need.id]);
+      if (ex.length) {
+        await conn.rollback();
+        return res.status(400).json({ error: supplierId ? '该供应商已有正式单（可更新或走转正）' : '已有正式单，请指定供应商' });
+      }
     }
     const v = validateOrderInput(b, null);
     if (v.error) { await conn.rollback(); return res.status(400).json({ error: v.error }); }
@@ -473,6 +486,13 @@ router.post('/needs/:id/orders', async (req, res, next) => {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [uid, need.id, supplierId, role, v.qty, pricePaid, status,
         v.installments, v.instAmount, v.instStart, v.instPaid, v.dateMs, imageRef, b.note || '', 0, H.bjNow()]);
+    // 直接补建正式单也视为定点该供应商（正常流程走 /decide，此处兼容旧客户端/边缘态）
+    if (role === 'formal' && supplierId) {
+      await conn.query(
+        `UPDATE purchase_needs SET selected_supplier_id = COALESCE(selected_supplier_id, ?),
+           decided_at = COALESCE(decided_at, ?), updated_at = NOW() WHERE id = ?`,
+        [supplierId, H.bjNow(), need.id]);
+    }
     await conn.commit();
     res.json({ id: 'rec_' + ins.insertId });
   } catch (e) {
@@ -629,13 +649,21 @@ router.post('/needs/:id/decide', async (req, res, next) => {
     if (!srows.length) { await conn.rollback(); return res.status(404).json({ error: '供应商不存在' }); }
     const sup = srows[0];
 
-    // 回退保护：已有正式单且已下单 → 不允许改定点（需先回退或走转正，转正只针对试用单）
-    const [formalRows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [needId]);
+    // 多定点模型：每个定点供应商各自一张正式单。
+    // 这里只检查「这家供应商」的正式单：别的供应商已下单不影响追加定点。
+    const [formalRows] = await conn.query(
+      "SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal' AND supplier_id = ? ORDER BY id LIMIT 1",
+      [needId, supplierId]);
     const formal = formalRows[0] || null;
-    if (formal && !['待下单'].includes(formal.status)) {
+    if (formal && formal.status !== '待下单') {
       await conn.rollback();
-      return res.status(400).json({ error: '正式单已下单，不可重新定点' });
+      return res.status(400).json({ error: '该供应商正式单已下单，不可重新定点' });
     }
+    if (formal && mode === 'promote') {
+      await conn.rollback();
+      return res.status(400).json({ error: '该供应商已是定点供应商' });
+    }
+    const wasDecided = need.status === '已定点';
 
     let promoted = false;
     if (mode === 'promote') {
@@ -685,50 +713,78 @@ router.post('/needs/:id/decide', async (req, res, next) => {
     }
 
     await conn.query(
-      'UPDATE purchase_needs SET status = ?, selected_supplier_id = ?, decided_at = ?, updated_at = NOW() WHERE id = ?',
+      `UPDATE purchase_needs SET status = ?, selected_supplier_id = COALESCE(selected_supplier_id, ?),
+         decided_at = COALESCE(decided_at, ?), updated_at = NOW() WHERE id = ?`,
       ['已定点', supplierId, H.bjNow(), needId]);
 
-    // 落选处理：其它 trial 单 → 已退（UI 可另行批量确认；此处事务内默认执行）
-    if (b.retireLosers !== false) {
+    // 落选处理只在「对比中 → 已定点」的首次定点执行；追加定点不能把别人已定点的试用单退掉
+    if (!wasDecided && b.retireLosers !== false) {
       await conn.query(
         "UPDATE purchase_orders SET status = '已退', arrived_at = COALESCE(arrived_at, ?) WHERE need_id = ? AND role = 'trial' AND supplier_id <> ? AND status IN ('待下单','已下单','已到')",
         [H.bjNow(), needId, supplierId]);
     }
 
+    const [pc] = await conn.query(
+      "SELECT COUNT(DISTINCT supplier_id) AS c FROM purchase_orders WHERE need_id = ? AND role = 'formal' AND supplier_id IS NOT NULL",
+      [needId]);
+    const pinnedCount = Number(pc[0] && pc[0].c) || 1;
+
     await conn.commit();
-    await H.logOp(req.username, 'decide', `定点「${need.name}」→ ${sup.name}${promoted ? '（试用转正）' : ''}`, clientIP(req));
-    res.json({ ok: true, promoted });
+    await H.logOp(req.username, 'decide', `${wasDecided ? '追加定点' : '定点'}「${need.name}」→ ${sup.name}${promoted ? '（试用转正）' : ''}`, clientIP(req));
+    res.json({ ok: true, promoted, pinnedCount });
   } catch (e) {
     try { await conn.rollback(); } catch (x) {}
     next(e);
   } finally { conn.release(); }
 });
 
-// 回退定点（正式单不存在或仍为待下单）
+// 回退定点：可指定 supplierId 只回退一家（多定点）；不指定时沿用旧的单定点语义
 router.post('/needs/:id/undecided', async (req, res, next) => {
   const conn = await db.pool.getConnection();
   try {
     const uid = await H.resolveUserId(req.username);
+    const b = req.body || {};
     const needId = _numId(req.params.id);
     if (!needId) return res.status(404).json({ error: 'not found' });
+    const supplierId = _numId(b.supplierId);
     await conn.beginTransaction();
     const [nrows] = await conn.query('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [needId, uid]);
     const need = nrows[0];
     if (!need) { await conn.rollback(); return res.status(404).json({ error: 'not found' }); }
     if (need.status !== '已定点') { await conn.rollback(); return res.status(400).json({ error: '需求未定点' }); }
-    const [formalRows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [needId]);
-    const formal = formalRows[0];
+    const [formalRows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal' ORDER BY id", [needId]);
+    let formal;
+    if (supplierId) {
+      formal = formalRows.find(o => Number(o.supplier_id) === supplierId) || null;
+      if (!formal) { await conn.rollback(); return res.status(400).json({ error: '该供应商没有正式单' }); }
+    } else {
+      if (formalRows.length > 1) {
+        await conn.rollback();
+        return res.status(400).json({ error: '该需求有多家定点，请指定要回退的供应商' });
+      }
+      formal = formalRows[0] || null;
+    }
     if (formal && formal.status !== '待下单') {
       await conn.rollback();
-      return res.status(400).json({ error: '正式单已下单，不可回退定点' });
+      return res.status(400).json({ error: '该供应商正式单已下单，不可回退定点' });
     }
-    // 未下单的正式单是定点时生成的空壳 → 一并移除
+    // 未下单的正式单是定点时生成的空壳 → 只移除这一家
     if (formal) await conn.query('DELETE FROM purchase_orders WHERE id = ?', [formal.id]);
-    await conn.query('UPDATE purchase_needs SET status = ?, selected_supplier_id = NULL, decided_at = NULL, updated_at = NOW() WHERE id = ?',
-      ['对比中', needId]);
+    const rest = formalRows.filter(o => !formal || o.id !== formal.id);
+    let remaining = rest.length;
+    if (remaining) {
+      // 主供应商被回退时顺延到下一家，旧字段/旧前端仍能显示一个有效定点
+      const stillPinned = rest.some(o => Number(o.supplier_id) === Number(need.selected_supplier_id));
+      const nextPrimary = stillPinned ? need.selected_supplier_id : (rest[0].supplier_id || null);
+      await conn.query('UPDATE purchase_needs SET status = ?, selected_supplier_id = ?, updated_at = NOW() WHERE id = ?',
+        ['已定点', nextPrimary, needId]);
+    } else {
+      await conn.query('UPDATE purchase_needs SET status = ?, selected_supplier_id = NULL, decided_at = NULL, updated_at = NOW() WHERE id = ?',
+        ['对比中', needId]);
+    }
     await conn.commit();
-    await H.logOp(req.username, 'undecided', '回退定点：' + (need.name || ''), clientIP(req));
-    res.json({ ok: true });
+    await H.logOp(req.username, 'undecided', '回退定点：' + (need.name || '') + (supplierId ? '（供应商 #' + supplierId + '）' : ''), clientIP(req));
+    res.json({ ok: true, remaining });
   } catch (e) {
     try { await conn.rollback(); } catch (x) {}
     next(e);

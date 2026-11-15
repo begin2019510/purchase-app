@@ -154,6 +154,7 @@ function needsFromItems(rows) {
       '状态': needStatus,
       '维度': NEED_DEFAULT_DIMS.map(d => ({ key: d.key, label: d.label, weight: d.weight })),
       '定点供应商ID': winner,
+      '定点供应商IDs': winner ? [winner] : [],
       '项目ID': it['项目ID'] || '', '阶段': it['阶段'] != null && it['阶段'] !== '' ? Number(it['阶段']) : null,
       '虚拟': it['虚拟'] === '1' ? '1' : '', '极速': it['极速'] === '1' ? '1' : '',
       '取消原因': it['取消原因'] || '', '定点时间': '',
@@ -222,17 +223,24 @@ function openDetailModal(id) {
   const dims = needDims(n);
   const sups = n.suppliers || [];
   const ords = n.orders || [];
-  const winnerId = n['定点供应商ID'] || '';
+  const pinnedIds = Array.isArray(n['定点供应商IDs']) && n['定点供应商IDs'].length
+    ? n['定点供应商IDs']
+    : (n['定点供应商ID'] ? [n['定点供应商ID']] : []);
+  const winnerId = pinnedIds.length ? pinnedIds[0] : (n['定点供应商ID'] || '');
   const isCompare = st === '对比中';
   const winner = winnerId ? (sups.find(s => s.id === winnerId) || null) : null;
-  const formal = ords.find(o => o.role === 'formal') || null;
+  const formals = ords.filter(o => o.role === 'formal');
+  const formal = formals.find(o => o.supplierId === winnerId) || formals[0] || null;
+  const booked = formals.reduce(function (sum, o) {
+    return sum + (isActiveBuy(o['状态']) ? (Number(o['实付']) || 0) * (Number(o['数量']) || 1) : 0);
+  }, 0);
   const trials = ords.filter(o => o.role === 'trial');
 
   let html = '<div class="detail-header">';
   html += '<div class="detail-title">' + (n['极速'] === '1' ? '<span class="quick-badge" style="position:static;display:inline-block;margin-right:6px;vertical-align:2px">极速免审</span>' : '')
     + (n['虚拟'] === '1' ? '<span class="virtual-badge" style="position:static;display:inline-block;margin-right:6px;vertical-align:2px">虚拟商品</span>' : '')
     + esc(n['名称'] || '') + '</div>';
-  html += '<div class="detail-price">' + esc(needBudgetText(n)) + (formal && isActiveBuy(formal['状态']) ? ' <span style="font-size:13px;color:var(--muted);font-weight:400">已入账 ' + fmtY((Number(formal['实付']) || 0) * (Number(formal['数量']) || 1)) + '</span>' : '') + '</div>';
+  html += '<div class="detail-price">' + esc(needBudgetText(n)) + (booked > 0 ? ' <span style="font-size:13px;color:var(--muted);font-weight:400">已入账 ' + fmtY(booked) + '</span>' : '') + '</div>';
   html += '<div class="detail-meta"><span class="badge badge-' + escAttr(st) + '">' + esc(st) + '</span>'
     + '<span class="cat-badge">' + esc(n['分类'] || '其他') + '</span>'
     + (n['历史'] === '1' ? '<span class="cat-badge">历史</span>' : '')
@@ -255,7 +263,7 @@ function openDetailModal(id) {
   } else {
     if (sups.length >= 2) {
       html += '<div class="nd-matrix-wrap"><table class="nd-matrix"><tr><th></th>'
-        + sups.map(s => '<th' + (s.id === winnerId ? ' class="win"' : '') + '>' + esc(s['谁'] || '') + '</th>').join('') + '</tr>';
+        + sups.map(s => '<th' + (pinnedIds.indexOf(s.id) >= 0 ? ' class="win"' : '') + '>' + esc(s['谁'] || '') + '</th>').join('') + '</tr>';
       html += '<tr><td>报价</td>' + sups.map(s => '<td>' + (s['报价'] != null ? fmtY(s['报价']) : '–') + '</td>').join('') + '</tr>';
       dims.forEach(function (d) {
         html += '<tr><td>' + esc(d.label) + ' <em>' + (Number(d.weight) || 1) + '</em></td>'
@@ -268,8 +276,9 @@ function openDetailModal(id) {
       const sid = String(s.id);
       const scores = s['打分'] || {};
       const activeTrial = trials.find(o => o.supplierId === sid && ['待下单', '已下单', '已到'].indexOf(o['状态']) >= 0);
-      html += '<div class="nd-sup' + (sid === winnerId ? ' win' : '') + '">';
-      html += '<div class="nd-sup-head"><span class="nd-sup-name">' + esc(s['谁'] || '') + (s.id === winnerId ? ' <span class="badge badge-已定点">定点</span>' : '') + '</span>'
+      const isPinned = pinnedIds.indexOf(sid) >= 0;
+      html += '<div class="nd-sup' + (isPinned ? ' win' : '') + '">';
+      html += '<div class="nd-sup-head"><span class="nd-sup-name">' + esc(s['谁'] || '') + (isPinned ? ' <span class="badge badge-已定点">定点</span>' : '') + '</span>'
         + '<span class="nd-sup-meta">' + (s['平台'] ? esc(s['平台']) + ' · ' : '') + (s['报价'] != null ? fmtY(s['报价']) : '') + '</span></div>';
       const img = needImgSrc(s['图片']);
       if (img) html += '<img class="nd-sup-img" src="' + escAttr(img) + '" onclick="showFullscreenImg(this.src)" alt="">';
@@ -290,7 +299,7 @@ function openDetailModal(id) {
         html += '<div class="nd-actions">';
         if (!activeTrial) html += '<button type="button" class="nd-btn g" onclick="needTrialCreate(\'' + escAttr(needId) + '\',\'' + escAttr(sid) + '\')">📦 下单试用</button>';
         else html += '<span class="nd-chip">试用中 · ' + esc(activeTrial['状态']) + '</span>';
-        html += '<button type="button" class="nd-btn p" onclick="needDecidePick(\'' + escAttr(needId) + '\',\'' + escAttr(sid) + '\')">🎯 定点这家</button>';
+        if (!isPinned) html += '<button type="button" class="nd-btn p" onclick="needDecidePick(\'' + escAttr(needId) + '\',\'' + escAttr(sid) + '\')">🎯 定点这家</button>';
         html += '<button type="button" class="nd-btn r" onclick="needSupplierDelete(\'' + escAttr(needId) + '\',\'' + escAttr(sid) + '\')">🗑️</button>';
         html += '</div>';
       }
@@ -302,21 +311,7 @@ function openDetailModal(id) {
     html += '<div class="nd-actions" style="margin-top:10px">'
       + '<button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">＋ 添加供应商</button>'
       + '<button type="button" class="nd-btn m" onclick="needDimsFormToggle()">⚙️ 对比维度</button></div>';
-    html += '<div class="nd-form" id="ndSupForm" style="display:none">'
-      + '<div class="form-row"><div class="form-group" style="flex:1"><label>谁 *</label><input id="ndSupName" placeholder="如：官方旗舰店"></div>'
-      + '<div class="form-group" style="flex:1"><label>平台</label><input id="ndSupPlatform" placeholder="如：京东"></div></div>'
-      + '<div class="form-row"><div class="form-group" style="flex:1"><label>报价（元）</label><input id="ndSupPrice" type="number" step="0.01" min="0"></div>'
-      + '<div class="form-group" style="flex:1"><label>图片</label><div style="display:flex;gap:8px">'
-      + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupCam\').click()">📷 拍照</button>'
-      + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupGal\').click()">🖼️ 相册</button></div>'
-      + '<input type="file" id="ndSupCam" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
-      + '<input type="file" id="ndSupGal" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
-      + '<div id="nsImageWrap" style="display:none;margin-top:6px"><img id="nsImagePreview" style="max-width:100%;max-height:140px;border-radius:8px"></div></div></div>'
-      + '<div class="form-group"><label>优点</label><textarea id="ndSupPros" rows="2" style="resize:none"></textarea></div>'
-      + '<div class="form-group"><label>缺点</label><textarea id="ndSupCons" rows="2" style="resize:none"></textarea></div>'
-      + '<div class="form-group"><label>备注</label><textarea id="ndSupNote" rows="1" style="resize:none"></textarea></div>'
-      + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">收起</button>'
-      + '<button type="button" class="nd-btn p" onclick="needSupplierAdd(\'' + escAttr(needId) + '\')">✅ 添加</button></div></div>';
+    html += buildSupplierForm(needId);
     html += buildDimsForm(needId, dims);
   }
 
@@ -359,29 +354,60 @@ function openDetailModal(id) {
       html += '</div>';
     }
   } else if (st === '已定点') {
-    if (winner) {
-      html += '<div class="nd-winner">🎯 <b>' + esc(winner['谁'] || '') + '</b>' + (winner['平台'] ? ' · ' + esc(winner['平台']) : '') + ' · 报价 ' + fmtY(winner['报价'])
+    // 多定点：每家一张正式单，逐张展示；未下单的可单独回退这一家
+    if (formals.length) {
+      html += '<div class="nd-winner">🎯 已定点 <b>' + formals.length + ' 家</b>'
         + (n['定点时间'] ? ' · <span style="color:var(--muted)">' + esc(n['定点时间']) + '</span>' : '') + '</div>';
-    }
-    if (formal) {
-      html += buildOrderCard(n, formal, sups, true);
-      // 正式单还没下单时可以回退定点换供应商（服务端 undecided 同样要求待下单）
-      if (formal['状态'] === '待下单') {
-        html += '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needUndecided(\'' + escAttr(needId) + '\')">↩️ 回退定点</button></div>';
-      }
-    } else {
+      formals.forEach(function (f) {
+        html += buildOrderCard(n, f, sups, true);
+        if (f['状态'] === '待下单') {
+          html += '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needUndecided(\'' + escAttr(needId) + '\',\'' + escAttr(String(f.supplierId || '')) + '\')">↩️ 回退这家定点</button></div>';
+        }
+      });
+    } else if (winner) {
       // 正式单缺失（回退定点边缘态）→ 补建
       html += '<div class="nd-form">'
         + '<div class="form-row">'
         + '<div class="form-group" style="flex:1"><label>数量</label><input id="fcQty" type="number" min="1" value="1"></div>'
-        + '<div class="form-group" style="flex:1"><label>实付单价（元）</label><input id="fcPrice" type="number" step="0.01" min="0" value="' + (winner && winner['报价'] != null ? Number(winner['报价']) : '') + '"></div>'
+        + '<div class="form-group" style="flex:1"><label>实付单价（元）</label><input id="fcPrice" type="number" step="0.01" min="0" value="' + (winner['报价'] != null ? Number(winner['报价']) : '') + '"></div>'
         + '</div>'
         + '<div class="form-group"><label>日期</label><input id="fcDate" type="date" value="' + todayBJ() + '"></div>'
-        + '<div class="nd-actions"><button type="button" class="nd-btn p" onclick="needFormalCreate(\'' + escAttr(needId) + '\')">🛒 创建正式单</button>'
-        + '<button type="button" class="nd-btn m" onclick="needUndecided(\'' + escAttr(needId) + '\')">↩️ 回退定点</button></div></div>';
+        + '<div class="nd-actions"><button type="button" class="nd-btn p" onclick="needFormalCreate(\'' + escAttr(needId) + '\',\'' + escAttr(winnerId) + '\')">🛒 创建正式单</button>'
+        + '<button type="button" class="nd-btn m" onclick="needUndecided(\'' + escAttr(needId) + '\',\'' + escAttr(winnerId) + '\')">↩️ 回退定点</button></div></div>';
     }
+    // 还有没定点的供应商 → 可追加定点（买衣服两家都合适就各买一件）
+    const unpinned = sups.filter(function (s) { return pinnedIds.indexOf(s.id) < 0; });
+    if (unpinned.length) {
+      const first = unpinned[0];
+      const firstPromo = trials.find(o => o.supplierId === first.id && ['已下单', '已到'].indexOf(o['状态']) >= 0);
+      html += '<div class="nd-actions" style="margin-top:10px"><button type="button" class="nd-btn m" onclick="needDecideAddFormToggle()">＋ 再定点一家</button></div>';
+      html += '<div class="nd-form" id="ndDecideAddForm" data-need-id="' + escAttr(needId) + '" style="display:none">';
+      html += '<div class="nd-radio-list">' + unpinned.map(function (s, i) {
+        return '<label class="nd-radio"><input type="radio" name="decideAddSup" value="' + escAttr(s.id) + '"' + (i === 0 ? ' checked' : '') + ' onchange="needDecideAddChanged()">'
+          + '<span>' + esc(s['谁'] || '') + (s['平台'] ? ' · ' + esc(s['平台']) : '') + ' · ' + fmtY(s['报价'])
+          + ' <em>' + supplierWeightedTotal(dims, s['打分']).toFixed(2) + '分</em></span></label>';
+      }).join('') + '</div>';
+      html += '<div class="form-group"><label>定点方式</label><select id="decideAddMode" onchange="needDecideAddModeChanged()">' + buildDecideModeOptions(firstPromo) + '</select></div>';
+      html += '<div id="decideAddNewFields">'
+        + '<div class="form-row">'
+        + '<div class="form-group" style="flex:1"><label>数量</label><input id="decideAddQty" type="number" min="1" value="1"></div>'
+        + '<div class="form-group" style="flex:1"><label>实付单价（元）</label><input id="decideAddPrice" type="number" step="0.01" min="0" value="' + (first['报价'] != null ? Number(first['报价']) : '') + '"></div>'
+        + '</div>'
+        + '<div class="form-row">'
+        + '<div class="form-group" style="flex:1"><label>日期</label><input id="decideAddDate" type="date" value="' + todayBJ() + '"></div>'
+        + '<div class="form-group" style="flex:1"><label>📦 分期期数</label><input id="decideAddInst" type="number" min="0" max="120" placeholder="0=不分期"></div>'
+        + '</div>'
+        + '<div class="form-group"><label>备注</label><input id="decideAddNote" placeholder="选填"></div>'
+        + '</div>';
+      html += '<div class="nd-actions"><button type="button" class="nd-btn p" onclick="needDecideAdd(\'' + escAttr(needId) + '\')">🎯 确认追加定点</button></div></div>';
+    }
+    // 已定点后也可以补录新供应商，再追加定点
+    html += '<div class="nd-actions" style="margin-top:10px"><button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">＋ 添加供应商</button></div>';
+    html += buildSupplierForm(needId);
   } else if (st === '已完成') {
-    html += '<div class="nd-winner done">✅ 需求已完成' + (formal ? ' · ' + esc(formal['状态']) + ' ' + fmtY((Number(formal['实付']) || 0) * (Number(formal['数量']) || 1)) : '') + '</div>';
+    html += '<div class="nd-winner done">✅ 需求已完成'
+      + (formals.length ? ' · 正式单 ' + formals.length + ' 张' : '')
+      + (booked > 0 ? ' · 已入账 ' + fmtY(booked) : '') + '</div>';
   } else if (st === '已取消') {
     html += '<div class="nd-winner cancelled">🚫 需求已取消</div>';
   }
@@ -399,6 +425,7 @@ function openDetailModal(id) {
   document.getElementById('detailOverlay').classList.add('active');
   // 定点方式默认可能是「试用转正」，首渲染即隐藏新建正式单字段，避免填写后被忽略
   try { needDecideModeChanged(); } catch (e) {}
+  try { needDecideAddModeChanged(); } catch (e) {}
 }
 function closeDetailModal() { const el = document.getElementById('detailOverlay'); if (el) el.classList.remove('active'); }
 
@@ -429,6 +456,32 @@ function _decideNeedId() {
   if (el && el.dataset.needId) return el.dataset.needId;
   return '';
 }
+// ===== 追加定点（已定点后再定点一家）=====
+function needDecideAddFormToggle() {
+  const f = document.getElementById('ndDecideAddForm'); if (!f) return;
+  f.style.display = f.style.display === 'none' ? '' : 'none';
+  if (f.style.display === '') needDecideAddChanged();
+}
+function _decideAddNeedId() {
+  const el = document.getElementById('ndDecideAddForm');
+  return (el && el.dataset.needId) || '';
+}
+function needDecideAddChanged() {
+  const n = findNeed(_decideAddNeedId()); if (!n) return;
+  const sid = (document.querySelector('input[name="decideAddSup"]:checked') || {}).value;
+  const s = (n.suppliers || []).find(x => x.id === sid);
+  const promo = (n.orders || []).find(o => o.role === 'trial' && o.supplierId === sid && ['已下单', '已到'].indexOf(o['状态']) >= 0);
+  const sel = document.getElementById('decideAddMode');
+  if (sel) sel.innerHTML = buildDecideModeOptions(promo);
+  const priceEl = document.getElementById('decideAddPrice');
+  if (priceEl && s && s['报价'] != null) priceEl.value = Number(s['报价']);
+  needDecideAddModeChanged();
+}
+function needDecideAddModeChanged() {
+  const sel = document.getElementById('decideAddMode');
+  const nf = document.getElementById('decideAddNewFields');
+  if (sel && nf) nf.style.display = sel.value === 'promote' ? 'none' : '';
+}
 // 「定点这家」快捷入口：勾选对应 radio 并滚动到定点区
 function needDecidePick(needId, supId) {
   const radio = document.querySelector('input[name="decideSup"][value="' + supId + '"]');
@@ -444,6 +497,7 @@ function buildOrderCard(n, o, sups, isFormal) {
   const price = Number(o['实付']) || 0;
   const total = Math.round(price * qty * 100) / 100;
   const st = o['状态'] || '待下单';
+  const okey = String(o.id).replace(/[^A-Za-z0-9_-]/g, ''); // 多张正式单时输入框 id 必须唯一
   let h = '<div class="nd-order' + (isFormal ? ' formal' : '') + '">';
   h += '<div class="nd-order-head"><span>' + (isFormal ? '🛒 正式单' : '🧪 试用单') + ' · ' + esc(sup ? (sup['谁'] || '') : '未指定供应商') + '</span>'
     + '<span class="badge badge-' + escAttr(st) + '">' + esc(st) + '</span></div>';
@@ -463,11 +517,11 @@ function buildOrderCard(n, o, sups, isFormal) {
   // 正式单待下单：可改数量/实付/日期/分期
   if (isFormal && st === '待下单') {
     h += '<div class="nd-form" style="margin-top:8px"><div class="form-row">'
-      + '<div class="form-group" style="flex:1"><label>数量</label><input id="foQty" type="number" min="1" value="' + qty + '"></div>'
-      + '<div class="form-group" style="flex:1"><label>实付单价</label><input id="foPrice" type="number" step="0.01" min="0" value="' + price + '"></div></div>'
+      + '<div class="form-group" style="flex:1"><label>数量</label><input id="foQty_' + okey + '" type="number" min="1" value="' + qty + '"></div>'
+      + '<div class="form-group" style="flex:1"><label>实付单价</label><input id="foPrice_' + okey + '" type="number" step="0.01" min="0" value="' + price + '"></div></div>'
       + '<div class="form-row">'
-      + '<div class="form-group" style="flex:1"><label>日期</label><input id="foDate" type="date" value="' + (o['日期'] ? new Date(o['日期']).toISOString().slice(0, 10) : todayBJ()) + '"></div>'
-      + '<div class="form-group" style="flex:1"><label>分期期数</label><input id="foInst" type="number" min="0" max="120" value="' + (tp || '') + '"></div></div>'
+      + '<div class="form-group" style="flex:1"><label>日期</label><input id="foDate_' + okey + '" type="date" value="' + (o['日期'] ? new Date(o['日期']).toISOString().slice(0, 10) : todayBJ()) + '"></div>'
+      + '<div class="form-group" style="flex:1"><label>分期期数</label><input id="foInst_' + okey + '" type="number" min="0" max="120" value="' + (tp || '') + '"></div></div>'
       + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needOrderSave(\'' + escAttr(String(o.id)) + '\',\'' + escAttr(String(n.id)) + '\')">💾 保存修改</button></div></div>';
   }
   // 流转按钮
@@ -479,6 +533,25 @@ function buildOrderCard(n, o, sups, isFormal) {
   }
   h += '</div>';
   return h;
+}
+
+// ===== 添加供应商表单（对比中 / 已定点追加都可用）=====
+function buildSupplierForm(needId) {
+  return '<div class="nd-form" id="ndSupForm" style="display:none">'
+    + '<div class="form-row"><div class="form-group" style="flex:1"><label>谁 *</label><input id="ndSupName" placeholder="如：官方旗舰店"></div>'
+    + '<div class="form-group" style="flex:1"><label>平台</label><input id="ndSupPlatform" placeholder="如：京东"></div></div>'
+    + '<div class="form-row"><div class="form-group" style="flex:1"><label>报价（元）</label><input id="ndSupPrice" type="number" step="0.01" min="0"></div>'
+    + '<div class="form-group" style="flex:1"><label>图片</label><div style="display:flex;gap:8px">'
+    + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupCam\').click()">📷 拍照</button>'
+    + '<button type="button" class="nd-btn m" style="flex:1" onclick="document.getElementById(\'ndSupGal\').click()">🖼️ 相册</button></div>'
+    + '<input type="file" id="ndSupCam" accept="image/*" capture="environment" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
+    + '<input type="file" id="ndSupGal" accept="image/*" style="display:none" onchange="handlePurchaseImage(this,\'ns\')">'
+    + '<div id="nsImageWrap" style="display:none;margin-top:6px"><img id="nsImagePreview" style="max-width:100%;max-height:140px;border-radius:8px"></div></div></div>'
+    + '<div class="form-group"><label>优点</label><textarea id="ndSupPros" rows="2" style="resize:none"></textarea></div>'
+    + '<div class="form-group"><label>缺点</label><textarea id="ndSupCons" rows="2" style="resize:none"></textarea></div>'
+    + '<div class="form-group"><label>备注</label><textarea id="ndSupNote" rows="1" style="resize:none"></textarea></div>'
+    + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needSupplierFormToggle()">收起</button>'
+    + '<button type="button" class="nd-btn p" onclick="needSupplierAdd(\'' + escAttr(needId) + '\')">✅ 添加</button></div></div>';
 }
 
 // ===== 维度编辑面板（仅对比中）=====
@@ -622,7 +695,8 @@ async function needOrderTransition(orderId, needId, to) {
 }
 
 async function needOrderSave(orderId, needId) {
-  const el = id => document.getElementById(id);
+  const okey = String(orderId).replace(/[^A-Za-z0-9_-]/g, '');
+  const el = id => document.getElementById(id + '_' + okey);
   const body = {};
   if (el('foQty')) body.qty = parseInt(el('foQty').value, 10) || 1;
   if (el('foPrice')) body.pricePaid = parseFloat(el('foPrice').value) || 0;
@@ -670,15 +744,45 @@ async function needDecide(needId) {
   await needRefresh(needId);
 }
 
-async function needUndecided(needId) {
-  if (!confirm('回退定点？正式单若未下单将一并移除')) return;
-  const r = await needsApi('POST', '/needs/' + needId + '/undecided', {});
+// 已定点后追加另一家供应商：各自生成一张正式单，互不影响
+async function needDecideAdd(needId) {
+  if (_needCreateBusy) return;
+  const radio = document.querySelector('input[name="decideAddSup"]:checked');
+  if (!radio) { toast('请选择供应商'); return; }
+  const mode = (document.getElementById('decideAddMode') || {}).value || 'new';
+  const body = { supplierId: radio.value, mode: mode, retireLosers: false };
+  if (mode === 'new') {
+    const el = id => document.getElementById(id);
+    body.qty = parseInt((el('decideAddQty') || {}).value, 10) || 1;
+    body.pricePaid = parseFloat((el('decideAddPrice') || {}).value) || 0;
+    body.date = (el('decideAddDate') || {}).value || todayBJ();
+    body.note = ((el('decideAddNote') || {}).value || '').trim();
+    const tp = parseInt((el('decideAddInst') || {}).value, 10) || 0;
+    if (tp > 0) {
+      body.installments = tp;
+      body.installmentAmount = Math.round(body.pricePaid * body.qty / tp * 100) / 100;
+      body.installmentStart = needMonthOf(body.date);
+    }
+  }
+  _needCreateBusy = true;
+  try {
+    const r = await needsApi('POST', '/needs/' + needId + '/decide', body);
+    if (r && r.error) { toast('追加定点失败: ' + r.error); return; }
+    toast('已追加定点（共 ' + (r.pinnedCount || 2) + ' 家）');
+    await needRefresh(needId);
+  } finally { _needCreateBusy = false; }
+}
+
+async function needUndecided(needId, supId) {
+  if (!confirm(supId ? '回退这家定点？该供应商未下单的正式单将一并移除' : '回退定点？正式单若未下单将一并移除')) return;
+  const body = supId ? { supplierId: supId } : {};
+  const r = await needsApi('POST', '/needs/' + needId + '/undecided', body);
   if (r && r.error) { toast('回退失败: ' + r.error); return; }
-  toast('已回到对比中');
+  toast(r && r.remaining ? '已回退该家定点，仍保留其它定点' : '已回到对比中');
   await needRefresh(needId);
 }
 
-async function needFormalCreate(needId) {
+async function needFormalCreate(needId, supId) {
   const el = id => document.getElementById(id);
   const body = {
     role: 'formal',
@@ -686,6 +790,7 @@ async function needFormalCreate(needId) {
     pricePaid: parseFloat((el('fcPrice') || {}).value) || 0,
     date: (el('fcDate') || {}).value || todayBJ(),
   };
+  if (supId) body.supplierId = supId;
   const r = await needsApi('POST', '/needs/' + needId + '/orders', body);
   if (r && r.error) { toast('创建失败: ' + r.error); return; }
   toast('正式单已创建');

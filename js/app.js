@@ -589,7 +589,8 @@ function renderPurchaseCard(n){
   const buyCount=(n.orders||[]).filter(o=>isActiveBuy(o['状态'])).length;
   const colors={'日常护理':'#f472b6','生活用品':'#10b981','食品饮料':'#f59e0b','电子产品':'#8b5cf6','运动装备':'#ef4444','云服务':'#0ea5e9','API':'#8b5cf6','会员':'#f59e0b','软件':'#6366f1'};
   const icons={'日常护理':'🧴','生活用品':'🏠','食品饮料':'🍕','电子产品':'📱','运动装备':'🏃','云服务':'☁️','API':'🔌','会员':'🎫','软件':'💿','其他':'📦'};
-  const winnerId=n['定点供应商ID']||'';
+  const pinnedIds=Array.isArray(n['定点供应商IDs'])?n['定点供应商IDs']:[];
+  const winnerId=n['定点供应商ID']||pinnedIds[0]||'';
   const winner=winnerId?sups.find(s=>s.id===winnerId):null;
   // 胜出者（已定点）或最高分（对比中）
   let best=sups[0]||null,bestScore=-1;
@@ -597,7 +598,7 @@ function renderPurchaseCard(n){
   const shown=winner||best;
   const mainPrice=needBudgetText(n);
   let meta='<span class="badge badge-'+escAttr(status)+'">'+esc(status)+'</span><span class="cat-badge">'+esc(category)+'</span>';
-  if(shown)meta+='<span class="meta-sec">'+esc(shown['谁']||'')+(shown['平台']?'·'+esc(shown['平台']):'')+' · '+fmtY(shown['报价'])+'</span>';
+  if(shown)meta+='<span class="meta-sec">'+esc(shown['谁']||'')+(shown['平台']?'·'+esc(shown['平台']):'')+' · '+fmtY(shown['报价'])+(pinnedIds.length>1?' 等'+pinnedIds.length+'家':'')+'</span>';
   if(trials.length||buyCount)meta+='<span class="meta-sec">试用'+trials.length+'·入账'+buyCount+'单</span>';
   if(n['虚拟']==='1')meta+='<span class="virtual-chip">💾 虚拟</span>';
   if(n['历史']==='1')meta+='<span class="cat-badge">历史</span>';

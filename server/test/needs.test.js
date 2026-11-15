@@ -172,3 +172,29 @@ t('定点供应商优先于第一家', () => {
 });
 
 console.log(`\n${passed} passed${process.exitCode ? '（有失败）' : ''}`);
+
+console.log('== 多定点供应商 ==');
+t('pinnedSupplierIds 去重且只认正式单', () => {
+  const orders = [
+    { id: 1, role: 'trial', supplier_id: 4 },
+    { id: 2, role: 'formal', supplier_id: 5 },
+    { id: 3, role: 'formal', supplier_id: 5 },
+    { id: 4, role: 'formal', supplier_id: 7 },
+    { id: 5, role: 'formal', supplier_id: null },
+    null,
+  ];
+  assert.deepStrictEqual(N.pinnedSupplierIds(orders), [5, 7]);
+  assert.deepStrictEqual(N.pinnedSupplierIds([]), []);
+  assert.deepStrictEqual(N.pinnedSupplierIds(null), []);
+});
+t('多正式单时旧合成行只取第一张', () => {
+  const need = { id: 9, name: '衣服', status: '已定点', selected_supplier_id: 1, is_quick: 0, is_virtual: 0 };
+  const sup = [{ id: 1, need_id: 9, name: 'A', platform: '淘宝', price: 50 }, { id: 2, need_id: 9, name: 'B', platform: '京东', price: 60 }];
+  const ord = [
+    { id: 10, need_id: 9, supplier_id: 1, role: 'formal', qty: 1, price_paid: 50, status: '已下单' },
+    { id: 11, need_id: 9, supplier_id: 2, role: 'formal', qty: 1, price_paid: 60, status: '待下单' },
+  ];
+  const r = N.synthLegacyRow(need, sup, ord);
+  assert.strictEqual(r.status, '已下单');
+  assert.strictEqual(r.price, 50);
+});

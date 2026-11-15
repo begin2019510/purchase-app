@@ -230,6 +230,18 @@ function synthLegacyRow(need, suppliers, orders) {
 
 function safeJson(v) { try { return typeof v === 'string' ? JSON.parse(v) : v; } catch (e) { return null; } }
 
+// 需求下所有定点供应商（正式单去重）。同一需求可定点多家，每家一张正式单。
+function pinnedSupplierIds(orders) {
+  const out = [], seen = new Set();
+  for (const o of orders || []) {
+    if (!o || o.role !== 'formal' || !o.supplier_id) continue;
+    if (seen.has(o.supplier_id)) continue;
+    seen.add(o.supplier_id);
+    out.push(o.supplier_id);
+  }
+  return out;
+}
+
 // 拉齐并合成旧形态行（一 need 一行，按 need id 升序，与旧 purchases id 序近似）
 async function synthLegacyRows(uid) {
   const graph = await loadGraph(uid);
@@ -261,9 +273,14 @@ async function applyOrderTransition(conn, uid, order, to, opts = {}) {
   vals.push(order.id, uid);
   await conn.query('UPDATE purchase_orders SET ' + sets.join(', ') + ' WHERE id = ? AND user_id = ?', vals);
 
-  // 正式单归档 → 需求已完成
+  // 正式单归档 → 需求已完成（多定点：仍有其它在途正式单时保持已定点，全部结束才完成）
   if (order.role === 'formal' && to === '已归档') {
-    await conn.query('UPDATE purchase_needs SET status = ?, updated_at = NOW() WHERE id = ? AND user_id = ?', ['已完成', order.need_id, uid]);
+    const [act] = await conn.query(
+      "SELECT COUNT(*) AS c FROM purchase_orders WHERE user_id = ? AND need_id = ? AND id <> ? AND role = 'formal' AND status IN ('待下单','已下单','已到')",
+      [uid, order.need_id, order.id]);
+    if (Number(act[0].c) === 0) {
+      await conn.query('UPDATE purchase_needs SET status = ?, updated_at = NOW() WHERE id = ? AND user_id = ?', ['已完成', order.need_id, uid]);
+    }
   }
   // 试用/正式单终态清理：只有该需求已无其它在途子单时才删关联待办。
   // 旧模型一单一条待办；两级模型下退掉一张落选试用单不应删掉正式单的待办。
@@ -285,5 +302,5 @@ module.exports = {
   weightedTotal, validateDimensions, validateScores,
   parseBudgetRange, formatBudgetRange,
   loadGraph, parseDimsJson, synthLegacyRow, synthLegacyRows,
-  countsTowardBudget, orderAmount, applyOrderTransition, safeJson,
+  countsTowardBudget, orderAmount, applyOrderTransition, safeJson, pinnedSupplierIds,
 };

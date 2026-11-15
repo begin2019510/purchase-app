@@ -352,6 +352,15 @@ router.put('/items', async (req, res, next) => {
       if (frows[0]) { formal = frows[0]; orders.push(frows[0]); }
     }
 
+    // 多定点需求的旧接口只有一行合成记录，子单字段会落到错误的正式单 → 统一拒绝，交给新详情逐单操作
+    const [fcAll] = await conn.query("SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [need.id]);
+    if (Number(fcAll[0].c) > 1 &&
+      ['status', 'qty', 'price', 'date', 'setDate', 'installments', 'installmentAmount', 'installmentStart', 'installmentPaid', 'note', 'image']
+        .some(k => b[k] !== undefined)) {
+      await conn.rollback();
+      return res.status(400).json({ error: '该需求有多家定点正式单，请在采购详情中逐单操作' });
+    }
+
     // need 侧
     const needCols = {};
     if (b.name !== undefined) needCols.name = v.name;
@@ -470,6 +479,10 @@ router.patch('/items', async (req, res, next) => {
         }
         const needCols = {}, orderCols = {};
         let deleteFormal = false;
+        const [fcAll] = await conn.query("SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND role = 'formal'", [need.id]);
+        if (Number(fcAll[0].c) > 1 && ['status', 'note'].some(k => b[k] !== undefined)) {
+          throw new Error('该需求有多家定点正式单，请在采购详情中逐单操作');
+        }
         if (b.status !== undefined && String(b.status) !== synth.status) {
           const w = legacyStatusWrite(String(b.status), need, formal);
           if (w.error) throw new Error(w.error);
