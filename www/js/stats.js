@@ -253,6 +253,13 @@ function renderStats() { console.log('renderStats START');
     + '<button type="button" class="chip" onclick="shiftViewMonth(1)" aria-label="下个月"'+(_isCur?' disabled':'')+'>›</button>'
     + '</div>';
 
+  // ===== 数据透视入口（分类 / 商品组 / 月份自由交叉）=====
+  html += '<div class="pv-entry" onclick="openPivot()" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPivot()}" aria-label="打开数据透视">'
+    + '<div class="pv-entry-icon">📊</div>'
+    + '<div class="pv-entry-main"><div class="pv-entry-title">数据透视</div>'
+    + '<div class="pv-entry-sub">分类 / 商品组 / 月份自由交叉，奶茶、API、日用品可单独归组</div></div>'
+    + '<div class="pv-entry-arrow">打开 ›</div></div>';
+
   // ===== 自定义日期区间小结 =====
   (function () {
     const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
