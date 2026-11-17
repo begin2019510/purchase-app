@@ -248,7 +248,7 @@ eq('matchGroup', P._matchGroup({ category: '餐饮', title: '蜜雪冰城 奶昔
 eq('normalizeKeywords', P._normalizeKeywords('喜茶， 蜜雪,蜜雪, ,茶百道'), ['喜茶', '蜜雪', '茶百道']);
 
 // 13) 图表：折叠 / 系列色 / 渲染
-P._setCfg({ range: '全部', source: '全部', keyword: '', row: '分类', col: '月份', metric: '金额', view: '图表', chart: '柱状' });
+P._setCfg({ range: '全部', source: '全部', keyword: '', focus: '', row: '分类', col: '月份', metric: '金额', view: '图表', chart: '柱状' });
 built = P._buildEvents();
 res = P._computePivot(built.events, P._getCfg());
 
@@ -305,6 +305,17 @@ html = renderAs('热力', { row: '分类', col: '无' });
 eq('热力缺列提示', html.includes('列'), true);
 html = renderAs('热力', { row: '商品组', col: '月份' });
 eq('热力有格子', html.includes('pv-heat-cell'), true);
+
+// 14) 问题聚焦：focus=奶茶 只留该组
+P._setCfg({ focus: '奶茶', keyword: '', row: '分类', col: '无', metric: '金额', view: '图表' });
+only = P._buildEvents();
+eq('focus=奶茶 事件数', only.events.length, 2);
+eq('focus=奶茶 合计', only.events.reduce((s, e) => s + e.amount, 0), 40);
+eq('focus=奶茶 全是组', only.events.every((e) => e.group === '奶茶'), true);
+P._setCfg({ focus: '' });
+
+// 15) 默认视图应为图表
+eq('默认 view 图表', P._getCfg().view, '图表');
 
 console.log('\n' + (failed ? ('FAILED: ' + failed) : 'ALL PASS'));
 process.exit(failed ? 1 : 0);

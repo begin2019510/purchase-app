@@ -2969,3 +2969,27 @@ body.dark .pv-heat-ramp{background:linear-gradient(90deg,#104281,#184f95,#256abf
   .pv-heat-corner,.pv-heat-rowlab{width:72px;max-width:96px;font-size:10.5px}
   .pv-heat-col,.pv-heat-cell{min-width:56px;font-size:10px;padding:6px 4px}
 }
+
+/* ===== 数据透视图表 v3.1.9：问题条 + 字段货架 ===== */
+.pv-qbar{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px;align-items:center}
+.pv-qbar .chip{padding:6px 13px;font-size:12px;font-weight:700;background:var(--card)!important;border:1.5px solid var(--border)}
+.pv-qbar .chip.active{background:var(--pri)!important;color:#fff!important;border-color:var(--pri)!important}
+.pv-shelf{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px;align-items:flex-end}
+.pv-field{display:flex;flex-direction:column;gap:3px;flex:1 1 96px;min-width:88px;max-width:160px}
+.pv-field>span{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.4px;padding-left:2px}
+.pv-field select{width:100%;height:36px;padding:4px 8px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-size:13px;font-family:inherit;font-weight:700;outline:none;cursor:pointer;appearance:auto}
+.pv-field select:focus{border-color:var(--pri)}
+.pivot-adv{margin:0 0 8px;border:1px solid var(--border);border-radius:12px;background:var(--bg);overflow:hidden}
+.pivot-adv>summary{padding:10px 12px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;list-style:none}
+.pivot-adv>summary::-webkit-details-marker{display:none}
+.pivot-adv>summary::after{content:'▾';float:right;color:var(--muted)}
+.pivot-adv[open]>summary{border-bottom:1px solid var(--border);color:var(--text)}
+.pivot-adv[open]>summary::after{content:'▴'}
+.pivot-adv .pivot-config{border:none;background:transparent;margin:0;border-radius:0;padding:10px 10px 12px}
+@media(max-width:767px){
+  .pv-qbar{gap:5px;padding-bottom:7px}
+  .pv-qbar .chip{padding:5px 11px;font-size:11.5px}
+  .pv-shelf{gap:5px}
+  .pv-field{flex:1 1 calc(50% - 5px);max-width:none;min-width:0}
+  .pv-field select{height:34px;font-size:12.5px}
+}

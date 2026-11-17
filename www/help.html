@@ -56,7 +56,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 <div class="container">
   <div class="hero">
     <h1>❓ 帮助文档</h1>
-    <p>个人管家 v3.1.8 使用指南</p>
+    <p>个人管家 v3.1.9 使用指南</p>
   </div>
 
   <div class="toc">
@@ -213,7 +213,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
       <li><b>6个月趋势</b>：月度支出折线图</li>
       <li><b>每日支出趋势</b>：折线图展示每日支出</li>
       <li><b>每周支出对比</b>：柱状图对比每周支出</li>
-      <li><b>数据透视</b>：行列交叉汇总 + 关键词组；图表视图支持柱状/条形/折线/环形/堆叠/热力</li>
+      <li><b>数据透视</b>：打开即图表；问题条（奶茶/API…）一键出图，字段货架改行/列/指标/图型即时生效</li>
     </ul>
   </div>
 
@@ -250,7 +250,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 版本历史 -->
   <div class="section" id="changelog">
     <h2><span class="icon">📋</span> 版本历史</h2>
-    <div class="changelog-item"><div class="changelog-ver">v3.1.8 <span class="changelog-date">2026-11-17</span></div><ul class="changelog-list"><li>数据透视新增图表视图：柱状、条形、折线、环形、堆叠、热力，与表格一键切换</li><li>图表沿用当前行列指标与筛选；堆叠/热力需选列维度，折线需月份维度</li><li>热力格可点开明细，系列色固定顺序，超过 8 段自动折入「其他」</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v3.1.9 <span class="changelog-date">2026-11-17</span></div><ul class="changelog-list"><li>数据透视改为打开即图表：问题条（奶茶/API/日用品…）一键只看该组并出图</li><li>字段货架（行/列/指标/图型/视图）改动即时重绘；范围/数据/关键词收进次级筛选</li><li>入口仍在统计页；表格作为次级视图可随时切换</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.7 <span class="changelog-date">2026-11-16</span></div><ul class="changelog-list"><li>统计页新增「📊 数据透视」：行/列/指标/范围/来源自由组合，按分类、商品、平台、月份交叉汇总</li><li>新增关键词组：把喜茶/蜜雪/茶百道归成「奶茶」，Claude/OpenAI/token 归成「API」，日用品、衣服也能自定义，按账号保存</li><li>支持点击行/单元格看明细、关键词过滤、导出 CSV；采购分期按月拆入，未来期供不计</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.6 <span class="changelog-date">2026-11-16</span></div><ul class="changelog-list"><li>修复项目步骤可以同时出现多个「进行中」：开始某一步时，其它进行中的步骤会自动退回待开始</li><li>跳过步骤不再把下一步自动标为进行中，下一步保持待开始；完成步骤仍会照常自动开始下一步</li><li>重复提交同一步骤不会推进指针，也不会改写该步骤的开始/完成时间</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.5 <span class="changelog-date">2026-11-16</span></div><ul class="changelog-list"><li>补强 Claude 对话恢复去重：历史只有半截回复时，补全并移除旧片段，避免半截与完整回复并列</li><li>只比较当前这一轮用户消息之后的回复，不会误删更早轮次的相同内容</li></ul></div>
@@ -276,7 +276,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 
   <div style="text-align:center;margin-top:20px">
     <a href="/" class="back-btn">🏠 返回主页</a>
-    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.1.8 · 2026</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.1.9 · 2026</p>
     <p style="font-size:12px;margin-top:8px"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖ICP备2026035353号</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖公网安备34012202341289号</a></p>
   </div>
 </div>

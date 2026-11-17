@@ -19,7 +19,8 @@
     { id: 'g_cloth', name: '衣服', keywords: ['衣服', 'T恤', 't恤', '衬衫', '裤', '裙', '外套', '卫衣', '毛衣', '羽绒服', '大衣', '鞋', '袜', '内衣', '优衣库', '帽子', '围巾'] }
   ];
 
-  var cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '表格', chart: '柱状' };
+  // 打开即图表；focus=问题组名（奶茶/API…）时只看该组
+  var cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '图表', chart: '柱状', focus: '' };
   var groups = [];
   var last = null;
   var editingGroupId = '';
@@ -36,7 +37,7 @@
 
   // ---- 配置与关键词组 ----
   function loadCfg() {
-    cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '表格', chart: '柱状' };
+    cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '图表', chart: '柱状', focus: '' };
     try {
       var raw = localStorage.getItem(cfgKey());
       if (raw) {
@@ -47,11 +48,13 @@
           if (DIMS.indexOf(v.row) >= 0) cfg.row = v.row;
           if (COLS.indexOf(v.col) >= 0) cfg.col = v.col;
           if (METRICS.indexOf(v.metric) >= 0) cfg.metric = v.metric;
-          if (VIEWS.indexOf(v.view) >= 0) cfg.view = v.view;
+          // 3.1.9 图表优先：忽略旧「表格」默认，始终以图表打开
+          if (VIEWS.indexOf(v.view) >= 0 && v.view === '图表') cfg.view = '图表';
           if (CHARTS.indexOf(v.chart) >= 0) cfg.chart = v.chart;
           if (typeof v.keyword === 'string') cfg.keyword = v.keyword.slice(0, 100);
           if (/^\d{4}-\d{2}-\d{2}$/.test(v.from || '')) cfg.from = v.from;
           if (/^\d{4}-\d{2}-\d{2}$/.test(v.to || '')) cfg.to = v.to;
+          if (typeof v.focus === 'string') cfg.focus = v.focus.slice(0, 20);
         }
       }
     } catch (e) {}
@@ -251,6 +254,10 @@
       events = events.concat(buildPurchaseEvents(orders, bounds));
     }
     assignGroups(events);
+    // 问题聚焦：只保留该关键词组
+    if (cfg.focus) {
+      events = events.filter(function (ev) { return ev.group === cfg.focus; });
+    }
     var kws = normalizeKeywords(cfg.keyword);
     if (kws.length) {
       events = events.filter(function (ev) {
@@ -695,7 +702,7 @@
     else if (type === '堆叠') html = chartStack(res);
     else if (type === '热力') html = chartHeat(res);
     else html = chartColumn(res);
-    html += '<div class="pv-chart-foot">图表类型：' + esc(type) + ' · 点热力格可看明细 · 切到「表格」查看全部数字</div>';
+    html += '<div class="pv-chart-foot">改上方字段即时换图 · 点条/格看明细 · 需要完整数字切「表格」</div>';
     wrap.innerHTML = html;
   }
 
@@ -707,25 +714,51 @@
     }).join('') + '</div>';
   }
 
+  function fieldSelect(group, options, current, label) {
+    var opts = options.map(function (o) {
+      return '<option value="' + escAttr(o) + '"' + (o === current ? ' selected' : '') + '>' + esc(o) + '</option>';
+    }).join('');
+    return '<label class="pv-field"><span>' + esc(label) + '</span>'
+      + '<select data-pivot-sel="' + group + '" onchange="pivotSet(\'' + group + '\',this.value)">' + opts + '</select></label>';
+  }
+
+  function questionChips() {
+    var names = ['全部'].concat(groups.map(function (g) { return g.name; }));
+    return '<div class="pv-questions" role="tablist" aria-label="问题快捷">'
+      + names.map(function (n) {
+        var val = n === '全部' ? '' : n;
+        var active = (cfg.focus || '') === val;
+        return '<button type="button" class="chip' + (active ? ' active' : '') + '" data-pivot-focus="' + escAttr(val) + '" aria-pressed="' + active + '" onclick="pivotSet(\'focus\',\'' + escAttr(val) + '\')">' + esc(n) + '</button>';
+      }).join('')
+      + '</div>';
+  }
+
   function buildShell() {
     var html = '';
+    // 问题一键：奶茶/API… → 只看该组并出图
+    html += '<div class="pv-qbar" id="pvQbar">' + questionChips() + '</div>';
+    // 字段货架：改即时出图（透视图主交互）
+    html += '<div class="pv-shelf">';
+    html += fieldSelect('row', DIMS, cfg.row, '行');
+    html += fieldSelect('col', COLS, cfg.col, '列');
+    html += fieldSelect('metric', METRICS, cfg.metric, '指标');
+    html += fieldSelect('chart', CHARTS, cfg.chart, '图');
+    html += fieldSelect('view', VIEWS, cfg.view, '视图');
+    html += '</div>';
+    // 次级筛选收起
+    html += '<details class="pivot-adv" id="pivotAdv"><summary>筛选：范围 / 数据 / 关键词</summary>';
     html += '<div class="pivot-config">';
     html += '<div class="pivot-config-row"><span class="pivot-config-label">范围</span>' + chipRow('range', RANGES, cfg.range) + '</div>';
     html += '<div class="pivot-custom" id="pivotCustomRange"><input type="date" id="pivotFrom" value="' + escAttr(cfg.from) + '" onchange="pivotCustomChanged()"><span style="color:var(--muted)">~</span><input type="date" id="pivotTo" value="' + escAttr(cfg.to) + '" onchange="pivotCustomChanged()"></div>';
     html += '<div class="pivot-config-row"><span class="pivot-config-label">数据</span>' + chipRow('source', SOURCES, cfg.source) + '</div>';
-    html += '<div class="pivot-config-row"><span class="pivot-config-label">行</span>' + chipRow('row', DIMS, cfg.row) + '</div>';
-    html += '<div class="pivot-config-row"><span class="pivot-config-label">列</span>' + chipRow('col', COLS, cfg.col) + '</div>';
-    html += '<div class="pivot-config-row"><span class="pivot-config-label">指标</span>' + chipRow('metric', METRICS, cfg.metric) + '</div>';
-    html += '<div class="pivot-config-row"><span class="pivot-config-label">视图</span>' + chipRow('view', VIEWS, cfg.view) + '</div>';
-    html += '<div class="pivot-config-row pivot-chart-row" id="pivotChartRow"><span class="pivot-config-label">图表</span>' + chipRow('chart', CHARTS, cfg.chart) + '</div>';
-    html += '<input class="search-input pivot-keyword" id="pivotKeyword" type="search" placeholder="关键词过滤，逗号分隔：喜茶,蜜雪（匹配商品/备注/分类/平台）" value="' + escAttr(cfg.keyword) + '" oninput="pivotKeywordInput(this.value)">';
-    html += '</div>';
+    html += '<input class="search-input pivot-keyword" id="pivotKeyword" type="search" placeholder="关键词过滤，逗号分隔：喜茶,蜜雪" value="' + escAttr(cfg.keyword) + '" oninput="pivotKeywordInput(this.value)">';
+    html += '</div></details>';
     html += '<div class="pivot-summary" id="pivotSummary"></div>';
     html += '<div class="pivot-table-wrap" id="pivotTableWrap"></div>';
     html += '<div id="pivotDetail"></div>';
     html += '<div class="pivot-export"><button type="button" class="chip" onclick="pivotExport()">⬇️ 导出当前透视 CSV</button></div>';
     html += '<details class="pivot-groups" id="pivotGroupsBox"><summary>🏷️ 关键词组 <span id="pivotGroupCount" style="color:var(--muted);font-weight:400"></span></summary>';
-    html += '<div class="pivot-group-hint">把品牌/商品词归成一组，例如：奶茶 = 喜茶、蜜雪、茶百道；API = Claude、OpenAI、token。透视行选「商品组」即可按组汇总。</div>';
+    html += '<div class="pivot-group-hint">把品牌/商品词归成一组（奶茶 = 喜茶、蜜雪…）。上方问题条一键只看该组；行选「商品组」可多组对比。</div>';
     html += '<div id="pivotGroupList"></div>';
     html += '<div class="pivot-group-editor" id="pivotGroupEditor">';
     html += '<input id="pivotGroupName" maxlength="20" placeholder="组名，如 奶茶">';
@@ -746,6 +779,21 @@
       els[i].classList.toggle('active', active);
       els[i].setAttribute('aria-pressed', active ? 'true' : 'false');
     }
+    var sels = document.querySelectorAll('#pivotBody [data-pivot-sel]');
+    for (var j = 0; j < sels.length; j++) {
+      var sg = sels[j].getAttribute('data-pivot-sel');
+      sels[j].value = String(cfg[sg]);
+    }
+    var qbar = document.getElementById('pvQbar');
+    if (qbar) {
+      var fbtns = qbar.querySelectorAll('[data-pivot-focus]');
+      for (var k = 0; k < fbtns.length; k++) {
+        var fv = fbtns[k].getAttribute('data-pivot-focus');
+        var fact = (cfg.focus || '') === fv;
+        fbtns[k].classList.toggle('active', fact);
+        fbtns[k].setAttribute('aria-pressed', fact ? 'true' : 'false');
+      }
+    }
     var box = document.getElementById('pivotCustomRange');
     if (box) {
       box.style.display = cfg.range === '自定义' ? 'flex' : 'none';
@@ -756,8 +804,6 @@
     }
     var kw = document.getElementById('pivotKeyword');
     if (kw && document.activeElement !== kw) kw.value = cfg.keyword || '';
-    var chartRow = document.getElementById('pivotChartRow');
-    if (chartRow) chartRow.style.display = cfg.view === '图表' ? 'flex' : 'none';
   }
 
   // ---- 渲染 ----
@@ -785,8 +831,9 @@
     var res = last ? last.res : null;
     var total = built.events.reduce(function (s, e) { return s + e.amount; }, 0);
     var text = '共 <b>' + built.events.length + '</b> 笔 · 合计 <b>' + money(total) + '</b> · 范围 ' + esc(built.bounds.label);
+    if (cfg.focus) text += ' · 问题「<b>' + esc(cfg.focus) + '</b>」';
     if (cfg.keyword) text += ' · 关键词「' + esc(cfg.keyword) + '」';
-    if (res && cfg.row === '商品组') text += ' · 已匹配关键词组';
+    if (res && cfg.row === '商品组' && !cfg.focus) text += ' · 已匹配关键词组';
     return text;
   }
 
@@ -886,6 +933,11 @@
   function setCfg(key, val) {
     if (key === 'col' && val !== '无' && val === cfg.row) { if (typeof toast === 'function') toast('行和列不能选同一个维度'); return; }
     cfg[key] = val;
+    if (key === 'focus') {
+      // 问题一键：切到图表，行用分类看构成（单组时也合理）
+      cfg.view = '图表';
+      if (cfg.focus && cfg.row === '商品组') cfg.row = '分类';
+    }
     if (key === 'range' && val === '自定义') {
       if (!cfg.from || !cfg.to) {
         var d = bjNow();
@@ -956,7 +1008,7 @@
     } else {
       groups.push({ id: 'g_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: name, keywords: kws });
     }
-    saveGroups(); cancelGroup(); renderGroups(); renderTable();
+    saveGroups(); cancelGroup(); renderGroups(); refreshQuestions(); renderTable();
     if (typeof toast === 'function') toast('关键词组已保存');
   }
   function deleteGroup(id) {
@@ -964,12 +1016,18 @@
     if (!g) return;
     if (typeof confirm === 'function' && !confirm('删除关键词组「' + g.name + '」？')) return;
     groups = groups.filter(function (x) { return x.id !== id; });
-    saveGroups(); renderGroups(); renderTable();
+    if (cfg.focus === g.name) cfg.focus = '';
+    saveGroups(); renderGroups(); refreshQuestions(); renderTable();
   }
   function resetGroups() {
     if (typeof confirm === 'function' && !confirm('恢复默认关键词组？当前自定义组会被覆盖。')) return;
     groups = clone(DEFAULT_GROUPS);
-    saveGroups(); renderGroups(); renderTable();
+    if (cfg.focus && !groups.some(function (g) { return g.name === cfg.focus; })) cfg.focus = '';
+    saveGroups(); renderGroups(); refreshQuestions(); renderTable();
+  }
+  function refreshQuestions() {
+    var bar = document.getElementById('pvQbar');
+    if (bar) bar.innerHTML = questionChips();
   }
 
   // ---- CSV 导出 ----
@@ -1020,6 +1078,8 @@
       if (!body.getAttribute('data-built')) {
         body.innerHTML = buildShell();
         body.setAttribute('data-built', '1');
+      } else {
+        refreshQuestions();
       }
       showAllRows = false;
       closeDetail(); cancelGroup();
