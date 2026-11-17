@@ -260,6 +260,13 @@ function renderStats() { console.log('renderStats START');
     + '<div class="pv-entry-sub">打开即图表；点奶茶/API 一键出图，行/列/指标随手改</div></div>'
     + '<div class="pv-entry-arrow">打开 ›</div></div>';
 
+  // ===== 仪表盘入口（飞书式 KPI + 可自定义图卡）=====
+  html += '<div class="pv-entry dash-entry" onclick="openDashboard()" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openDashboard()}" aria-label="打开仪表盘">'
+    + '<div class="pv-entry-icon">📈</div>'
+    + '<div class="pv-entry-main"><div class="pv-entry-title">仪表盘</div>'
+    + '<div class="pv-entry-sub">KPI 总览 + 可自定义图卡，一目了然</div></div>'
+    + '<div class="pv-entry-arrow">打开 ›</div></div>';
+
   // ===== 自定义日期区间小结 =====
   (function () {
     const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);

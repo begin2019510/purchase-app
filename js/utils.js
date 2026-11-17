@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.9";
+const APP_VERSION = "3.1.10";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.10',date:'2026-11-17',items:['统计页新增「仪表盘」：KPI 四联（本月支出+环比、今年支出+笔数、采购/记账/固定、预算使用率）+ 4 张预设图卡','每卡可改范围/图型/维度/指标，可隐藏与排序，布局按账号存本机；仅统计页入口，全屏独立页']},
 {v:'3.1.9',date:'2026-11-17',items:['数据透视改为「打开即图表」：问题条（奶茶/API…）一键出图，字段货架改行/列/指标/图型即时生效','筛选（范围/数据/关键词）收进次级；焦点组只看该组流水','入口仍在统计页二级页']},
 {v:'3.1.7',date:'2026-11-16',items:['统计页新增「📊 数据透视」：行/列/指标/范围/来源自由组合，按分类、商品、平台、月份交叉汇总','新增关键词组：把喜茶/蜜雪/茶百道归成「奶茶」，Claude/OpenAI/token 归成「API」，日用品、衣服也可自定义，组按账号保存','透视支持点击行/单元格查看明细、关键词过滤、导出 CSV；采购分期按月拆入，未来期供不计','记账与采购统一口径：旧版 [采购] 镜像不重复计入，固定支出单列']},
 {v:'3.1.6',date:'2026-11-16',items:['修复项目步骤可以同时出现多个「进行中」：开始某一步时，其它进行中的步骤会自动退回待开始','跳过步骤不再把下一步自动标为进行中，下一步保持待开始；完成步骤仍会照常自动开始下一步','重复提交同一步骤不会推进指针，也不会改写该步骤的开始/完成时间']},
