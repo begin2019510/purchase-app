@@ -9,6 +9,8 @@
   var METRICS = ['金额', '笔数', '平均'];
   var RANGES = ['全部', '今年', '本月', '自定义'];
   var SOURCES = ['全部', '记账', '采购', '固定'];
+  var VIEWS = ['表格', '图表'];
+  var CHARTS = ['柱状', '条形', '折线', '环形', '堆叠', '热力'];
 
   var DEFAULT_GROUPS = [
     { id: 'g_tea', name: '奶茶', keywords: ['奶茶', '喜茶', '奈雪', '奈雪的茶', '蜜雪', '蜜雪冰城', '茶百道', '古茗', '一点点', '霸王茶姬', '沪上阿姨', '益禾堂', '书亦', 'coco', '都可', '茶颜悦色'] },
@@ -17,7 +19,7 @@
     { id: 'g_cloth', name: '衣服', keywords: ['衣服', 'T恤', 't恤', '衬衫', '裤', '裙', '外套', '卫衣', '毛衣', '羽绒服', '大衣', '鞋', '袜', '内衣', '优衣库', '帽子', '围巾'] }
   ];
 
-  var cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '' };
+  var cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '表格', chart: '柱状' };
   var groups = [];
   var last = null;
   var editingGroupId = '';
@@ -34,7 +36,7 @@
 
   // ---- 配置与关键词组 ----
   function loadCfg() {
-    cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '' };
+    cfg = { range: '全部', source: '全部', row: '分类', col: '月份', metric: '金额', keyword: '', from: '', to: '', view: '表格', chart: '柱状' };
     try {
       var raw = localStorage.getItem(cfgKey());
       if (raw) {
@@ -45,6 +47,8 @@
           if (DIMS.indexOf(v.row) >= 0) cfg.row = v.row;
           if (COLS.indexOf(v.col) >= 0) cfg.col = v.col;
           if (METRICS.indexOf(v.metric) >= 0) cfg.metric = v.metric;
+          if (VIEWS.indexOf(v.view) >= 0) cfg.view = v.view;
+          if (CHARTS.indexOf(v.chart) >= 0) cfg.chart = v.chart;
           if (typeof v.keyword === 'string') cfg.keyword = v.keyword.slice(0, 100);
           if (/^\d{4}-\d{2}-\d{2}$/.test(v.from || '')) cfg.from = v.from;
           if (/^\d{4}-\d{2}-\d{2}$/.test(v.to || '')) cfg.to = v.to;
@@ -332,6 +336,369 @@
   }
   function dimLabel(dim) { return dim === '无' ? '合计' : dim; }
 
+  // ---- 图表（可视化）----
+  // 系列色：固定顺序，不随筛选重排；超过 8 段折成「其他」灰。
+  var SERIES_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+  var SERIES_DARK = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+  var SEQ_LIGHT = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#104281'];
+  var SEQ_DARK = ['#104281', '#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
+  var OTHER_GRAY = '#94a3b8';
+
+  function isDark() {
+    try {
+      return document.body && document.body.classList.contains('dark');
+    } catch (e) { return false; }
+  }
+  function seriesColor(i) {
+    var pal = isDark() ? SERIES_DARK : SERIES_LIGHT;
+    return pal[i % pal.length];
+  }
+  function seqColor(t) {
+    var pal = isDark() ? SEQ_DARK : SEQ_LIGHT;
+    if (!(t > 0)) return pal[0];
+    var idx = Math.min(pal.length - 1, Math.floor(t * pal.length));
+    return pal[idx];
+  }
+
+  // 按标签稳定取色：先按标签排序再分配槽位，筛选后同实体保持同色
+  function buildColorMap(labels) {
+    var uniq = [];
+    var seen = {};
+    labels.forEach(function (l) {
+      var k = String(l);
+      if (seen[k]) return;
+      seen[k] = 1;
+      uniq.push(k);
+    });
+    uniq.sort(function (a, b) { return a.localeCompare(b, 'zh'); });
+    var map = {};
+    uniq.forEach(function (l, i) {
+      map[l] = i < 8 ? seriesColor(i) : OTHER_GRAY;
+    });
+    return map;
+  }
+
+  function foldRowsForChart(rows, maxN) {
+    maxN = maxN || 12;
+    if (rows.length <= maxN) return { list: rows.slice(), other: null };
+    var head = rows.slice(0, maxN - 1);
+    var tail = rows.slice(maxN - 1);
+    var other = {
+      label: '其他 (' + tail.length + ')',
+      isOther: true,
+      amount: 0, count: 0, value: 0, cells: {}
+    };
+    tail.forEach(function (r) {
+      other.amount += r.amount || 0;
+      other.count += r.count || 0;
+      other.value += r.value || 0;
+      Object.keys(r.cells || {}).forEach(function (c) {
+        if (!other.cells[c]) other.cells[c] = { value: 0, amount: 0, count: 0, events: [] };
+        var src = r.cells[c];
+        other.cells[c].value += src.value || 0;
+        other.cells[c].amount += src.amount || 0;
+        other.cells[c].count += src.count || 0;
+        other.cells[c].events = other.cells[c].events.concat(src.events || []);
+      });
+    });
+    return { list: head.concat([other]), other: other };
+  }
+
+  function fmtAxis(n, metric) {
+    if (metric === '笔数') return String(Math.round(n));
+    if (Math.abs(n) >= 10000) return (n / 1000).toFixed(n >= 100000 ? 0 : 1) + 'k';
+    if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return String(Math.round(n * 100) / 100);
+  }
+
+  function chartHint(html) {
+    return '<div class="pivot-empty">' + html + '</div>';
+  }
+
+  function legendHtml(pairs) {
+    if (!pairs || pairs.length < 2) return '';
+    return '<div class="pv-legend">' + pairs.map(function (p) {
+      return '<span class="pv-legend-item" title="' + escAttr(p.label + ' ' + fmtCell(p.value, cfg.metric)) + '">'
+        + '<i style="background:' + p.color + '"></i>' + esc(p.label) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function svgOpen(w, h, label) {
+    return '<svg class="pv-svg" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="' + escAttr(label || '图表') + '">';
+  }
+
+  function gridY(w, h, pad, maxV, metric) {
+    var lines = 4, g = '';
+    for (var i = 0; i <= lines; i++) {
+      var y = pad.t + (h - pad.t - pad.b) * i / lines;
+      var v = maxV * (1 - i / lines);
+      g += '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (w - pad.r) + '" y2="' + y + '" class="pv-grid"/>';
+      g += '<text x="' + (pad.l - 6) + '" y="' + (y + 3) + '" class="pv-tick" text-anchor="end">' + esc(fmtAxis(v, metric)) + '</text>';
+    }
+    return g;
+  }
+
+  // 柱状（纵）：行合计单序列
+  function chartColumn(res) {
+    var folded = foldRowsForChart(res.rows, 12);
+    var rows = folded.list;
+    var isDesk = typeof window !== 'undefined' && window.innerWidth > 768;
+    var W = isDesk ? 860 : 360;
+    var H = isDesk ? 300 : 220;
+    var pad = { t: 18, r: 10, b: 48, l: 44 };
+    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    var maxV = Math.max.apply(null, rows.map(function (r) { return r.value || 0; }).concat([1]));
+    var gap = cw / rows.length;
+    var barW = Math.max(6, Math.min(gap * 0.55, 36));
+    var body = gridY(W, H, pad, maxV, res.metric);
+    rows.forEach(function (r, i) {
+      var bh = Math.max(r.value > 0 ? (r.value / maxV) * ch : 0, r.value > 0 ? 2 : 0);
+      var x = pad.l + i * gap + (gap - barW) / 2;
+      var y = pad.t + ch - bh;
+      var tip = r.label + '：' + fmtCell(r.value, res.metric);
+      body += '<rect class="pv-bar" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="var(--pri)"><title>' + escAttr(tip) + '</title></rect>';
+      var short = r.label.length > (isDesk ? 6 : 4) ? r.label.slice(0, isDesk ? 6 : 4) + '…' : r.label;
+      body += '<text x="' + (x + barW / 2).toFixed(1) + '" y="' + (H - pad.b + 14) + '" class="pv-xlabel"><title>' + escAttr(r.label) + '</title>' + esc(short) + '</text>';
+    });
+    return svgOpen(W, H, cfg.row + ' 柱状图') + body + '</svg>'
+      + (folded.other ? '<div class="pv-fold-note">已折叠为「' + esc(folded.other.label) + '」，完整数据见表格</div>' : '');
+  }
+
+  // 条形（横）：长标签更易读
+  function chartBar(res) {
+    var folded = foldRowsForChart(res.rows, 12);
+    var rows = folded.list;
+    var isDesk = typeof window !== 'undefined' && window.innerWidth > 768;
+    var W = isDesk ? 860 : 360;
+    var rowH = isDesk ? 28 : 30;
+    var pad = { t: 8, r: isDesk ? 72 : 56, b: 8, l: isDesk ? 110 : 78 };
+    var H = pad.t + pad.b + rows.length * rowH;
+    var cw = W - pad.l - pad.r;
+    var maxV = Math.max.apply(null, rows.map(function (r) { return r.value || 0; }).concat([1]));
+    var body = '';
+    rows.forEach(function (r, i) {
+      var bw = Math.max(r.value > 0 ? (r.value / maxV) * cw : 0, r.value > 0 ? 3 : 0);
+      var y = pad.t + i * rowH + 4;
+      var bh = rowH - 12;
+      var tip = r.label + '：' + fmtCell(r.value, res.metric);
+      body += '<rect x="' + pad.l + '" y="' + y + '" width="' + cw + '" height="' + bh + '" rx="4" class="pv-bar-track"/>';
+      body += '<rect class="pv-bar" x="' + pad.l + '" y="' + y + '" width="' + bw.toFixed(1) + '" height="' + bh + '" rx="4" fill="var(--pri)"><title>' + escAttr(tip) + '</title></rect>';
+      var short = r.label.length > (isDesk ? 8 : 5) ? r.label.slice(0, isDesk ? 8 : 5) + '…' : r.label;
+      body += '<text x="' + (pad.l - 8) + '" y="' + (y + bh / 2 + 3) + '" class="pv-xlabel" text-anchor="end"><title>' + escAttr(r.label) + '</title>' + esc(short) + '</text>';
+      body += '<text x="' + (pad.l + bw + 6) + '" y="' + (y + bh / 2 + 3) + '" class="pv-val">' + esc(fmtCell(r.value, res.metric)) + '</text>';
+    });
+    return svgOpen(W, H, cfg.row + ' 条形图') + body + '</svg>'
+      + (folded.other ? '<div class="pv-fold-note">已折叠为「' + esc(folded.other.label) + '」，完整数据见表格</div>' : '');
+  }
+
+  // 折线：行或列为月份时按时间
+  function chartLine(res) {
+    var points = [];
+    var xTitle = '';
+    if (cfg.row === '月份') {
+      points = res.rows.map(function (r) { return { label: r.label, value: r.value }; });
+      xTitle = '月份（行）';
+    } else if (cfg.col === '月份') {
+      points = res.cols.filter(function (c) { return c !== '合计'; }).map(function (c) {
+        var ct = res.colTotals[c] || { amount: 0, count: 0 };
+        return { label: c, value: metricValue(ct, res.metric) };
+      });
+      xTitle = '月份（列）';
+    } else {
+      return chartHint('折线图需要时间维度<br><span style="font-size:12px">把「行」或「列」设为「月份」后再试</span>');
+    }
+    if (points.length < 2) {
+      return chartHint('时间点不足，至少需要 2 个月<br><span style="font-size:12px">试试范围改成「今年」或「全部」</span>');
+    }
+    var isDesk = typeof window !== 'undefined' && window.innerWidth > 768;
+    var W = isDesk ? 860 : 360;
+    var H = isDesk ? 280 : 200;
+    var pad = { t: 18, r: 14, b: 36, l: 44 };
+    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    var maxV = Math.max.apply(null, points.map(function (p) { return p.value; }).concat([1]));
+    var stepX = points.length > 1 ? cw / (points.length - 1) : cw;
+    var pts = points.map(function (p, i) {
+      return {
+        x: pad.l + (points.length > 1 ? i * stepX : cw / 2),
+        y: pad.t + ch - (p.value / maxV) * ch,
+        v: p.value, label: p.label
+      };
+    });
+    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ');
+    var area = line + ' L' + pts[pts.length - 1].x.toFixed(1) + ',' + (pad.t + ch) + ' L' + pts[0].x.toFixed(1) + ',' + (pad.t + ch) + ' Z';
+    var body = gridY(W, H, pad, maxV, res.metric);
+    body += '<path d="' + area + '" class="pv-line-area" fill="var(--pri)"/>';
+    body += '<path d="' + line + '" class="pv-line" stroke="var(--pri)"/>';
+    var labelStep = points.length <= 8 ? 1 : Math.ceil(points.length / 8);
+    pts.forEach(function (p, i) {
+      body += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.5" class="pv-dot" fill="var(--card)" stroke="var(--pri)" stroke-width="2"><title>' + escAttr(p.label + '：' + fmtCell(p.v, res.metric)) + '</title></circle>';
+      if (i % labelStep === 0 || i === pts.length - 1) {
+        body += '<text x="' + p.x.toFixed(1) + '" y="' + (H - 10) + '" class="pv-xlabel">' + esc(p.label) + '</text>';
+      }
+    });
+    return '<div class="pv-chart-note">' + esc(xTitle) + ' · 指标 ' + esc(res.metric) + '</div>'
+      + svgOpen(W, H, '折线图') + body + '</svg>';
+  }
+
+  // 环形：行合计占比，≤6 段
+  function chartDonut(res) {
+    var folded = foldRowsForChart(res.rows, 6);
+    var rows = folded.list.filter(function (r) { return (r.value || 0) > 0; });
+    if (!rows.length) return chartHint('没有可绘制的数据');
+    if (rows.length < 2) {
+      return chartHint('只有 1 个分类，用柱状或条形更合适<br><span style="font-size:12px">或把行维度改成更细的分类</span>');
+    }
+    var total = rows.reduce(function (s, r) { return s + (r.value || 0); }, 0);
+    if (!(total > 0)) return chartHint('合计为 0，无法画占比');
+    var size = typeof window !== 'undefined' && window.innerWidth > 768 ? 220 : 180;
+    var cx = size / 2, cy = size / 2;
+    var t = Math.max(size * 0.14, 16);
+    var r = (size - t) / 2;
+    var C = 2 * Math.PI * r;
+    var colorMap = buildColorMap(rows.map(function (x) { return x.label; }));
+    var cum = 0, segs = '';
+    rows.forEach(function (row) {
+      if (row.value <= 0) return;
+      var pct = row.value / total;
+      var L = pct * C;
+      var color = colorMap[row.label];
+      segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + t + '" stroke-dasharray="' + L.toFixed(2) + ' ' + (C - L).toFixed(2) + '" stroke-dashoffset="' + (-cum).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cy + ')"><title>' + escAttr(row.label + '：' + fmtCell(row.value, res.metric) + '（' + (pct * 100).toFixed(1) + '%）') + '</title></circle>';
+      cum += L;
+    });
+    var pairs = rows.map(function (row) {
+      return { label: row.label, value: row.value, color: colorMap[row.label] };
+    });
+    var centerVal = fmtCell(total, res.metric);
+    var svg = svgOpen(size, size, '环形图')
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--border)" stroke-width="' + t + '"/>'
+      + segs
+      + '<text x="' + cx + '" y="' + (cy - 2) + '" text-anchor="middle" font-size="15" font-weight="800" fill="var(--text)">' + esc(centerVal) + '</text>'
+      + '<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" font-size="11" fill="var(--muted)">合计</text>'
+      + '</svg>';
+    return '<div class="pv-donut-wrap">' + svg
+      + '<div class="pv-donut-side">'
+      + pairs.map(function (p) {
+        var pct = total ? (p.value / total * 100).toFixed(1) : '0';
+        return '<div class="pv-dl-item"><i style="background:' + p.color + '"></i>'
+          + '<span class="pv-dl-label" title="' + escAttr(p.label) + '">' + esc(p.label) + '</span>'
+          + '<span class="pv-dl-val">' + esc(fmtCell(p.value, res.metric)) + '</span>'
+          + '<span class="pv-dl-pct">' + pct + '%</span></div>';
+      }).join('')
+      + '</div></div>'
+      + (folded.other ? '<div class="pv-fold-note">超过 6 段已折叠，完整数据见表格</div>' : '');
+  }
+
+  // 堆叠：列作为系列（需列≠无）
+  function chartStack(res) {
+    if (cfg.col === '无') {
+      return chartHint('堆叠图需要「列」维度<br><span style="font-size:12px">把列设为月份、分类、平台…</span>');
+    }
+    var cols = res.cols.filter(function (c) { return c !== '合计'; });
+    if (!cols.length) return chartHint('没有列数据');
+    var folded = foldRowsForChart(res.rows, 10);
+    var rows = folded.list;
+    var colorMap = buildColorMap(cols);
+    var isDesk = typeof window !== 'undefined' && window.innerWidth > 768;
+    var W = isDesk ? 860 : 360;
+    var H = isDesk ? 300 : 230;
+    var pad = { t: 16, r: 10, b: 48, l: 44 };
+    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    var totals = rows.map(function (r) {
+      return cols.reduce(function (s, c) {
+        var cell = r.cells[c];
+        return s + (cell ? cell.value : 0);
+      }, 0);
+    });
+    var maxV = Math.max.apply(null, totals.concat([1]));
+    var gap = cw / rows.length;
+    var barW = Math.max(6, Math.min(gap * 0.55, 34));
+    var body = gridY(W, H, pad, maxV, res.metric);
+    rows.forEach(function (row, i) {
+      var x = pad.l + i * gap + (gap - barW) / 2;
+      var acc = 0;
+      var tipParts = [];
+      cols.forEach(function (c) {
+        var cell = row.cells[c];
+        var v = cell ? cell.value : 0;
+        if (v <= 0) return;
+        tipParts.push(c + ' ' + fmtCell(v, res.metric));
+        var segH = (v / maxV) * ch;
+        var y = pad.t + ch - acc - segH;
+        // 2px 表面缝：高度略减
+        var drawH = Math.max(segH - (segH > 4 ? 2 : 0), 1);
+        body += '<rect class="pv-bar" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + drawH.toFixed(1) + '" rx="2" fill="' + colorMap[c] + '"><title>' + escAttr(row.label + ' · ' + c + '：' + fmtCell(v, res.metric)) + '</title></rect>';
+        acc += segH;
+      });
+      var short = row.label.length > (isDesk ? 6 : 4) ? row.label.slice(0, isDesk ? 6 : 4) + '…' : row.label;
+      body += '<text x="' + (x + barW / 2).toFixed(1) + '" y="' + (H - pad.b + 14) + '" class="pv-xlabel"><title>' + escAttr(row.label) + '</title>' + esc(short) + '</text>';
+    });
+    var legend = legendHtml(cols.map(function (c) {
+      return { label: c, value: metricValue(res.colTotals[c] || { amount: 0, count: 0 }, res.metric), color: colorMap[c] };
+    }));
+    return legend + svgOpen(W, H, '堆叠柱状图') + body + '</svg>'
+      + (folded.other ? '<div class="pv-fold-note">行已折叠为「' + esc(folded.other.label) + '」，完整数据见表格</div>' : '');
+  }
+
+  // 热力：行×列 单色深浅
+  function chartHeat(res) {
+    if (cfg.col === '无') {
+      return chartHint('热力图需要「列」维度<br><span style="font-size:12px">把列设为月份、分类、平台…</span>');
+    }
+    var cols = res.cols.filter(function (c) { return c !== '合计'; });
+    var folded = foldRowsForChart(res.rows, 14);
+    var rows = folded.list;
+    if (!rows.length || !cols.length) return chartHint('没有可绘制的数据');
+    var maxV = 0;
+    rows.forEach(function (r) {
+      cols.forEach(function (c) {
+        var cell = r.cells[c];
+        var v = cell ? cell.value : 0;
+        if (v > maxV) maxV = v;
+      });
+    });
+    if (!(maxV > 0)) return chartHint('所有单元格为 0');
+    var html = '<div class="pv-heat" role="table" aria-label="热力图">';
+    html += '<div class="pv-heat-row pv-heat-head" role="row"><div class="pv-heat-corner" role="columnheader">' + esc(cfg.row) + ' ╲ ' + esc(dimLabel(cfg.col)) + '</div>';
+    cols.forEach(function (c) {
+      html += '<div class="pv-heat-col" role="columnheader" title="' + escAttr(c) + '">' + esc(c) + '</div>';
+    });
+    html += '</div>';
+    rows.forEach(function (row, ri) {
+      html += '<div class="pv-heat-row" role="row">';
+      html += '<div class="pv-heat-rowlab" role="rowheader" title="' + escAttr(row.label) + '">' + esc(row.label) + '</div>';
+      cols.forEach(function (c, ci) {
+        var cell = row.cells[c];
+        var v = cell ? cell.value : 0;
+        var t = maxV > 0 ? v / maxV : 0;
+        var bg = v > 0 ? seqColor(t) : (isDark() ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)');
+        var fg = v > 0 && t > 0.55 ? '#fff' : 'var(--text)';
+        html += '<div class="pv-heat-cell" role="cell" style="background:' + bg + ';color:' + fg + '" '
+          + 'title="' + escAttr(row.label + ' · ' + c + '：' + fmtCell(v, res.metric)) + '" '
+          + 'onclick="pivotShowDetail(' + ri + ',' + ci + ')">'
+          + esc(v > 0 ? fmtCell(v, res.metric) : '·') + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div class="pv-heat-scale"><span>低</span><i class="pv-heat-ramp"></i><span>高（' + esc(fmtCell(maxV, res.metric)) + '）</span></div>';
+    if (folded.other) html += '<div class="pv-fold-note">行已折叠为「' + esc(folded.other.label) + '」，完整数据见表格</div>';
+    return html;
+  }
+
+  function renderChart(res, wrap) {
+    var type = cfg.chart;
+    var html = '';
+    if (type === '柱状') html = chartColumn(res);
+    else if (type === '条形') html = chartBar(res);
+    else if (type === '折线') html = chartLine(res);
+    else if (type === '环形') html = chartDonut(res);
+    else if (type === '堆叠') html = chartStack(res);
+    else if (type === '热力') html = chartHeat(res);
+    else html = chartColumn(res);
+    html += '<div class="pv-chart-foot">图表类型：' + esc(type) + ' · 点热力格可看明细 · 切到「表格」查看全部数字</div>';
+    wrap.innerHTML = html;
+  }
+
   // ---- 面板骨架 ----
   function chipRow(group, options, current) {
     return '<div class="pivot-chips">' + options.map(function (o) {
@@ -349,6 +716,8 @@
     html += '<div class="pivot-config-row"><span class="pivot-config-label">行</span>' + chipRow('row', DIMS, cfg.row) + '</div>';
     html += '<div class="pivot-config-row"><span class="pivot-config-label">列</span>' + chipRow('col', COLS, cfg.col) + '</div>';
     html += '<div class="pivot-config-row"><span class="pivot-config-label">指标</span>' + chipRow('metric', METRICS, cfg.metric) + '</div>';
+    html += '<div class="pivot-config-row"><span class="pivot-config-label">视图</span>' + chipRow('view', VIEWS, cfg.view) + '</div>';
+    html += '<div class="pivot-config-row pivot-chart-row" id="pivotChartRow"><span class="pivot-config-label">图表</span>' + chipRow('chart', CHARTS, cfg.chart) + '</div>';
     html += '<input class="search-input pivot-keyword" id="pivotKeyword" type="search" placeholder="关键词过滤，逗号分隔：喜茶,蜜雪（匹配商品/备注/分类/平台）" value="' + escAttr(cfg.keyword) + '" oninput="pivotKeywordInput(this.value)">';
     html += '</div>';
     html += '<div class="pivot-summary" id="pivotSummary"></div>';
@@ -387,6 +756,8 @@
     }
     var kw = document.getElementById('pivotKeyword');
     if (kw && document.activeElement !== kw) kw.value = cfg.keyword || '';
+    var chartRow = document.getElementById('pivotChartRow');
+    if (chartRow) chartRow.style.display = cfg.view === '图表' ? 'flex' : 'none';
   }
 
   // ---- 渲染 ----
@@ -429,6 +800,11 @@
     if (sumEl) sumEl.innerHTML = summaryHtml(built);
     if (!built.events.length) {
       wrap.innerHTML = '<div class="pivot-empty">没有符合条件的流水<br><span style="font-size:12px">试试把范围改成「全部」，或清空关键词</span></div>';
+      return;
+    }
+
+    if (cfg.view === '图表') {
+      renderChart(res, wrap);
       return;
     }
 
@@ -691,6 +1067,9 @@
     _normalizeKeywords: normalizeKeywords,
     _rangeBounds: rangeBounds,
     _dimValue: dimValue,
+    _foldRowsForChart: foldRowsForChart,
+    _buildColorMap: buildColorMap,
+    _renderChart: renderChart,
     _setGroups: function (gs) { groups = (gs || []).slice(); },
     _getGroups: function () { return groups.slice(); },
     _getCfg: function () { return clone(cfg); },

@@ -42,6 +42,9 @@ sandbox.window = sandbox;
 sandbox.App = { utils: {} };
 sandbox.toast = () => {};
 sandbox.confirm = () => true;
+sandbox.esc = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+sandbox.escAttr = sandbox.esc;
 
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'pivot.js' });
@@ -243,6 +246,65 @@ eq('自定义事件数', only.events.length, 5); // 2奶茶 + 房租 + 键盘11�
 eq('dim 来源', P._dimValue({ source: '分期' }, '来源'), '分期');
 eq('matchGroup', P._matchGroup({ category: '餐饮', title: '蜜雪冰城 奶昔', note: '', platform: '' }, P._getGroups()), '奶茶');
 eq('normalizeKeywords', P._normalizeKeywords('喜茶， 蜜雪,蜜雪, ,茶百道'), ['喜茶', '蜜雪', '茶百道']);
+
+// 13) 图表：折叠 / 系列色 / 渲染
+P._setCfg({ range: '全部', source: '全部', keyword: '', row: '分类', col: '月份', metric: '金额', view: '图表', chart: '柱状' });
+built = P._buildEvents();
+res = P._computePivot(built.events, P._getCfg());
+
+const manyRows = Array.from({ length: 20 }, (_, i) => ({
+  label: 'r' + i, amount: 20 - i, count: 1, value: 20 - i, cells: {}
+}));
+const folded = P._foldRowsForChart(manyRows, 12);
+eq('fold 行数', folded.list.length, 12);
+eq('fold has other', !!folded.other, true);
+eq('fold other label', folded.other.label, '其他 (9)');
+// values 20..1；前 11 保留，尾 9 个 value=9..1 → 45
+eq('fold other value', folded.other.value, 45);
+
+const cm = P._buildColorMap(['a', 'b', 'a', 'c']);
+const cmAgain = P._buildColorMap(['b', 'a', 'a']);
+eq('color 同标签同色', cm.a, cmAgain.a);
+eq('color 不同标签不同色', cm.a !== cm.b, true);
+eq('color 第一槽', /^#|var\(/.test(cm.a), true);
+
+const eight = P._buildColorMap(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+eq('color 第9折灰', eight['9'], '#94a3b8');
+
+// 渲染：柱状 / 条形 / 折线 / 环形 / 堆叠 / 热力
+let rendered = '';
+const wrap = {
+  set innerHTML(v) { rendered = v; },
+  get innerHTML() { return rendered; }
+};
+function renderAs(chart, c) {
+  P._setCfg(Object.assign({ view: '图表', chart }, c || {}));
+  const b = P._buildEvents();
+  const r = P._computePivot(b.events, P._getCfg());
+  rendered = '';
+  P._renderChart(r, wrap);
+  return rendered;
+}
+let html = renderAs('柱状', { row: '分类', col: '无' });
+eq('柱状有 svg', html.includes('<svg'), true);
+eq('柱状有 rect', html.includes('<rect'), true);
+html = renderAs('条形', { row: '商品组', col: '无' });
+eq('条形有 svg', html.includes('<svg'), true);
+html = renderAs('折线', { row: '月份', col: '无' });
+eq('折线有 path', html.includes('pv-line') || html.includes('<path'), true);
+html = renderAs('折线', { row: '分类', col: '平台' });
+eq('折线无月份提示', html.includes('月份'), true);
+html = renderAs('环形', { row: '商品组', col: '无' });
+eq('环形有 circle', html.includes('<circle'), true);
+html = renderAs('堆叠', { row: '分类', col: '无' });
+eq('堆叠缺列提示', html.includes('列'), true);
+html = renderAs('堆叠', { row: '分类', col: '月份' });
+eq('堆叠有 svg', html.includes('<svg'), true);
+eq('堆叠有图例', html.includes('pv-legend'), true);
+html = renderAs('热力', { row: '分类', col: '无' });
+eq('热力缺列提示', html.includes('列'), true);
+html = renderAs('热力', { row: '商品组', col: '月份' });
+eq('热力有格子', html.includes('pv-heat-cell'), true);
 
 console.log('\n' + (failed ? ('FAILED: ' + failed) : 'ALL PASS'));
 process.exit(failed ? 1 : 0);

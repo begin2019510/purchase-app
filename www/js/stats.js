@@ -257,7 +257,7 @@ function renderStats() { console.log('renderStats START');
   html += '<div class="pv-entry" onclick="openPivot()" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openPivot()}" aria-label="打开数据透视">'
     + '<div class="pv-entry-icon">📊</div>'
     + '<div class="pv-entry-main"><div class="pv-entry-title">数据透视</div>'
-    + '<div class="pv-entry-sub">分类 / 商品组 / 月份自由交叉，奶茶、API、日用品可单独归组</div></div>'
+    + '<div class="pv-entry-sub">行列交叉汇总 + 柱状/折线/环形/热力图；奶茶、API、日用品可单独归组</div></div>'
     + '<div class="pv-entry-arrow">打开 ›</div></div>';
 
   // ===== 自定义日期区间小结 =====
