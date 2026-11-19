@@ -68,6 +68,7 @@ body.dark .badge-已归档{background:rgba(243,244,246,.15);color:#9ca3af}
 body.dark .badge-已取消{background:rgba(243,244,246,.15);color:#9ca3af}
 body.dark .badge-对比中{background:rgba(219,234,254,.15);color:#60a5fa}
 body.dark .badge-已定点{background:rgba(237,233,254,.15);color:#a78bfa}
+body.dark .badge-推荐{background:rgba(220,252,231,.15);color:#4ade80}
 body.dark .badge-已完成{background:rgba(220,252,231,.15);color:#4ade80}
 body.dark .cat-badge{background:rgba(99,102,241,.15);color:#818cf8}
 body.dark .bottom-nav{background:var(--card);border-top-color:var(--border);box-shadow:0 -2px 10px rgba(0,0,0,.2)}
@@ -202,6 +203,7 @@ body.dark .ai-confirm-btn.secondary{background:var(--bg);color:var(--text);borde
 .badge-已取消{background:#f3f4f6;color:#6b7280}
 .badge-对比中{background:#dbeafe;color:#1e40af}
 .badge-已定点{background:#ede9fe;color:#5b21b6}
+.badge-推荐{background:#dcfce7;color:#166534}
 .badge-已完成{background:#dcfce7;color:#166534}
 .cat-badge{background:var(--pri-light);color:var(--pri);padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700}
 /* Phase 2: 分类色条 3px（JS 仍写 border-left，这里统一圆角裁切） */
@@ -2360,6 +2362,10 @@ body.dark .auth-card{box-shadow:none}
 .nd-matrix em{font-style:normal;font-size:10px;color:var(--muted);margin-left:2px}
 .nd-sup{border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px;background:var(--card)}
 .nd-sup.win{border-color:var(--pri)}
+.nd-sup.rec{border-color:var(--green);box-shadow:0 0 0 1px rgba(34,197,94,.25)}
+.nd-rec{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);border-left:3px solid var(--green);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px}
+.nd-rec-title{font-weight:700;color:var(--green);margin-bottom:4px}
+.nd-rec-body{color:var(--text);line-height:1.55;white-space:normal}
 .nd-sup-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
 .nd-sup-name{font-weight:700;font-size:14px}
 .nd-sup-meta{font-size:12px;color:var(--muted)}

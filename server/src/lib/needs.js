@@ -204,7 +204,8 @@ function synthLegacyRow(need, suppliers, orders) {
     ordered_at: (o && o.ordered_at) || '',
     arrived_at: (o && o.arrived_at) || '',
     archived_at: (o && o.archived_at) || '',
-    eval_summary: need.eval_summary || '', // 迁移留存，不进新流程
+    eval_summary: need.eval_summary || '', // 综合推荐（对比结论）
+    recommend_supplier_id: need.recommend_supplier_id || null,
     buy_reason: need.buy_reason || '',
     budget_range: budgetRange,
     cancel_reason: need.cancel_reason || '',

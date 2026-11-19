@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS purchase_needs (
   is_virtual            TINYINT NOT NULL DEFAULT 0,      -- 虚拟商品
   is_quick              TINYINT NOT NULL DEFAULT 0,      -- 快速采购生成
   buy_reason            TEXT NULL,                       -- 迁移留存（不进新流程）
-  eval_summary          TEXT NULL,                       -- 迁移留存（不进新流程）
+  eval_summary          TEXT NULL,                       -- 综合推荐（对比结论，agent/用户可写）
+  recommend_supplier_id BIGINT UNSIGNED NULL,            -- 综合推荐的供应商（推荐 ≠ 定点）
   cancel_reason         VARCHAR(200) NULL,
   decided_at            DATETIME NULL,                   -- 定点时间
   ext_id                VARCHAR(40) NULL,                -- 飞书 record_id（迁移时继承旧 purchases.ext_id）

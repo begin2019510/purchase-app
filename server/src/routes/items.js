@@ -86,6 +86,7 @@ function rowToItem(r) {
     '到货时间': r.arrived_at || '',
     '归档时间': r.archived_at || '',
     '评估摘要': r.eval_summary || '',
+    '推荐供应商ID': r.recommend_supplier_id ? 'rec_' + r.recommend_supplier_id : '',
     '购买理由': r.buy_reason || '',
     '预算区间': r.budget_range || '',
     '取消原因': r.cancel_reason || '',
@@ -371,7 +372,24 @@ router.put('/items', async (req, res, next) => {
       needCols.budget_max = r ? r.max : null;
     }
     if (b.buyReason !== undefined) needCols.buy_reason = String(b.buyReason || '');
-    if (b.evalSummary !== undefined) needCols.eval_summary = String(b.evalSummary || '');
+    if (b.evalSummary !== undefined) needCols.eval_summary = String(b.evalSummary || '').slice(0, 5000);
+    if (b.recommendSupplierId !== undefined) {
+      const rid = b.recommendSupplierId === null || b.recommendSupplierId === ''
+        ? null : H.numFromId(b.recommendSupplierId);
+      if (b.recommendSupplierId !== null && b.recommendSupplierId !== '' && !rid) {
+        await conn.rollback();
+        return res.status(400).json({ error: '推荐供应商ID格式不正确' });
+      }
+      if (rid) {
+        const rs = await conn.query('SELECT id FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?',
+          [rid, need.id, uid]);
+        if (!rs.length) {
+          await conn.rollback();
+          return res.status(400).json({ error: '推荐供应商不存在' });
+        }
+      }
+      needCols.recommend_supplier_id = rid;
+    }
     if (b.cancelReason !== undefined) needCols.cancel_reason = String(b.cancelReason || '').slice(0, 200);
     if (b.virtual !== undefined) needCols.is_virtual = b.virtual ? 1 : 0;
     if (b.projectId !== undefined) needCols.project_id = npid;

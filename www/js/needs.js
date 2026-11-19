@@ -249,6 +249,16 @@ function openDetailModal(id) {
   if (st === '已取消' && n['取消原因']) {
     html += '<div style="background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;font-size:13px;border-left:3px solid var(--red)"><div style="font-weight:600;margin-bottom:2px">❌ 取消原因</div><div style="color:var(--muted)">' + esc(n['取消原因']) + '</div></div>';
   }
+  // 综合推荐：对比结论（agent/用户代写），优先于逐家优缺点
+  const recText = n['综合推荐'] || '';
+  const recSupId = n['推荐供应商ID'] || '';
+  if (recText) {
+    const recSup = recSupId ? (sups.find(function (s) { return s.id === recSupId; }) || null) : null;
+    html += '<div class="nd-rec" id="ndRecBanner">'
+      + '<div class="nd-rec-title">💡 综合推荐' + (recSup ? ' · <b>' + esc(recSup['谁'] || '') + '</b>' : '') + '</div>'
+      + '<div class="nd-rec-body">' + esc(recText).replace(/\n/g, '<br>') + '</div>'
+      + '</div>';
+  }
   html += '</div>';
 
   // ===== ① 对比：矩阵 + 供应商卡（已定点且只有一家时折叠成一行）=====
@@ -277,8 +287,11 @@ function openDetailModal(id) {
       const scores = s['打分'] || {};
       const activeTrial = trials.find(o => o.supplierId === sid && ['待下单', '已下单', '已到'].indexOf(o['状态']) >= 0);
       const isPinned = pinnedIds.indexOf(sid) >= 0;
-      html += '<div class="nd-sup' + (isPinned ? ' win' : '') + '">';
-      html += '<div class="nd-sup-head"><span class="nd-sup-name">' + esc(s['谁'] || '') + (isPinned ? ' <span class="badge badge-已定点">定点</span>' : '') + '</span>'
+      const isRec = !!recSupId && sid === recSupId;
+      html += '<div class="nd-sup' + (isPinned ? ' win' : '') + (isRec ? ' rec' : '') + '">';
+      html += '<div class="nd-sup-head"><span class="nd-sup-name">' + esc(s['谁'] || '')
+        + (isPinned ? ' <span class="badge badge-已定点">定点</span>' : '')
+        + (isRec ? ' <span class="badge badge-推荐">推荐</span>' : '') + '</span>'
         + '<span class="nd-sup-meta">' + (s['平台'] ? esc(s['平台']) + ' · ' : '') + (s['报价'] != null ? fmtY(s['报价']) : '') + '</span></div>';
       const img = needImgSrc(s['图片']);
       if (img) html += '<img class="nd-sup-img" src="' + escAttr(img) + '" onclick="showFullscreenImg(this.src)" alt="">';

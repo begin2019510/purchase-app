@@ -69,6 +69,9 @@ function rowToNeed(n, suppliers, orders) {
     '取消原因': n.cancel_reason || '',
     '定点时间': n.decided_at || '',
     '创建时间': n.created_at ? formatDt(n.created_at) : '',
+    // 综合推荐：对比阶段 agent/用户写的结论（复用 eval_summary 列，无迁移）
+    '综合推荐': n.eval_summary || '',
+    '推荐供应商ID': n.recommend_supplier_id ? 'rec_' + n.recommend_supplier_id : '',
     suppliers: (suppliers || []).map(rowToSupplier),
     orders: (orders || []).map(rowToOrder),
   };
@@ -144,6 +147,7 @@ function validateNeedInput(b, old) {
   }
   if (bmin != null && bmax != null && bmin > bmax) return { error: '预算下限不能大于上限' };
   if (b.cancelReason !== undefined && String(b.cancelReason || '').length > 200) return { error: '取消原因过长' };
+  if (b.evalSummary !== undefined && String(b.evalSummary == null ? '' : b.evalSummary).length > 5000) return { error: '综合推荐过长' };
   return { name, category, bmin, bmax };
 }
 
@@ -264,6 +268,21 @@ router.put('/needs/:id', async (req, res, next) => {
       set('dimensions', JSON.stringify(newDims));
     }
     if (b.cancelReason !== undefined) set('cancel_reason', String(b.cancelReason || '').slice(0, 200));
+    // 综合推荐：对比结论（谁 + 为什么），定点前可反复改
+    if (b.evalSummary !== undefined) set('eval_summary', String(b.evalSummary || '').slice(0, 5000));
+    if (b.recommendSupplierId !== undefined) {
+      const rid = b.recommendSupplierId === null || b.recommendSupplierId === ''
+        ? null : _numId(b.recommendSupplierId);
+      if (b.recommendSupplierId !== null && b.recommendSupplierId !== '' && !rid) {
+        return res.status(400).json({ error: '推荐供应商ID格式不正确' });
+      }
+      if (rid) {
+        const sup = await db.one('SELECT id FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?',
+          [rid, need.id, uid]);
+        if (!sup) return res.status(400).json({ error: '推荐供应商不存在' });
+      }
+      set('recommend_supplier_id', rid);
+    }
     const keys = Object.keys(cols);
     if (keys.length) {
       await db.exec('UPDATE purchase_needs SET ' + keys.map(k => k + ' = ?').join(', ') + ' WHERE id = ? AND user_id = ?',
