@@ -414,6 +414,7 @@ function ccRenderAsk(bubble, question) {
     var wrap = document.createElement('div');
     wrap.className = 'cc-ask-block';
     wrap.setAttribute('data-qi', String(qi));
+    wrap.setAttribute('data-multi', q.multiSelect ? '1' : '0');
     var title = document.createElement('div');
     title.className = 'cc-ask-title';
     title.textContent = '❓ ' + String(q.question || '');
@@ -453,12 +454,37 @@ function ccRenderAsk(bubble, question) {
           var sibs = opts.querySelectorAll('.cc-ask-opt');
           for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove('sel');
           btn.classList.add('sel');
+          var cin = opts.querySelector('.cc-ask-custom');
+          if (cin) cin.value = '';
         }
-        var sub = card.querySelector('.cc-ask-submit');
-        if (sub) sub.disabled = !Object.keys(ccCollectAsk(card)).length;
+        ccSyncAskSubmit(card);
       };
       opts.appendChild(btn);
     });
+
+    // 「其他」自由输入：Claude Code / CloudCLI 允许自写答案，App 端同步支持
+    var custom = document.createElement('input');
+    custom.type = 'text';
+    custom.className = 'cc-ask-custom';
+    custom.placeholder = '✎ 其他：自己写答案…';
+    custom.setAttribute('enterkeyhint', 'send');
+    custom.setAttribute('autocomplete', 'off');
+    custom.value = String(q.answer || '');
+    custom.oninput = function () {
+      if (!q.multiSelect) {
+        var sels = opts.querySelectorAll('.cc-ask-opt.sel');
+        for (var k = 0; k < sels.length; k++) sels[k].classList.remove('sel');
+      }
+      ccSyncAskSubmit(card);
+    };
+    custom.onkeydown = function (ev) {
+      if (ev.key !== 'Enter') return;
+      ev.preventDefault();
+      var ans = ccCollectAsk(card);
+      if (!Object.keys(ans).length) return;
+      ccSubmitAsk(card, ans, true);
+    };
+    opts.appendChild(custom);
     wrap.appendChild(opts);
     card.appendChild(wrap);
   });
@@ -474,26 +500,31 @@ function ccRenderAsk(bubble, question) {
   if (instant) {
     var hint = document.createElement('span');
     hint.className = 'cc-ask-hint';
-    hint.textContent = '点选一项即提交';
+    hint.textContent = '点选一项即提交，也可自己写';
     foot.appendChild(hint);
-  } else {
-    var submit = document.createElement('button');
-    submit.type = 'button';
-    submit.className = 'cc-ask-submit';
-    submit.textContent = '提交';
-    submit.disabled = true;
-    submit.onclick = function () {
-      var answers = ccCollectAsk(card);
-      if (!Object.keys(answers).length) { ccToast('请先选择'); return; }
-      ccSubmitAsk(card, answers, true);
-    };
-    foot.appendChild(submit);
   }
+  var submit = document.createElement('button');
+  submit.type = 'button';
+  submit.className = 'cc-ask-submit';
+  submit.textContent = '提交';
+  submit.disabled = true;
+  submit.onclick = function () {
+    var answers = ccCollectAsk(card);
+    if (!Object.keys(answers).length) { ccToast('请先选择或填写'); return; }
+    ccSubmitAsk(card, answers, true);
+  };
+  foot.appendChild(submit);
   card.appendChild(foot);
   body.appendChild(card);
   ov.classList.add('show');
   CC.question = question;
   CC.stick = true;
+}
+
+function ccSyncAskSubmit(card) {
+  if (!card) return;
+  var sub = card.querySelector('.cc-ask-submit');
+  if (sub) sub.disabled = !Object.keys(ccCollectAsk(card)).length;
 }
 
 function ccCollectAsk(card) {
@@ -504,11 +535,18 @@ function ccCollectAsk(card) {
     var title = blocks[i].querySelector('.cc-ask-title');
     var qtext = title ? String(title.textContent || '').replace(/^❓\s*/, '') : '';
     if (!qtext) continue;
+    var isMulti = blocks[i].getAttribute('data-multi') === '1';
     var sels = blocks[i].querySelectorAll('.cc-ask-opt.sel');
     var labels = [];
     for (var j = 0; j < sels.length; j++) {
       var lab = sels[j].getAttribute('data-label');
       if (lab) labels.push(lab);
+    }
+    var cin = blocks[i].querySelector('.cc-ask-custom');
+    var custom = cin ? String(cin.value || '').trim() : '';
+    if (custom) {
+      if (isMulti) labels.push(custom);
+      else labels = [custom];
     }
     if (labels.length) answers[qtext] = labels.join(', ');
   }
@@ -520,6 +558,8 @@ function ccAskSetBusy(card, busy) {
   card.classList.toggle('busy', !!busy);
   var btns = card.querySelectorAll('button');
   for (var i = 0; i < btns.length; i++) btns[i].disabled = !!busy;
+  var inputs = card.querySelectorAll('input, textarea');
+  for (var k = 0; k < inputs.length; k++) inputs[k].disabled = !!busy;
 }
 
 async function ccSubmitAsk(card, answers, allow) {

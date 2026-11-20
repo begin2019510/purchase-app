@@ -284,6 +284,20 @@ body.chat-page ::selection{background:color-mix(in srgb,var(--pri) 28%,transpare
 }
 .cc-ask-label{font-size:13.5px;font-weight:700}
 .cc-ask-desc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.cc-ask-custom{
+  width:100%;box-sizing:border-box;
+  border:1px dashed var(--border);border-radius:10px;
+  background:var(--card);color:var(--text);
+  font:inherit;font-size:13px;line-height:1.4;
+  padding:9px 11px;outline:none;
+  transition:border-color .12s ease,box-shadow .12s ease;
+}
+.cc-ask-custom::placeholder{color:var(--muted)}
+.cc-ask-custom:focus{
+  border-style:solid;border-color:var(--pri);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 14%,transparent);
+}
+.cc-ask-custom:disabled{opacity:.6}
 .cc-ask-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:11px}
 .cc-ask-hint{font-size:11.5px;color:var(--muted);margin-right:auto}
 .cc-ask-skip{

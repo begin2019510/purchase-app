@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.13";
+const APP_VERSION = "3.1.14";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.14',date:'2026-11-20',items:['「和 Claude 对话」提问弹窗新增「其他：自己写答案」输入框，支持自由作答（与 CloudCLI 网页版一致），回车即可提交','单选输入时自动取消已选选项；多选时自写内容与选中项一并提交']},
 {v:'3.1.13',date:'2026-11-20',items:['「和 Claude 对话」Claude 提问改为居中弹窗，选项更醒目、单选点选即提交','弹窗支持多题/多选（提交）与跳过；作答后自动关闭并继续回复']},
 {v:'3.1.12',date:'2026-11-20',items:['「和 Claude 对话」支持 Claude 提问（AskUserQuestion）：弹出选项卡可点选/多选提交，不再只显示纯文本','聊天链路改为 CloudCLI WebSocket（可交互作答）；会话行缺失或 WS 不可用时自动回退 HTTP，聊天不中断','作答等待不计入 25 分钟任务超时；跳过=空答案继续']},
 {v:'3.1.11',date:'2026-11-19',items:['采购对比新增「综合推荐」：需求可写整体结论并指定推荐供应商，详情页显示结论横幅并高亮该供应商','MCP purchase.update 可写 recommendation + recommendSupplierId（T0），与优缺点同套价格锚定规则']},
