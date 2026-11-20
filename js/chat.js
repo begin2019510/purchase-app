@@ -10,7 +10,7 @@ var CC = {
   sid: '', historyFor: '', taskId: '', timer: null, pollBusy: false,
   live: null, lastText: '', lastTools: [], busy: false, stopping: false,
   sessions: null, sessionsAt: 0, stick: true, pollFails: 0, booted: false,
-  resuming: false
+  resuming: false, question: null, askBusy: false
 };
 
 function $(id) { return document.getElementById(id); }
@@ -373,6 +373,184 @@ function ccDedupeLive(bubble, text) {
     if (partials[i].parentNode) partials[i].parentNode.removeChild(partials[i]);
   }
   return false;
+}
+
+// ===== AskUserQuestion 选项卡（服务端 action=answer → CloudCLI WS permission-response）=====
+function ccClearAsk() {
+  var cards = document.querySelectorAll('.cc-ask');
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].parentNode) cards[i].parentNode.removeChild(cards[i]);
+  }
+  CC.question = null;
+  CC.askBusy = false;
+}
+
+function ccRenderAsk(bubble, question) {
+  if (!bubble || !bubble.body || !question) return;
+  var host = bubble.body.parentNode; // 挂在 .cc-msg-main，ccSetBubble 重写 body 不会冲掉
+  if (!host) return;
+  var rid = String(question.requestId || '');
+  var existing = host.querySelector('.cc-ask');
+  if (existing) {
+    if (existing.getAttribute('data-rid') === rid) { CC.question = question; return; }
+    existing.parentNode.removeChild(existing);
+  }
+
+  var qs = Array.isArray(question.questions) ? question.questions : [];
+  if (!qs.length || !rid) return;
+  var instant = qs.length === 1 && !qs[0].multiSelect && (qs[0].options || []).length > 0;
+
+  var card = document.createElement('div');
+  card.className = 'cc-ask';
+  card.setAttribute('data-rid', rid);
+
+  qs.forEach(function (q, qi) {
+    var wrap = document.createElement('div');
+    wrap.className = 'cc-ask-block';
+    wrap.setAttribute('data-qi', String(qi));
+    var title = document.createElement('div');
+    title.className = 'cc-ask-title';
+    title.textContent = '❓ ' + String(q.question || '');
+    wrap.appendChild(title);
+
+    var opts = document.createElement('div');
+    opts.className = 'cc-ask-opts';
+    (q.options || []).forEach(function (o) {
+      var label = String((o && o.label) || '');
+      if (!label) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cc-ask-opt';
+      btn.setAttribute('data-label', label);
+      var lab = document.createElement('span');
+      lab.className = 'cc-ask-label';
+      lab.textContent = label;
+      btn.appendChild(lab);
+      var desc = String((o && o.description) || '');
+      if (desc) {
+        var d = document.createElement('span');
+        d.className = 'cc-ask-desc';
+        d.textContent = desc;
+        btn.appendChild(d);
+      }
+      btn.onclick = function () {
+        if (card.classList.contains('busy')) return;
+        if (instant) {
+          var a1 = {};
+          a1[String(q.question || '')] = label;
+          ccSubmitAsk(card, a1, true);
+          return;
+        }
+        if (q.multiSelect) {
+          btn.classList.toggle('sel');
+        } else {
+          var sibs = opts.querySelectorAll('.cc-ask-opt');
+          for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove('sel');
+          btn.classList.add('sel');
+        }
+        var sub = card.querySelector('.cc-ask-submit');
+        if (sub) sub.disabled = !Object.keys(ccCollectAsk(card)).length;
+      };
+      opts.appendChild(btn);
+    });
+    wrap.appendChild(opts);
+    card.appendChild(wrap);
+  });
+
+  var foot = document.createElement('div');
+  foot.className = 'cc-ask-foot';
+  var skip = document.createElement('button');
+  skip.type = 'button';
+  skip.className = 'cc-ask-skip';
+  skip.textContent = '跳过';
+  skip.onclick = function () { ccSubmitAsk(card, {}, false); };
+  foot.appendChild(skip);
+  if (instant) {
+    var hint = document.createElement('span');
+    hint.className = 'cc-ask-hint';
+    hint.textContent = '点选一项即提交';
+    foot.appendChild(hint);
+  } else {
+    var submit = document.createElement('button');
+    submit.type = 'button';
+    submit.className = 'cc-ask-submit';
+    submit.textContent = '提交';
+    submit.disabled = true;
+    submit.onclick = function () {
+      var answers = ccCollectAsk(card);
+      if (!Object.keys(answers).length) { ccToast('请先选择'); return; }
+      ccSubmitAsk(card, answers, true);
+    };
+    foot.appendChild(submit);
+  }
+  card.appendChild(foot);
+  host.appendChild(card);
+  CC.question = question;
+  CC.stick = true;
+  ccScrollBottom(false, true);
+}
+
+function ccCollectAsk(card) {
+  var answers = {};
+  if (!card) return answers;
+  var blocks = card.querySelectorAll('.cc-ask-block');
+  for (var i = 0; i < blocks.length; i++) {
+    var title = blocks[i].querySelector('.cc-ask-title');
+    var qtext = title ? String(title.textContent || '').replace(/^❓\s*/, '') : '';
+    if (!qtext) continue;
+    var sels = blocks[i].querySelectorAll('.cc-ask-opt.sel');
+    var labels = [];
+    for (var j = 0; j < sels.length; j++) {
+      var lab = sels[j].getAttribute('data-label');
+      if (lab) labels.push(lab);
+    }
+    if (labels.length) answers[qtext] = labels.join(', ');
+  }
+  return answers;
+}
+
+function ccAskSetBusy(card, busy) {
+  if (!card) return;
+  card.classList.toggle('busy', !!busy);
+  var btns = card.querySelectorAll('button');
+  for (var i = 0; i < btns.length; i++) btns[i].disabled = !!busy;
+}
+
+async function ccSubmitAsk(card, answers, allow) {
+  if (!card || CC.askBusy) return;
+  if (!CC.taskId) { ccToast('任务已结束'); ccClearAsk(); return; }
+  var rid = card.getAttribute('data-rid') || '';
+  CC.askBusy = true;
+  ccAskSetBusy(card, true);
+  try {
+    var r = await ccApi('answer', {
+      id: CC.taskId,
+      requestId: rid,
+      answers: answers || {},
+      allow: allow !== false
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (ccHandleAuth(r, d)) { CC.askBusy = false; ccAskSetBusy(card, false); return; }
+    if (r.status === 409 || !d.ok) {
+      CC.askBusy = false;
+      ccAskSetBusy(card, false);
+      if (d.error === 'no_question') {
+        ccToast('问题已失效');
+        ccClearAsk();
+        ccSchedulePoll(400);
+      } else {
+        ccToast(d.error || '作答失败');
+      }
+      return;
+    }
+    ccClearAsk();
+    ccSetActivity('已作答，Claude 继续…', true);
+    ccSchedulePoll(400);
+  } catch (e) {
+    CC.askBusy = false;
+    ccAskSetBusy(card, false);
+    ccToast('网络错误，稍后重试');
+  }
 }
 
 function ccAppendTools(b) {
@@ -755,6 +933,15 @@ async function ccPollOnce() {
 
     CC.pollFails = 0;
     if (d.status === 'running') {
+      // AskUserQuestion 待作答：挂选项卡，低频轮询（作答后自然恢复）
+      if (d.question && CC.live) {
+        ccRenderAsk(CC.live, d.question);
+        ccSetActivity(CC.stopping ? '正在停止…' : 'Claude 在等你选择…', true);
+        if (!CC.stopping) ccSchedulePoll(CC.askBusy ? 2500 : 1500);
+        else ccSchedulePoll(400);
+        return;
+      }
+      if (CC.question && !d.question) ccClearAsk();
       var tool = d.tools && d.tools.length ? String(d.tools[d.tools.length - 1]) : '';
       ccSetActivity(CC.stopping ? '正在停止…' : (tool ? ('正在使用 ' + tool + '…') : (text ? '正在生成回复…' : '正在思考…')), true);
       if (!CC.stopping) ccSchedulePoll(750);
@@ -807,6 +994,7 @@ function ccStopTimers() {
   CC.stopping = false;
   CC.resuming = false;
   CC.pollFails = 0;
+  ccClearAsk();
   ccUpdateComposer();
   ccUpdateHeader();
   ccSetActivity('');

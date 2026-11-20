@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.11";
+const APP_VERSION = "3.1.12";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.12',date:'2026-11-20',items:['「和 Claude 对话」支持 Claude 提问（AskUserQuestion）：弹出选项卡可点选/多选提交，不再只显示纯文本','聊天链路改为 CloudCLI WebSocket（可交互作答）；会话行缺失或 WS 不可用时自动回退 HTTP，聊天不中断','作答等待不计入 25 分钟任务超时；跳过=空答案继续']},
 {v:'3.1.11',date:'2026-11-19',items:['采购对比新增「综合推荐」：需求可写整体结论并指定推荐供应商，详情页显示结论横幅并高亮该供应商','MCP purchase.update 可写 recommendation + recommendSupplierId（T0），与优缺点同套价格锚定规则']},
 {v:'3.1.10',date:'2026-11-17',items:['统计页新增「仪表盘」：KPI 四联（本月支出+环比、今年支出+笔数、采购/记账/固定、预算使用率）+ 4 张预设图卡','每卡可改范围/图型/维度/指标，可隐藏与排序，布局按账号存本机；仅统计页入口，全屏独立页']},
 {v:'3.1.9',date:'2026-11-17',items:['数据透视改为「打开即图表」：问题条（奶茶/API…）一键出图，字段货架改行/列/指标/图型即时生效','筛选（范围/数据/关键词）收进次级；焦点组只看该组流水','入口仍在统计页二级页']},

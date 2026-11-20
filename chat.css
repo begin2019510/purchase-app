@@ -259,6 +259,47 @@ body.chat-page ::selection{background:color-mix(in srgb,var(--pri) 28%,transpare
 .cc-body tr:last-child td{border-bottom:0}
 
 /* 工具与状态 */
+/* ===== AskUserQuestion 选项卡（作答后由服务端回给 CloudCLI）===== */
+.cc-ask{
+  margin-top:12px;padding:12px;
+  border:1px solid color-mix(in srgb,var(--pri) 28%,transparent);
+  border-radius:12px;
+  background:color-mix(in srgb,var(--pri) 6%,var(--card));
+}
+.cc-ask-block + .cc-ask-block{margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)}
+.cc-ask-title{font-size:13.5px;font-weight:750;line-height:1.5;margin-bottom:9px;color:var(--text);word-break:break-word}
+.cc-ask-opts{display:flex;flex-direction:column;gap:7px}
+.cc-ask-opt{
+  display:flex;flex-direction:column;gap:3px;align-items:flex-start;
+  width:100%;text-align:left;
+  border:1px solid var(--border);border-radius:10px;
+  background:var(--card);color:var(--text);
+  font:inherit;padding:9px 11px;cursor:pointer;
+  transition:border-color .12s ease,background .12s ease,transform .1s ease;
+}
+.cc-ask-opt:active{transform:scale(.985)}
+.cc-ask-opt.sel{
+  border-color:var(--pri);
+  background:color-mix(in srgb,var(--pri) 12%,var(--card));
+}
+.cc-ask-label{font-size:13.5px;font-weight:700}
+.cc-ask-desc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.cc-ask-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:11px}
+.cc-ask-hint{font-size:11.5px;color:var(--muted);margin-right:auto}
+.cc-ask-skip{
+  border:1px solid var(--border);background:transparent;color:var(--muted);
+  font:inherit;font-size:12.5px;font-weight:700;
+  padding:7px 12px;border-radius:9px;cursor:pointer;
+}
+.cc-ask-submit{
+  border:0;background:var(--pri);color:#fff;
+  font:inherit;font-size:12.5px;font-weight:750;
+  padding:7px 16px;border-radius:9px;cursor:pointer;
+}
+.cc-ask-submit:disabled{opacity:.45;cursor:default}
+.cc-ask.busy{opacity:.78}
+.cc-ask.busy .cc-ask-opt{pointer-events:none}
+
 .cc-tool-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
 .cc-tool{
   display:inline-flex;align-items:center;gap:5px;
