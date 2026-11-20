@@ -375,29 +375,35 @@ function ccDedupeLive(bubble, text) {
   return false;
 }
 
-// ===== AskUserQuestion 选项卡（服务端 action=answer → CloudCLI WS permission-response）=====
+// ===== AskUserQuestion 弹窗（服务端 action=answer → CloudCLI WS permission-response）=====
 function ccClearAsk() {
-  var cards = document.querySelectorAll('.cc-ask');
-  for (var i = 0; i < cards.length; i++) {
-    if (cards[i].parentNode) cards[i].parentNode.removeChild(cards[i]);
-  }
+  var body = document.getElementById('ccAskCard');
+  if (body) body.innerHTML = '';
+  var ov = document.getElementById('ccAskOverlay');
+  if (ov) ov.classList.remove('show');
   CC.question = null;
   CC.askBusy = false;
 }
 
 function ccRenderAsk(bubble, question) {
-  if (!bubble || !bubble.body || !question) return;
-  var host = bubble.body.parentNode; // 挂在 .cc-msg-main，ccSetBubble 重写 body 不会冲掉
-  if (!host) return;
+  if (!question) return;
+  var body = document.getElementById('ccAskCard');
+  var ov = document.getElementById('ccAskOverlay');
+  if (!body || !ov) return;
   var rid = String(question.requestId || '');
-  var existing = host.querySelector('.cc-ask');
+  if (!rid) return;
+  var existing = body.querySelector('.cc-ask');
   if (existing) {
-    if (existing.getAttribute('data-rid') === rid) { CC.question = question; return; }
-    existing.parentNode.removeChild(existing);
+    if (existing.getAttribute('data-rid') === rid) {
+      CC.question = question;
+      ov.classList.add('show');
+      return;
+    }
+    body.innerHTML = '';
   }
 
   var qs = Array.isArray(question.questions) ? question.questions : [];
-  if (!qs.length || !rid) return;
+  if (!qs.length) return;
   var instant = qs.length === 1 && !qs[0].multiSelect && (qs[0].options || []).length > 0;
 
   var card = document.createElement('div');
@@ -484,10 +490,10 @@ function ccRenderAsk(bubble, question) {
     foot.appendChild(submit);
   }
   card.appendChild(foot);
-  host.appendChild(card);
+  body.appendChild(card);
+  ov.classList.add('show');
   CC.question = question;
   CC.stick = true;
-  ccScrollBottom(false, true);
 }
 
 function ccCollectAsk(card) {
@@ -933,8 +939,8 @@ async function ccPollOnce() {
 
     CC.pollFails = 0;
     if (d.status === 'running') {
-      // AskUserQuestion 待作答：挂选项卡，低频轮询（作答后自然恢复）
-      if (d.question && CC.live) {
+      // AskUserQuestion 待作答：弹出选择框，低频轮询（作答后自然恢复）
+      if (d.question) {
         ccRenderAsk(CC.live, d.question);
         ccSetActivity(CC.stopping ? '正在停止…' : 'Claude 在等你选择…', true);
         if (!CC.stopping) ccSchedulePoll(CC.askBusy ? 2500 : 1500);
