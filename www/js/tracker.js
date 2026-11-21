@@ -398,6 +398,51 @@
     n = Number(n) || 0;
     return typeof pjMoney === 'function' ? pjMoney(n) : '¥' + n.toFixed(0);
   }
+  function moneyShort(n) {
+    n = Number(n) || 0;
+    if (n >= 10000) return '¥' + (n / 10000).toFixed(1).replace(/\.0$/, '') + '万';
+    return '¥' + Math.round(n);
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // 花费与「账本」同口径：已下单/已到/已归档的采购 + 非收入记账
+  var BJ_MS = 8 * 3600 * 1000;
+  function moneyInfo(pid) {
+    var p = pjEntryOf(pid) || {};
+    var spend = p.spend || {};
+    var buy = Number(spend.buy) || 0;
+    var exp = Number(spend.exp) || 0;
+    var ledger = Array.isArray(p.ledger) ? p.ledger : [];
+    var now = new Date(Date.now() + BJ_MS);
+    var y = now.getUTCFullYear();
+    var mo = now.getUTCMonth();
+    var mStart = Date.UTC(y, mo, 1) - BJ_MS;
+    var mEnd = Date.UTC(y, mo + 1, 1) - BJ_MS;
+    var buckets = [];
+    for (var i = 5; i >= 0; i--) {
+      var d = new Date(Date.UTC(y, mo - i, 1));
+      buckets.push({
+        key: d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1),
+        label: (d.getUTCMonth() + 1) + '月',
+        buy: 0, exp: 0, count: 0
+      });
+    }
+    var map = {};
+    buckets.forEach(function(b) { map[b.key] = b; });
+    var month = { buy: 0, exp: 0, total: 0, count: 0 };
+    ledger.forEach(function(x) {
+      var ms = Number(x && x.dateMs);
+      if (!ms) return;
+      var amt = Number(x.amount) || 0;
+      var kind = x.kind === 'purchase' ? 'buy' : 'exp';
+      if (ms >= mStart && ms < mEnd) { month[kind] += amt; month.count++; }
+      var dd = new Date(ms + BJ_MS);
+      var b = map[dd.getUTCFullYear() + '-' + pad2(dd.getUTCMonth() + 1)];
+      if (b) { b[kind] += amt; b.count++; }
+    });
+    month.total = month.buy + month.exp;
+    return { buy: buy, exp: exp, total: buy + exp, count: ledger.length, month: month, buckets: buckets };
+  }
   function dateShort(ms) {
     if (ms == null) return '';
     var d = new Date(Number(ms));
@@ -431,7 +476,9 @@
     if (main) main.innerHTML = '<div class="trk-loading"><i></i><span>正在加载项目数据…</span></div>';
     Promise.all([
       pjRequest('GET', '/api/tracker/overview?projectId=' + encodeURIComponent(pid)),
-      pjRequest('GET', '/api/tracker/records?projectId=' + encodeURIComponent(pid) + '&limit=1000')
+      pjRequest('GET', '/api/tracker/records?projectId=' + encodeURIComponent(pid) + '&limit=1000'),
+      // 仪表盘的花费来自项目列表的 spend/ledger（与「账本」同一口径），打开详情时顺手刷新
+      (typeof loadProjects === 'function' ? loadProjects() : Promise.resolve(true))
     ]).then(function(res) {
       if (!_detail || _detail.projectId !== pid) return;
       _detail.overview = res[0];
@@ -860,6 +907,7 @@
     var per = _period === 'all' ? ov.all : ov[_period];
     var periodName = _period === 'week' ? '本周' : _period === 'month' ? '本月' : '全部';
     var closed = !!cfg.closed;
+    var mi = moneyInfo(_detail.projectId);
     var h = '';
 
     if (closed && ov.report) h += renderReport(ov);
@@ -879,6 +927,7 @@
     h += '<div class="trk-kpi"><div class="trk-kpi-label">连续达标</div><div class="trk-kpi-num">' + (ov.streak || 0) + '<small>周</small></div><div class="trk-kpi-sub">' + (ov.streak ? '本周未达标也不打断' : '从达标的一周开始累计') + '</div></div>';
     h += '<div class="trk-kpi"><div class="trk-kpi-label">里程碑</div><div class="trk-kpi-num">' + (ov.milestones ? ov.milestones.filter(function(m) { return m.done; }).length : 0) + '<small>/' + (ov.milestones ? ov.milestones.length : 0) + '</small></div><div class="trk-kpi-sub">' + esc(ov.nextMilestone ? '下一个：' + ov.nextMilestone.name : (ov.milestones && ov.milestones.length ? '全部完成 🎉' : '还没有里程碑')) + '</div></div>';
     h += '<div class="trk-kpi' + (ov.overdueDays > 0 ? ' warn' : '') + '"><div class="trk-kpi-label">' + (closed ? '项目周期' : '时间') + '</div><div class="trk-kpi-num">' + (closed && ov.report ? ov.report.days : (ov.daysElapsed == null ? '—' : ov.daysElapsed)) + '<small>天</small></div><div class="trk-kpi-sub">' + esc(timeSub(ov)) + '</div></div>';
+    h += '<div class="trk-kpi"><div class="trk-kpi-label">花费</div><div class="trk-kpi-num">' + money(mi.total) + '</div><div class="trk-kpi-sub">' + (mi.month.count ? '本月 ' + money(mi.month.total) + ' · ' + mi.month.count + ' 笔' : '本月暂无花费') + '</div></div>';
     h += '</div>';
 
     // 自动汇总句
@@ -896,7 +945,32 @@
     h += '<section class="trk-panel"><div class="trk-panel-head"><b>里程碑时间线</b><em>' + (ov.milestones ? ov.milestones.filter(function(m) { return m.done; }).length + '/' + ov.milestones.length : '0/0') + '</em></div>' + milestoneTimeline(ov) + '</section>';
     h += '</div>';
 
+    // 花费（与「账本」同口径，单栏占满）
+    h += '<div class="trk-charts" style="grid-template-columns:minmax(0,1fr)">';
+    h += '<section class="trk-panel"><div class="trk-panel-head"><b>近 6 个月花费</b><em>' + (mi.count ? '采购 ' + money(mi.buy) + ' · 记账 ' + money(mi.exp) + ' · 共 ' + mi.count + ' 笔' : '还没有关联的采购或记账') + '</em></div>';
+    h += moneyBars(mi);
+    if (mi.count) h += '<button type="button" class="pj-btn pj-btn-secondary" style="margin-top:9px;width:100%" onclick="App.tracker.setTab(\'money\')">查看账本明细</button>';
+    h += '</section></div>';
+
     return h;
+  }
+
+  function moneyBars(mi) {
+    var has = mi.buckets.some(function(b) { return b.buy + b.exp > 0; });
+    if (!has) return '<div class="trk-chart-empty">最近 6 个月还没有花费</div>';
+    var max = 1;
+    mi.buckets.forEach(function(b) { var t = b.buy + b.exp; if (t > max) max = t; });
+    var h = '<div class="trk-bars">';
+    mi.buckets.forEach(function(b) {
+      var t = b.buy + b.exp;
+      var pct = t ? Math.max(4, Math.round(t / max * 100)) : 2;
+      h += '<div class="trk-barcol" title="' + escAttr(b.key + '：采购 ' + money(b.buy) + '，记账 ' + money(b.exp) + '，共 ' + b.count + ' 笔') + '">';
+      h += '<span class="trk-barcount">' + (t ? moneyShort(t) : '') + '</span>';
+      h += '<div class="trk-bartrack"><i style="height:' + pct + '%"></i></div>';
+      h += '<span class="trk-barlabel">' + esc(b.label) + '</span>';
+      h += '</div>';
+    });
+    return h + '</div>';
   }
 
   function goalRing(ov) {

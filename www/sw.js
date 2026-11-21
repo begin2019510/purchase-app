@@ -1,7 +1,7 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v182';
+var CACHE = 'purchase-cache-v183';
 // 首页用 '/'（/index.html 在 CF 上会 308，addAll 会让整次安装失败）
-var STATIC_ASSETS = ['/', '/chat.html', '/chat.css?v=3.1.15', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.1.15', '/js/dashboard.js?v=3.1.15'];
+var STATIC_ASSETS = ['/', '/chat.html', '/chat.css?v=3.1.16', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.1.16', '/js/dashboard.js?v=3.1.16'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
