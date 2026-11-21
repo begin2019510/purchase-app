@@ -376,6 +376,40 @@
     return projectList.find(function(x) { return x.id === _detail.projectId; }) || null;
   }
 
+  // 项目列表里的完整行（带 spend/ledger）；overview.project 只有基本信息
+  function pjEntryOf(projectId) {
+    if (typeof projectList === 'undefined' || !Array.isArray(projectList)) return null;
+    return projectList.find(function(x) { return x.id === projectId; }) || null;
+  }
+  function linkedTodos(projectId) {
+    if (typeof todoList === 'undefined' || !Array.isArray(todoList)) return [];
+    return todoList.filter(function(t) {
+      return t.projectId === projectId && t.status !== '已删除' && t.status !== '已取消';
+    });
+  }
+  function dueText(t) {
+    if (!t.dueDate) return '';
+    try {
+      if (typeof formatDueDate === 'function') return formatDueDate(t.dueDate);
+      return String(t.dueDate).slice(0, 16).replace('T', ' ');
+    } catch (e) { return String(t.dueDate).slice(0, 16).replace('T', ' '); }
+  }
+  function money(n) {
+    n = Number(n) || 0;
+    return typeof pjMoney === 'function' ? pjMoney(n) : '¥' + n.toFixed(0);
+  }
+  function dateShort(ms) {
+    if (ms == null) return '';
+    var d = new Date(Number(ms));
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+  function dateTimeShort(ms) {
+    if (ms == null) return '';
+    var d = new Date(Number(ms));
+    var p = function(n) { return String(n).padStart(2, '0'); };
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
   function detailShell(name, error) {
     var h = '<div class="pj2-sheet-head">';
     h += '<div class="pj2-sheet-name"><span class="trk-head-ico">🎯</span><span class="pj2-name-text">' + esc(name || '长期跟踪') + '</span></div>';
@@ -440,6 +474,13 @@
     h += '<span class="pj2-pill">记录 ' + (ov.records ? ov.records.total : 0) + '</span>';
     if (ov.goal && ov.goal.kind === 'milestone') h += '<span class="pj2-pill">里程碑 ' + (ov.goal.done || 0) + '/' + (ov.goal.total || 0) + '</span>';
     else if (ov.goal && ov.goal.pct != null) h += '<span class="pj2-pill">目标 ' + pctOf(ov.goal.pct) + '%</span>';
+    var _linked = linkedTodos(_detail.projectId);
+    var _openN = _linked.filter(function(t) { return t.status !== '已完成'; }).length;
+    if (_linked.length) h += '<span class="pj2-pill">待办 ' + _openN + ( _openN ? '' : ' ✓') + '</span>';
+    var _entry = pjEntryOf(_detail.projectId);
+    var _sp = (_entry && _entry.spend) || {};
+    var _money = (Number(_sp.buy) || 0) + (Number(_sp.exp) || 0);
+    if (_money > 0) h += '<span class="pj2-pill money">' + money(_money) + '</span>';
     h += '</div>';
 
     h += '<div class="trk-toolbar">';
@@ -454,13 +495,19 @@
     h += '</div>';
 
     h += '<div class="pj2-tabs trk-tabs">';
+    var _todosForP = linkedTodos(_detail.projectId);
+    var _openForP = _todosForP.filter(function(t) { return t.status !== '已完成'; }).length;
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'table' ? ' active' : '') + '" onclick="App.tracker.setTab(\'table\')">表格<em>' + _detail.records.length + '</em></button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'kanban' ? ' active' : '') + '" onclick="App.tracker.setTab(\'kanban\')">看板</button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'dashboard' ? ' active' : '') + '" onclick="App.tracker.setTab(\'dashboard\')">仪表盘</button>';
+    h += '<button type="button" class="pj2-tab' + (_detail.tab === 'todos' ? ' active' : '') + '" onclick="App.tracker.setTab(\'todos\')">待办' + (_todosForP.length ? '<em>' + _openForP + '/' + _todosForP.length + '</em>' : '') + '</button>';
+    h += '<button type="button" class="pj2-tab' + (_detail.tab === 'money' ? ' active' : '') + '" onclick="App.tracker.setTab(\'money\')">账本</button>';
     h += '</div>';
     h += '<div class="pj2-tabbody trk-tabbody">';
     if (_detail.tab === 'kanban') h += renderKanban(ov);
     else if (_detail.tab === 'dashboard') h += renderDashboard(ov);
+    else if (_detail.tab === 'todos') h += renderTodosTab(ov, closed);
+    else if (_detail.tab === 'money') h += renderMoneyTab(ov);
     else h += renderTable(ov);
     h += '</div>';
 
@@ -469,10 +516,137 @@
 
   function setTab(tab) {
     if (!_detail) return;
-    if (['table', 'kanban', 'dashboard'].indexOf(tab) < 0) tab = 'table';
+    if (['table', 'kanban', 'dashboard', 'todos', 'money'].indexOf(tab) < 0) tab = 'table';
     _detail.tab = tab;
     _tabByProject[_detail.projectId] = tab;
     renderDetail();
+  }
+
+  // ===== 待办页签（跟踪项目没有阶段，待办直接挂在项目上）=====
+  function renderTodosTab(ov, closed) {
+    var pid = _detail.projectId;
+    var list = linkedTodos(pid);
+    var open = list.filter(function(t) { return t.status !== '已完成'; });
+    var done = list.filter(function(t) { return t.status === '已完成'; });
+    var h = '';
+    if (!closed) {
+      h += '<div class="pj2-quick">'
+        + '<input id="trkQuickTodo" maxlength="200" placeholder="加一条待办，例如「周五前交体检报告」" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.tracker.addTodo()}">'
+        + '<button type="button" class="pj-btn pj-btn-primary pj-btn-inline" onclick="App.tracker.addTodo()">添加</button>'
+        + '</div>'
+        + '<div class="pj2-quick-sub"><span>回车直接添加；点条目可设日期/提醒/重复</span>'
+        + '<button type="button" onclick="App.project.openTodoModalForProject(\'' + pid + '\', null)">更多设置</button></div>';
+    }
+    if (!list.length) {
+      h += '<div class="pj2-emptybox"><div class="ico">☑</div><div class="t">还没有待办</div><div class="s">加一件最想推进的事，和跟踪记录互相配合</div></div>';
+      return h;
+    }
+    h += '<div class="pj2-sec">未完成 <span>' + open.length + '</span></div>';
+    if (!open.length) h += '<div class="pj2-ledger-empty">全部完成啦 🎉</div>';
+    open.forEach(function(t) { h += todoRowHtml(t, closed); });
+    if (done.length) {
+      h += '<div class="pj2-subhead">已完成 <span>' + done.length + '</span></div>';
+      done.forEach(function(t) { h += todoRowHtml(t, closed); });
+    }
+    return h;
+  }
+
+  function todoRowHtml(t, closed) {
+    var isDone = t.status === '已完成';
+    var meta = [];
+    var dt = dueText(t);
+    if (dt) meta.push(esc(dt));
+    if (t.priority && t.priority !== '中') meta.push('优先级 ' + esc(t.priority));
+    if (t.category) meta.push(esc(t.category));
+    var chk = closed
+      ? '<span class="pj2-todo-check' + (isDone ? ' on' : '') + '" aria-hidden="true">' + (isDone ? '✓' : '') + '</span>'
+      : '<button class="pj2-todo-check' + (isDone ? ' on' : '') + '" onclick="event.stopPropagation();App.tracker.toggleTodo(\'' + t.id + '\',' + (!isDone) + ')">' + (isDone ? '✓' : '') + '</button>';
+    return '<div class="pj2-todo' + (isDone ? ' done' : '') + '" onclick="openTodoDetail(\'' + t.id + '\')">'
+      + chk
+      + '<div class="pj2-todo-main"><div class="pj2-todo-title">' + esc(t.title) + '</div>'
+      + (meta.length ? '<div class="pj2-todo-meta">' + meta.join('<span class="sep">·</span>') + '</div>' : '')
+      + '</div><span class="pj2-chev">›</span></div>';
+  }
+
+  function addTodo() {
+    if (!_detail) return;
+    var pid = _detail.projectId;
+    var inp = document.getElementById('trkQuickTodo');
+    var title = inp ? String(inp.value || '').trim() : '';
+    if (!title) { toast('请先输入待办内容'); if (inp) inp.focus(); return; }
+    if (typeof App === 'undefined' || !App.project || !App.project.createTodo) { toast('待办模块未加载'); return; }
+    // 复用项目模块的乐观插入 + 失败回滚；phaseIdx 传 null（跟踪项目没有阶段）
+    App.project.createTodo(pid, title, null, inp, 'trkQuickTodo', null);
+  }
+
+  async function toggleTodo(id, done) {
+    if (typeof todoList === 'undefined') return;
+    var t = todoList.find(function(x) { return x.id === id; });
+    if (!t) { toast('这条待办还在同步，请稍后再试'); return; }
+    if (String(t.id).indexOf('tmp') === 0) { toast('保存中，请稍候'); return; }
+    var old = t.status;
+    t.status = done ? '已完成' : '待办';
+    renderDetail();
+    try {
+      var r = await todoApi('PUT', { id: id, status: t.status });
+      if (r && r.error) throw new Error(r.error);
+      if (typeof setCachedData === 'function') { try { setCachedData('todos', todoList); } catch (e) {} }
+    } catch (e) {
+      t.status = old;
+      renderDetail();
+      toast('更新失败: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // ===== 账本页签：跟踪项目同样能挂采购/记账 =====
+  function renderMoneyTab() {
+    var pid = _detail.projectId;
+    var p = pjEntryOf(pid) || {};
+    var spend = p.spend || {};
+    var buy = Number(spend.buy) || 0;
+    var exp = Number(spend.exp) || 0;
+    var total = buy + exp;
+    var ledger = (p.ledger || []).slice().sort(function(a, b) {
+      return (Number(b.dateMs) || 0) - (Number(a.dateMs) || 0);
+    });
+    var h = '<div class="pj2-money-grid">'
+      + '<div class="pj2-money-cell"><span>🛒 采购</span><b>' + money(buy) + '</b></div>'
+      + '<div class="pj2-money-cell"><span>💰 记账</span><b>' + money(exp) + '</b></div>'
+      + '<div class="pj2-money-cell accent"><span>合计</span><b>' + money(total) + '</b></div>'
+      + '</div>'
+      + '<div class="pj2-money-actions">'
+      + '<button class="pj-btn pj-btn-secondary" type="button" onclick="App.tracker.openPurchase()">＋ 记采购</button>'
+      + '<button class="pj-btn pj-btn-secondary" type="button" onclick="App.tracker.openExpense()">＋ 记账</button>'
+      + '</div>';
+    if (!ledger.length) {
+      h += '<div class="pj2-ledger-empty">还没有挂到这个项目的采购或记账<br><span>点上方按钮记一笔，或在采购/记账里选择这个项目</span></div>';
+      return h;
+    }
+    h += '<div class="pj2-subhead">全部明细 <span>' + ledger.length + '</span></div>';
+    ledger.forEach(function(x) {
+      var fn = x.kind === 'purchase' ? 'openDetailModal' : 'openExpenseModal';
+      var meta = [];
+      if (x.dateMs) meta.push(dateTimeShort(x.dateMs));
+      meta.push('已关联本项目');
+      h += '<div class="pj2-ledger" onclick="' + fn + '(\'' + x.id + '\')">'
+        + '<span class="ico">' + (x.kind === 'purchase' ? '🛒' : '💰') + '</span>'
+        + '<div class="main"><div class="name">' + esc(x.title || (x.kind === 'purchase' ? '采购' : '记账')) + '</div>'
+        + '<div class="meta">' + esc(meta.join(' · ')) + '</div></div>'
+        + '<b>' + money(x.amount) + '</b>'
+        + '</div>';
+    });
+    return h;
+  }
+
+  function openPurchase() {
+    if (!_detail) return;
+    if (typeof App === 'undefined' || !App.project || !App.project.quickAddPurchase) { toast('采购模块未加载'); return; }
+    App.project.quickAddPurchase(_detail.projectId, null);
+  }
+  function openExpense() {
+    if (!_detail) return;
+    if (typeof App === 'undefined' || !App.project || !App.project.quickAddExpense) { toast('记账模块未加载'); return; }
+    App.project.quickAddExpense(_detail.projectId, null);
   }
 
   function setPeriod(p) {
@@ -1423,6 +1597,10 @@
     setTab: setTab,
     setPeriod: setPeriod,
     setTableSearch: setTableSearch,
+    addTodo: addTodo,
+    toggleTodo: toggleTodo,
+    openPurchase: openPurchase,
+    openExpense: openExpense,
     openRecordForDetail: openRecordForDetail,
     openPreset: openPreset,
     quickAdd: quickAdd,

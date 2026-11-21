@@ -1994,6 +1994,7 @@ App.project = {
   togglePhaseSettings: togglePhaseSettings,
   toggleTodo: toggleProjectTodo,
   openTodoModalForProject: openTodoModalForProject,
+  createTodo: pjCreateProjectTodo,
   getProjectOptions: getProjectOptions,
   fillProjectPhaseSelects: fillProjectPhaseSelects,
   openFocus: pjOpenFocus,

@@ -138,7 +138,11 @@ function applyEvent(t, ev) {
   if (!ev || typeof ev !== 'object') return;
 
   // SSEStreamWriter 控制帧 / WS 协议帧
-  if (ev.type === 'session-id' && ev.sessionId) { t.sessionId = String(ev.sessionId); return; }
+  // WS 链路会话号保持 app 行 id（回复前端持久化）；provider id 只用于续跑，不能反写
+  if (ev.type === 'session-id' && ev.sessionId) {
+    if (!t.resolvedSid) t.sessionId = String(ev.sessionId);
+    return;
+  }
   if (ev.type === 'done') { t.done = true; return; }
   if (ev.type === 'error') { t.error = String(ev.error || ev.message || '未知错误'); return; }
   if (ev.type === 'status') return; // token_budget 等心跳
@@ -170,7 +174,7 @@ function applyEvent(t, ev) {
   const kind = ev.kind;
   if (kind === 'session_created') {
     const sid = ev.newSessionId || ev.sessionId;
-    if (sid) t.sessionId = String(sid);
+    if (sid && !t.resolvedSid) t.sessionId = String(sid);
     return;
   }
   if (kind === 'text') {
@@ -269,13 +273,17 @@ async function createCloudcliSession(initialMessage) {
   throw new Error('创建 CloudCLI 会话失败: ' + detail);
 }
 
-async function sessionRowExists(sessionId) {
+// 查会话行并归一化成 app-facing id：用 provider-native id 查询时 CloudCLI 也会
+// 返回对应行（data.sessionId 是 app id）。空串 = 行不存在，走 HTTP 回退。
+async function resolveSessionRowId(sessionId) {
   try {
     const r = await cloudcliApi('GET', '/api/providers/sessions/' + encodeURIComponent(sessionId));
-    return r.status === 200 && !!(r.json && r.json.success);
-  } catch (e) {
-    return false;
-  }
+    if (r.status === 200 && r.json && r.json.success) {
+      const rowId = r.json.data && r.json.data.sessionId;
+      return String(rowId || sessionId);
+    }
+  } catch (e) { /* ignore */ }
+  return '';
 }
 
 // 打开 CloudCLI WebSocket（失败由调用方决定回退）
@@ -418,7 +426,9 @@ function startJobWs(message, sessionId, ws) {
     content: message,
     options: {
       model: cfg.CLOUDCLI_MODEL || undefined,
-      // 不传 permissionMode：保持默认，AskUserQuestion 才会走到 canUseTool
+      // 必须显式 default：CloudCLI 在 auto/bypass 模式会跳过 canUseTool，
+      // AskUserQuestion 被模型/分类器自动作答，前端永远收不到 permission_request
+      permissionMode: 'default',
     },
   });
   return taskId;
@@ -433,6 +443,7 @@ function startJobHttp(message, sessionId) {
     sessionId: sessionId || '', error: '', done: false,
     question: null, askTextAt: -1,
     createdAt: Date.now(), finishedAt: 0,
+    resolvedSid: sessionId || '',
   };
   tasks.set(taskId, t);
   runningTaskId = taskId;
@@ -536,14 +547,22 @@ async function startJobSmart(message, sessionId) {
   const sid = String(sessionId || '').trim();
   let resolved = '';
   if (sid) {
-    // 旧行可能只是 provider-native id 且 watcher 未建行：WS 进不去，回退 HTTP 按原 id 续聊
-    if (await sessionRowExists(sid)) resolved = sid;
-    else return startJobHttp(message, sid);
+    // 旧前端可能持久化了 provider-native id：归一化成 app id 才能进 WS
+    const rowId = await resolveSessionRowId(sid);
+    if (!rowId) {
+      console.log('[claude] fallback http: session row missing sid=' + sid.slice(0, 8));
+      return startJobHttp(message, sid);
+    }
+    resolved = rowId;
+    if (resolved !== sid) {
+      console.log('[claude] normalized session ' + sid.slice(0, 8) + ' -> app id ' + resolved.slice(0, 8));
+    }
   } else {
     try {
       resolved = await createCloudcliSession(message);
     } catch (e) {
       // 建行失败不挡聊天：HTTP /api/agent 自己会建 session_created
+      console.log('[claude] fallback http: create session failed: ' + e.message);
       return startJobHttp(message, '');
     }
   }
@@ -552,9 +571,11 @@ async function startJobSmart(message, sessionId) {
   try {
     ws = await openCloudcliWs();
   } catch (e) {
-    // WS 打不开：HTTP 仍可用（但无交互作答）；带 resolved 保留会话上下文
+    // WS 打不开只能 HTTP：该链路无 canUseTool，AskUserQuestion 不会有弹窗
+    console.log('[claude] fallback http: ws open failed: ' + e.message);
     return startJobHttp(message, resolved || sid);
   }
+  console.log('[claude] path=ws sid=' + resolved.slice(0, 8));
   return startJobWs(message, resolved, ws);
 }
 
