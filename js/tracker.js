@@ -139,18 +139,6 @@
       milestones: [{ name: '连续 7 天' }, { name: '连续 14 天' }, { name: '连续 30 天' }],
       titleField: 'habit', kanbanField: 'period'
     },
-    daily: {
-      icon: '✅', name: '每日打卡', desc: '点一下完成 · 字段可自定义',
-      fields: [
-        { key: 'date', name: '日期', type: 'date', required: true },
-        { key: 'note', name: '备注', type: 'longtext' },
-        { key: 'value', name: '数值', type: 'number' }
-      ],
-      goal: { text: '坚持每天打卡', kind: 'milestone', metric: { agg: 'count', field: '', value: '' }, target: null, unit: '', direction: 'up' },
-      week: { target: 7, unit: '次', metric: { agg: 'count' } },
-      milestones: [{ name: '连续 7 天' }, { name: '连续 30 天' }, { name: '连续 100 天' }],
-      titleField: 'date', kanbanField: ''
-    },
     custom: {
       icon: '✨', name: '自定义', desc: '从空白开始，字段都可选',
       fields: [
@@ -544,18 +532,13 @@
 
     h += '<div class="trk-toolbar">';
     if (!closed) {
-      var _ci = canQuickCheckin(ov) ? todayCheckin(ov) : null;
-      if (_ci) {
-        if (_ci.done) {
-          h += '<button type="button" class="trk-btn" onclick="App.tracker.quickCheckin()">✓ 今日已打卡</button>';
-          if (_ci.record) h += '<button type="button" class="trk-btn" onclick="App.tracker.openRecordForDetail(\'' + escAttr(_ci.record.id) + '\')">✎ 补充今日</button>';
-        } else {
-          h += '<button type="button" class="trk-btn primary" title="一键记录今天；可选字段可以以后再补" onclick="App.tracker.quickCheckin()">✓ 今日打卡</button>';
-          h += '<button type="button" class="trk-btn" onclick="App.tracker.openRecordForDetail()">＋ 写记录</button>';
-        }
-      } else {
-        h += '<button type="button" class="trk-btn primary" onclick="App.tracker.openRecordForDetail()">＋ 记一笔</button>';
+      var _cis = checkinItems(ov);
+      var _today = todayRecordOf(_detail.records);
+      var _ciDone = _cis.filter(function(f) { return !!(_today && _today.data && _today.data[f.key] === true); }).length;
+      if (_cis.length) {
+        h += '<button type="button" class="trk-btn' + (_ciDone < _cis.length ? ' primary' : '') + '" onclick="App.tracker.setTab(\'checkin\')">✓ 打卡 ' + _ciDone + '/' + _cis.length + '</button>';
       }
+      h += '<button type="button" class="trk-btn' + (_cis.length ? '' : ' primary') + '" onclick="App.tracker.openRecordForDetail()">＋ 记一笔</button>';
       h += '<button type="button" class="trk-btn" onclick="App.tracker.openSettings()">⚙️ 设置</button>';
       h += '<button type="button" class="trk-btn" onclick="App.tracker.openClose()">🏁 结项</button>';
     } else {
@@ -568,14 +551,17 @@
     var _todosForP = linkedTodos(_detail.projectId);
     var _openForP = _todosForP.filter(function(t) { return t.status !== '已完成'; }).length;
     var _kbField = fieldByKey(ov.fields || [], cfg.kanbanField);
+    var _kbCi = checkinItems(ov);
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'table' ? ' active' : '') + '" onclick="App.tracker.setTab(\'table\')">表格<em>' + _detail.records.length + '</em></button>';
-    if (_kbField) h += '<button type="button" class="pj2-tab' + (_detail.tab === 'kanban' ? ' active' : '') + '" onclick="App.tracker.setTab(\'kanban\')">看板</button>';
+    h += '<button type="button" class="pj2-tab' + (_detail.tab === 'checkin' ? ' active' : '') + '" onclick="App.tracker.setTab(\'checkin\')">打卡</button>';
+    if (_kbField || _kbCi.length) h += '<button type="button" class="pj2-tab' + (_detail.tab === 'kanban' ? ' active' : '') + '" onclick="App.tracker.setTab(\'kanban\')">看板</button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'dashboard' ? ' active' : '') + '" onclick="App.tracker.setTab(\'dashboard\')">仪表盘</button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'todos' ? ' active' : '') + '" onclick="App.tracker.setTab(\'todos\')">待办' + (_todosForP.length ? '<em>' + _openForP + '/' + _todosForP.length + '</em>' : '') + '</button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'money' ? ' active' : '') + '" onclick="App.tracker.setTab(\'money\')">账本</button>';
     h += '</div>';
     h += '<div class="pj2-tabbody trk-tabbody">';
-    if (_detail.tab === 'kanban' && _kbField) h += renderKanban(ov);
+    if (_detail.tab === 'checkin') h += renderCheckinTab(ov, closed);
+    else if (_detail.tab === 'kanban' && (_kbField || _kbCi.length)) h += renderKanban(ov);
     else if (_detail.tab === 'dashboard') h += renderDashboard(ov);
     else if (_detail.tab === 'todos') h += renderTodosTab(ov, closed);
     else if (_detail.tab === 'money') h += renderMoneyTab(ov);
@@ -587,7 +573,7 @@
 
   function setTab(tab) {
     if (!_detail) return;
-    if (['table', 'kanban', 'dashboard', 'todos', 'money'].indexOf(tab) < 0) tab = 'table';
+    if (['table', 'checkin', 'kanban', 'dashboard', 'todos', 'money'].indexOf(tab) < 0) tab = 'table';
     _detail.tab = tab;
     _tabByProject[_detail.projectId] = tab;
     renderDetail();
@@ -887,15 +873,35 @@
     return { field: f, cols: cols };
   }
 
+  function renderKanbanCheckins(ov, closed) {
+    var items = checkinItems(ov);
+    if (!items.length) return '';
+    var rec = todayRecordOf(_detail.records);
+    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
+    var h = '<section class="trk-kci"><div class="trk-kanban-head"><span>今日打卡</span><em>' + doneN + '/' + items.length + ' 已完成</em></div><div class="trk-kci-grid">';
+    items.forEach(function(f) {
+      var done = !!(rec && rec.data && rec.data[f.key] === true);
+      var wk = itemWeekCount(_detail.records, f.key);
+      h += '<button type="button" class="trk-kci-card' + (done ? ' done' : '') + '"' + (closed ? ' disabled' : '') + ' onclick="App.tracker.toggleCheckin(\'' + escAttr(f.key) + '\',this)">'
+        + '<span class="trk-kci-mark">' + (done ? '✓' : '○') + '</span>'
+        + '<span class="trk-kci-main"><b>' + esc(f.name) + '</b><em>本周 ' + wk + ' 次</em></span>'
+        + '<span class="trk-kci-state">' + (done ? '已打卡' : '打卡') + '</span></button>';
+    });
+    h += '</div></section>';
+    return h;
+  }
+
   function renderKanban(ov) {
     var kb = kanbanColumns(ov);
     var closed = !!(ov.config && ov.config.closed);
+    var ciH = renderKanbanCheckins(ov, closed);
     if (!kb) {
+      if (ciH) return ciH + '<div class="trk-chart-empty" style="margin-top:10px">还没有看板分组字段，可在「设置 → 看板列字段」里选一个选项字段。</div>';
       return '<div class="trk-empty"><div class="ico">▦</div><div class="t">还没有看板分组字段</div><div class="s">在「设置」里选一个选项字段作为看板列。</div>'
         + (closed ? '' : '<button type="button" onclick="App.tracker.openSettings()">去设置</button>') + '</div>';
     }
     var titleF = titleFieldOf(ov);
-    var h = '<div class="trk-kanban-head"><span>按「' + esc(kb.field.name) + '」分组</span><em>' + _detail.records.length + ' 条记录</em></div>';
+    var h = ciH + '<div class="trk-kanban-head"><span>按「' + esc(kb.field.name) + '」分组</span><em>' + _detail.records.length + ' 条记录</em></div>';
     h += '<div class="trk-kanban">';
     kb.cols.forEach(function(c) {
       h += '<section class="trk-kcol"><div class="trk-kcolhead"><span>' + esc(c.name) + '</span><b>' + c.records.length + '</b>';
@@ -1291,53 +1297,149 @@
     }
   }
 
-  // ===== 一键打卡：字段都可选的项目，点一下只记当天，细节以后再补 =====
-  var _checkinBusy = false;
-  function checkinDateField(ov) {
-    var fields = (ov && ov.fields) || [];
-    var df = fieldByKey(fields, ov && ov.config && ov.config.dateField);
-    if (df) return df;
-    for (var i = 0; i < fields.length; i++) if (fields[i].type === 'date') return fields[i];
+  // ===== 打卡：项目内的重复事项，勾选类型的记录字段就是打卡项 =====
+  var _checkinBusy = {};
+  function checkinItems(ov) {
+    return ((ov && ov.fields) || []).filter(function(f) { return f.type === 'checkbox'; });
+  }
+  function todayRecordOf(records) {
+    var today = todayBj();
+    var list = records || [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].recordDate === today) return list[i];
+    }
     return null;
   }
-  function canQuickCheckin(ov) {
-    if (!ov || !ov.config || ov.config.closed) return false;
-    var fields = ov.fields || [];
-    if (!fields.length) return false;
-    var df = checkinDateField(ov);
-    // 只要还有日期之外的必填项，就没法免填打卡，交给正常表单
-    return !fields.some(function(f) {
-      return f.required && !(df && f.key === df.key);
-    });
+  function weekStartBj() {
+    var d = new Date(Date.now() + 8 * 3600 * 1000);
+    var day = (d.getUTCDay() + 6) % 7;
+    var start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+    return start.toISOString().slice(0, 10);
   }
-  function todayCheckin(ov) {
+  function itemWeekCount(records, key) {
+    var start = weekStartBj();
     var today = todayBj();
-    var rec = null;
-    for (var i = 0; i < (_detail.records || []).length; i++) {
-      if (_detail.records[i].recordDate === today) { rec = _detail.records[i]; break; }
-    }
-    return { record: rec, done: !!rec, dateField: checkinDateField(ov) };
+    var n = 0;
+    (records || []).forEach(function(r) {
+      if (r.recordDate && r.recordDate >= start && r.recordDate <= today && r.data && r.data[key] === true) n++;
+    });
+    return n;
   }
-  function quickCheckin() {
-    if (!_detail || !_detail.overview || _checkinBusy) return;
+  function itemStreak(records, key) {
+    var days = {};
+    (records || []).forEach(function(r) {
+      if (r.recordDate && r.data && r.data[key] === true) days[r.recordDate] = true;
+    });
+    var d = new Date(Date.now() + 8 * 3600 * 1000);
+    var n = 0;
+    for (;;) {
+      var s = d.toISOString().slice(0, 10);
+      if (!days[s]) break;
+      n++;
+      d = new Date(d.getTime() - 86400000);
+    }
+    return n;
+  }
+  function toggleCheckin(key, btn) {
+    if (!_detail || !_detail.overview) return;
     var ov = _detail.overview;
     if (ov.config.closed) { toast('项目已结项，如需继续记录请先重新打开'); return; }
-    if (!canQuickCheckin(ov)) return;
-    var st = todayCheckin(ov);
-    if (st.done) { toast('今天已经打过卡了 ✓'); return; }
-    _checkinBusy = true;
-    var data = {};
-    if (st.dateField) data[st.dateField.key] = todayBj();
+    if (_checkinBusy[key]) return;
+    var f = fieldByKey(ov.fields || [], key);
+    if (!f || f.type !== 'checkbox') return;
+    var rec = todayRecordOf(_detail.records);
+    var next = !(rec && rec.data && rec.data[key] === true);
+    _checkinBusy[key] = true;
+    if (btn) btn.disabled = true;
     var pid = _detail.projectId;
-    pjRequest('POST', '/api/tracker/records', { projectId: pid, data: data })
+    pjRequest('POST', '/api/tracker/checkin', { projectId: pid, field: key, value: next })
       .then(function() {
-        _checkinBusy = false;
-        toast('✅ 今日已打卡');
+        _checkinBusy[key] = false;
+        toast(next ? '✅ 已打卡：' + f.name : '已取消「' + f.name + '」');
         if (_detail && _detail.projectId === pid) loadDetail();
       }).catch(function(e) {
-        _checkinBusy = false;
+        _checkinBusy[key] = false;
+        if (btn) btn.disabled = false;
         toast('打卡失败：' + pjErrorText(e));
       });
+  }
+  function addCheckinItem() {
+    if (!_detail || !_detail.overview) return;
+    var ov = _detail.overview;
+    if (ov.config.closed) { toast('项目已结项，先重新打开才能加打卡项'); return; }
+    var input = document.getElementById('trkCiName');
+    var name = input ? String(input.value || '').trim().slice(0, 20) : '';
+    if (!name) { toast('先填写打卡项名称，例如「点药水」'); if (input) input.focus(); return; }
+    var fields = clone(ov.fields || []);
+    if (fields.some(function(f) { return f.type === 'checkbox' && f.name === name; })) {
+      toast('已经有这个打卡项了'); return;
+    }
+    if (fields.length >= 24) { toast('字段最多 24 个'); return; }
+    var base = 'ci' + Date.now().toString(36);
+    var key = base;
+    var n = 2;
+    while (fields.some(function(f) { return f.key === key; })) { key = base + (n++); }
+    fields.push({ key: key, name: name, type: 'checkbox' });
+    var btn = document.getElementById('trkCiAddBtn');
+    if (btn) btn.disabled = true;
+    var pid = _detail.projectId;
+    pjRequest('PUT', '/api/tracker/fields', { projectId: pid, fields: fields, config: ov.config })
+      .then(function() {
+        toast('✅ 已添加打卡项');
+        if (_detail && _detail.projectId === pid) loadDetail();
+      }).catch(function(e) {
+        if (btn) btn.disabled = false;
+        toast('添加失败：' + pjErrorText(e));
+      });
+  }
+  function openMilestoneSettings() {
+    openSettings();
+    setTimeout(function() {
+      var el = document.getElementById('trkSetMilestones');
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    }, 80);
+  }
+  function renderCheckinTab(ov, closed) {
+    var items = checkinItems(ov);
+    var rec = todayRecordOf(_detail.records);
+    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
+    var h = '<div class="trk-ci-head"><div><b>今天 · ' + esc(todayBj()) + '</b><span>打卡只记当天；写细节可点「＋ 写记录」。打卡项就是勾选字段，服务的是这个项目。</span></div><em>' + (items.length ? '今日 ' + doneN + '/' + items.length : '还没有打卡项') + '</em></div>';
+    if (items.length) {
+      h += '<section class="trk-panel trk-ci-panel">';
+      items.forEach(function(f) {
+        var done = !!(rec && rec.data && rec.data[f.key] === true);
+        var wk = itemWeekCount(_detail.records, f.key);
+        var st = itemStreak(_detail.records, f.key);
+        h += '<div class="trk-ci-row' + (done ? ' done' : '') + '">'
+          + '<button type="button" class="trk-ci-toggle" aria-pressed="' + (done ? 'true' : 'false') + '"' + (closed ? ' disabled' : '') + ' onclick="App.tracker.toggleCheckin(\'' + escAttr(f.key) + '\',this)">' + (done ? '✓' : '') + '</button>'
+          + '<div class="trk-ci-main"><b>' + esc(f.name) + '</b><span>本周 ' + wk + ' 次' + (st ? ' · 连续 ' + st + ' 天' : '') + '</span></div>'
+          + '<button type="button" class="trk-ci-btn' + (done ? ' done' : '') + '"' + (closed ? ' disabled' : '') + ' onclick="App.tracker.toggleCheckin(\'' + escAttr(f.key) + '\',this)">' + (done ? '✓ 已打卡' : '打卡') + '</button>'
+          + '</div>';
+      });
+      h += '</section>';
+    } else {
+      h += '<div class="trk-chart-empty">这个项目还没有打卡项。<br><span>打卡项适合「每天点药水」「每晚开夜灯」这种重复动作；里程碑适合「三个月后复查」这种节点。</span></div>';
+    }
+    if (!closed) {
+      h += '<div class="trk-ci-add"><input id="trkCiName" maxlength="20" placeholder="新增打卡项，例如：点药水"><button type="button" class="trk-btn trk-btn-sm primary" id="trkCiAddBtn" onclick="App.tracker.addCheckinItem()">＋ 新建打卡项</button></div>';
+    }
+    h += '<div class="trk-set-hint">打卡项本质是「勾选」类型的记录字段：勾一次就更新当天记录；可在「设置 → 记录字段」里改名、删除或新加。多个打卡项同一天共用一条记录，写记录时也能看到这些勾选。</div>';
+
+    var ms = ov.milestones || [];
+    var doneMs = ms.filter(function(m) { return m.done; }).length;
+    h += '<section class="trk-panel trk-ci-ms"><div class="trk-panel-head"><b>里程碑</b><em>' + doneMs + '/' + ms.length + '</em>' + (closed ? '' : '<button type="button" class="trk-btn trk-btn-sm" onclick="App.tracker.openMilestoneSettings()">编辑</button>') + '</div>';
+    if (!ms.length) {
+      h += '<div class="trk-chart-empty">' + (closed ? '这个项目没有里程碑。' : '还没有里程碑，比如「三个月后复查」。点「编辑」可以增删改。') + '</div>';
+    } else {
+      ms.forEach(function(m) {
+        h += '<div class="trk-ci-msrow' + (m.done ? ' done' : '') + '">'
+          + '<button type="button" class="trk-ci-mstog" aria-pressed="' + (m.done ? 'true' : 'false') + '"' + (closed ? ' disabled' : '') + ' onclick="App.tracker.toggleMilestone(\'' + escAttr(m.id) + '\',' + (m.done ? 'false' : 'true') + ')">' + (m.done ? '✓' : '○') + '</button>'
+          + '<div class="trk-ci-main"><b>' + esc(m.name) + '</b><span>' + (m.targetDate ? '目标 ' + esc(m.targetDate) : '未设日期') + (m.done && m.doneDate ? ' · 完成于 ' + esc(m.doneDate) : '') + '</span></div>'
+          + '</div>';
+      });
+    }
+    h += '</section>';
+    return h;
   }
 
   // ===== 结项 / 重开 =====
@@ -1523,7 +1625,7 @@
     var h = '<div class="trk-set-sec"><div class="trk-set-sec-head"><b>记录字段</b><span>最多 24 个；改字段不会删除历史数据</span></div>';
     h += '<div class="trk-set-fields" id="trkSetFields">' + fields.map(fieldRowHtml).join('') + '</div>';
     h += '<button type="button" class="trk-btn trk-btn-sm" onclick="App.tracker.addSetField()">＋ 加字段</button>';
-    h += '<div class="trk-set-hint">只有当「日期之外的字段全部设为可选」时，项目详情才会出现「✓ 今日打卡」：点一下只记当天，可选内容可以之后用「✎ 补充今日」再写。想让每次都必须填某些内容，把它们设成必填即可。</div></div>';
+    h += '<div class="trk-set-hint">「勾选」类型的字段会出现在项目的「打卡」页签和「看板」里，可每天单独打勾；其它字段用于写详细记录，可设为可选。打卡项也可以在这里改名或删除。</div></div>';
 
     h += '<div class="trk-set-sec"><div class="trk-set-sec-head"><b>项目目标</b><span>目标文案必填</span></div>';
     h += '<label class="trk-form-field"><span class="trk-form-label">目标 *</span><input id="trkSetGoalText" type="text" maxlength="200" value="' + escAttr(config.goal && config.goal.text || '') + '"></label>';
@@ -1752,7 +1854,9 @@
     openRecordForDetail: openRecordForDetail,
     openPreset: openPreset,
     quickAdd: quickAdd,
-    quickCheckin: quickCheckin,
+    toggleCheckin: toggleCheckin,
+    addCheckinItem: addCheckinItem,
+    openMilestoneSettings: openMilestoneSettings,
     closeRecord: closeRecord,
     saveRecord: saveRecord,
     deleteRecord: deleteRecord,

@@ -2564,6 +2564,46 @@ body.dark .trk-met{color:var(--green)!important}
 .trk-kcard-title{font-size:12px;font-weight:800;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .trk-kcard-meta{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* 项目内打卡 */
+.trk-ci-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.trk-ci-head>div{flex:1;min-width:0}
+.trk-ci-head b{display:block;font-size:14px;font-weight:800;line-height:1.3}
+.trk-ci-head span{display:block;font-size:10px;color:var(--muted);line-height:1.5;margin-top:2px}
+.trk-ci-head em{font-style:normal;font-size:11px;font-weight:800;color:var(--pri);white-space:nowrap;padding-top:2px}
+.trk-ci-panel{padding:4px 11px}
+.trk-ci-row{display:flex;align-items:center;gap:9px;padding:9px 1px;border-bottom:1px solid var(--border)}
+.trk-ci-row:last-child{border-bottom:0}
+.trk-ci-toggle{width:31px;height:31px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg);color:transparent;font-size:14px;font-weight:900;flex-shrink:0;display:grid;place-items:center;cursor:pointer;font-family:inherit;padding:0}
+.trk-ci-row.done .trk-ci-toggle{background:var(--pri);border-color:var(--pri);color:#fff}
+.trk-ci-main{flex:1;min-width:0}
+.trk-ci-main b{display:block;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk-ci-main span{display:block;font-size:10px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk-ci-btn{min-height:31px;padding:5px 11px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.trk-ci-btn.done{background:var(--pri-light);border-color:transparent;color:var(--pri)}
+.trk-ci-btn:active,.trk-ci-toggle:active{transform:scale(.96)}
+.trk-ci-add{display:flex;gap:6px;margin-top:10px}
+.trk-ci-add input{flex:1;min-width:0;min-height:36px;padding:7px 11px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;outline:none}
+.trk-ci-add input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.trk-ci-ms{margin-top:12px}
+.trk-ci-ms .trk-panel-head .trk-btn{margin-left:8px}
+.trk-ci-msrow{display:flex;align-items:center;gap:9px;padding:8px 1px;border-bottom:1px solid var(--border)}
+.trk-ci-msrow:last-child{border-bottom:0}
+.trk-ci-mstog{width:27px;height:27px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);font-size:12px;font-weight:900;flex-shrink:0;display:grid;place-items:center;cursor:pointer;font-family:inherit;padding:0}
+.trk-ci-msrow.done .trk-ci-mstog{background:var(--green);border-color:var(--green);color:#fff}
+.trk-ci-msrow.done .trk-ci-main b{color:var(--muted);text-decoration:line-through}
+/* 看板里的打卡卡片 */
+.trk-kci{margin-bottom:12px}
+.trk-kci-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px}
+.trk-kci-card{display:flex;align-items:center;gap:8px;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:9px 10px;min-width:0;color:var(--text);font-family:inherit;font-size:12px;box-shadow:var(--shadow-1);cursor:pointer}
+.trk-kci-card.done{border-color:var(--pri);background:var(--pri-light)}
+.trk-kci-mark{width:23px;height:23px;border-radius:50%;border:1.5px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:900;color:var(--muted);flex-shrink:0;background:var(--bg)}
+.trk-kci-card.done .trk-kci-mark{background:var(--pri);border-color:var(--pri);color:#fff}
+.trk-kci-main{flex:1;min-width:0}
+.trk-kci-main b{display:block;font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk-kci-main em{display:block;font-style:normal;font-size:9.5px;color:var(--muted);margin-top:1px}
+.trk-kci-state{font-size:10px;font-weight:800;color:var(--muted);flex-shrink:0}
+.trk-kci-card.done .trk-kci-state{color:var(--pri)}
+
 /* 仪表盘 */
 .trk-period{display:inline-flex;gap:2px;padding:3px;background:var(--bg);border:1px solid var(--border);border-radius:11px;margin-bottom:10px}
 .trk-period button{min-height:30px;padding:4px 14px;border:none;border-radius:8px;background:transparent;color:var(--muted);font-size:11.5px;font-weight:800;font-family:inherit;cursor:pointer}
