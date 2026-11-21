@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.16";
+const APP_VERSION = "3.1.17";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.17',date:'2026-11-21',items:['跟踪项目支持「每日打卡」：新建项目可选「✓ 每日打卡」，日期之外的字段都可选；只要有日期以外的必填项，就不会出现打卡按钮','详情页新增「✓ 今日打卡」一键记录当天（不必填内容），打过卡后显示「✓ 今日已打卡」，可点「✎ 补充今日」补写可选字段','跟踪项目字段全部设为可选时，打卡与写记录两种方式并存；没有可分组的选择字段时不再显示「看板」页签']},
 {v:'3.1.16',date:'2026-11-21',items:['跟踪项目「仪表盘」新增「花费」KPI 与「近 6 个月花费」柱状图，金额与「账本」同口径（采购 + 记账），可直接跳转账本明细','打开跟踪项目详情时会同步刷新项目花费数据，新增记账/采购后回到仪表盘即可看到']},
 {v:'3.1.15',date:'2026-11-21',items:['长期跟踪项目详情新增「待办」「账本」页签：可直接查看/新建关联待办、记账与采购，与阶段计划项目一致','在跟踪项目里新建的待办/记账/采购会自动关联该项目，详情即时刷新，不再需要绕到别处操作']},
 {v:'3.1.14',date:'2026-11-20',items:['「和 Claude 对话」提问弹窗新增「其他：自己写答案」输入框，支持自由作答（与 CloudCLI 网页版一致），回车即可提交','单选输入时自动取消已选选项；多选时自写内容与选中项一并提交']},
