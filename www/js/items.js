@@ -35,7 +35,6 @@ function switchTab(t){
   var ae=document.getElementById('actionExpense');if(ae)ae.className=t==='expense'?'desktop-only':'desktop-only hidden';
   var as=document.getElementById('actionStats');if(as)as.className=t==='stats'?'desktop-only':'desktop-only hidden';
     var at=document.getElementById('actionTodo');if(at)at.className=t==='todo'?'desktop-only':'desktop-only hidden';
-  var ap2=document.getElementById('actionProject');if(ap2)ap2.className=t==='project'?'desktop-only':'desktop-only hidden';
   if(t!=='expense'){var ec=document.getElementById('expenseChips');if(ec)ec.innerHTML='';}
   if(t==='expense'&&!calYear)initCalMonth();
   render();

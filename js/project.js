@@ -11,6 +11,7 @@ var projectTypeFilter = '全部'; // 全部 | plan | track
 var projectSearch = '';
 var projectOverdueOnly = false;
 var projectBoardGroup = 'status'; // status | type
+var projectFilterOpen = false;
 var _pjEditType = 'plan';
 var _pjIsEditingProject = false;
 
@@ -464,6 +465,16 @@ function pjToggleOverdue() {
   projectOverdueOnly = !projectOverdueOnly;
   renderProject();
 }
+function pjToggleFilterPanel() {
+  projectFilterOpen = !projectFilterOpen;
+  renderProject();
+}
+function pjResetFilters() {
+  projectFilter = '全部';
+  projectTypeFilter = '全部';
+  projectOverdueOnly = false;
+  renderProject();
+}
 function pjSetBoardGroup(g) {
   projectBoardGroup = g === 'type' ? 'type' : 'status';
   renderProject();
@@ -488,44 +499,57 @@ function renderProject() {
   var done = projectList.filter(function(p) { return p.status === '已完成'; }).length;
   var archived = projectList.filter(function(p) { return p.status === '已归档'; }).length;
 
+  var activeFilters = [];
+  if (projectFilter !== '全部') activeFilters.push(projectFilter);
+  if (projectTypeFilter === 'plan') activeFilters.push('阶段计划');
+  if (projectTypeFilter === 'track') activeFilters.push('长期跟踪');
+  if (projectOverdueOnly) activeFilters.push('只看超期');
+
   var html = '';
   html += '<div class="pj2-pagehead">';
   html += '<div><div class="pj2-pagetitle">项目</div><div class="pj2-pagesub">' + total + ' 个项目 · ' + active + ' 个进行中</div></div>';
-  html += '<button class="pj2-newbtn" onclick="openProjectModal()">＋ 新建</button>';
   html += '</div>';
 
-  // 列表 / 看板切换
-  html += '<div class="pj2-viewbar">';
+  // 一行工具栏：视图切换 + 搜索 + 筛选入口
+  html += '<div class="pj2-toolbar">';
   html += '<div class="pj2-seg" role="group" aria-label="项目视图">';
   html += '<button type="button" class="' + (projectViewMode === 'list' ? 'active' : '') + '" onclick="App.project.setView(\'list\')">☰ 列表</button>';
   html += '<button type="button" class="' + (projectViewMode === 'board' ? 'active' : '') + '" onclick="App.project.setView(\'board\')">▦ 看板</button>';
   html += '</div>';
-  if (projectViewMode === 'board') {
-    html += '<div class="pj2-seg pj2-seg-sm" role="group" aria-label="看板分组">';
-    html += '<button type="button" class="' + (projectBoardGroup === 'status' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'status\')">按状态</button>';
-    html += '<button type="button" class="' + (projectBoardGroup === 'type' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'type\')">按类型</button>';
-    html += '</div>';
-  }
-  html += '</div>';
-
-  html += '<div class="pj2-filters">';
-  [['全部', total], ['进行中', active], ['已完成', done], ['已归档', archived]].forEach(function(x) {
-    var selected = projectFilter === x[0];
-    html += '<button type="button" class="pj2-filter' + (selected ? ' active' : '') + '" aria-pressed="' + selected + '" onclick="projectFilter=\'' + x[0] + '\';renderProject()">' + x[0] + '<b>' + x[1] + '</b></button>';
-  });
-  html += '</div>';
-
-  html += '<div class="pj2-filterbar2">';
-  html += '<div class="pj2-typechips">';
-  [['全部', '全部类型'], ['plan', '📋 阶段'], ['track', '🎯 跟踪']].forEach(function(x) {
-    html += '<button type="button" class="pj2-typechip' + (projectTypeFilter === x[0] ? ' active' : '') + '" onclick="App.project.setTypeFilter(\'' + x[0] + '\')">' + x[1] + '</button>';
-  });
-  html += '</div>';
   html += '<div class="pj2-search"><input id="pjSearchInput" value="' + escAttr(projectSearch) + '" placeholder="搜索项目名 / 目标" oninput="App.project.searchInput(this.value)" aria-label="搜索项目">';
   if (projectSearch) html += '<button type="button" class="pj2-search-clear" onclick="App.project.clearSearch()" aria-label="清空搜索">✕</button>';
   html += '</div>';
-  html += '<button type="button" class="pj2-overdue-chip' + (projectOverdueOnly ? ' active' : '') + '" onclick="App.project.toggleOverdue()">⚠️ 只看超期</button>';
+  html += '<button type="button" class="pj2-filter-toggle' + (projectFilterOpen || activeFilters.length ? ' on' : '') + '" aria-expanded="' + projectFilterOpen + '" onclick="App.project.toggleFilterPanel()">筛选' + (activeFilters.length ? '<b>' + activeFilters.length + '</b>' : '') + '<span>▾</span></button>';
   html += '</div>';
+
+  if (projectFilterOpen) {
+    html += '<div class="pj2-filterpanel">';
+    html += '<div class="pj2-fg"><span class="pj2-fg-label">状态</span><div class="pj2-fg-chips">';
+    [['全部', total], ['进行中', active], ['已完成', done], ['已归档', archived]].forEach(function(x) {
+      var selected = projectFilter === x[0];
+      html += '<button type="button" class="pj2-filter' + (selected ? ' active' : '') + '" aria-pressed="' + selected + '" onclick="projectFilter=\'' + x[0] + '\';renderProject()">' + x[0] + '<b>' + x[1] + '</b></button>';
+    });
+    html += '</div></div>';
+    html += '<div class="pj2-fg"><span class="pj2-fg-label">类型</span><div class="pj2-fg-chips">';
+    [['全部', '全部'], ['plan', '📋 阶段'], ['track', '🎯 跟踪']].forEach(function(x) {
+      html += '<button type="button" class="pj2-typechip' + (projectTypeFilter === x[0] ? ' active' : '') + '" onclick="App.project.setTypeFilter(\'' + x[0] + '\')">' + x[1] + '</button>';
+    });
+    html += '</div></div>';
+    html += '<div class="pj2-fg"><span class="pj2-fg-label">其它</span><div class="pj2-fg-chips">';
+    html += '<button type="button" class="pj2-overdue-chip' + (projectOverdueOnly ? ' active' : '') + '" onclick="App.project.toggleOverdue()">⚠️ 只看超期</button>';
+    if (activeFilters.length) html += '<button type="button" class="pj2-clearfilters" onclick="App.project.resetFilters()">清除筛选</button>';
+    html += '</div></div>';
+    html += '</div>';
+  } else if (activeFilters.length) {
+    html += '<div class="pj2-activebar"><span>筛选：' + esc(activeFilters.join(' · ')) + '</span><button type="button" onclick="App.project.resetFilters()">清除</button></div>';
+  }
+
+  if (projectViewMode === 'board') {
+    html += '<div class="pj2-boardbar"><div class="pj2-seg pj2-seg-sm" role="group" aria-label="看板分组">';
+    html += '<button type="button" class="' + (projectBoardGroup === 'status' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'status\')">按状态</button>';
+    html += '<button type="button" class="' + (projectBoardGroup === 'type' ? 'active' : '') + '" onclick="App.project.setBoardGroup(\'type\')">按类型</button>';
+    html += '</div></div>';
+  }
 
   html += '<div id="pjListArea"></div>';
   el.innerHTML = html;
@@ -2003,6 +2027,8 @@ App.project = {
   setView: pjSetView,
   setTypeFilter: pjSetTypeFilter,
   toggleOverdue: pjToggleOverdue,
+  toggleFilterPanel: pjToggleFilterPanel,
+  resetFilters: pjResetFilters,
   setBoardGroup: pjSetBoardGroup,
   searchInput: pjSearchInput,
   clearSearch: pjClearSearch,
