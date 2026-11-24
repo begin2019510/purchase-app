@@ -359,6 +359,8 @@
     _detail = { projectId: p.id, tab: tab, recordsView: stored === 'kanban' ? 'kanban' : 'list', overview: null, records: [], loading: true, error: '' };
     _tabByProject[p.id] = tab;
     _tableSearch = '';
+    _checkinDate = '';
+    _checkinBusy = {};
     document.getElementById('projectDetailBody').innerHTML = detailShell(p.name);
     overlay.classList.add('active');
     overlay.classList.add('trk-open');
@@ -1313,17 +1315,27 @@
 
   // ===== 打卡：项目内的重复事项，勾选类型的记录字段就是打卡项 =====
   var _checkinBusy = {};
+  var _checkinDate = ''; // 空 = 今天；非空 = 补卡日期（YYYY-MM-DD）
+  function checkinSelDate() { return _checkinDate || todayBj(); }
+  function checkinStartDate(ov) {
+    return String(((ov && ov.config) || {}).startDate || '').trim();
+  }
+  function checkinDateLabel(s) {
+    var y = Number(s.slice(0, 4)), m = Number(s.slice(5, 7)), d = Number(s.slice(8, 10));
+    var wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+    return m + ' 月 ' + d + ' 日 · ' + wd + (s === todayBj() ? '' : ' · ' + y);
+  }
   function checkinItems(ov) {
     return ((ov && ov.fields) || []).filter(function(f) { return f.type === 'checkbox'; });
   }
-  function todayRecordOf(records) {
-    var today = todayBj();
+  function recordOfDate(records, date) {
     var list = records || [];
     for (var i = 0; i < list.length; i++) {
-      if (list[i].recordDate === today) return list[i];
+      if (list[i].recordDate === date) return list[i];
     }
     return null;
   }
+  function todayRecordOf(records) { return recordOfDate(records, todayBj()); }
   function weekStartBj() {
     var d = new Date(Date.now() + 8 * 3600 * 1000);
     var day = (d.getUTCDay() + 6) % 7;
@@ -1361,21 +1373,43 @@
     if (_checkinBusy[key]) return;
     var f = fieldByKey(ov.fields || [], key);
     if (!f || f.type !== 'checkbox') return;
-    var rec = todayRecordOf(_detail.records);
+    var date = checkinSelDate();
+    var isToday = date === todayBj();
+    var rec = recordOfDate(_detail.records, date);
     var next = !(rec && rec.data && rec.data[key] === true);
     _checkinBusy[key] = true;
     if (btn) btn.disabled = true;
     var pid = _detail.projectId;
-    pjRequest('POST', '/api/tracker/checkin', { projectId: pid, field: key, value: next })
+    pjRequest('POST', '/api/tracker/checkin', { projectId: pid, field: key, value: next, date: date })
       .then(function() {
         _checkinBusy[key] = false;
-        toast(next ? '✅ 已打卡：' + f.name : '已取消「' + f.name + '」');
+        var dayTag = isToday ? '' : '（补卡 ' + date.slice(5).replace('-', '/') + '）';
+        toast(next ? '✅ 已打卡' + dayTag + '：' + f.name : '已取消' + dayTag + '「' + f.name + '」');
         if (_detail && _detail.projectId === pid) loadDetail();
       }).catch(function(e) {
         _checkinBusy[key] = false;
         if (btn) btn.disabled = false;
         toast('打卡失败：' + pjErrorText(e));
       });
+  }
+
+  function changeCheckinDate(v) {
+    if (!_detail || !_detail.overview) return;
+    var ov = _detail.overview;
+    var today = todayBj();
+    var start = checkinStartDate(ov);
+    var d = String(v || '').trim();
+    if (!d || d > today) d = today;
+    if (start && d < start) {
+      toast('补卡最早从项目开始日 ' + start + ' 起');
+      d = start;
+    }
+    _checkinDate = d === today ? '' : d;
+    renderDetail();
+  }
+  function backToTodayCheckin() {
+    _checkinDate = '';
+    renderDetail();
   }
   function addCheckinItem() {
     if (!_detail || !_detail.overview) return;
@@ -1448,14 +1482,25 @@
 
   function renderTodayTab(ov, closed) {
     var items = checkinItems(ov);
-    var rec = todayRecordOf(_detail.records);
-    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
     var today = todayBj();
-    var todayRecs = (_detail.records || []).filter(function(r) { return r.recordDate === today; });
+    var sel = checkinSelDate();
+    var isToday = sel === today;
+    var start = checkinStartDate(ov);
+    var rec = recordOfDate(_detail.records, sel);
+    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
+    var dayRecs = (_detail.records || []).filter(function(r) { return r.recordDate === sel; });
 
-    var h = '<div class="trk-today-head"><div><b>今天</b><span>' + bjDateLabel() + '</span></div><em>' + (items.length ? '打卡 ' + doneN + '/' + items.length : '还没有打卡项') + '</em></div>';
+    var h = '<div class="trk-today-head"><div><b>' + (isToday ? '今天' : '补卡') + '</b><span>' + checkinDateLabel(sel) + '</span></div><em>' + (items.length ? '打卡 ' + doneN + '/' + items.length : '还没有打卡项') + '</em></div>';
 
     if (items.length) {
+      h += '<div class="trk-today-cibar">'
+        + '<label><span>打卡日期</span><input type="date" id="trkCiDate" value="' + escAttr(sel) + '"'
+        + (start ? ' min="' + escAttr(start) + '"' : '') + ' max="' + today + '"'
+        + ' onchange="App.tracker.changeCheckinDate(this.value)"></label>'
+        + (isToday
+          ? '<em>忘打卡？把日期改到过去即可补卡（最早 ' + esc(start || '项目开始日') + '）</em>'
+          : '<button type="button" class="trk-linkbtn" onclick="App.tracker.backToTodayCheckin()">回到今天</button>')
+        + '</div>';
       h += '<div class="trk-today-grid">';
       items.forEach(function(f) {
         var done = !!(rec && rec.data && rec.data[f.key] === true);
@@ -1475,9 +1520,9 @@
       h += '<div class="trk-today-add"><input id="trkCiName" maxlength="20" placeholder="新增打卡项，例如：点药水" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.tracker.addCheckinItem()}"><button type="button" class="trk-btn trk-btn-sm" id="trkCiAddBtn" onclick="App.tracker.addCheckinItem()">添加</button></div>';
     }
 
-    h += '<section class="trk-today-sec"><div class="trk-today-sec-head"><b>今天的记录</b><em>' + todayRecs.length + ' 条</em></div>';
-    if (todayRecs.length) {
-      todayRecs.forEach(function(r) {
+    h += '<section class="trk-today-sec"><div class="trk-today-sec-head"><b>' + (isToday ? '今天的记录' : sel.slice(5).replace('-', ' 月 ') + ' 日的记录') + '</b><em>' + dayRecs.length + ' 条</em></div>';
+    if (dayRecs.length) {
+      dayRecs.forEach(function(r) {
         var meta = recMetaLine(ov, r);
         h += '<button type="button" class="trk-today-rec" onclick="App.tracker.openRecordForDetail(\'' + escAttr(r.id) + '\')">'
           + '<b>' + esc(recHeadline(ov, r)) + '</b>'
@@ -1485,9 +1530,9 @@
           + '<em>编辑 ›</em></button>';
       });
     } else {
-      h += '<div class="trk-today-empty">今天还没有写记录，打卡会自动记到当天。</div>';
+      h += '<div class="trk-today-empty">' + (isToday ? '今天还没有写记录，打卡会自动记到当天。' : '这天还没有记录，补卡会自动记到这一天。') + '</div>';
     }
-    if (!closed) h += '<button type="button" class="trk-btn trk-btn-sm trk-today-addrec" onclick="App.tracker.openRecordForDetail()">＋ 记一笔</button>';
+    if (!closed && isToday) h += '<button type="button" class="trk-btn trk-btn-sm trk-today-addrec" onclick="App.tracker.openRecordForDetail()">＋ 记一笔</button>';
     h += '</section>';
 
     var ms = ov.milestones || [];
@@ -2038,6 +2083,8 @@
     openPreset: openPreset,
     quickAdd: quickAdd,
     toggleCheckin: toggleCheckin,
+    changeCheckinDate: changeCheckinDate,
+    backToTodayCheckin: backToTodayCheckin,
     addCheckinItem: addCheckinItem,
     openMilestoneSettings: openMilestoneSettings,
     closeRecord: closeRecord,

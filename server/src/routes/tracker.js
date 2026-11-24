@@ -131,6 +131,79 @@ router.put('/tracker/records', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 项目内打卡：只改当天记录里的某个「勾选」字段，不校验其它必填项。
+// 打卡是项目里的重复动作，不应被「写详细记录」的必填字段拦住。
+router.post('/tracker/checkin', async (req, res, next) => {
+  try {
+    const uid = await H.resolveUserId(req.username);
+    const b = req.body || {};
+    const pid = _pid(b.projectId);
+    if (!pid) return res.status(400).json({ error: '缺少项目 ID' });
+    const p = await _ownedTrackProject(uid, pid);
+    if (!p) return res.status(404).json({ error: '跟踪项目不存在' });
+    const fields = _fieldsOf(p);
+    if (!fields.length) return res.status(400).json({ error: '请先设置跟踪字段' });
+    const config = _configOf(p, fields);
+    if (_isClosed(config)) return _closedError(res);
+
+    const key = String(b.field || '').trim();
+    const field = fields.find(f => f.key === key);
+    if (!field) return res.status(400).json({ error: '打卡项不存在' });
+    if (field.type !== 'checkbox') return res.status(400).json({ error: '只有勾选字段可以作为打卡项' });
+    const value = !!(b.value === true || b.value === 1 || b.value === '1' || b.value === 'true');
+
+    // 补卡：允许指定过去日期，最早到项目开始日，最晚今天；不传则记今天
+    const today = T.bjToday();
+    const startDate = config.startDate || T.normDate(p.created_at) || today;
+    let recordDate = today;
+    if (b.date != null && String(b.date).trim() !== '') {
+      const want = T.normDate(b.date);
+      if (!want) return res.status(400).json({ error: '打卡日期格式不对' });
+      if (want > today) return res.status(400).json({ error: '不能给未来日期打卡' });
+      if (want < startDate) return res.status(400).json({ error: '补卡最早从项目开始日 ' + startDate + ' 起' });
+      recordDate = want;
+    }
+    const existing = await db.one(
+      'SELECT id, data FROM project_records WHERE user_id = ? AND project_id = ? AND record_date = ? ORDER BY id ASC LIMIT 1',
+      [uid, pid, recordDate]);
+
+    const dateField = fields.find(f => f.type === 'date' && f.key === config.dateField)
+      || fields.find(f => f.type === 'date');
+    const hasContent = data => Object.keys(data).some(k => {
+      if (dateField && k === dateField.key) return false;
+      const v = data[k];
+      return v !== '' && v !== false && v !== null && v !== undefined;
+    });
+
+    if (!existing) {
+      if (!value) return res.json({ ok: true, checked: false, record: null });
+      const data = {};
+      if (dateField) data[dateField.key] = recordDate;
+      data[key] = true;
+      const normalized = T.normalizeData(fields, data);
+      const r = await db.exec(
+        'INSERT INTO project_records (user_id, project_id, record_date, data) VALUES (?,?,?,?)',
+        [uid, pid, recordDate, JSON.stringify(normalized)]);
+      const row = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [r.insertId, uid]);
+      return res.json({ ok: true, checked: true, record: T.rowToRecord(row) });
+    }
+
+    let data = {};
+    try { data = JSON.parse(existing.data || '{}') || {}; } catch (_) { data = {}; }
+    data[key] = value;
+    const normalized = T.normalizeData(fields, data);
+    // 取消当天最后一个打卡且没写任何内容时，顺手删掉这条空记录
+    if (!value && !hasContent(normalized)) {
+      await db.exec('DELETE FROM project_records WHERE id = ? AND user_id = ?', [existing.id, uid]);
+      return res.json({ ok: true, checked: false, record: null, deleted: true });
+    }
+    await db.exec('UPDATE project_records SET data = ? WHERE id = ? AND user_id = ?',
+      [JSON.stringify(normalized), existing.id, uid]);
+    const row = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [existing.id, uid]);
+    res.json({ ok: true, checked: value, record: T.rowToRecord(row) });
+  } catch (e) { next(e); }
+});
+
 // 记录是真删：表格行是用户主动录入的过程数据，不做回收站，避免和待办的软删语义混淆
 router.delete('/tracker/records', async (req, res, next) => {
   try {
