@@ -56,7 +56,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 <div class="container">
   <div class="hero">
     <h1>❓ 帮助文档</h1>
-    <p>个人管家 v3.1.23 使用指南</p>
+    <p>个人管家 v3.1.24 使用指南</p>
   </div>
 
   <div class="toc">
@@ -251,6 +251,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 版本历史 -->
   <div class="section" id="changelog">
     <h2><span class="icon">📋</span> 版本历史</h2>
+    <div class="changelog-item"><div class="changelog-ver">v3.1.24 <span class="changelog-date">2026-11-25</span></div><ul class="changelog-list"><li>修复强制刷新后反复重载的问题：版本自愈加入 30 秒节流与跨刷新计数，失败 6 次后改为提示「强制更新」按钮</li><li>自动更新连续失败时会注销 Service Worker 并带参数重载，彻底绕开旧缓存</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.23 <span class="changelog-date">2026-11-25</span></div><ul class="changelog-list"><li>修复部分电脑端浏览器强刷后仍停留在旧版本：版本自愈改为可重试，多次失败会注销 Service Worker 并清缓存重载</li><li>Service Worker 页面导航改为纯网络优先，仅在断网时回退缓存，在线时不再显示旧页面</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.22 <span class="changelog-date">2026-11-25</span></div><ul class="changelog-list"><li>安全加固：修复统计分类、待办标签与关联项的脚本注入风险；中文用户名可以正常登录</li><li>新增基础安全响应头（HSTS、防点击劫持、CSP、权限策略），并屏蔽服务端源码、构建脚本等非前端文件的公网访问</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.21 <span class="changelog-date">2026-11-25</span></div><ul class="changelog-list"><li>修复周视图「动态周预算」漏算采购支出：统计页总剩余只剩 ¥100 多时，第四周却显示剩余 ¥300 多</li><li>周预算口径统一为「总预算 − 固定 − 分期 − 采购 − 记账」，各周剩余之和等于总剩余；周视图顶部「已用」也计入采购并显示分项</li></ul></div>
@@ -291,7 +292,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 
   <div style="text-align:center;margin-top:20px">
     <a href="/" class="back-btn">🏠 返回主页</a>
-    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.1.23 · 2026</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.1.24 · 2026</p>
     <p style="font-size:12px;margin-top:8px"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖ICP备2026035353号</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖公网安备34012202341289号</a></p>
   </div>
 </div>

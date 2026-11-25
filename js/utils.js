@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.23";
+const APP_VERSION = "3.1.24";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.24',date:'2026-11-25',items:['修复强制刷新后反复重载的问题：版本自愈加入 30 秒节流与跨刷新计数，失败 6 次后改为提示「强制更新」按钮','自动更新连续失败时会注销 Service Worker 并带参数重载，彻底绕开旧缓存']},
 {v:'3.1.23',date:'2026-11-25',items:['修复部分电脑端浏览器强刷后仍停留在旧版本：版本自愈改为可重试，多次失败会注销 Service Worker 并清缓存重载','Service Worker 页面导航改为纯网络优先，仅在断网时回退缓存，在线时不再显示旧页面']},
 {v:'3.1.22',date:'2026-11-25',items:['安全加固：修复统计分类、待办标签与关联项的脚本注入风险；中文用户名可以正常登录','新增基础安全响应头（HSTS、防点击劫持、CSP、权限策略），并屏蔽服务端源码、构建脚本等非前端文件的公网访问']},
 {v:'3.1.21',date:'2026-11-25',items:['修复周视图「动态周预算」漏算采购：统计页总剩余只剩 ¥100 多时，第四周却显示剩余 ¥300 多；现在统一按「总预算 − 固定 − 分期 − 采购 − 记账」计算，各周剩余之和 = 总剩余','周视图顶部进度条的「已用」也把采购计入，并标出采购/记账分项']},
