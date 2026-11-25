@@ -428,7 +428,7 @@ function renderExpenseWeek(){
   // 简洁进度条
   if(budget>0){
     const pool=getBudgetPool(thisMonth);
-    const pct=Math.min(pureExpenseOut/pool.available*100,100);
+    const pct=Math.min(totalOut/pool.available*100,100);
     const bc=pct>90?'var(--red)':pct>70?'var(--orange)':'var(--green)';
     html+='<div class="ex-budget" style="margin:0 0 12px;border-radius:14px;padding:14px">';
     html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
@@ -439,7 +439,7 @@ function renderExpenseWeek(){
     html+='<div style="width:'+pct+'%;height:100%;background:'+bc+';border-radius:4px;transition:width .5s"></div>';
     html+='</div>';
     html+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">';
-    html+='<span>已用 ¥'+pureExpenseOut.toFixed(0)+' / 可用池 ¥'+pool.available.toFixed(0)+'</span>';
+    html+='<span>已用 ¥'+totalOut.toFixed(0)+'（采¥'+purchaseOut.toFixed(0)+' 记¥'+pureExpenseOut.toFixed(0)+'） / 可用池 ¥'+pool.available.toFixed(0)+'</span>';
     html+='<span>总预算 ¥'+pool.totalBudget.toFixed(0)+'</span>';
     html+='</div>';
     if(pool.totalDeduction>0){

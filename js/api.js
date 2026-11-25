@@ -421,7 +421,8 @@ function getWeekSpending(month, weekIndex) {
   }, 0);
 }
 
-// 动态周预算：从当前周视角计算，所有未来周共享同一额度
+// 动态周预算：从当前周视角计算，所有当前+未来周共享同一额度
+// 口径必须与 getBudgetPool().remaining 一致：剩余池 = 可用池 − 固定 − 分期 − 采购 − 记账。
 function getDynamicWeekBudget(month, weekIndex) {
   var pool = getBudgetPool(month);
   if (pool.available <= 0) return 0;
@@ -429,7 +430,12 @@ function getDynamicWeekBudget(month, weekIndex) {
   var totalWeeks = weeks.length;
   var now = new Date(Date.now() + 8*3600000);
   var today = now.toISOString().slice(0, 10);
-  var currentWeek = getWeekForDate(today, month);
+  var thisMonth = today.slice(0, 7);
+
+  // 过去的月份：保持原始均分，不按剩余池重算
+  if (month < thisMonth) return pool.available / totalWeeks;
+
+  var currentWeek = month === thisMonth ? getWeekForDate(today, month) : 0;
   if (currentWeek < 0) currentWeek = 0;
 
   // Past weeks: show original equal share
@@ -437,14 +443,15 @@ function getDynamicWeekBudget(month, weekIndex) {
     return pool.available / totalWeeks;
   }
 
-  // Current + future weeks: equal share of remaining pool
-  var priorSpent = 0;
-  for (var i = 0; i < currentWeek; i++) {
-    priorSpent += getWeekSpending(month, i);
-  }
+  // 当前+未来周：平分「剩余池」（已扣固定/分期/采购/记账）。
+  // 本周已花的钱加回额度，使「额度−本周支出」= 本周剩余，且各周剩余之和 = 总剩余。
   var remainingWeeks = totalWeeks - currentWeek;
   if (remainingWeeks <= 0) return 0;
-  return Math.max(pool.available - priorSpent, 0) / remainingWeeks;
+  var poolLeft = Math.max(pool.remaining, 0);
+  if (poolLeft <= 0) return 0;
+  var quota = poolLeft / remainingWeeks;
+  if (weekIndex === currentWeek) quota += getWeekSpending(month, currentWeek);
+  return quota;
 }
 App.api.getWeekSpending = getWeekSpending;
 App.api.getDynamicWeekBudget = getDynamicWeekBudget;
