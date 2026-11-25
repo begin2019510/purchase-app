@@ -386,7 +386,7 @@ function renderStats() { console.log('renderStats START');
       const maxVal = pCatEntries[0][1];
       pCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxVal * 100).toFixed(0);
-        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" onclick="openStatsCatDetail('${escAttr(l)}','${thisMonth}')" onkeydown="if(event.key==='Enter')openStatsCatDetail('${escAttr(l)}','${thisMonth}')"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
+        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" data-cat="${escAttr(l)}" data-month="${thisMonth}" onclick="openStatsCatDetail(this.dataset.cat,this.dataset.month)" onkeydown="if(event.key==='Enter')openStatsCatDetail(this.dataset.cat,this.dataset.month)"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
       });
       html += `</div>`;
     }
@@ -449,7 +449,7 @@ function renderStats() { console.log('renderStats START');
       const maxCat = eCatEntries[0][1];
       eCatEntries.slice(0, 5).forEach(([l, v]) => {
         const pct = (v / maxCat * 100).toFixed(0);
-        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" onclick="openStatsCatDetail('${escAttr(l)}','${thisMonth}')" onkeydown="if(event.key==='Enter')openStatsCatDetail('${escAttr(l)}','${thisMonth}')"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
+        html += `<div class="stats-bar-row is-clickable" role="button" tabindex="0" title="查看明细" data-cat="${escAttr(l)}" data-month="${thisMonth}" onclick="openStatsCatDetail(this.dataset.cat,this.dataset.month)" onkeydown="if(event.key==='Enter')openStatsCatDetail(this.dataset.cat,this.dataset.month)"><span class="stats-bar-label">${esc(l)}</span><div class="stats-bar-track"><div class="stats-bar-fill" style="width:${pct}%;background:${catColor(l)}"></div></div><span class="stats-bar-val">¥${v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0)}</span><span class="stats-bar-go">›</span></div>`;
       });
       html += `</div>`;
     }

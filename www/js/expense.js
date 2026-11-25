@@ -230,12 +230,12 @@ function catMgrRow(name,isDef){
   const sel=(_catIconTarget===name);
   let h='<div class="wd-row" style="'+(sel?'background:var(--pri-light);box-shadow:inset 0 0 0 1px var(--pri)':'')+'">'
     +'<span class="wd-dot" style="background:'+catColor(name)+'"></span>'
-    +'<span onclick="selectCatIconTarget(\''+String(name).replace(/'/g,'')+'\')" ondblclick="pickCatIconFile(\''+String(name).replace(/'/g,'')+'\')" title="点击选中(可粘贴) · 双击选文件" style="cursor:pointer;width:24px;height:24px;text-align:center;display:inline-flex;align-items:center;justify-content:center">'
+    +'<span data-cat="'+escAttr(name)+'" onclick="selectCatIconTarget(this.dataset.cat)" ondblclick="pickCatIconFile(this.dataset.cat)" title="点击选中(可粘贴) · 双击选文件" style="cursor:pointer;width:24px;height:24px;text-align:center;display:inline-flex;align-items:center;justify-content:center">'
     +icon+'</span>'
     +'<span class="wd-main">'+esc(name)+(sel?'<em style="font-style:normal;font-size:10px;color:var(--pri);margin-left:6px">已选中</em>':'')+'</span>';
-  h+='<button class="ex-entry-del" onclick="editCatEmoji(\''+String(name).replace(/'/g,'')+'\')" title="修改 emoji" style="font-size:13px;min-width:30px;min-height:30px">✏️</button>';
+  h+='<button class="ex-entry-del" data-cat="'+escAttr(name)+'" onclick="editCatEmoji(this.dataset.cat)" title="修改 emoji" style="font-size:13px;min-width:30px;min-height:30px">✏️</button>';
   if(hasImg){
-    h+='<button class="ex-entry-del" onclick="clearCatImg(\''+String(name).replace(/'/g,'')+'\')" title="清除图片（恢复 emoji）" style="font-size:13px;min-width:30px;min-height:30px">✖️</button>';
+    h+='<button class="ex-entry-del" data-cat="'+escAttr(name)+'" onclick="clearCatImg(this.dataset.cat)" title="清除图片（恢复 emoji）" style="font-size:13px;min-width:30px;min-height:30px">✖️</button>';
   }
   if(!isDef&&idx>=0){
     h+='<button class="ex-entry-del" onclick="delCustomCat('+idx+')" title="删除分类" style="font-size:14px;min-width:30px;min-height:30px">🗑️</button>';

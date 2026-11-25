@@ -4,7 +4,7 @@
 // 会话: JWT (HS256)
 // 邀请码: 环境变量(可重复) + KV动态码(一次性)
 
-import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, hashPasswordNew, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs } from './_auth.js';
+import { CORS_ORIGINS, getCorsHeaders, jsonResponse, json as jsonFn, verifyJWT, createJWT, hashPassword, hashPasswordNew, generateSalt, getFeishuToken, generateRefreshToken, storeRefreshToken, validateRefreshToken, deleteRefreshToken, deleteAllRefreshTokens, logOp, getLogs, b64urlDecodeText } from './_auth.js';
 import { mysqlMode } from './_proxy.js';
 
 const json = jsonFn;
@@ -741,7 +741,7 @@ async function handleLogout(request, body, KV, cors) {
   const authHeader = request.headers.get('Authorization');
   let username = 'unknown';
   if (authHeader) {
-    try { const p = JSON.parse(atob(authHeader.replace('Bearer ', '').split('.')[1])); username = p.username; } catch {}
+    try { const p = JSON.parse(b64urlDecodeText(authHeader.replace('Bearer ', '').split('.')[1])); username = p.username; } catch {}
   }
   if (refreshToken) await deleteRefreshToken(KV, refreshToken);
   await logOp(KV, 'logout', username, '退出登录', request).catch(() => {});

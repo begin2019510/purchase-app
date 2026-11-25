@@ -1220,7 +1220,7 @@ function openTodoDetail(id) {
 
   if (t.linkType && t.linkType !== '无') {
     var linkDisp = getLinkDisplay(t.linkType, t.linkId);
-  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" onclick="showLinkPreview(\'' + t.linkType + '\',\'' + t.linkId + '\')">' + linkDisp + ' ➡</span></div>';
+  if (linkDisp) html += '<div class="detail-row"><span class="detail-label">关联</span><span class="detail-value" style="cursor:pointer" data-lt="' + escAttr(t.linkType) + '" data-li="' + escAttr(t.linkId) + '" onclick="showLinkPreview(this.dataset.lt,this.dataset.li)">' + esc(linkDisp) + ' ➡</span></div>';
   }
 
   if (t.completedAt) {
@@ -1511,7 +1511,7 @@ function renderTagChips() {
   if (unused.length > 0) {
     html += '<div style="margin-top:4px">';
     unused.forEach(function(tag) {
-      html += '<span onclick="todoTags.push(\'' + tag + '\');renderTagChips()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + esc(tag) + '</span>';
+      html += '<span data-tag="' + escAttr(tag) + '" onclick="todoTags.push(this.dataset.tag);renderTagChips()" style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;background:var(--bg);color:var(--muted);cursor:pointer;margin:2px">+ ' + esc(tag) + '</span>';
     });
     html += '</div>';
   }

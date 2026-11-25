@@ -60,12 +60,24 @@ export function generateSalt() {
 
 // ===== JWT =====
 
+// UTF-8 安全：中文用户名直接 btoa 会抛错（>0xFF），先转字节再 base64url
+export function b64urlEncodeText(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/=+$/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+export function b64urlDecodeText(str) {
+  const b64 = String(str).replace(/-/g, '+').replace(/_/g, '/');
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 export async function createJWT(payload, secret, expiresInHours = 24) {
   const header = { alg: 'HS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const tokenPayload = { ...payload, iat: now, exp: now + expiresInHours * 3600 };
-  const enc = (obj) => btoa(JSON.stringify(obj)).replace(/=/g, '');
-  const token = enc(header) + '.' + enc(tokenPayload);
+  const token = b64urlEncodeText(JSON.stringify(header)) + '.' + b64urlEncodeText(JSON.stringify(tokenPayload));
   const key = await crypto.subtle.importKey(
     'raw', new TextEncoder().encode(secret),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
@@ -86,7 +98,7 @@ export async function verifyJWT(token, secret) {
     const sig = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
     const valid = await crypto.subtle.verify('HMAC', key, sig, new TextEncoder().encode(parts[0] + '.' + parts[1]));
     if (!valid) return null;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const payload = JSON.parse(b64urlDecodeText(parts[1]));
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch { return null; }

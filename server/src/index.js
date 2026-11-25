@@ -13,7 +13,6 @@ if (!cfg.SERVICE_TOKEN || !cfg.JWT_SECRET) {
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '8mb' }));
 
 // ---- 健康检查（不依赖令牌，无数据）----
 app.get('/health', (req, res) => {
@@ -30,6 +29,9 @@ app.use('/api', (req, res, next) => {
   }
   next();
 });
+
+// 请求体解析放到服务令牌闸门之后：未授权请求不进 body-parser（widget 为只读 GET）
+app.use(express.json({ limit: '8mb' }));
 
 app.use(parseJWT);
 app.use('/api', require('./routes/auth'));

@@ -366,7 +366,7 @@ function openReportModal(period){
       var w=Math.max(Math.round(c[1]/maxCat*100),4);
       var _can=(typeof openStatsCatDetail==='function');
       var _cls=_can?' report-cat-row is-clickable':' report-cat-row';
-      var _click=_can?(' onclick=\"openStatsCatDetail(\''+escAttr(c[0])+'\',\''+_repYm+'\')\"'):'';
+      var _click=_can?(' data-cat=\"'+escAttr(c[0])+'\" data-month=\"'+_repYm+'\" onclick=\"openStatsCatDetail(this.dataset.cat,this.dataset.month)\"'):'';
       html+='<div class="'+_cls+'"'+_click+'><span class="report-cat-name">'+esc(c[0])+'</span><div class="report-cat-track"><div class="report-cat-fill" style="width:'+w+'%"></div></div><span class="report-cat-val">¥'+Number(c[1]).toLocaleString('zh-CN')+'</span></div>';
     });
     html+='</div>';

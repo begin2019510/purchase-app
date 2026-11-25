@@ -251,7 +251,9 @@ router.all('/auth', async (req, res, next) => {
         'SELECT rt.*, u.username FROM refresh_tokens rt JOIN users u ON u.id = rt.user_id WHERE rt.token_hash = ? AND rt.revoked = 0',
         [sha256(refreshToken)]);
       if (!row || new Date(row.expires_at) < new Date()) return res.status(401).json({ error: 'Refresh token 无效或已过期' });
-      await db.exec('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?', [row.id]);
+      // 原子吊销：并发刷新只有一个请求能把 revoked 0→1，其余直接失败，避免换出两套令牌
+      const claim = await db.exec('UPDATE refresh_tokens SET revoked = 1 WHERE id = ? AND revoked = 0', [row.id]);
+      if (Number(claim.affectedRows) !== 1) return res.status(401).json({ error: 'Refresh token 无效或已过期' });
       const t = await issueTokens(row.user_id, row.username);
       return res.json({ ok: true, token: t.token, refreshToken: t.refreshToken, username: row.username });
     }
