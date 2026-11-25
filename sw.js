@@ -1,7 +1,7 @@
 ﻿// Service Worker - auto-update + push notifications
-var CACHE = 'purchase-cache-v189';
+var CACHE = 'purchase-cache-v190';
 // 首页用 '/'（/index.html 在 CF 上会 308，addAll 会让整次安装失败）
-var STATIC_ASSETS = ['/', '/chat.html', '/chat.css?v=3.1.22', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.1.22', '/js/dashboard.js?v=3.1.22'];
+var STATIC_ASSETS = ['/', '/chat.html', '/chat.css?v=3.1.23', '/manifest.json', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/help', '/js/particles.js', '/js/sortable.min.js?v=3.1.23', '/js/dashboard.js?v=3.1.23'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -28,20 +28,14 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.url.includes('/api/') || e.request.method !== 'GET') return;
 
-  // 页面导航：网络优先（2.5s 超时回退缓存）——保证每次打开都能拿到最新界面；
-  // JS/CSS 用版本号 URL，随新 HTML 自动走网络，不会拿到旧文件。
+  // 页面导航：纯网络优先，只有断网/请求失败才回退缓存。
+  // 旧实现的 5s 超时回退会让慢网络下的新版本永远显示成旧页面（电脑端强刷不动的根因）。
   if (e.request.mode === 'navigate') {
     e.respondWith(
       caches.open(CACHE).then(function(c) {
-        var net = fetch(e.request, { cache: 'no-store' }).then(function(res) {
+        return fetch(e.request, { cache: 'no-store' }).then(function(res) {
           if (res.ok) { try { c.put(e.request, res.clone()); } catch (x) {} }
           return res;
-        });
-        var timeout = new Promise(function(resolve) {
-          setTimeout(function() { resolve(null); }, 5000);
-        });
-        return Promise.race([net, timeout]).then(function(r) {
-          return r || c.match(e.request) || c.match('/') || net;
         }).catch(function() {
           return c.match(e.request) || c.match('/');
         });

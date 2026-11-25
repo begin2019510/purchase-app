@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.22";
+const APP_VERSION = "3.1.23";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.23',date:'2026-11-25',items:['修复部分电脑端浏览器强刷后仍停留在旧版本：版本自愈改为可重试，多次失败会注销 Service Worker 并清缓存重载','Service Worker 页面导航改为纯网络优先，仅在断网时回退缓存，在线时不再显示旧页面']},
 {v:'3.1.22',date:'2026-11-25',items:['安全加固：修复统计分类、待办标签与关联项的脚本注入风险；中文用户名可以正常登录','新增基础安全响应头（HSTS、防点击劫持、CSP、权限策略），并屏蔽服务端源码、构建脚本等非前端文件的公网访问']},
 {v:'3.1.21',date:'2026-11-25',items:['修复周视图「动态周预算」漏算采购：统计页总剩余只剩 ¥100 多时，第四周却显示剩余 ¥300 多；现在统一按「总预算 − 固定 − 分期 − 采购 − 记账」计算，各周剩余之和 = 总剩余','周视图顶部进度条的「已用」也把采购计入，并标出采购/记账分项']},
 {v:'3.1.20',date:'2026-11-23',items:['项目内打卡支持补卡：今日页把「打卡日期」改到过去即可，补卡会写进那一天的记录；最早可补到项目开始日，不能选未来日期','补卡日期的记录会一并显示，可随时切换回今天']},
