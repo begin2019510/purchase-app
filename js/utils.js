@@ -6,9 +6,10 @@ const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && wi
 const API_BASE = IS_NATIVE ? 'https://121212121.top' : '';
 
 // utils.js - Version, Changelog, Utilities
-const APP_VERSION = "3.1.25";
+const APP_VERSION = "3.1.26";
 function showVersion(){document.getElementById('versionBadge').textContent='v'+APP_VERSION}
 const CHANGELOG=[
+{v:'3.1.26',date:'2026-11-28',items:['修复「先打卡、后记一笔」产生两条同日记录：明细会合并进自动打卡行，不再把同一次健身算成多次','打卡状态改为按整天汇总：同一天有多条记录时，任意一条勾选即算已打卡；取消打卡会清掉当天所有记录里的勾选','打卡项「本周 N 次」按天去重，同一天多条记录不再重复计数']},
 {v:'3.1.25',date:'2026-11-27',items:['新增「历史预算」只读视图：按月查看总预算、基础预算，以及每笔追加的来源/金额/精确时间，10 月 ¥3200 的构成可直接核对','当前月仍可编辑；历史月份在 App 内只读，避免事后补改历史数据','预算写入新增服务端审计日志：记录操作人、IP、变更月份及 before/after，日志写入失败时整笔预算修改回滚','操作日志补充预算与记账动作标签，预算详情可展开查看完整变更 JSON']},
 {v:'3.1.24',date:'2026-11-25',items:['修复强制刷新后反复重载的问题：版本自愈加入 30 秒节流与跨刷新计数，失败 6 次后改为提示「强制更新」按钮','自动更新连续失败时会注销 Service Worker 并带参数重载，彻底绕开旧缓存']},
 {v:'3.1.23',date:'2026-11-25',items:['修复部分电脑端浏览器强刷后仍停留在旧版本：版本自愈改为可重试，多次失败会注销 Service Worker 并清缓存重载','Service Worker 页面导航改为纯网络优先，仅在断网时回退缓存，在线时不再显示旧页面']},

@@ -97,6 +97,39 @@ router.post('/tracker/records', async (req, res, next) => {
     if (miss.length) return res.status(400).json({ error: '请填写：' + miss.join('、') });
     // 自定义项目可能没有日期字段：没填日期就记到今天，保证周/月汇总不会漏掉这条
     const recordDate = T.recordDateOf(fields, data, config) || T.bjToday();
+    // 先打卡后记明细：当天若只有自动生成的「纯打卡」记录（只含日期/勾选字段），
+    // 把这次明细合并进去，避免同一天出现两条记录、把记录数当成次数。
+    const dateKeys = new Set(fields.filter(f => f.type === 'date').map(f => f.key));
+    const parseData = raw => {
+      try { const d = JSON.parse(raw || '{}'); return (d && typeof d === 'object' && !Array.isArray(d)) ? d : {}; } catch (_) { return {}; }
+    };
+    const isCheckinOnly = raw => {
+      const d = parseData(raw);
+      return !Object.keys(d).some(k => {
+        if (dateKeys.has(k)) return false;
+        const f = fields.find(x => x.key === k);
+        if (f && f.type === 'checkbox') return false;
+        const v = d[k];
+        return v !== '' && v !== false && v !== null && v !== undefined;
+      });
+    };
+    const sameDay = await db.query(
+      'SELECT id, data FROM project_records WHERE user_id = ? AND project_id = ? AND record_date = ? ORDER BY id ASC',
+      [uid, pid, recordDate]);
+    const bare = sameDay.find(r => isCheckinOnly(r.data));
+    if (bare) {
+      const old = parseData(bare.data);
+      const merged = Object.assign({}, old, data);
+      // 勾选字段保留旧值 true：打卡不能被「记一笔」表单里的空勾选覆盖
+      fields.forEach(f => {
+        if (f.type === 'checkbox' && old[f.key] === true) merged[f.key] = true;
+      });
+      const norm = T.normalizeData(fields, merged);
+      await db.exec('UPDATE project_records SET data = ? WHERE id = ? AND user_id = ?',
+        [JSON.stringify(norm), bare.id, uid]);
+      const mergedRow = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [bare.id, uid]);
+      return res.json(T.rowToRecord(mergedRow));
+    }
     const r = await db.exec(
       'INSERT INTO project_records (user_id, project_id, record_date, data) VALUES (?,?,?,?)',
       [uid, pid, recordDate, JSON.stringify(data)]);
@@ -163,8 +196,10 @@ router.post('/tracker/checkin', async (req, res, next) => {
       if (want < startDate) return res.status(400).json({ error: '补卡最早从项目开始日 ' + startDate + ' 起' });
       recordDate = want;
     }
-    const existing = await db.one(
-      'SELECT id, data FROM project_records WHERE user_id = ? AND project_id = ? AND record_date = ? ORDER BY id ASC LIMIT 1',
+    // 打卡是「一整天」的属性：同一天可能有多条记录（同日可多条是允许的），
+    // 状态与写入都必须覆盖当天所有记录，否则会出现「页面看明细行、接口改打卡行」的错位。
+    const dayRows = await db.query(
+      'SELECT id, data FROM project_records WHERE user_id = ? AND project_id = ? AND record_date = ? ORDER BY id ASC',
       [uid, pid, recordDate]);
 
     const dateField = fields.find(f => f.type === 'date' && f.key === config.dateField)
@@ -174,8 +209,11 @@ router.post('/tracker/checkin', async (req, res, next) => {
       const v = data[k];
       return v !== '' && v !== false && v !== null && v !== undefined;
     });
+    const parseData = raw => {
+      try { const d = JSON.parse(raw || '{}'); return (d && typeof d === 'object' && !Array.isArray(d)) ? d : {}; } catch (_) { return {}; }
+    };
 
-    if (!existing) {
+    if (!dayRows.length) {
       if (!value) return res.json({ ok: true, checked: false, record: null });
       const data = {};
       if (dateField) data[dateField.key] = recordDate;
@@ -188,19 +226,33 @@ router.post('/tracker/checkin', async (req, res, next) => {
       return res.json({ ok: true, checked: true, record: T.rowToRecord(row) });
     }
 
-    let data = {};
-    try { data = JSON.parse(existing.data || '{}') || {}; } catch (_) { data = {}; }
-    data[key] = value;
-    const normalized = T.normalizeData(fields, data);
-    // 取消当天最后一个打卡且没写任何内容时，顺手删掉这条空记录
-    if (!value && !hasContent(normalized)) {
-      await db.exec('DELETE FROM project_records WHERE id = ? AND user_id = ?', [existing.id, uid]);
-      return res.json({ ok: true, checked: false, record: null, deleted: true });
+    if (value) {
+      // 优先勾到「有内容」的记录上，避免又新增一条纯打卡行
+      const target = dayRows.find(r => hasContent(parseData(r.data))) || dayRows[0];
+      const data = parseData(target.data);
+      data[key] = true;
+      const normalized = T.normalizeData(fields, data);
+      await db.exec('UPDATE project_records SET data = ? WHERE id = ? AND user_id = ?',
+        [JSON.stringify(normalized), target.id, uid]);
+      const row = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [target.id, uid]);
+      return res.json({ ok: true, checked: true, record: T.rowToRecord(row) });
     }
-    await db.exec('UPDATE project_records SET data = ? WHERE id = ? AND user_id = ?',
-      [JSON.stringify(normalized), existing.id, uid]);
-    const row = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [existing.id, uid]);
-    res.json({ ok: true, checked: value, record: T.rowToRecord(row) });
+
+    // 取消：清掉当天每条记录的该勾选；改完没有任何内容的记录顺手删除
+    let firstRow = null;
+    for (const r of dayRows) {
+      const data = parseData(r.data);
+      data[key] = false;
+      const normalized = T.normalizeData(fields, data);
+      if (!hasContent(normalized)) {
+        await db.exec('DELETE FROM project_records WHERE id = ? AND user_id = ?', [r.id, uid]);
+      } else {
+        await db.exec('UPDATE project_records SET data = ? WHERE id = ? AND user_id = ?',
+          [JSON.stringify(normalized), r.id, uid]);
+        if (!firstRow) firstRow = await db.one('SELECT * FROM project_records WHERE id = ? AND user_id = ?', [r.id, uid]);
+      }
+    }
+    res.json({ ok: true, checked: false, record: firstRow ? T.rowToRecord(firstRow) : null, deleted: !firstRow });
   } catch (e) { next(e); }
 });
 

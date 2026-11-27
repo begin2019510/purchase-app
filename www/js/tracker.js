@@ -527,8 +527,8 @@
     var _todosForP = linkedTodos(_detail.projectId);
     var _openForP = _todosForP.filter(function(t) { return t.status !== '已完成'; }).length;
     var _cis = checkinItems(ov);
-    var _today = todayRecordOf(_detail.records);
-    var _ciDone = _cis.filter(function(f) { return !!(_today && _today.data && _today.data[f.key] === true); }).length;
+    var _todayDate = todayBj();
+    var _ciDone = _cis.filter(function(f) { return dayCheckinDone(_detail.records, _todayDate, f.key); }).length;
     h += '<div class="pj2-tabs trk-tabs">';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'today' ? ' active' : '') + '" onclick="App.tracker.setTab(\'today\')">今日' + (_cis.length ? '<em>' + _ciDone + '/' + _cis.length + '</em>' : '') + '</button>';
     h += '<button type="button" class="pj2-tab' + (_detail.tab === 'records' ? ' active' : '') + '" onclick="App.tracker.setTab(\'records\')">记录<em>' + _detail.records.length + '</em></button>';
@@ -892,11 +892,11 @@
   function renderKanbanCheckins(ov, closed) {
     var items = checkinItems(ov);
     if (!items.length) return '';
-    var rec = todayRecordOf(_detail.records);
-    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
+    var _kbDate = todayBj();
+    var doneN = items.filter(function(f) { return dayCheckinDone(_detail.records, _kbDate, f.key); }).length;
     var h = '<section class="trk-kci"><div class="trk-kanban-head"><span>今日打卡</span><em>' + doneN + '/' + items.length + ' 已完成</em></div><div class="trk-kci-grid">';
     items.forEach(function(f) {
-      var done = !!(rec && rec.data && rec.data[f.key] === true);
+      var done = dayCheckinDone(_detail.records, _kbDate, f.key);
       var wk = itemWeekCount(_detail.records, f.key);
       h += '<button type="button" class="trk-kci-card' + (done ? ' done' : '') + '"' + (closed ? ' disabled' : '') + ' onclick="App.tracker.toggleCheckin(\'' + escAttr(f.key) + '\',this)">'
         + '<span class="trk-kci-mark">' + (done ? '✓' : '○') + '</span>'
@@ -1328,14 +1328,6 @@
   function checkinItems(ov) {
     return ((ov && ov.fields) || []).filter(function(f) { return f.type === 'checkbox'; });
   }
-  function recordOfDate(records, date) {
-    var list = records || [];
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].recordDate === date) return list[i];
-    }
-    return null;
-  }
-  function todayRecordOf(records) { return recordOfDate(records, todayBj()); }
   function weekStartBj() {
     var d = new Date(Date.now() + 8 * 3600 * 1000);
     var day = (d.getUTCDay() + 6) % 7;
@@ -1345,11 +1337,17 @@
   function itemWeekCount(records, key) {
     var start = weekStartBj();
     var today = todayBj();
-    var n = 0;
+    var days = {};
     (records || []).forEach(function(r) {
-      if (r.recordDate && r.recordDate >= start && r.recordDate <= today && r.data && r.data[key] === true) n++;
+      if (r.recordDate && r.recordDate >= start && r.recordDate <= today && r.data && r.data[key] === true) days[r.recordDate] = true;
     });
-    return n;
+    return Object.keys(days).length;
+  }
+  // 打卡是整天状态：当天任一记录勾了就算完成（同日可多条记录）
+  function dayCheckinDone(records, date, key) {
+    return (records || []).some(function(r) {
+      return r.recordDate === date && r.data && r.data[key] === true;
+    });
   }
   function itemStreak(records, key) {
     var days = {};
@@ -1375,8 +1373,7 @@
     if (!f || f.type !== 'checkbox') return;
     var date = checkinSelDate();
     var isToday = date === todayBj();
-    var rec = recordOfDate(_detail.records, date);
-    var next = !(rec && rec.data && rec.data[key] === true);
+    var next = !dayCheckinDone(_detail.records, date, key);
     _checkinBusy[key] = true;
     if (btn) btn.disabled = true;
     var pid = _detail.projectId;
@@ -1486,9 +1483,8 @@
     var sel = checkinSelDate();
     var isToday = sel === today;
     var start = checkinStartDate(ov);
-    var rec = recordOfDate(_detail.records, sel);
-    var doneN = items.filter(function(f) { return !!(rec && rec.data && rec.data[f.key] === true); }).length;
     var dayRecs = (_detail.records || []).filter(function(r) { return r.recordDate === sel; });
+    var doneN = items.filter(function(f) { return dayCheckinDone(_detail.records, sel, f.key); }).length;
 
     var h = '<div class="trk-today-head"><div><b>' + (isToday ? '今天' : '补卡') + '</b><span>' + checkinDateLabel(sel) + '</span></div><em>' + (items.length ? '打卡 ' + doneN + '/' + items.length : '还没有打卡项') + '</em></div>';
 
@@ -1503,7 +1499,7 @@
         + '</div>';
       h += '<div class="trk-today-grid">';
       items.forEach(function(f) {
-        var done = !!(rec && rec.data && rec.data[f.key] === true);
+        var done = dayCheckinDone(_detail.records, sel, f.key);
         var wk = itemWeekCount(_detail.records, f.key);
         var st = itemStreak(_detail.records, f.key);
         h += '<button type="button" class="trk-today-card' + (done ? ' done' : '') + '"' + (closed ? ' disabled' : '') + ' aria-pressed="' + (done ? 'true' : 'false') + '" onclick="App.tracker.toggleCheckin(\'' + escAttr(f.key) + '\',this)">'
