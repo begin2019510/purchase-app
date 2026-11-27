@@ -3,7 +3,8 @@
 const express = require('express');
 const db = require('../db');
 const H = require('../lib/helpers');
-const { requireAuth, guard } = require('../middleware');
+const A = require('../lib/expense-audit');
+const { requireAuth, guard, clientIP } = require('../middleware');
 
 const router = express.Router();
 
@@ -12,6 +13,7 @@ function _projId(b){var s=String(b.projectId||'').trim();var m=/^(?:rec_)?(\d+)$
 function _phaseIdx(b){if(b.phaseIdx===null||b.phaseIdx===undefined||b.phaseIdx==='')return null;var n=Number(b.phaseIdx);return Number.isInteger(n)&&n>=0&&n<=5?n:null;}
 function _dateMs(v){const t=H.dateStrToTs(v);return Number.isFinite(t)?t:NaN;}
 async function _ownedProject(uid,pid){if(!pid)return true;return !!(await db.one('SELECT id FROM projects WHERE id=? AND user_id=?',[pid,uid]));}
+async function _ownedProjectConn(conn,uid,pid){if(!pid)return true;const [rows]=await conn.query('SELECT id FROM projects WHERE id=? AND user_id=?',[pid,uid]);return !!rows[0];}
 // 解析 image_ref：裸 kv:/data: 单图，或 JSON 数组多图（新）
 function _parseImageRefs(v) {
   if (!v) return [];
@@ -109,13 +111,29 @@ router.post('/expenses', async (req, res, next) => {
     if (b.phaseIdx !== undefined && b.phaseIdx !== null && b.phaseIdx !== '' && _phaseIdx(b) === null) return res.status(400).json({ error: '阶段序号不正确' });
     const pid = _projId(b);
     if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
-    const [ins] = await db.pool.query(
-      `INSERT INTO expenses (user_id,type,category,amount,date_ms,note,image_ref,split_weeks,split_start_week,project_id,phase_idx)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [uid, b.type || '支出', category, amount, dm,
-        String(b.note || '').slice(0, 500), imageRef || '',
-        sw, String(b.splitStartWeek || '').slice(0, 20) || null, pid, _phaseIdx(b)]);
-    res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
+    const type = b.type || '支出';
+    const note = String(b.note || '').slice(0, 500);
+    const splitStartWeek = String(b.splitStartWeek || '').slice(0, 20) || null;
+    const phaseIdx = _phaseIdx(b);
+    const conn = await db.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [ins] = await conn.query(
+        `INSERT INTO expenses (user_id,type,category,amount,date_ms,note,image_ref,split_weeks,split_start_week,project_id,phase_idx)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [uid, type, category, amount, dm, note, imageRef || '', sw, splitStartWeek, pid, phaseIdx]);
+      await H.logOpTx(conn, req.username, 'expense_create',
+        A.createDetail('api', {
+          id: ins.insertId, type, category, amount, date_ms: dm, note,
+          image_ref: imageRef || '', split_weeks: sw, split_start_week: splitStartWeek,
+          project_id: pid, phase_idx: phaseIdx,
+        }), clientIP(req));
+      await conn.commit();
+      res.status(201).json({ id: 'rec_' + ins.insertId, ok: true });
+    } catch (e) {
+      try { await conn.rollback(); } catch (x) {}
+      throw e;
+    } finally { conn.release(); }
   } catch (e) { next(e); }
 });
 
@@ -125,51 +143,73 @@ router.put('/expenses', async (req, res, next) => {
     const b = req.body || {};
     if (!b.id) return res.status(400).json({ error: 'Missing id' });
     const n = H.numFromId(b.id);
-    const old = await db.one('SELECT * FROM expenses WHERE id = ? AND user_id = ?', [n, uid]);
-    if (!old) return res.status(404).json({ error: 'not found' });
-    const cols = {};
-    if (b.type !== undefined) {
-      if (!TYPES.includes(String(b.type))) return res.status(400).json({ error: '无效类型' });
-      cols.type = b.type;
-    }
-    if (b.category !== undefined) {
-      const c = String(b.category || '其他');
-      if (c.length > 30) return res.status(400).json({ error: '分类过长' });
-      cols.category = c;
-    }
-    if (b.amount !== undefined) {
-      const amt = Number(b.amount);
-      if (!Number.isFinite(amt) || amt < 0 || amt > 999999) return res.status(400).json({ error: '金额需在 0 ~ 999999 之间' });
-      cols.amount = amt;
-    }
-    if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 500);
-    if (b.splitWeeks !== undefined) {
-      const sw = Number(b.splitWeeks);
-      if (!Number.isInteger(sw) || sw < 0 || sw > 52) return res.status(400).json({ error: '分摊周数需在 0~52 之间' });
-      cols.split_weeks = sw;
-    }
-    if (b.splitStartWeek !== undefined) cols.split_start_week = String(b.splitStartWeek || '').slice(0, 20);
-    if (b.date !== undefined) {
-      const dm = b.date === '' ? Date.now() : _dateMs(b.date);
-      if (Number.isNaN(dm)) return res.status(400).json({ error: '日期格式不正确' });
-      cols.date_ms = dm;
-    }
-    if (b.projectId !== undefined || b.phaseIdx !== undefined) {
-      if (b.projectId && !_projId(b)) return res.status(400).json({ error: '项目ID格式不正确' });
-      if (b.phaseIdx !== undefined && b.phaseIdx !== null && b.phaseIdx !== '' && _phaseIdx(b) === null) return res.status(400).json({ error: '阶段序号不正确' });
-      const pid = b.projectId !== undefined ? _projId(b) : (old.project_id || null);
-      if (!(await _ownedProject(uid, pid))) return res.status(404).json({ error: '项目不存在' });
-      if (b.projectId !== undefined) cols.project_id = pid;
-      if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b);
-    }
-    if (b.imageKey !== undefined || b.image !== undefined || b.imageKeys !== undefined) {
-      const ref = _imageRef(b);
-      if (ref === null) return res.status(400).json({ error: '图片格式不正确' });
-      cols.image_ref = ref;
-    }
-    const sets = Object.keys(cols).map(k => k + ' = ?').join(', ');
-    if (sets) await db.exec('UPDATE expenses SET ' + sets + ' WHERE id = ?', [...Object.values(cols), old.id]);
-    res.json({ ok: true });
+    const conn = await db.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [rows] = await conn.query('SELECT * FROM expenses WHERE id = ? AND user_id = ? FOR UPDATE', [n, uid]);
+      const old = rows[0];
+      if (!old) {
+        await conn.rollback();
+        return res.status(404).json({ error: 'not found' });
+      }
+      const reject = async (status, error) => {
+        await conn.rollback();
+        return res.status(status).json({ error });
+      };
+      const cols = {};
+      if (b.type !== undefined) {
+        if (!TYPES.includes(String(b.type))) return await reject(400, '无效类型');
+        cols.type = b.type;
+      }
+      if (b.category !== undefined) {
+        const c = String(b.category || '其他');
+        if (c.length > 30) return await reject(400, '分类过长');
+        cols.category = c;
+      }
+      if (b.amount !== undefined) {
+        const amt = Number(b.amount);
+        if (!Number.isFinite(amt) || amt < 0 || amt > 999999) return await reject(400, '金额需在 0 ~ 999999 之间');
+        cols.amount = amt;
+      }
+      if (b.note !== undefined) cols.note = String(b.note || '').slice(0, 500);
+      if (b.splitWeeks !== undefined) {
+        const sw = Number(b.splitWeeks);
+        if (!Number.isInteger(sw) || sw < 0 || sw > 52) return await reject(400, '分摊周数需在 0~52 之间');
+        cols.split_weeks = sw;
+      }
+      if (b.splitStartWeek !== undefined) cols.split_start_week = String(b.splitStartWeek || '').slice(0, 20);
+      if (b.date !== undefined) {
+        const dm = b.date === '' ? Date.now() : _dateMs(b.date);
+        if (Number.isNaN(dm)) return await reject(400, '日期格式不正确');
+        cols.date_ms = dm;
+      }
+      if (b.projectId !== undefined || b.phaseIdx !== undefined) {
+        if (b.projectId && !_projId(b)) return await reject(400, '项目ID格式不正确');
+        if (b.phaseIdx !== undefined && b.phaseIdx !== null && b.phaseIdx !== '' && _phaseIdx(b) === null) return await reject(400, '阶段序号不正确');
+        const pid = b.projectId !== undefined ? _projId(b) : (old.project_id || null);
+        if (!(await _ownedProjectConn(conn, uid, pid))) return await reject(404, '项目不存在');
+        if (b.projectId !== undefined) cols.project_id = pid;
+        if (b.phaseIdx !== undefined) cols.phase_idx = _phaseIdx(b);
+      }
+      if (b.imageKey !== undefined || b.image !== undefined || b.imageKeys !== undefined) {
+        const ref = _imageRef(b);
+        if (ref === null) return await reject(400, '图片格式不正确');
+        cols.image_ref = ref;
+      }
+      const changed = A.changedColumns(old, cols);
+      if (changed.length) {
+        const sets = changed.map(k => k + ' = ?').join(', ');
+        await conn.query('UPDATE expenses SET ' + sets + ' WHERE id = ?', [...changed.map(k => cols[k]), old.id]);
+        const after = Object.assign({}, old, cols);
+        await H.logOpTx(conn, req.username, 'expense_update',
+          A.updateDetail('api', old, after, changed), clientIP(req));
+      }
+      await conn.commit();
+      res.json({ ok: true });
+    } catch (e) {
+      try { await conn.rollback(); } catch (x) {}
+      throw e;
+    } finally { conn.release(); }
   } catch (e) { next(e); }
 });
 
@@ -178,8 +218,24 @@ router.delete('/expenses', async (req, res, next) => {
     const uid = await H.resolveUserId(req.username);
     const n = H.numFromId(req.query.id);
     if (!n) return res.status(400).json({ error: 'Missing id' });
-    await db.exec('DELETE FROM expenses WHERE id = ? AND user_id = ?', [n, uid]);
-    res.json({ ok: true });
+    const conn = await db.pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      const [rows] = await conn.query('SELECT * FROM expenses WHERE id = ? AND user_id = ? FOR UPDATE', [n, uid]);
+      const old = rows[0];
+      if (!old) {
+        await conn.rollback();
+        return res.json({ ok: true });
+      }
+      await conn.query('DELETE FROM expenses WHERE id = ? AND user_id = ?', [old.id, uid]);
+      await H.logOpTx(conn, req.username, 'expense_delete',
+        A.deleteDetail('api', old), clientIP(req));
+      await conn.commit();
+      res.json({ ok: true });
+    } catch (e) {
+      try { await conn.rollback(); } catch (x) {}
+      throw e;
+    } finally { conn.release(); }
   } catch (e) { next(e); }
 });
 

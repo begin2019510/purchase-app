@@ -5,7 +5,8 @@ const express = require('express');
 const db = require('../db');
 const H = require('../lib/helpers');
 const T = require('../lib/tracker');
-const { requireAuth, guard } = require('../middleware');
+const A = require('../lib/expense-audit');
+const { requireAuth, guard, clientIP } = require('../middleware');
 
 const router = express.Router();
 router.use(guard(['projects', 'phases', 'phase-items']));
@@ -651,7 +652,16 @@ router.delete('/projects', async (req, res, next) => {
     await conn.query('DELETE FROM project_records WHERE project_id = ? AND user_id = ?', [pid, uid]);
     await conn.query('UPDATE purchase_needs SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
     await conn.query('UPDATE purchases SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]); // 旧表冻结备份一并解绑
+    const [expRows] = await conn.query('SELECT * FROM expenses WHERE project_id = ? AND user_id = ? FOR UPDATE', [pid, uid]);
     await conn.query('UPDATE expenses SET project_id = NULL, phase_idx = NULL WHERE project_id = ? AND user_id = ?', [pid, uid]);
+    for (const expRow of expRows) {
+      const cols = { project_id: null, phase_idx: null };
+      const changed = A.changedColumns(expRow, cols);
+      if (!changed.length) continue;
+      const after = Object.assign({}, expRow, cols);
+      await H.logOpTx(conn, req.username, 'expense_update',
+        A.updateDetail('project_delete', expRow, after, changed), clientIP(req));
+    }
     // todos.project_id 是字符串列（存 rec_<id>），与 purchases/expenses 的数字列不同；
     // 用数字比较会触发 MySQL 的 Truncated incorrect DOUBLE value 而整个删除事务失败。
     await conn.query('UPDATE todos SET project_id = NULL, phase_idx = NULL WHERE user_id = ? AND (project_id = ? OR project_id = ?)', [uid, 'rec_' + pid, String(pid)]);

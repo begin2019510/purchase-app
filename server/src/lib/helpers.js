@@ -44,5 +44,11 @@ async function logOp(username, action, detail, ip) {
       [now.toISOString().slice(0, 10), username, action, detail || '', ip || 'unknown']);
   } catch (e) { console.error('logOp:', e.message); }
 }
+// 事务内审计：与业务写入同提交/回滚，日志失败则整笔操作失败（不产生无日志的修改）
+async function logOpTx(conn, username, action, detail, ip) {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  await conn.query('INSERT INTO op_logs (log_date, username, action, detail, ip) VALUES (?,?,?,?,?)',
+    [now.toISOString().slice(0, 10), username || 'unknown', String(action).slice(0, 30), detail || '', ip || 'unknown']);
+}
 
-module.exports = { nextId, numFromId, bjNow, tsToBjStr, dateStrToTs, resolveUserId, logOp };
+module.exports = { nextId, numFromId, bjNow, tsToBjStr, dateStrToTs, resolveUserId, logOp, logOpTx };

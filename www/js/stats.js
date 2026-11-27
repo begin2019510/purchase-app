@@ -294,7 +294,8 @@ function renderStats() { console.log('renderStats START');
     html += '<div class="budget-waterfall">';
     // Header: total budget
     html += '<div class="budget-waterfall-header">';
-    html += '<div class="budget-waterfall-title">' + monthName + '预算总池</div>';
+    html += '<div class="budget-waterfall-title">' + monthName + '预算总池'
+      + '<button type="button" onclick="App.budget.openBudgetHistory()" style="margin-left:6px;padding:3px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--pri);font-size:11px;font-weight:700;cursor:pointer">📜 历史</button></div>';
     html += '<div class="budget-waterfall-big" data-animate-num="' + pool.totalBudget + '">\u00a50</div>';
     html += '</div>';
     // Deduction rows

@@ -620,6 +620,29 @@ function changeLogDate(delta) {
   logDateState = y + '-' + m + '-' + day;
   loadLogs();
 }
+// 预算审计详情是 JSON；收起时只显示“哪个月从多少变到多少”，展开可看完整 before/after。
+function formatLogDetail(log) {
+  const raw = String(log.details || '');
+  if (!raw) return '';
+  if (log.action === 'budget_create' || log.action === 'budget_update' || log.action === 'budget_delete') {
+    try {
+      const d = JSON.parse(raw);
+      const months = Array.isArray(d.changedMonths) ? d.changedMonths : [];
+      const sums = Array.isArray(d.summary) ? d.summary : [];
+      const line = months.map(function(m) {
+        const s = sums.find(function(x) { return x.month === m; }) || {};
+        let t = m + ' ¥' + Number(s.totalBefore || 0).toFixed(0) + ' → ¥' + Number(s.totalAfter || 0).toFixed(0);
+        if (s.additionsAdded && s.additionsAdded.length) t += ' · 追加 +' + s.additionsAdded.length + ' 笔';
+        if (s.additionsRemoved && s.additionsRemoved.length) t += ' · 删除追加 ' + s.additionsRemoved.length + ' 笔';
+        return t;
+      }).join('；');
+      return '<details style="margin-top:2px"><summary style="cursor:pointer;color:var(--pri)">' + esc(line || '预算变更') + '</summary>'
+        + '<pre style="white-space:pre-wrap;word-break:break-all;font-size:10px;color:var(--muted);margin:6px 0 0">' + esc(JSON.stringify(d, null, 2)) + '</pre></details>';
+    } catch (e) { /* 旧数据或非 JSON：退回原文 */ }
+  }
+  return esc(raw);
+}
+
 async function loadLogs(date) {
   if (date) logDateState = date;
   const el = document.getElementById('logList');
@@ -642,6 +665,12 @@ async function loadLogs(date) {
       'create_invite': '📧 创建邀请码',
       'status_change': '📋 状态变更',
       'export': '📤 导出',
+      'budget_create': '🎯 新建预算',
+      'budget_update': '🎯 修改预算',
+      'budget_delete': '🎯 删除预算',
+      'expense_create': '🧾 新增记账',
+      'expense_update': '🧾 修改记账',
+      'expense_delete': '🧾 删除记账',
     };
 
     // 如果是管理员，显示所有用户的日志；否则只显示自己的
@@ -656,7 +685,7 @@ async function loadLogs(date) {
         '<div>' +
           '<span style="font-size:13px">' + label + '</span>' +
           usernameHtml +
-          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + esc(log.details) + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + formatLogDetail(log) + '</div>' +
         '</div>' +
         '<div style="text-align:right">' +
           '<div style="font-size:10px;color:var(--muted)">' + time + '</div>' +
