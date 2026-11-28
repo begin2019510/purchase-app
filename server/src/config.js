@@ -36,6 +36,10 @@ module.exports = {
   JWT_SECRET: srvEnv.JWT_SECRET,
   SERVICE_TOKEN: srvEnv.SERVICE_TOKEN,  // CF Functions → 本服务内网鉴权
   PORT: Number(process.env.PURCHASE_PORT || srvEnv.API_PORT || 3500),
+  // 特殊预算功能开关（v3.2.0 默认关闭）。生产需在 server.env 显式设置
+  // SPECIAL_BUDGET_ENABLED=1 才开放；关闭时 /api/special-budget/* 一律 404。
+  SPECIAL_BUDGET_ENABLED: ['1', 'true', 'on'].includes(
+    String(process.env.PURCHASE_SPECIAL_BUDGET || srvEnv.SPECIAL_BUDGET_ENABLED || '').toLowerCase()),
   INVITE_CODES: srvEnv.INVITE_CODES || '',
   WIDGET_SECRET: srvEnv.WIDGET_SECRET || '',
   HOST: srvEnv.API_HOST || '127.0.0.1',

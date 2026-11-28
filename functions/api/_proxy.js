@@ -52,6 +52,9 @@ export async function toServer(request, env, opts = {}) {
   };
   const auth = request.headers.get('Authorization');
   if (auth) headers['Authorization'] = auth;
+  // 写操作幂等键必须透传到内网服务；丢了它所有特殊预算写接口都会 400。
+  const idemKey = request.headers.get('Idempotency-Key');
+  if (idemKey) headers['Idempotency-Key'] = idemKey;
   if (opts.username) headers['X-Auth-User'] = opts.username;
   const init = { method: request.method, headers };
   if (opts.keepBody !== false && request.method !== 'GET' && request.method !== 'HEAD') {

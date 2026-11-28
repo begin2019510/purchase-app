@@ -101,7 +101,7 @@ async function computeForUser(u, period) {
     db.query(
       `SELECT o.*, o.price_paid AS price, n.name, n.category
        FROM purchase_orders o JOIN purchase_needs n ON n.id = o.need_id
-       WHERE o.user_id = ?`, [u.id]),
+       WHERE o.user_id = ? AND o.budget_type <> 'special'`, [u.id]),
     db.query('SELECT * FROM expenses WHERE user_id = ?', [u.id]),
   ]);
   const instEvents = installmentEvents(pRecs);

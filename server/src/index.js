@@ -42,6 +42,7 @@ app.use('/api', require('./routes/todos'));
 app.use('/api', require('./routes/projects'));
 app.use('/api', require('./routes/tracker'));
 app.use('/api', require('./routes/docs'));
+app.use('/api', require('./routes/special-budget'));
 app.use('/api', require('./routes/images'));
 app.use('/api', require('./routes/report'));
 app.use('/api', require('./routes/claude'));

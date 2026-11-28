@@ -11,6 +11,7 @@ const db = require('../db');
 const H = require('../lib/helpers');
 const IMG = require('../lib/images');
 const N = require('../lib/needs');
+const SB_AUDIT = require('../lib/special-budget/audit');
 const { guard, clientIP } = require('../middleware');
 const { logOp } = require('../lib/helpers');
 
@@ -98,6 +99,8 @@ function rowToItem(r) {
     '分期已还': Number(r.installment_paid) || 0,
     '极速': r.is_quick ? '1' : '',
     '虚拟': r.is_virtual ? '1' : '',
+    '特殊预算': r.budget_type === 'special' ? '1' : '',
+    '特殊审批ID': r.special_approval_id != null ? 'rec_' + r.special_approval_id : '',
     '项目ID': r.project_id ? 'rec_' + r.project_id : '',
     '阶段': r.phase_idx == null ? null : Number(r.phase_idx),
   };
@@ -151,7 +154,8 @@ function legacyStatusWrite(legacy, curNeed, curOrder) {
       break;
     case '已退':
       needCols.status = '已定点';
-      if (curOrder) { orderPatch.status = '已退'; orderPatch.arrived_at = curOrder.arrived_at || H.bjNow(); }
+      // v3.2.2：退款写 refunded_at，不再写 arrived_at（到货与退款是两件事）
+      if (curOrder) { orderPatch.status = '已退'; orderPatch.refunded_at = curOrder.refunded_at || H.bjNow(); }
       break;
     case '已归档':
       needCols.status = '已完成';
@@ -177,6 +181,33 @@ async function applyPatchCols(conn, table, id, cols) {
   const keys = Object.keys(cols);
   if (!keys.length) return;
   await conn.query('UPDATE ' + table + ' SET ' + keys.map(k => '`' + k + '` = ?').join(', ') + ' WHERE id = ?', [...keys.map(k => cols[k]), id]);
+}
+
+// v3.2.2：特殊预算订单的旧接口写入必须留审计；金额/数量/状态等敏感字段一律锁定。
+const SPECIAL_LOCKED_FIELDS = [
+  'qty', 'price', 'date', 'setDate', 'installments', 'installmentAmount',
+  'installmentStart', 'installmentPaid',
+];
+function isSpecialOrder(order) {
+  return !!order && order.budget_type === 'special';
+}
+function specialOrderAmount(order) {
+  return Math.round((Number(order.price_paid) || 0) * (Number(order.qty) || 1) * 100) / 100;
+}
+async function auditSpecialOrderWrite(conn, req, order, action, before, after) {
+  await SB_AUDIT.appendEvent(conn, {
+    approvalId: order.special_approval_id,
+    orderId: order.id,
+    eventType: 'order_update',
+    amount: specialOrderAmount(order),
+    actor: req.username || 'unknown',
+    at: new Date(),
+    ip: clientIP(req),
+    reason: action,
+    before,
+    after,
+    ruleVersion: null,
+  });
 }
 
 async function saveImageRef(req, uid, b, oldImgRef) {
@@ -300,14 +331,15 @@ router.post('/items', async (req, res, next) => {
       const [oins] = await conn.query(
         `INSERT INTO purchase_orders (user_id,need_id,supplier_id,role,qty,price_paid,status,date_ms,image_ref,note,
            installments,installment_amount,installment_start,installment_paid,created_at_text,approved_at,
-           ordered_at,arrived_at,archived_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           ordered_at,arrived_at,refunded_at,archived_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [uid, needId, supplierId, 'formal', v.qty, v.price, mappedOrder,
           b.date ? _dateMs(b.date) : Date.now(), imageVal, b.note || '',
           v.installments, v.instAmount, v.instStart, Number(b.installmentPaid) || 0,
           H.bjNow(), approvedAt,
           legacyStatus === '已下单' ? H.bjNow() : null,
-          ['已到', '已退'].includes(legacyStatus) ? H.bjNow() : null,
+          legacyStatus === '已到' ? H.bjNow() : null,
+          legacyStatus === '已退' ? H.bjNow() : null,
           ['已归档', '已取消'].includes(legacyStatus) ? H.bjNow() : null]);
       orderId = oins.insertId;
     }
@@ -360,6 +392,26 @@ router.put('/items', async (req, res, next) => {
         .some(k => b[k] !== undefined)) {
       await conn.rollback();
       return res.status(400).json({ error: '该需求有多家定点正式单，请在采购详情中逐单操作' });
+    }
+
+    // 特殊预算订单：金额/数量/分期/状态已锁定，必须走补充审批或特殊预算退款接口
+    if (isSpecialOrder(formal)) {
+      const locked = SPECIAL_LOCKED_FIELDS.filter(k => b[k] !== undefined);
+      if (locked.length) {
+        await conn.rollback();
+        return res.status(400).json({
+          error: 'SPECIAL_ORDER_LOCKED',
+          message: '特殊预算订单金额/数量/分期已锁定，请走补充审批或退款重开',
+          fields: locked,
+        });
+      }
+      if (b.status !== undefined && String(b.status) !== synth.status) {
+        await conn.rollback();
+        return res.status(400).json({
+          error: 'SPECIAL_ORDER_LOCKED',
+          message: '特殊预算订单状态请通过特殊预算资金接口变更',
+        });
+      }
     }
 
     // need 侧
@@ -456,6 +508,13 @@ router.put('/items', async (req, res, next) => {
     await applyPatchCols(conn, 'purchase_needs', need.id, needCols);
     if (sup && Object.keys(supCols).length) await applyPatchCols(conn, 'purchase_suppliers', sup.id, supCols);
     if (formal && Object.keys(orderCols).length) await applyPatchCols(conn, 'purchase_orders', formal.id, orderCols);
+    if (isSpecialOrder(formal) &&
+      (Object.keys(needCols).length || Object.keys(supCols).length || Object.keys(orderCols).length)) {
+      await auditSpecialOrderWrite(conn, req, formal, '旧 /api/items 更新', {
+        need: { name: need.name, category: need.category },
+        order: { status: formal.status, note: formal.note },
+      }, { need: needCols, supplier: supCols, order: orderCols });
+    }
     await conn.commit();
 
     if (statusChanged) {
@@ -501,6 +560,10 @@ router.patch('/items', async (req, res, next) => {
         if (Number(fcAll[0].c) > 1 && ['status', 'note'].some(k => b[k] !== undefined)) {
           throw new Error('该需求有多家定点正式单，请在采购详情中逐单操作');
         }
+        // 特殊预算订单不允许通过批量接口改状态（退款/取消必须走资金接口）
+        if (isSpecialOrder(formal) && b.status !== undefined && String(b.status) !== synth.status) {
+          throw new Error('特殊预算订单状态请通过特殊预算资金接口变更');
+        }
         if (b.status !== undefined && String(b.status) !== synth.status) {
           const w = legacyStatusWrite(String(b.status), need, formal);
           if (w.error) throw new Error(w.error);
@@ -527,6 +590,12 @@ router.patch('/items', async (req, res, next) => {
         // 无正式单时 note 落供应商备注（避免丢数据）
         if (!formal && b.note !== undefined && suppliers[0]) {
           await applyPatchCols(conn, 'purchase_suppliers', suppliers[0].id, { note: String(b.note || '') });
+        }
+        if (isSpecialOrder(formal) && (Object.keys(needCols).length || Object.keys(orderCols).length)) {
+          await auditSpecialOrderWrite(conn, req, formal, '旧 /api/items 批量更新', {
+            need: { status: need.status },
+            order: { status: formal.status, note: formal.note },
+          }, { need: needCols, order: orderCols });
         }
         await conn.commit();
         results.push({ id, ok: true });
@@ -556,6 +625,13 @@ router.delete('/items', async (req, res, next) => {
     await conn.beginTransaction();
     const [rows] = await conn.query('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [n, uid]);
     if (!rows[0]) { await conn.rollback(); return res.json({ ok: true }); }
+    // 特殊预算订单不可物理删除：退款/释放额度必须留审计与账目链条
+    const [spec] = await conn.query(
+      "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND budget_type = 'special'", [n]);
+    if (Number(spec[0].c) > 0) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'SPECIAL_ORDER_NO_DELETE', message: '特殊预算订单不可删除，请走退款路径' });
+    }
     const [spent] = await conn.query(
       "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND status IN ('已下单','已到','已归档')", [n]);
     if (Number(spent[0].c) > 0) {

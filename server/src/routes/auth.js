@@ -307,6 +307,27 @@ router.all('/auth', async (req, res, next) => {
         await conn.beginTransaction();
         await conn.query('DELETE FROM phase_items WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)', [user.id]);
         await conn.query('DELETE FROM project_phases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)', [user.id]);
+        // 特殊预算：审批单/分期/关联/事件/幂等键按 username 清理（这些表没有 user_id）。
+        // 年度规则与月度快照是全局配置/全局统计，必须保留；旧库未迁移时忽略缺表错误。
+        try {
+          const [apprRows] = await conn.query('SELECT id FROM special_budget_approvals WHERE username = ?', [username]);
+          const apprIds = apprRows.map(r => Number(r.id));
+          const [orderRows] = await conn.query('SELECT id FROM purchase_orders WHERE user_id = ?', [user.id]);
+          const orderIds = orderRows.map(r => Number(r.id));
+          if (apprIds.length) {
+            await conn.query('DELETE FROM special_budget_events WHERE approval_id IN (?)', [apprIds]);
+            await conn.query('DELETE FROM special_budget_schedules WHERE approval_id IN (?)', [apprIds]);
+            await conn.query('DELETE FROM special_budget_links WHERE approval_id IN (?)', [apprIds]);
+            await conn.query('DELETE FROM special_budget_approvals WHERE id IN (?)', [apprIds]);
+          }
+          if (orderIds.length) {
+            await conn.query('DELETE FROM special_budget_events WHERE order_id IN (?)', [orderIds]);
+            await conn.query('DELETE FROM special_budget_links WHERE order_id IN (?)', [orderIds]);
+          }
+          await conn.query('DELETE FROM special_budget_idempotency WHERE username = ?', [username]);
+        } catch (e) {
+          if (!e || e.code !== 'ER_NO_SUCH_TABLE') throw e;
+        }
         for (const t of TABLES) await conn.query(`DELETE FROM ${t} WHERE user_id = ?`, [user.id]);
         await conn.query('DELETE FROM projects WHERE user_id = ?', [user.id]);
         await conn.query('DELETE FROM op_logs WHERE username = ?', [username]);
