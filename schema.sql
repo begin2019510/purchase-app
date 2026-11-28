@@ -152,6 +152,12 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   image_ref          TEXT NULL,                   -- 阶段图 JSON {状态:kv:key}
   note               TEXT NULL,
   is_quick           TINYINT NOT NULL DEFAULT 0,
+  -- v3.2.0 特殊预算：普通单默认 general，关联审批后转 special
+  budget_type        VARCHAR(10) NOT NULL DEFAULT 'general',
+  special_approval_id BIGINT UNSIGNED NULL,
+  paid_at            DATETIME NULL,                -- 特殊预算付款时间
+  refunded_at        DATETIME NULL,                -- 特殊预算退款时间
+  refund_amount      DECIMAL(12,2) NOT NULL DEFAULT 0.00, -- 特殊预算累计退款
   created_at_text    VARCHAR(30) NULL,            -- 创建时间（沿用文本）
   approved_at        VARCHAR(30) NULL,            -- 兼容层审批时间（旧前端 stepper 用）
   ordered_at         VARCHAR(30) NULL,
@@ -161,6 +167,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_need (need_id),
   KEY idx_user_status (user_id, status),
+  KEY idx_user_budget (user_id, budget_type),
   CONSTRAINT fk_order_need FOREIGN KEY (need_id) REFERENCES purchase_needs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -362,3 +369,145 @@ CREATE TABLE IF NOT EXISTS phase_items (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_project_phase (project_id, phase_idx)
 ) ENGINE=InnoDB;
+
+-- ===== 特殊预算 v3.2.0/v3.2.1（与 server/scripts/migrate-special-budget*.js 保持一致）=====
+-- 年度规则配置（按年度+版本，修改不覆盖历史）
+CREATE TABLE IF NOT EXISTS special_budget_rules (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  year SMALLINT NOT NULL,
+  annual_cap DECIMAL(12,2) NOT NULL,
+  monthly_regular_cap DECIMAL(12,2) NOT NULL DEFAULT 800.00,
+  saturday_rate DECIMAL(5,4) NOT NULL DEFAULT 0.1000,
+  large_threshold DECIMAL(12,2) NOT NULL DEFAULT 800.00,
+  cross_year_allowed TINYINT NOT NULL DEFAULT 0,
+  effective_from DATETIME NOT NULL,
+  effective_to DATETIME NULL,
+  rule_version VARCHAR(20) NOT NULL,
+  changed_by VARCHAR(64) NOT NULL,
+  change_reason VARCHAR(500) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_year_version (year, rule_version),
+  KEY idx_year_effective (year, effective_from)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 审批单（v3.2.1 增加分期字段与 type/status 索引）
+CREATE TABLE IF NOT EXISTS special_budget_approvals (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  approval_no VARCHAR(32) NOT NULL,
+  username VARCHAR(64) NOT NULL,
+  type VARCHAR(10) NOT NULL,
+  purpose VARCHAR(500) NOT NULL,
+  requested_amount DECIMAL(12,2) NOT NULL,
+  approved_amount DECIMAL(12,2) NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'pending',
+  rule_version VARCHAR(20) NOT NULL,
+  applied_at DATETIME NOT NULL,
+  approved_at DATETIME NULL,
+  expires_at DATETIME NULL,
+  second_confirmed_by VARCHAR(64) NULL,
+  second_confirmed_at DATETIME NULL,
+  parent_id BIGINT UNSIGNED NULL,
+  note TEXT NULL,
+  installments INT NOT NULL DEFAULT 1,
+  first_year SMALLINT NULL,
+  first_month TINYINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_approval_no (approval_no),
+  KEY idx_user_status (username, status),
+  KEY idx_applied (applied_at),
+  KEY idx_parent (parent_id),
+  KEY idx_type_status (type, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 分期计划（含已付/已退/已释放状态）
+CREATE TABLE IF NOT EXISTS special_budget_schedules (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  approval_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NULL,
+  seq INT NOT NULL,
+  due_date DATE NOT NULL,
+  year SMALLINT NOT NULL,
+  month TINYINT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'planned',
+  paid_at DATETIME NULL,
+  refunded_at DATETIME NULL,
+  refund_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_approval_seq (approval_id, seq),
+  KEY idx_year_month (year, month),
+  KEY idx_order (order_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 审批单与采购单关联（退款后释放，余额可复用）
+CREATE TABLE IF NOT EXISTS special_budget_links (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  approval_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NOT NULL,
+  link_type VARCHAR(16) NOT NULL,
+  linked_amount DECIMAL(12,2) NOT NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'active',
+  linked_at DATETIME NOT NULL,
+  released_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_approval_order (approval_id, order_id),
+  KEY idx_order (order_id),
+  KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 全量审计事件（提交/审批/关联/付款/退款/释放/配置/快照）
+CREATE TABLE IF NOT EXISTS special_budget_events (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  approval_id BIGINT UNSIGNED NULL,
+  order_id BIGINT UNSIGNED NULL,
+  schedule_id BIGINT UNSIGNED NULL,
+  event_type VARCHAR(20) NOT NULL,
+  amount DECIMAL(12,2) NULL,
+  actor VARCHAR(64) NOT NULL,
+  at DATETIME(3) NOT NULL,
+  ip VARCHAR(45) NULL,
+  reason VARCHAR(500) NULL,
+  before_json JSON NULL,
+  after_json JSON NULL,
+  rule_version VARCHAR(20) NULL,
+  KEY idx_approval (approval_id),
+  KEY idx_order (order_id),
+  KEY idx_at (at),
+  KEY idx_type (event_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 月度快照（D0 基线与日对账）
+CREATE TABLE IF NOT EXISTS special_budget_snapshots (
+  year SMALLINT NOT NULL,
+  month TINYINT NOT NULL,
+  annual_cap DECIMAL(12,2) NOT NULL,
+  annual_committed DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  annual_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  annual_refunded DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  annual_released DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  annual_remaining DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  monthly_regular_cap DECIMAL(12,2) NOT NULL DEFAULT 800.00,
+  monthly_regular_approved DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  monthly_installment_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  monthly_cash DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  future_commitments_json JSON NULL,
+  generated_at DATETIME NOT NULL,
+  PRIMARY KEY (year, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 写操作幂等键（v3.2.1）
+CREATE TABLE IF NOT EXISTS special_budget_idempotency (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(64) NOT NULL,
+  scope VARCHAR(40) NOT NULL,
+  idem_key VARCHAR(64) NOT NULL,
+  request_hash CHAR(64) NOT NULL,
+  status_code SMALLINT NOT NULL DEFAULT 0,
+  response_json MEDIUMTEXT NOT NULL,
+  resource_id BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_user_scope_key (username, scope, idem_key),
+  KEY idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

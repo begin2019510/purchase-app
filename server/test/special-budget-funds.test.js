@@ -374,6 +374,11 @@ async function orderMonth(year, month, special) {
       secondConfirm: true, idemKey: key('rs'), now: at('2027-05-20T10:00'),
     }));
     ok('2026 目标非 12 月 → 2026_ONLY_DECEMBER', isErr(bad2026, '2026_ONLY_DECEMBER'), JSON.stringify(bad2026));
+    const past = await err(() => F.rescheduleSchedule({
+      username: U, scheduleId: sP3.id, year: 2027, month: 4, reason: '已结束月份',
+      secondConfirm: true, idemKey: key('rs'), now: at('2027-05-20T10:00'),
+    }));
+    ok('改期到已结束月份 → PAST_PERIOD', isErr(past, 'PAST_PERIOD'), JSON.stringify(past));
     const rs28 = await F.rescheduleSchedule({
       username: U, scheduleId: sP3.id, year: 2028, month: 2, reason: '跨年改期',
       secondConfirm: true, idemKey: key('rs'), now: at('2027-05-20T10:00'),
@@ -445,6 +450,33 @@ async function orderMonth(year, month, special) {
     const trCancel = await N.applyOrderTransition(null, 1,
       { id: 1, need_id: 1, role: 'formal', status: '已下单', budget_type: 'special' }, '已取消');
     ok('特殊订单取消流转被拦截', !!trCancel.error, JSON.stringify(trCancel));
+
+    // ================= 7. 付款订单上限 / 未来年度分期只能提前还款 =================
+    const subCap = await submitAt('large', 1600, '2027-05-01T10:00', { installments: 2 });
+    const aidCap = subCap.body.approval.id;
+    await approveAt(aidCap, '2027-05-01T10:05', { secondConfirm: true });
+    const needCap = await mkNeed(uid, '订单上限保护');
+    const oidCap = await mkOrder(uid, needCap, 800);
+    await linkAt(aidCap, oidCap, '2027-05-02T10:00');
+    const pCap1 = await F.payOrder({ username: U, orderId: oidCap, idemKey: key('p'), now: at('2027-05-20T10:00') });
+    ok('单张订单首期 800 付款成功', pCap1.status === 200 && pCap1.body.schedule.amount === 800,
+      JSON.stringify(pCap1.body.schedule));
+    const pCap2 = await err(() => F.payOrder({ username: U, orderId: oidCap, idemKey: key('p'), now: at('2027-06-20T10:00') }));
+    ok('超过采购单总额的第二期 → PAY_EXCEEDS_ORDER 409',
+      isErr(pCap2, 'PAY_EXCEEDS_ORDER') && pCap2.status === 409, JSON.stringify(pCap2));
+
+    await addYearConfig(2028, 10000);
+    await addYearConfig(2029, 10000);
+    const subF = await submitAt('large', 4800, '2027-05-01T10:00', { installments: 24 });
+    const aidF = subF.body.approval.id;
+    await approveAt(aidF, '2027-05-01T10:05', { secondConfirm: true });
+    const sF28 = await db.one(
+      'SELECT * FROM special_budget_schedules WHERE approval_id = ? AND year = 2028 ORDER BY seq LIMIT 1', [aidF]);
+    const payF28 = await err(() => F.paySchedule({
+      username: U, scheduleId: sF28.id, idemKey: key('p'), now: at('2027-05-20T10:00'),
+    }));
+    ok('未来年度直接付款 → USE_PREPAY 409',
+      isErr(payF28, 'USE_PREPAY') && payF28.status === 409, JSON.stringify(payF28));
   } catch (e) {
     console.error('FAIL', e && e.stack || e);
     process.exitCode = 1;

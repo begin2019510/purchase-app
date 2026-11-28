@@ -239,7 +239,9 @@ function openDetailModal(id) {
   const formals = ords.filter(o => o.role === 'formal');
   const formal = formals.find(o => o.supplierId === winnerId) || formals[0] || null;
   const booked = formals.reduce(function (sum, o) {
-    return sum + (isActiveBuy(o['状态']) ? (Number(o['实付']) || 0) * (Number(o['数量']) || 1) : 0);
+    // 特殊预算单金额归特殊预算台账，不再计入一般需求「已入账」，与 needSpend/orderRows 同口径。
+    if (!isActiveBuy(o['状态']) || isSpecialOrder(o)) return sum;
+    return sum + (Number(o['实付']) || 0) * (Number(o['数量']) || 1);
   }, 0);
   const trials = ords.filter(o => o.role === 'trial');
 

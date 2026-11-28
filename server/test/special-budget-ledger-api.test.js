@@ -19,6 +19,7 @@ const { parseJWT } = require('../src/middleware');
 
 const U = 'sb_ledger_u';
 const X = 'sb_ledger_x';
+const ADMIN = 'sb_ledger_admin';
 let passed = 0;
 function ok(name, cond, detail) {
   if (cond) { passed++; console.log('  ok', name); }
@@ -43,12 +44,15 @@ async function fresh() {
   migrate('scripts/migrate-special-budget.js');
   migrate('scripts/migrate-special-budget-v321.js');
 }
-async function ensureUser(name) {
+async function ensureUser(name, isAdmin) {
   const row = await db.one('SELECT id FROM users WHERE username = ?', [name]);
-  if (row) return row.id;
+  if (row) {
+    if (isAdmin) await db.exec('UPDATE users SET is_admin = 1 WHERE username = ?', [name]);
+    return row.id;
+  }
   const ins = await db.exec(
-    'INSERT INTO users (username, password_hash, salt, hash_version, is_admin) VALUES (?,?,?,1,0)',
-    [name, '0'.repeat(64), '0'.repeat(32)]);
+    'INSERT INTO users (username, password_hash, salt, hash_version, is_admin) VALUES (?,?,?,1,?)',
+    [name, '0'.repeat(64), '0'.repeat(32), isAdmin ? 1 : 0]);
   return ins.insertId;
 }
 async function mkNeed(uid, name) {
@@ -73,6 +77,7 @@ async function mkOrder(uid, needId, price) {
     await fresh();
     const uid = await ensureUser(U);
     await ensureUser(X);
+    await ensureUser(ADMIN, true);
 
     // ---------------- 种子数据：300 元普通审批 → 付款 → 部分退款 50 ----------------
     const sub = await A.submit({
@@ -197,17 +202,17 @@ async function mkOrder(uid, needId, price) {
     ok('试运行前不把 12 月列为已到期快照', Array.isArray(r.data.expected_months) &&
       r.data.expected_months.indexOf(12) < 0 && r.data.snapshots.length === 0,
       JSON.stringify({ e: r.data.expected_months, m: r.data.missing_months, s: r.data.snapshots }));
-    r = await req('POST', '/api/special-budget/snapshots', { body: { year: 2026, month: 12 } });
+    r = await req('POST', '/api/special-budget/snapshots', { user: ADMIN, body: { year: 2026, month: 12 } });
     ok('快照缺幂等键 → 400', r.status === 400 && r.data.error === 'IDEMPOTENCY_KEY_REQUIRED', JSON.stringify(r.data));
-    r = await req('POST', '/api/special-budget/snapshots', { key: key('snap'), body: { year: 2026, month: 12 } });
+    r = await req('POST', '/api/special-budget/snapshots', { user: ADMIN, key: key('snap'), body: { year: 2026, month: 12 } });
     ok('未来月份快照 → 400 FUTURE_PERIOD', r.status === 400 && r.data.error === 'FUTURE_PERIOD', JSON.stringify(r.data));
 
     const snapKey = 'ledger-snap-nov-1';
-    r = await req('POST', '/api/special-budget/snapshots', { key: snapKey, body: { year: 2026, month: 11 } });
+    r = await req('POST', '/api/special-budget/snapshots', { user: ADMIN, key: snapKey, body: { year: 2026, month: 11 } });
     ok('可生成已过月份快照', r.status === 200 && r.data.ok === true && r.data.snapshot.month === 11 &&
       /^[0-9a-f]{64}$/.test(r.data.snapshot.fingerprint), JSON.stringify(r.data));
     const novId = r.data.snapshot && r.data.snapshot.fingerprint;
-    r = await req('POST', '/api/special-budget/snapshots', { key: snapKey, body: { year: 2026, month: 11 } });
+    r = await req('POST', '/api/special-budget/snapshots', { user: ADMIN, key: snapKey, body: { year: 2026, month: 11 } });
     ok('快照幂等重放同指纹', r.status === 200 && r.data.snapshot.fingerprint === novId, JSON.stringify(r.data));
 
     const servSnap = await L.generateSnapshot({

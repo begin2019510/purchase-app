@@ -157,7 +157,7 @@ async function newPage(isoTime, opts) {
     const body = req.postData() || '';
     calls.push({ method: req.method(), path: u.pathname + u.search, headers: req.headers(), body });
     const send = (status, obj) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(obj) });
-    if (u.pathname === '/api/special-budget/summary') return send(200, { ok: true, year: 2026, month: 12, as_of: '2026-12-01 10:00', config: CONFIG, summary: SUMMARY, calculation: { rule_version: '2026-v1' } });
+    if (u.pathname === '/api/special-budget/summary') return send(200, { ok: true, year: 2026, month: 12, as_of: '2026-12-01 10:00', is_admin: !(opts && opts.admin === false), config: CONFIG, summary: SUMMARY, calculation: { rule_version: '2026-v1' } });
     if (u.pathname === '/api/special-budget/ledger') return send(200, LEDGER);
     if (u.pathname === '/api/special-budget/timeline') return send(200, TIMELINE);
     if (u.pathname === '/api/special-budget/snapshots' && req.method() === 'GET') return send(200, SNAPSHOTS);
@@ -301,13 +301,16 @@ try {
   await page.context().close();
 
   // ---------- 1e. 非管理员：监控不可见 ----------
-  page = await newPage('2026-12-03T10:00:00+08:00', { monitor: 'forbidden' });
+  page = await newPage('2026-12-03T10:00:00+08:00', { monitor: 'forbidden', admin: false });
   await page.locator('.sb-tab', { hasText: '审计' }).click();
   await page.waitForFunction(() => document.querySelector('#sbBody').textContent.includes('仅管理员'), null, { timeout: 10000 });
   const forbidText = await page.textContent('#sbBody');
   ok('非管理员审计页提示监控仅管理员可见', forbidText.includes('仅管理员可查看全局限额监控') &&
     (await page.locator('.sb-monitor').count()) === 0);
   ok('非管理员仍可看本人审计时间线', forbidText.includes('事件时间线'));
+  ok('非管理员不显示年度设置入口', (await page.locator('.sb-tab', { hasText: '年度设置' }).count()) === 0);
+  const forcedTab = await page.evaluate(() => { sbSetTab('settings'); return SB.tab; });
+  ok('非管理员强制切年度设置被忽略', forcedTab !== 'settings', forcedTab);
   await page.context().close();
 
   // ---------- 2. 试运行日：申请校验 / 审批二次确认 / 付款 / 关联 / 退款 / 年度设置预览 ----------
@@ -366,6 +369,30 @@ try {
   await page.waitForTimeout(300);
   const refund = calls.find(c => c.path === '/api/special-budget/orders/11/refund');
   ok('退款带金额/原因/释放选项', !!refund && JSON.parse(refund.body).amount === 250 && JSON.parse(refund.body).reason === '测试退款' && JSON.parse(refund.body).releaseFuture === true, JSON.stringify(refund && refund.body));
+
+  // 部分退款会立即释放关联；剩余已付款必须仍能按原订单继续退（修复“释放后无法再退”）
+  const releasedRefund = await page.evaluate(() => {
+    SB.detail.links[0].status = 'released';
+    SB.detail.schedules[0].refund_amount = 150;
+    sbRenderDetail();
+    return Array.from(document.querySelectorAll('#sbDetail button'))
+      .filter(b => b.textContent.includes('退款') && b.textContent.includes('可退'))
+      .map(b => ({ text: b.textContent, onclick: b.getAttribute('onclick') }));
+  });
+  ok('部分退款后关联已释放仍显示按单退款入口',
+    releasedRefund.length === 1 && releasedRefund[0].text.includes('¥100.00') &&
+    releasedRefund[0].onclick.indexOf('sbRefund(11') === 0, JSON.stringify(releasedRefund));
+
+  // 多张关联单时必须逐单付款，不能把分期都绑到第一张单（否则退款封顶会丢金额）
+  const multiPay = await page.evaluate(() => {
+    SB.detail.links[0].status = 'active';
+    SB.detail.links.push({ id: 93, approval_id: 9, order_id: 12, link_type: 'order', linked_amount: 200, status: 'active', linked_at: '2026-12-02 10:06', released_at: null });
+    sbRenderDetail();
+    return Array.from(document.querySelectorAll('#sbDetail .sb-sched-btn')).map(b => b.textContent).filter(t => t.indexOf('付单#') === 0);
+  });
+  ok('多采购单时逐单付款按钮按订单区分',
+    multiPay.length === 2 && multiPay.some(t => t === '付单#11') && multiPay.some(t => t === '付单#12'),
+    JSON.stringify(multiPay));
 
   // 年度设置实时预览 + 二次确认
   await page.evaluate(() => { sbCloseDetail(); sbSetTab('settings'); });

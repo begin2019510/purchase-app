@@ -194,6 +194,14 @@ async function assertPayable(conn, appr, sched, now, ip) {
   if (!['planned', 'overdue'].includes(sched.status)) {
     throw new BizError('SCHEDULE_NOT_PAYABLE', `分期状态为 ${sched.status}，不能付款`, 409);
   }
+  // 未来年度分期只能走「提前还款」（会释放未来年度承诺并记入当前年度），
+  // 直接付款会把付款记在当前年但分期仍挂在未来年，导致年度占用/现金流口径错位。
+  const bj = R.beijingParts(now);
+  if (Number(sched.year) > bj.year) {
+    throw new BizError('USE_PREPAY', '未来年度分期请使用「提前还款」', 409, {
+      schedule_year: Number(sched.year), current_year: bj.year,
+    });
+  }
   const all = await qall(conn, 'SELECT * FROM special_budget_schedules WHERE approval_id = ? ORDER BY seq FOR UPDATE', [appr.id]);
   const earlier = all.filter(s => Number(s.seq) < Number(sched.seq) && ['planned', 'overdue'].includes(s.status));
   if (earlier.length) {
@@ -204,6 +212,28 @@ async function assertPayable(conn, appr, sched, now, ip) {
 async function doPay(conn, appr, sched, opts) {
   const o = opts || {};
   const now = o.now instanceof Date ? o.now : new Date();
+  // 付款会把分期绑定到采购单，随后退款按该单已付金额封顶。
+  // 若同一审批单绑了多张单，必须防止把超过单张订单总额的分期都绑到同一单上，
+  // 否则超出订单总额的部分永远退不回来。
+  if (o.orderId != null) {
+    const order = await qone(conn,
+      'SELECT price_paid, qty FROM purchase_orders WHERE id = ? FOR UPDATE', [o.orderId]);
+    if (!order) throw new BizError('ORDER_NOT_FOUND', '采购单不存在', 404);
+    const orderTotal = R.round2((Number(order.price_paid) || 0) * (Number(order.qty) || 1));
+    const paidAgg = await qone(conn,
+      `SELECT COALESCE(SUM(amount), 0) AS s
+         FROM special_budget_schedules
+        WHERE approval_id = ? AND order_id = ? AND paid_at IS NOT NULL AND id <> ?`,
+      [appr.id, o.orderId, sched.id]);
+    const already = R.round2(paidAgg.s);
+    const amount = R.round2(sched.amount);
+    if (R.round2(already + amount) > orderTotal + 0.005) {
+      throw new BizError('PAY_EXCEEDS_ORDER',
+        `采购单总额 ${orderTotal}，已付 ${already}，本次 ${amount} 超出可付金额`, 409, {
+          order_total: orderTotal, paid: already, amount,
+        });
+    }
+  }
   await conn.query(
     "UPDATE special_budget_schedules SET status = 'paid', paid_at = ?, order_id = COALESCE(order_id, ?) WHERE id = ?",
     [T.bjDateTime(now), o.orderId == null ? null : o.orderId, sched.id]);
@@ -562,6 +592,13 @@ async function rescheduleSchedule(opts) {
     }
     if (Number(sched.year) === 2026 && toYear !== 2026) {
       throw new BizError('CROSS_YEAR_NOT_ALLOWED', '2026 年分期不允许跨年改期', 400);
+    }
+    // 不能改到已经结束的月份：否则新计划一创建就是逾期，且可绕过同期申请窗口。
+    const bjNow = R.beijingParts(now);
+    if (toYear < bjNow.year || (toYear === bjNow.year && toMonth < bjNow.month)) {
+      throw new BizError('PAST_PERIOD', '改期目标不能早于当前月份', 400, {
+        current_year: bjNow.year, current_month: bjNow.month,
+      });
     }
 
     await lockYears(conn, [sched.year, toYear]);

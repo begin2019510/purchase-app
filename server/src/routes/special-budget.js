@@ -4,6 +4,7 @@
 // v3.2.1 写入全部走服务层事务：申请/批准/驳回/取消/关联采购单/年度配置修改。
 const express = require('express');
 const cfg = require('../config');
+const db = require('../db');
 const S = require('../lib/special-budget/summary');
 const A = require('../lib/special-budget/approvals');
 const C = require('../lib/special-budget/config-service');
@@ -22,6 +23,27 @@ router.use('/special-budget', (req, res, next) => {
   next();
 });
 router.use(guard(['special-budget']));
+
+// 活跃用户校验：CF 只验 JWT 签名，被删除账号的 24h 旧 token 仍能通过；
+// 特殊预算写接口必须在服务端确认用户仍存在，否则会往已删除用户下写审批/资金数据。
+// 同时缓存 is_admin，供年度配置/快照的管理员闸门使用（少一次查询）。
+router.use('/special-budget', async (req, res, next) => {
+  try {
+    const row = await db.one('SELECT id, is_admin FROM users WHERE username = ?', [req.username]);
+    if (!row) {
+      // 'admin' 是保留账号且禁止删除；沿用监控/台账的既有语义，不因查询缺行而 401。
+      if (req.username === 'admin') { req.userRow = { id: null, is_admin: 1 }; return next(); }
+      return res.status(401).json({ error: '账号不存在或已删除' });
+    }
+    req.userRow = row;
+    next();
+  } catch (e) { next(e); }
+});
+
+function requireAdmin(req) {
+  if (req.username === 'admin' || (req.userRow && Number(req.userRow.is_admin))) return;
+  throw new BizError('FORBIDDEN', '仅管理员可执行此操作', 403);
+}
 
 function parseYear(value) {
   const n = Number(value);
@@ -96,6 +118,7 @@ router.route('/special-budget/config')
     return { status: 200, body: { ok: true, year, config, history } };
   }))
   .put(handle(async req => {
+    requireAdmin(req);
     const body = bodyOf(req);
     const key = idemKeyOf(req, body);
     return C.updateConfig({
@@ -121,6 +144,8 @@ router.route('/special-budget/summary')
       status: 200,
       body: {
         ok: true, year, month, as_of: out.as_of,
+        // 前端据此隐藏「年度设置」入口；写接口仍由 requireAdmin 兜底，不能只靠 UI。
+        is_admin: req.username === 'admin' || !!(req.userRow && Number(req.userRow.is_admin)),
         config: out.config, summary: out.summary, calculation: out.calculation,
       },
     };
@@ -319,6 +344,7 @@ router.route('/special-budget/snapshots')
     body: await L.listSnapshots(req.username, { year: req.query.year }),
   })))
   .post(handle(async req => {
+    requireAdmin(req);
     const body = bodyOf(req);
     const key = idemKeyOf(req, body);
     return L.generateSnapshot({

@@ -46,10 +46,13 @@ async function getSummary(year, month) {
          FROM special_budget_schedules
         WHERE paid_at >= ? AND paid_at < ?`,
       [bounds.start, bounds.end]),
+    // 退款按“退款事件发生时间”计当月现金流，与监控/对账口径一致。
+    // 不能用 schedules.refund_amount + refunded_at：多次分月退款时 refunded_at 只保留最后一次，
+    // 会把全部累计退款都算到最后一个月，原月份现金流虚高。
     db.one(
-      `SELECT COALESCE(SUM(refund_amount), 0) AS refunded
-         FROM special_budget_schedules
-        WHERE refunded_at >= ? AND refunded_at < ?`,
+      `SELECT COALESCE(SUM(amount), 0) AS refunded
+         FROM special_budget_events
+        WHERE event_type = 'refund' AND at >= ? AND at < ?`,
       [bounds.start, bounds.end]),
     db.query(
       `SELECT year, COALESCE(SUM(amount), 0) AS amount

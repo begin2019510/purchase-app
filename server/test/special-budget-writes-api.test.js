@@ -56,6 +56,17 @@ async function seedPending(opts) {
     await db.exec(`DELETE FROM ${t}`);
   }
   migrate('scripts/migrate-special-budget.js');
+  // 特殊预算路由要求账号存在；U 设为管理员以继续覆盖年度配置写入，OTHER 为非管理员用于 403 断言。
+  async function ensureUser(name, isAdmin) {
+    const row = await db.one('SELECT id FROM users WHERE username = ?', [name]);
+    if (row) return row.id;
+    const ins = await db.exec(
+      'INSERT INTO users (username, password_hash, salt, hash_version, is_admin) VALUES (?,?,?,1,?)',
+      [name, '0'.repeat(64), '0'.repeat(32), isAdmin ? 1 : 0]);
+    return ins.insertId;
+  }
+  await ensureUser(U, true);
+  await ensureUser('sb_http_other', false);
 
   const app = express();
   app.use('/api', (req, res, next) => {
@@ -143,7 +154,17 @@ async function seedPending(opts) {
     ok('GET 列表 → 含本单且仅本人', r.status === 200 && r.data.approvals.length === 1 &&
       r.data.approvals[0].id === largeId, JSON.stringify(r.data));
 
-    // ---- 配置修改 ----
+    // ---- 配置修改：仅管理员 ----
+    r = await req('PUT', '/api/special-budget/config', {
+      user: 'sb_http_other', key: 'http-cfg-forbidden-1',
+      body: { year: 2026, annualCap: 1200, reason: '非管理员尝试', secondConfirm: true },
+    });
+    ok('非管理员改年度配置 → 403 FORBIDDEN', r.status === 403 && r.data.error === 'FORBIDDEN', JSON.stringify(r.data));
+    r = await req('POST', '/api/special-budget/snapshots', {
+      user: 'sb_http_other', key: 'http-snap-forbidden-1', body: { year: 2026, month: 12 },
+    });
+    ok('非管理员生成快照 → 403 FORBIDDEN', r.status === 403 && r.data.error === 'FORBIDDEN', JSON.stringify(r.data));
+
     r = await req('PUT', '/api/special-budget/config', {
       body: { year: 2026, annualCap: 1200, reason: '试运行上调' },
     });

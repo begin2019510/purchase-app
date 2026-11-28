@@ -4,7 +4,7 @@
 // 所有写操作都带 Idempotency-Key；异常展示服务端中文 message。
 var SB = {
   year: null, month: null, tab: 'overview', busy: false, off: false,
-  data: null, config: null, configHistory: [], approvals: [], error: null,
+  data: null, config: null, configHistory: [], approvals: [], error: null, isAdmin: false,
   detail: null, detailId: null, linkPickerFor: null, applyError: null,
   ledger: null, ledgerLoading: false, ledgerError: null,
   audit: null, snapshots: null, auditLoading: false, auditError: null,
@@ -157,7 +157,7 @@ function sbSyncSelectors() {
 function openSpecialBudget(approvalId) {
   sbEnsure();
   var d = sbDefaultYM();
-  SB.year = d.year; SB.month = d.month; SB.tab = 'overview'; SB.off = false; SB.error = null;
+  SB.year = d.year; SB.month = d.month; SB.tab = 'overview'; SB.off = false; SB.error = null; SB.isAdmin = false;
   sbSyncSelectors();
   var el = document.getElementById('sbOverlay');
   if (el) el.classList.add('active');
@@ -181,6 +181,7 @@ function sbPeriodChanged() {
   sbLoad(null);
 }
 function sbSetTab(t) {
+  if (t === 'settings' && !SB.isAdmin) return;
   SB.tab = t; SB.applyError = null;
   sbRender();
   if (t === 'ledger') sbLoadLedger();
@@ -211,6 +212,8 @@ async function sbLoad(focusId) {
   ]);
   var cres = results[0], lres = results[1];
   SB.data = sres.ok ? sres.data : null;
+  SB.isAdmin = !!(sres.ok && sres.data && sres.data.is_admin);
+  if (!SB.isAdmin && SB.tab === 'settings') SB.tab = 'overview';
   SB.config = cres.ok ? cres.data.config : null;
   SB.configHistory = cres.ok ? (cres.data.history || []) : [];
   SB.approvals = lres.ok ? (lres.data.approvals || []) : [];
@@ -234,7 +237,9 @@ function sbRender() {
   }
   var tabs = document.getElementById('sbTabs');
   if (tabs) {
-    var defs = [['overview', '📊 概览'], ['apply', '📝 申请'], ['records', '📋 记录' + (SB.approvals.length ? '（' + SB.approvals.length + '）' : '')], ['ledger', '📒 台账'], ['audit', '🔍 审计'], ['settings', '⚙️ 年度设置']];
+    var defs = [['overview', '📊 概览'], ['apply', '📝 申请'], ['records', '📋 记录' + (SB.approvals.length ? '（' + SB.approvals.length + '）' : '')], ['ledger', '📒 台账'], ['audit', '🔍 审计']];
+    // 年度上限是全局配置，仅管理员可改；非管理员不显示入口（服务端 PUT 仍会 403 兜底）。
+    if (SB.isAdmin) defs.push(['settings', '⚙️ 年度设置']);
     tabs.innerHTML = defs.map(function (d) {
       return '<button type="button" class="sb-tab' + (SB.tab === d[0] ? ' active' : '') + '" onclick="sbSetTab(\'' + d[0] + '\')">' + d[1] + '</button>';
     }).join('');
@@ -258,7 +263,8 @@ function sbRenderOverview() {
   if (!SB.data || !SB.data.summary) {
     var msg = SB.error ? sbErrMsg(SB.error) : '加载失败';
     return '<div class="sb-card"><div class="sb-warn">' + esc(msg) + '</div>'
-      + '<div class="sb-note">可切换到「年度设置」创建该年度上限（需理由 + 同一账号二次确认）。</div></div>';
+      + (SB.isAdmin ? '<div class="sb-note">可切换到「年度设置」创建该年度上限（需理由 + 同一账号二次确认）。</div>' : '')
+      + '</div>';
   }
   var d = SB.data, s = d.summary, c = d.config;
   var cap = sbNum(s.annual_cap), used = sbNum(s.annual_committed);
@@ -302,7 +308,10 @@ function sbWindowState(type) {
     var eff = String(c.effective_from).slice(0, 10);
     if (sbToday() < eff) reasons.push('试运行自 ' + eff + ' 开始');
   }
-  if (type === 'normal' || type === 'large') {
+  if (type === 'normal') {
+    if (!(p.day === 1 || p.day === 15)) reasons.push('普通仅每月 1 日、15 日可申请');
+  }
+  if (type === 'large') {
     if (!(p.day === 1 || p.day === 15 || p.weekday === 6)) reasons.push('仅每月 1 日、15 日或周六');
   }
   if (type === 'additional') {
@@ -541,6 +550,31 @@ function sbRenderDetail() {
   paidRemaining = sbRound2(paidRemaining);
   var activeLinks = links.filter(function (l) { return l.status === 'active'; });
   var linkedTotal = activeLinks.reduce(function (sum, l) { return sum + sbNum(l.linked_amount); }, 0);
+  // 退款按采购单分别计算：退款接口按订单分摊，用审批单总额去退第一张单会超退或退错单。
+  // 已释放的关联也要保留入口——部分退款会立即释放关联，但剩余已付款仍可继续按订单退。
+  var refundByOrder = [];
+  var seenRefundOrder = {};
+  links.forEach(function (l) {
+    var oid = Number(l.order_id);
+    if (!oid || seenRefundOrder[oid]) return;
+    seenRefundOrder[oid] = true;
+    var rem = 0;
+    scheds.forEach(function (s) {
+      if (Number(s.order_id) !== oid || !s.paid_at) return;
+      rem += Math.max(0, sbNum(s.amount) - sbNum(s.refund_amount));
+    });
+    rem = sbRound2(rem);
+    if (rem > 0.005) refundByOrder.push({ order_id: oid, amount: rem, active: l.status === 'active' });
+  });
+  // 未绑定采购单的已付分期：服务端仅在“没有其他生效关联”时允许随订单一起退。
+  var unboundPaid = 0;
+  scheds.forEach(function (s) {
+    if (s.paid_at && !s.order_id) unboundPaid += Math.max(0, sbNum(s.amount) - sbNum(s.refund_amount));
+  });
+  unboundPaid = sbRound2(unboundPaid);
+  if (unboundPaid > 0.005 && !activeLinks.length && links.length) {
+    refundByOrder.push({ order_id: Number(links[0].order_id), amount: unboundPaid, active: false, unbound: true });
+  }
   var approved = a.approved_amount == null ? 0 : sbNum(a.approved_amount);
   var h = '<div class="sb-detail-head"><div class="t">' + esc(a.purpose || SB_TYPE_LABEL[a.type]) + '</div>' + sbStatusChip(a.status) + '<button type="button" class="sb-icon-btn" onclick="sbCloseDetail()">✕</button></div>';
   h += '<div class="sb-kv">'
@@ -576,10 +610,15 @@ function sbRenderDetail() {
     } else if (approved - linkedTotal > 0.005) {
       h += '<div class="sb-actions" style="margin-top:8px"><button type="button" class="sb-btn" onclick="sbShowLinkPicker(' + a.id + ')">＋ 关联采购单</button></div>';
     }
-    if (paidRemaining > 0.005 && activeLinks.length) {
-      h += '<div class="sb-actions" style="margin-top:8px"><button type="button" class="sb-btn red" onclick="sbRefund(' + activeLinks[0].order_id + ',' + paidRemaining + ')">退款（可退 ' + sbY(paidRemaining) + '）</button></div>';
-    } else if (paidRemaining > 0.005 && !activeLinks.length) {
-      h += '<div class="sb-note" style="margin-top:8px">已付款但采购单关联已释放，需先重新关联采购单才能退款。</div>';
+    if (refundByOrder.length) {
+      h += '<div class="sb-actions" style="margin-top:8px;flex-wrap:wrap">'
+        + refundByOrder.map(function (r) {
+          return '<button type="button" class="sb-btn red" onclick="sbRefund(' + r.order_id + ',' + r.amount + ')">'
+            + (r.unbound ? '退款未关联分期' : '退款 ' + esc(sbOrderLabel(r.order_id)))
+            + '（可退 ' + sbY(r.amount) + '）</button>';
+        }).join('') + '</div>';
+    } else if (paidRemaining > 0.005) {
+      h += '<div class="sb-note" style="margin-top:8px">已付款但未绑定采购单，需先重新关联采购单才能退款。</div>';
     }
   }
   // 分期计划
@@ -594,6 +633,11 @@ function sbRenderDetail() {
         if (a.status === 'approved' && (s.status === 'planned' || s.status === 'overdue')) {
           if (Number(s.year) > curYear) {
             ops += '<button type="button" class="sb-sched-btn pri" onclick="sbPrepay(' + s.id + ',' + s.amount + ',\'' + escAttr(s.due_date) + '\')">提前还款</button>';
+          } else if (activeLinks.length > 1) {
+            // 多张关联单时逐单付款：付款会把分期绑定到订单，绑错单会导致退款时金额对不上。
+            ops += activeLinks.map(function (l) {
+              return '<button type="button" class="sb-sched-btn pri" title="' + escAttr(sbOrderLabel(l.order_id)) + '" onclick="sbPaySchedule(' + s.id + ',' + s.seq + ',' + s.amount + ',' + l.order_id + ')">付单#' + l.order_id + '</button>';
+            }).join(' ');
           } else {
             var payOrderId = activeLinks.length ? (',' + activeLinks[0].order_id) : '';
             ops += '<button type="button" class="sb-sched-btn pri" onclick="sbPaySchedule(' + s.id + ',' + s.seq + ',' + s.amount + payOrderId + ')">付款</button>';
@@ -1048,6 +1092,7 @@ async function sbExport(kind) {
 
 // ---------------- 年度设置 ----------------
 function sbRenderSettings() {
+  if (!SB.isAdmin) return '<div class="sb-card"><div class="sb-warn">仅管理员可修改年度设置。</div></div>';
   var s = SB.data && SB.data.summary;
   var c = SB.config;
   var h = '';

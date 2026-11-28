@@ -44,6 +44,11 @@ function migrateApply() {
   await db.exec('DELETE FROM special_budget_schedules');
   await db.exec('DELETE FROM special_budget_approvals');
   await db.exec('DELETE FROM special_budget_events');
+  // v3.2.5 修复：特殊预算路由要求账号仍然存在（已删除用户的旧 JWT 不能继续写）
+  if (!(await db.one('SELECT id FROM users WHERE username = ?', [USER]))) {
+    await db.exec('INSERT INTO users (username, password_hash, salt, hash_version, is_admin) VALUES (?,?,?,1,0)',
+      [USER, '0'.repeat(64), '0'.repeat(32)]);
+  }
 
   const app = express();
   // 复刻 src/index.js 的中间件顺序：服务令牌闸门 → body → 身份 → 路由
@@ -176,11 +181,17 @@ function migrateApply() {
          (approval_no, username, type, purpose, requested_amount, approved_amount, status, rule_version, applied_at)
        VALUES (?,?,?,?,?,?,?,?,?)`,
       [`SB${stamp}B`, USER, 'normal', '单测待审申请', 100, null, 'pending', '2026-v1', '2026-12-02 09:00:00']);
-    await db.exec(
+    const paidSched = await db.exec(
       `INSERT INTO special_budget_schedules
          (approval_id, seq, due_date, year, month, amount, status, paid_at, refunded_at, refund_amount)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
       [approvalId, 1, '2026-12-31', 2026, 12, 200, 'paid', '2026-12-10 12:00:00', '2026-12-20 09:00:00', 30]);
+    // 现金流口径按事件发生月归集；补一条 12 月退款事件（30 元）
+    await db.exec(
+      `INSERT INTO special_budget_events
+         (approval_id, schedule_id, event_type, amount, actor, at, reason)
+       VALUES (?,?,?,?,?,?,?)`,
+      [approvalId, paidSched.insertId, 'refund', 30, USER, '2026-12-20 09:00:00', '单测退款']);
     await db.exec(
       `INSERT INTO special_budget_schedules
          (approval_id, seq, due_date, year, month, amount, status)
@@ -194,8 +205,9 @@ function migrateApply() {
 
     r = await req('GET', '/api/special-budget/summary?year=2026&month=12');
     const s1 = r.status === 200 ? r.data.summary : {};
-    ok('已批普通计入月度：已批 300 / 可批 500',
-      s1.monthly_regular_approved === 300 && s1.monthly_regular_available === 500, JSON.stringify(s1));
+    // 同月退款恢复当月 800：300 - 30 = 270 已批 / 530 可批
+    ok('已批普通计入月度且同月退款恢复：已批 270 / 可批 530',
+      s1.monthly_regular_approved === 270 && s1.monthly_regular_available === 530, JSON.stringify(s1));
     ok('审批计数：待审 1 / 已批 1',
       s1.approvals && s1.approvals.pending === 1 && s1.approvals.approved === 1, JSON.stringify(s1.approvals));
     ok('年度占用 = 计划 250 - 退款 30 = 220，剩余 780',
@@ -207,6 +219,22 @@ function migrateApply() {
     ok('未来承诺 = 2027 年 100',
       s1.future_commitments.length === 1 && s1.future_commitments[0].year === 2027 &&
       s1.future_commitments[0].amount === 100, JSON.stringify(s1.future_commitments));
+    ok('汇总暴露当前用户 is_admin（非管理员 false）', r.data.is_admin === false, String(r.data.is_admin));
+
+    // 跨月部分退款：schedules 只剩累计值 50 且 refunded_at 还停在 12 月，
+    // 但 1 月才发生的 20 元只能计入 1 月现金流，12 月仍是 170（旧口径会错算成 150）。
+    await db.exec('UPDATE special_budget_schedules SET refund_amount = 50 WHERE id = ?', [paidSched.insertId]);
+    await db.exec(
+      `INSERT INTO special_budget_events
+         (approval_id, schedule_id, event_type, amount, actor, at, reason)
+       VALUES (?,?,?,?,?,?,?)`,
+      [approvalId, paidSched.insertId, 'refund', 20, USER, '2027-01-10 10:00:00', '跨月退款']);
+    r = await req('GET', '/api/special-budget/summary?year=2026&month=12');
+    ok('跨月退款不污染 12 月现金（仍 170）', r.status === 200 && r.data.summary.monthly_cash === 170,
+      JSON.stringify(r.data.summary && r.data.summary.monthly_cash));
+    r = await req('GET', '/api/special-budget/summary?year=2027&month=1');
+    ok('1 月现金 = -20（按事件发生月）', r.status === 200 && r.data.summary.monthly_cash === -20,
+      JSON.stringify(r.data.summary && r.data.summary.monthly_cash));
 
     const cnt = await db.one('SELECT COUNT(*) AS c FROM special_budget_schedules');
     ok('只读接口不新增分期行', Number(cnt.c) === 3, `实际 ${cnt.c}`);
@@ -215,7 +243,10 @@ function migrateApply() {
     process.exitCode = 1;
   } finally {
     try {
-      if (approvalId) await db.exec('DELETE FROM special_budget_schedules WHERE approval_id = ?', [approvalId]);
+      if (approvalId) {
+        await db.exec('DELETE FROM special_budget_events WHERE approval_id = ?', [approvalId]);
+        await db.exec('DELETE FROM special_budget_schedules WHERE approval_id = ?', [approvalId]);
+      }
       await db.exec('DELETE FROM special_budget_approvals WHERE username = ?', [USER]);
       await db.exec('DELETE FROM special_budget_schedules');
       await db.exec('DELETE FROM special_budget_approvals');

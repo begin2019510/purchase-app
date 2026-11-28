@@ -254,7 +254,14 @@ async function addYearConfig(year, cap) {
 
     const s2 = await db.one('SELECT id FROM special_budget_schedules WHERE approval_id = ? AND seq = 2', [aidL]);
     r = await req('POST', `/api/special-budget/schedules/${s2.id}/pay`, { key: 'http-sched-pay-1', body: {} });
-    ok('按分期付款 → 200 / paid', r.status === 200 && r.data.schedule.status === 'paid', JSON.stringify(r.data));
+    // 路由不可注入 now：真实当前时间（2026）付 2027 分期必须被拦，避免付款年与分期年错位。
+    ok('HTTP 付未来年度分期 → 409 USE_PREPAY', r.status === 409 && r.data.error === 'USE_PREPAY',
+      JSON.stringify(r.data));
+    const s2sameYear = await F.paySchedule({
+      username: U, scheduleId: s2.id, now: at('2027-06-20T10:00'), idemKey: key('p'),
+    });
+    ok('同年（2027）按分期付款 → 200 / paid', s2sameYear.status === 200 && s2sameYear.body.schedule.status === 'paid',
+      JSON.stringify(s2sameYear.body.schedule));
 
     const s3 = await db.one('SELECT id FROM special_budget_schedules WHERE approval_id = ? AND seq = 3', [aidL]);
     r = await req('POST', `/api/special-budget/schedules/${s3.id}/reschedule`, {

@@ -7,7 +7,8 @@ export function getCorsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS,PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    // Idempotency-Key：特殊预算写接口的必填头，原生/跨域请求预检必须放行。
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization,Idempotency-Key',
   };
 }
 
