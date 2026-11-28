@@ -48,6 +48,13 @@ async function getOwnedOrder(uid, id) {
   return db.one('SELECT * FROM purchase_orders WHERE id = ? AND user_id = ?', [n, uid]);
 }
 
+// 特殊预算订单受资金接口保护：普通定点/回退/取消/删除需求不得绕过退款与释放逻辑
+async function hasSpecialOrders(conn, needId) {
+  const [rows] = await conn.query(
+    "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND budget_type = 'special'", [needId]);
+  return Number(rows[0] && rows[0].c) > 0;
+}
+
 function rowToNeed(n, suppliers, orders) {
   const pinnedIds = N.pinnedSupplierIds(orders).map(id => 'rec_' + id);
   return {
@@ -116,6 +123,8 @@ function rowToOrder(o) {
     '图片': o.image_ref || '',
     '备注': o.note || '',
     '极速': o.is_quick ? '1' : '',
+    '特殊预算': o.budget_type === 'special' ? '1' : '',
+    '特殊审批ID': o.budget_type === 'special' && o.special_approval_id != null ? 'rec_' + o.special_approval_id : '',
     '创建时间': o.created_at_text || '',
     '审批时间': o.approved_at || '',
     '下单时间': o.ordered_at || '',
@@ -317,6 +326,10 @@ router.delete('/needs/:id', async (req, res, next) => {
     await conn.beginTransaction();
     const [rows] = await conn.query('SELECT * FROM purchase_needs WHERE id = ? AND user_id = ? FOR UPDATE', [n, uid]);
     if (!rows[0]) { await conn.rollback(); return res.json({ ok: true }); }
+    if (await hasSpecialOrders(conn, n)) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'SPECIAL_ORDER_NO_DELETE', message: '含特殊预算订单的需求不可删除，请先走退款' });
+    }
     // 子单已入账（已下单起）的需求不允许直接删：先归档/退货，避免账目凭空消失
     const [spent] = await conn.query(
       "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND status IN ('已下单','已到','已归档')", [n]);
@@ -530,6 +543,15 @@ router.put('/orders/:id', async (req, res, next) => {
       return res.status(400).json({ error: '已归档/已取消的子单不可修改' });
     }
     const b = req.body || {};
+    // 特殊预算订单：金额/数量/分期/供应商已锁定，必须走补充审批或退款重开
+    if (order.budget_type === 'special' &&
+      ['qty', 'pricePaid', 'date', 'setDate', 'installments', 'installmentAmount', 'installmentStart', 'installmentPaid', 'supplierId']
+        .some(k => b[k] !== undefined)) {
+      return res.status(400).json({
+        error: 'SPECIAL_ORDER_LOCKED',
+        message: '特殊预算订单金额/数量/分期已锁定，请走补充审批或退款重开',
+      });
+    }
     if (order.status === '已退' && ['qty', 'pricePaid', 'date', 'installments', 'installmentAmount', 'installmentStart', 'installmentPaid', 'supplierId']
       .some(k => b[k] !== undefined)) {
       return res.status(400).json({ error: '已退货的子单只能修改备注/图片' });
@@ -664,6 +686,10 @@ router.post('/needs/:id/decide', async (req, res, next) => {
     const need = nrows[0];
     if (!need) { await conn.rollback(); return res.status(404).json({ error: '需求不存在' }); }
     if (need.status === '已完成' || need.status === '已取消') { await conn.rollback(); return res.status(400).json({ error: '需求已结束' }); }
+    if (await hasSpecialOrders(conn, needId)) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'SPECIAL_ORDER_LOCKED', message: '含特殊预算订单的需求不能重新定点' });
+    }
     const [srows] = await conn.query('SELECT * FROM purchase_suppliers WHERE id = ? AND need_id = ? AND user_id = ?', [supplierId, needId, uid]);
     if (!srows.length) { await conn.rollback(); return res.status(404).json({ error: '供应商不存在' }); }
     const sup = srows[0];
@@ -771,6 +797,10 @@ router.post('/needs/:id/undecided', async (req, res, next) => {
     const need = nrows[0];
     if (!need) { await conn.rollback(); return res.status(404).json({ error: 'not found' }); }
     if (need.status !== '已定点') { await conn.rollback(); return res.status(400).json({ error: '需求未定点' }); }
+    if (await hasSpecialOrders(conn, needId)) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'SPECIAL_ORDER_LOCKED', message: '含特殊预算订单的需求不能回退定点' });
+    }
     const [formalRows] = await conn.query("SELECT * FROM purchase_orders WHERE need_id = ? AND role = 'formal' ORDER BY id", [needId]);
     let formal;
     if (supplierId) {
@@ -825,6 +855,10 @@ router.post('/needs/:id/cancel', async (req, res, next) => {
     if (need.status === '已完成') { await conn.rollback(); return res.status(400).json({ error: '需求已完成，不可取消' }); }
     if (need.status === '已取消') { await conn.rollback(); return res.json({ ok: true }); }
     const reason = String(b.reason || b.cancelReason || '').slice(0, 200);
+    if (await hasSpecialOrders(conn, needId)) {
+      await conn.rollback();
+      return res.status(400).json({ error: 'SPECIAL_ORDER_LOCKED', message: '含特殊预算订单的需求不能取消，请先通过特殊预算退款接口处理' });
+    }
     // 任一子单（试用或正式）已入账 → 拒绝取消，避免金额凭空消失
     const [spent] = await conn.query(
       "SELECT COUNT(*) AS c FROM purchase_orders WHERE need_id = ? AND status IN ('已下单','已到','已归档')", [needId]);

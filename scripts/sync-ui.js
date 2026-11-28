@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, '..');
 const webDir = path.join(root, 'www');
 for (const name of [
   'index.html', 'chat.html', 'help.html', 'privacy.html', 'agent.html',
-  'theme.css', 'chat.css', 'sw.js', 'ui-refresh.css', 'manifest.json',
+  'theme.css', 'chat.css', 'special-budget.css', 'sw.js', 'ui-refresh.css', 'manifest.json',
   'icon-180.png', 'icon-192.png', 'icon-512.png',
 ]) {
   fs.copyFileSync(path.join(root, name), path.join(webDir, name));

@@ -56,7 +56,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 <div class="container">
   <div class="hero">
     <h1>❓ 帮助文档</h1>
-    <p>个人管家 v3.1.26 使用指南</p>
+    <p>个人管家 v3.2.5 使用指南</p>
   </div>
 
   <div class="toc">
@@ -251,6 +251,9 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
   <!-- 版本历史 -->
   <div class="section" id="changelog">
     <h2><span class="icon">📋</span> 版本历史</h2>
+    <div class="changelog-item"><div class="changelog-ver">v3.2.5 <span class="changelog-date">2026-11-28</span></div><ul class="changelog-list"><li>新增「试运行监控」：审计页顶部集中展示年度/月度/周六上限、对账差异、逾期分期与缺失快照，19 项检查一目了然（仅管理员可见，只读）</li><li>新增切换预检与日对账脚本：切换前只读核对库表、配置、开关与前端版本；试运行期间每天只读生成对账结论</li><li>配套切换检查表、回滚手册、问题清单与 Go/No-Go 文档，为 12-01 试运行做准备</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v3.2.4 <span class="changelog-date">2026-11-28</span></div><ul class="changelog-list"><li>特殊预算新增「📒 台账」：年度/月度口径、审批追溯、资金计算公式与审计指纹，数字可逐项核对，支持导出 CSV</li><li>新增「🔍 审计」只读页：月度快照（缺失可补齐）、事件时间线（变更前/后）、配置变更历史；审计页不提供任何金额修改入口</li><li>审批详情中的计算过程改为可读明细，并保留可展开的原始 JSON</li></ul></div>
+    <div class="changelog-item"><div class="changelog-ver">v3.2.3 <span class="changelog-date">2026-11-28</span></div><ul class="changelog-list"><li>新增「特殊预算」独立页面（首页右上角 🧾 / 设置 → 特殊预算）：年度额度概览、申请、审批、分期计划、付款/退款/提前还款/改期、年度上限设置</li><li>特殊预算单在采购详情带 🧾 标识并锁定金额编辑；退款与取消必须走特殊预算页，不能从采购单绕过</li><li>特殊预算单不计入一般预算与统计口径；申请窗口、超 800、年度/月度上限、大额二次确认均由服务端校验</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.26 <span class="changelog-date">2026-11-28</span></div><ul class="changelog-list"><li>修复「先打卡、后记一笔」产生两条同日记录：明细会合并进自动打卡行，不再把同一次健身算成多次</li><li>打卡状态按整天汇总：同一天多条记录时，任意一条勾选即算已打卡；取消打卡会清掉当天所有记录的勾选</li><li>打卡项「本周 N 次」按天去重，同一天多条记录不再重复计数</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.25 <span class="changelog-date">2026-11-27</span></div><ul class="changelog-list"><li>新增「历史预算」只读视图：按月查看总预算、基础预算和每笔追加的来源、金额、精确时间，10 月 ¥3200 的构成可直接核对</li><li>当前月仍可编辑，历史月份只读；预算写入新增审计日志（操作人、IP、变更月份、before/after），日志写入失败时预算修改回滚</li></ul></div>
     <div class="changelog-item"><div class="changelog-ver">v3.1.24 <span class="changelog-date">2026-11-25</span></div><ul class="changelog-list"><li>修复强制刷新后反复重载的问题：版本自愈加入 30 秒节流与跨刷新计数，失败 6 次后改为提示「强制更新」按钮</li><li>自动更新连续失败时会注销 Service Worker 并带参数重载，彻底绕开旧缓存</li></ul></div>
@@ -294,7 +297,7 @@ td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
 
   <div style="text-align:center;margin-top:20px">
     <a href="/" class="back-btn">🏠 返回主页</a>
-    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.1.26 · 2026</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px">个人管家 v3.2.5 · 2026</p>
     <p style="font-size:12px;margin-top:8px"><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖ICP备2026035353号</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=34012202341289" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">皖公网安备34012202341289号</a></p>
   </div>
 </div>

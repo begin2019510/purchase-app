@@ -963,6 +963,7 @@ async function submitChangePassword(){
 function settingsAction(action){
   closeSettings();
   switch(action){
+    case 'specialBudget': openSpecialBudget(); break;
     case 'claude': openClaudeChat(); break;
     case 'agent': openAgentLink(); break;
     case 'changePassword': openChangePassword(); break;

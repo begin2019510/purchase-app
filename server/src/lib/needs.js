@@ -40,7 +40,8 @@ function canTransition(from, to) {
 }
 // 状态迁移时应写入的时间戳列
 function transitionTimeCol(to) {
-  return ({ '已下单': 'ordered_at', '已到': 'arrived_at', '已退': 'arrived_at', '已归档': 'archived_at', '已取消': 'archived_at' })[to] || null;
+  // v3.2.2 订单状态机修正：退款写 refunded_at，不再和到货时间混用 arrived_at。
+  return ({ '已下单': 'ordered_at', '已到': 'arrived_at', '已退': 'refunded_at', '已归档': 'archived_at', '已取消': 'archived_at' })[to] || null;
 }
 
 // ===== 需求流转 =====
@@ -218,6 +219,8 @@ function synthLegacyRow(need, suppliers, orders) {
     project_id: need.project_id || null,
     phase_idx: need.phase_idx == null ? null : Number(need.phase_idx),
     image_ref: (o && o.image_ref) || '',
+    budget_type: o && o.budget_type === 'special' ? 'special' : 'general',
+    special_approval_id: o && o.special_approval_id != null ? Number(o.special_approval_id) : null,
     // 扩展：给新前端/调试看
     _need_status: need.status,
     _supplier_count: suppliers.length,
@@ -266,6 +269,10 @@ function orderAmount(o) {
 async function applyOrderTransition(conn, uid, order, to, opts = {}) {
   if (!canTransition(order.status, to)) {
     return { error: `状态流转不合法：${order.status} → ${to}` };
+  }
+  // 特殊预算订单的退款/取消必须走资金接口，否则会绕过年度释放与审计（v3.2.2）。
+  if (order.budget_type === 'special' && (to === '已退' || to === '已取消')) {
+    return { error: '特殊预算订单请通过特殊预算退款接口处理（/api/special-budget/orders/:id/refund）' };
   }
   const timeCol = transitionTimeCol(to);
   const sets = ['status = ?'], vals = [to];

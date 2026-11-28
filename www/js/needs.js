@@ -22,6 +22,10 @@ const NEED_ORDER_FLOW = {
 };
 
 function isActiveBuy(s) { return ACTIVE_BUY_STATUS.indexOf(String(s || '')) >= 0; }
+// 特殊预算子单：金额由特殊预算台账管理，不进入一般预算/统计口径（v3.2.3）
+function isSpecialOrder(o) {
+  return !!o && (o['特殊预算'] === '1' || o['特殊预算'] === 1 || o['特殊预算'] === true || o.budget_type === 'special');
+}
 function findNeed(id) { id = String(id || ''); return (needsList || []).find(n => String(n.id) === id) || null; }
 function fmtY(n) { return '¥' + (Number(n) || 0).toFixed(2); }
 function todayBJ() { return new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10); }
@@ -50,7 +54,7 @@ function needBudgetText(n) {
 // 需求入账合计（ACTIVE_BUY 子单：实付 × 数量）
 function needSpend(n) {
   return (n.orders || []).reduce(function (s, o) {
-    if (!isActiveBuy(o['状态'])) return s;
+    if (!isActiveBuy(o['状态']) || isSpecialOrder(o)) return s;
     return s + (Number(o['实付']) || 0) * (Number(o['数量']) || 1);
   }, 0);
 }
@@ -142,6 +146,7 @@ function needsFromItems(rows) {
         '分期开始月': it['分期开始月'] || '', '分期已还': Number(it['分期已还']) || 0,
         '日期': it['日期'] != null && it['日期'] !== '' ? Number(it['日期']) : null,
         '图片': it['图片'] || '', '备注': it['备注'] || '', '极速': it['极速'] || '',
+        '特殊预算': it['特殊预算'] || '', '特殊审批ID': it['特殊审批ID'] || '',
         '创建时间': it['创建时间'] || '', '审批时间': it['审批时间'] || '', '下单时间': it['下单时间'] || '',
         '到货时间': it['到货时间'] || '', '归档时间': it['归档时间'] || '',
       });
@@ -172,6 +177,7 @@ function orderRows() {
     const supMap = {};
     (n.suppliers || []).forEach(function (s) { supMap[s.id] = s; });
     (n.orders || []).forEach(function (o) {
+      if (isSpecialOrder(o)) return; // 特殊预算单不进一般预算/统计
       const s = supMap[o.supplierId];
       out.push({
         id: o.id, _needId: n.id, _order: o, _role: o.role,
@@ -182,6 +188,7 @@ function orderRows() {
         '分期开始月': o['分期开始月'], '分期已还': o['分期已还'],
         '项目ID': n['项目ID'], '阶段': n['阶段'], '虚拟': n['虚拟'],
         '极速': o['极速'] || n['极速'], '创建时间': o['创建时间'] || n['创建时间'],
+        '特殊预算': o['特殊预算'] || '', '特殊审批ID': o['特殊审批ID'] || '',
       });
     });
   });
@@ -510,9 +517,11 @@ function buildOrderCard(n, o, sups, isFormal) {
   const price = Number(o['实付']) || 0;
   const total = Math.round(price * qty * 100) / 100;
   const st = o['状态'] || '待下单';
+  const sp = isSpecialOrder(o);
   const okey = String(o.id).replace(/[^A-Za-z0-9_-]/g, ''); // 多张正式单时输入框 id 必须唯一
-  let h = '<div class="nd-order' + (isFormal ? ' formal' : '') + '">';
-  h += '<div class="nd-order-head"><span>' + (isFormal ? '🛒 正式单' : '🧪 试用单') + ' · ' + esc(sup ? (sup['谁'] || '') : '未指定供应商') + '</span>'
+  let h = '<div class="nd-order' + (isFormal ? ' formal' : '') + (sp ? ' special' : '') + '">';
+  h += '<div class="nd-order-head"><span>' + (isFormal ? '🛒 正式单' : '🧪 试用单') + ' · ' + esc(sup ? (sup['谁'] || '') : '未指定供应商')
+    + (sp ? ' · <b style="color:#4f46e5">🧾 特殊预算</b>' : '') + '</span>'
     + '<span class="badge badge-' + escAttr(st) + '">' + esc(st) + '</span></div>';
   h += '<div class="nd-order-money">' + fmtY(price) + (qty > 1 ? ' × ' + qty + ' = <b>' + fmtY(total) + '</b>' : '')
     + (o['日期'] ? ' <span style="color:var(--muted)">📅 ' + (function (d) { try { return new Date(d).toISOString().slice(0, 10); } catch (e) { return ''; } })(o['日期']) + '</span>' : '') + '</div>';
@@ -527,8 +536,8 @@ function buildOrderCard(n, o, sups, isFormal) {
     h += '<div class="nd-inst"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>¥' + ia + '/期 · 共' + tp + '期</span><span>已付 ' + pd + ' 期</span></div>'
       + '<div class="nd-inst-bar"><i style="width:' + pct + '%"></i></div></div>';
   }
-  // 正式单待下单：可改数量/实付/日期/分期
-  if (isFormal && st === '待下单') {
+  // 正式单待下单：可改数量/实付/日期/分期（特殊预算单锁定，金额只能走特殊预算）
+  if (isFormal && st === '待下单' && !sp) {
     h += '<div class="nd-form" style="margin-top:8px"><div class="form-row">'
       + '<div class="form-group" style="flex:1"><label>数量</label><input id="foQty_' + okey + '" type="number" min="1" value="' + qty + '"></div>'
       + '<div class="form-group" style="flex:1"><label>实付单价</label><input id="foPrice_' + okey + '" type="number" step="0.01" min="0" value="' + price + '"></div></div>'
@@ -537,12 +546,20 @@ function buildOrderCard(n, o, sups, isFormal) {
       + '<div class="form-group" style="flex:1"><label>分期期数</label><input id="foInst_' + okey + '" type="number" min="0" max="120" value="' + (tp || '') + '"></div></div>'
       + '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="needOrderSave(\'' + escAttr(String(o.id)) + '\',\'' + escAttr(String(n.id)) + '\')">💾 保存修改</button></div></div>';
   }
-  // 流转按钮
-  const actions = NEED_ORDER_FLOW[st] || [];
+  // 流转按钮：特殊预算单禁止在前端退货/取消（退款与释放必须走特殊预算接口）
+  const actions = (NEED_ORDER_FLOW[st] || []).filter(function (a) {
+    return !(sp && (a.to === '已退' || a.to === '已取消'));
+  });
   if (actions.length) {
     h += '<div class="nd-actions">' + actions.map(function (a) {
       return '<button type="button" class="nd-btn ' + a.cls + '" onclick="needOrderTransition(\'' + escAttr(String(o.id)) + '\',\'' + escAttr(String(n.id)) + '\',\'' + escAttr(a.to) + '\')">' + a.label + '</button>';
     }).join('') + '</div>';
+  }
+  if (sp) {
+    h += '<div style="font-size:11px;color:var(--muted);margin-top:6px">🧾 特殊预算单：金额、退款、取消请在特殊预算页操作。</div>';
+    if (o['特殊审批ID']) {
+      h += '<div class="nd-actions"><button type="button" class="nd-btn m" onclick="openSpecialBudget(\'' + escAttr(String(o['特殊审批ID'])) + '\')">查看特殊审批</button></div>';
+    }
   }
   h += '</div>';
   return h;

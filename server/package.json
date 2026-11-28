@@ -5,7 +5,10 @@
   "description": "个人管家业务 API（MySQL+磁盘图片），CF Functions 反代目标",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test:special-budget": "node test/special-budget-rules.test.js && node test/special-budget-migrate.test.js && node test/special-budget-migrate-v321.test.js && node test/special-budget-api.test.js && node test/special-budget-approvals.test.js && node test/special-budget-writes-api.test.js && node test/special-budget-funds.test.js && node test/special-budget-funds-api.test.js && node test/special-budget-ledger-api.test.js && node test/special-budget-monitor-api.test.js",
+    "migrate:special-budget": "node scripts/migrate-special-budget.js",
+    "migrate:special-budget:v321": "node scripts/migrate-special-budget-v321.js"
   },
   "dependencies": {
     "express": "^4.19.2",
